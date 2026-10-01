@@ -1,0 +1,22 @@
+# Hukuk datası (Drive kopyası, metin önbelleği, yedekler, secret'lar) — telif/KVKK nedeniyle repoya girmez
+data/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
