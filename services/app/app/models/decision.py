@@ -60,7 +60,7 @@ class Decision(UuidPkMixin, ProvenanceMixin, Base):
     karar_no: Mapped[str | None]
     decision_date: Mapped[date | None]
     event_date_hint: Mapped[date | None]
-    # null for courts outside the adli/idari split (AYM, AİHM, ABAD, Uyuşmazlık Mahkemesi)
+    # null for courts outside the adli/idari split (AYM, AİHM, ABAD)
     jurisdiction: Mapped[Jurisdiction | None] = mapped_column(Jurisdiction.pg_type("jurisdiction"))
     related_articles: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, server_default=sql_text("'[]'")

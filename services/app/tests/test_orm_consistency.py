@@ -10,7 +10,6 @@ from app.models.common import ENUM_TYPES, VALID_RANGE, Base
 
 VERSIONS = Path(__file__).parents[1] / "alembic" / "versions"
 MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
-MIGRATION_V0_2 = VERSIONS / "0003_decision_fields_v0_2.py"
 
 
 def _load_migration(path: Path = MIGRATION) -> ModuleType:
@@ -23,10 +22,8 @@ def _load_migration(path: Path = MIGRATION) -> ModuleType:
 
 def test_enum_labels_match_migration() -> None:
     migration = _load_migration()
-    added = _load_migration(MIGRATION_V0_2).NEW_ENUM_LABELS
-    expected = {name: (*labels, *added.get(name, ())) for name, labels in migration.ENUMS.items()}
     orm = {name: tuple(m.value for m in cls) for name, cls in ENUM_TYPES.items()}
-    assert orm == expected
+    assert orm == migration.ENUMS
 
 
 def test_tables_match_migration() -> None:

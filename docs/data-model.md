@@ -1,6 +1,6 @@
 # Veri Modeli v0.2
 
-Durum: v0.2, 2026-10-02 (v0.2: `decision` için `source_chamber`, `bam_region`, `uyusmazlik`; Alembic 0003). Bu doküman Faz 1'in temelidir; şema buradan Alembic'e çevrilir.
+Durum: v0.2, 2026-10-02 (v0.2: `decision` için `source_chamber`, `bam_region`; Alembic 0003). Bu doküman Faz 1'in temelidir; şema buradan Alembic'e çevrilir.
 
 ## 1. İlkeler
 
@@ -120,8 +120,8 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 | alan | not |
 |---|---|
 | id, source_id | |
-| court | enum: `aym` / `yargitay` / `danistay` / `bam` / `bim` / `ilk_derece` / `aihm` / `abad` / `foreign` / `uyusmazlik` (Uyuşmazlık Mahkemesi: adli/idari görev uyuşmazlığı, `jurisdiction` null, otorite sıralamasında ayrı) |
-| court_level | enum: `aym` / `ibk` / `hgk_iddk` / `daire` / `bam_bim` / `ilk_derece` / `international` / `uyusmazlik` (md. 15-16 otorite sırası; Uyuşmazlık Mahkemesi sıranın dışında ayrı tutulur) |
+| court | enum: `aym` / `yargitay` / `danistay` / `bam` / `bim` / `ilk_derece` / `aihm` / `abad` / `foreign` |
+| court_level | enum: `aym` / `ibk` / `hgk_iddk` / `daire` / `bam_bim` / `ilk_derece` / `international` (md. 15-16 otorite sırası) |
 | chamber | Parser'ın ürettiği biçimler: Yargıtay `n. HD` / `n. CD`, Danıştay ve BİM `n. D`, BAM `n. HD` (+ `bam_region`). NOT NULL DEFAULT `''` (HGK, İBK, AYM gibi dairesiz kararlar boş string; unique indeks NULL'larda çakışmayı kaçırmasın diye) |
 | source_chamber | HGK esası `YYYY/D-N` yazılır; `D` (kararın geldiği daire) burada tutulur, `esas_no` karararama biçimi `YYYY/N` kalır. Uygulanmıyorsa `''`; NOT NULL DEFAULT `''` |
 | bam_region | BAM / BİM bölgesi ("İstanbul", "Ankara"...). Diğer mahkemelerde `''`; NOT NULL DEFAULT `''`. İki bölgede aynı daire ve aynı E/K bulunabildiği için canlı kayıt unique indeksine girer: `(court, bam_region, chamber, esas_no, karar_no)` WHERE `superseded_at IS NULL` |
@@ -132,7 +132,7 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 | jurisdiction | `adli` / `idari` |
 | related_articles | jsonb: `[{statute: 4857, articles: [18,19,20,21]}]` |
 | keywords | text[] |
-| outcome | ASCII snake_case etiketler (ASCII enum kuralı): `bozma`, `onama`, `duzelterek_onama`, `kabul`, `red`, `ihlal`, `ihlal_yok`. Serbest metin kalır; parser `kismen_bozma` üretmez, o yüzden listede yok. Parser şu an "düzelterek onama" yazar; `duzelterek_onama` normalizasyonu toplu yükleme görevinde yapılır |
+| outcome | ASCII snake_case etiketler (ASCII enum kuralı): `bozma`, `onama`, `duzelterek_onama`, `kabul`, `red`, `ihlal`, `ihlal_yok`. Serbest metin kalır; parser `kismen_bozma` üretmez, o yüzden listede yok. Parser şu an "düzelterek onama" yazar; `duzelterek_onama` normalizasyonu yükleme sırasında yapılır |
 | full_text | |
 | editorial_summary | Çalışma ve Toplum ÖZETİ; ayrı lisans; **atıf kaynağı değil**; yalnızca arama sinyali olarak gömülür (§8) |
 | text_completeness | `full` / `excerpt` / `summary_only` |
