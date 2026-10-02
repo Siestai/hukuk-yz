@@ -8,11 +8,12 @@ from sqlalchemy import CheckConstraint
 
 from app.models.common import ENUM_TYPES, VALID_RANGE, Base
 
-MIGRATION = Path(__file__).parents[1] / "alembic" / "versions" / "0002_kb_schema_v0_1.py"
+VERSIONS = Path(__file__).parents[1] / "alembic" / "versions"
+MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
 
 
-def _load_migration() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("migration_0002", MIGRATION)
+def _load_migration(path: Path = MIGRATION) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(f"migration_{path.stem}", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -78,7 +79,6 @@ def test_faz1_indexes_exist_in_orm_and_migration() -> None:
         "ix_extraction_source_id",
         "ix_review_extraction_id",
         "uq_statute_kind_number",
-        "uq_decision_court_chamber_esas_no_karar_no_live",
     }
     # created by the migration's _provenance_indexes() loop
     provenance = {
@@ -89,3 +89,5 @@ def test_faz1_indexes_exist_in_orm_and_migration() -> None:
     orm = {i.name for t in Base.metadata.tables.values() for i in t.indexes}
     assert (literal | provenance) <= orm
     assert all(f'"{name}"' in migration for name in literal)
+    assert "uq_decision_court_bam_region_chamber_esas_no_karar_no_live" in orm
+    assert "uq_decision_court_chamber_esas_no_karar_no_live" not in orm
