@@ -1,0 +1,15 @@
+{
+  "_comment": "Shape of the search-by-id answer (2026-10-02); the decision text is a synthetic placeholder.",
+  "total": 1,
+  "page": 1,
+  "data": [
+    {
+      "kararTipi": "NormDenetimi",
+      "id": "fa0eb0dc-de88-f3b2-1262-16401f035f00",
+      "kararNo": "2025/121",
+      "esasNo": "2024/157",
+      "kararTarihi": "2025-06-03",
+      "icerik": "<html><body><p>FIXTURE TEXT</p></body></html>"
+    }
+  ]
+}

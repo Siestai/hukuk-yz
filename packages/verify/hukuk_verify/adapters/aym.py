@@ -9,7 +9,7 @@ import httpx
 
 from hukuk_verify.adapters.base import SourceAdapter
 from hukuk_verify.adapters.bigm import split_number
-from hukuk_verify.errors import SourceUnavailable, UnexpectedResponse
+from hukuk_verify.errors import UnexpectedResponse
 from hukuk_verify.models import DecisionKey, LookupResult, OfficialRow, OfficialText, Outcome
 from hukuk_verify.ratelimit import RateLimiter
 
@@ -37,8 +37,7 @@ class AymAdapter(SourceAdapter):
     def supports(self, key: DecisionKey) -> bool:
         kind = KARAR_TIPI.get(key.decision_kind or "")
         if kind == _INDIVIDUAL:
-            # The application number sits in esas_no; there is no karar number (assumption: the
-            # individual-application search was not probed, task 06 open question 8).
+            # The application number sits in esas_no; there is no karar number.
             return split_number(key.esas_no) is not None
         return (
             kind == _NORM
@@ -89,18 +88,18 @@ class AymAdapter(SourceAdapter):
         )
 
     async def fetch_text(self, ref: str) -> OfficialText | None:
-        """The first HTML file of the decision's file list."""
-        listing = self._json(
+        """`icerik`, the HTML text of the decision, from the search by id (what the decision page
+        itself asks for). The `dosyalar` list holds attachments, not the decision."""
+        answer = self._json(
             await self._request(
-                "GET",
-                f"{self.ORIGIN}/api/core/public/kararlar/{ref}/dosyalar",
-                params={"kararTipi": self._types.get(ref, _NORM)},
+                "POST",
+                f"{self.ORIGIN}/api/core/public/search",
+                json={"id": ref, "size": 1, "kararTipi": self._types.get(ref, _NORM)},
+                headers={"Origin": self.ORIGIN, "Referer": f"{self.ORIGIN}/"},
             )
         )
-        urls = [f["url"] for f in listing.get("data") or [] if f.get("url", "").endswith(".html")]
-        if not urls:
-            return None
-        response = await self._request("GET", f"{self.ORIGIN}{urls[0]}")
-        if response.status_code != 200:
-            raise SourceUnavailable(f"HTTP {response.status_code}")
-        return OfficialText(response.text, {"dosyalar": listing, "dosya": response.text})
+        try:
+            body = answer["data"][0].get("icerik")
+        except (KeyError, IndexError, TypeError, AttributeError) as exc:
+            raise UnexpectedResponse("unknown answer shape") from exc
+        return OfficialText(body, {"icerik": body}) if body else None

@@ -7,16 +7,24 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.common import Court, Verification
 from app.models.decision import Decision, DecisionVerification
-from app.verification.runner import RunOptions, SourceStats, describe, run_court, year_band
+from app.verification.runner import (
+    RunOptions,
+    SourceStats,
+    describe,
+    outcome_label,
+    run_court,
+    year_band,
+)
 from app.verification.store import Candidate, candidates
-from hukuk_verify import DecisionKey, Outcome
+from hukuk_verify import DecisionKey, FieldMatch, Outcome
 from hukuk_verify.adapters import SourceAdapter
-from hukuk_verify.errors import RateLimitExhausted, SourceUnavailable
+from hukuk_verify.errors import RateLimitExhausted, SourceUnavailable, UnexpectedResponse
 from hukuk_verify.models import LookupResult, OfficialRow, OfficialText
 from hukuk_verify.ratelimit import RateLimiter
 
@@ -32,10 +40,14 @@ class StubSource(SourceAdapter):
     PRE_2009_SKIP = True
 
     def __init__(
-        self, known: Collection[str] = (), broken: Collection[str] = (), stop: str = ""
+        self,
+        known: Collection[str] = (),
+        broken: Collection[str] = (),
+        stop: str = "",
+        rejected: Collection[str] = (),
     ) -> None:
         super().__init__(httpx.AsyncClient(), RateLimiter())
-        self.known, self.broken, self.stop = known, broken, stop
+        self.known, self.broken, self.stop, self.rejected = known, broken, stop, rejected
         self.queried: list[str] = []
 
     def supports(self, key: DecisionKey) -> bool:
@@ -48,6 +60,8 @@ class StubSource(SourceAdapter):
             raise RateLimitExhausted("three consecutive 429 answers")
         if key.esas_no in self.broken:
             raise SourceUnavailable("ConnectTimeout")
+        if key.esas_no in self.rejected:
+            raise UnexpectedResponse("HTTP 404")
         if key.esas_no not in self.known:
             return LookupResult([])
         return LookupResult(
@@ -91,6 +105,33 @@ def test_year_bands_and_names() -> None:
     assert describe(candidate("2017/5").key) == "yargitay 9. HD E. 2017/5 K. 2020/1"
 
 
+@pytest.mark.parametrize(
+    ("outcome", "matched", "expected"),
+    [
+        ("verified_official", {"decision_date": FieldMatch.fuzzy}, "verified_official"),
+        (
+            "mismatch",
+            {"chamber": FieldMatch.mismatch, "decision_date": FieldMatch.mismatch},
+            "mismatch (chamber, decision_date)",
+        ),
+        (
+            "mismatch",
+            {"decision_date": FieldMatch.match, "ambiguous": True},
+            "mismatch (ambiguous)",
+        ),
+        (
+            "mismatch",
+            {"decision_date": FieldMatch.mismatch, "ambiguous": True},
+            "mismatch (decision_date, ambiguous)",
+        ),
+    ],
+)
+def test_a_mismatch_names_its_fields_on_the_console(
+    outcome: str, matched: dict[str, object], expected: str
+) -> None:
+    assert outcome_label(outcome, matched) == expected
+
+
 async def test_outcomes_are_counted_by_year_band() -> None:
     stats = await run(
         StubSource(known={"2020/1"}), [candidate("2020/1"), candidate("2020/2", 2012)]
@@ -123,6 +164,23 @@ async def test_three_network_errors_in_a_row_stop_the_source() -> None:
     assert stats.stopped is not None and stats.stopped.startswith("SourceUnreachable")
     assert stub.queried == names[:3]  # the other three are not tried
     assert stats.errors == {"SourceUnavailable": 3}
+
+
+async def test_an_unexpected_answer_is_an_error_but_not_a_network_error() -> None:
+    names = [f"2020/{n}" for n in range(1, 7)]
+    stub = StubSource(rejected=names)
+    stats = await run(stub, [candidate(n) for n in names])
+    assert stats.stopped is None  # no "network error" stop
+    assert stub.queried == names
+    assert stats.errors == {"UnexpectedResponse": 6}
+
+
+async def test_an_unexpected_answer_resets_the_network_error_count() -> None:
+    names = [f"2020/{n}" for n in range(1, 6)]
+    stub = StubSource(broken={"2020/1", "2020/2", "2020/4", "2020/5"}, rejected={"2020/3"})
+    stats = await run(stub, [candidate(n) for n in names])
+    assert stats.stopped is None
+    assert stats.errors == {"SourceUnavailable": 4, "UnexpectedResponse": 1}
 
 
 async def test_a_success_resets_the_network_error_count() -> None:

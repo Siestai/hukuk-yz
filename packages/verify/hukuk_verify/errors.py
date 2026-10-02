@@ -15,8 +15,8 @@ class SourceUnavailable(RecordError):
 
 
 class UnexpectedResponse(RecordError):
-    """The site answered, but with an error envelope (`metadata.FMTY == "ERROR"`) or a shape the
-    adapter does not know."""
+    """The site answered, but with an error envelope (`metadata.FMTY == "ERROR"`), an HTTP status
+    other than 200 / 429 / 5xx (404, say) or a shape the adapter does not know."""
 
 
 class SourceStopped(VerifyError):

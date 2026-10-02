@@ -39,7 +39,7 @@ JSON
 
 ```sh
 run() { uv run python -m app.verification --keys /tmp/verify-keys.jsonl --court "$1" --limit "$2" --report "/tmp/verify-$1"; }
-run aym 14
+run aym 10
 run bam 8
 run danistay 9
 run yargitay 18
@@ -49,12 +49,12 @@ run yargitay 18
 
 | Kaynak | Hesap (en kötü durum) | + 1 (429) | `--limit` |
 |---|---|---|---|
-| aym | robots 1 + 4 karar × 3 (arama, `dosyalar`, html) = 13 | 14 | 14 |
+| aym | robots 1 + 4 karar × 2 (arama, kimlikle arama) = 9 | 10 | 10 |
 | bam | robots 1 + oturum 1 + (arama + metin) 2 + (yalnız arama, `mismatch`) 1 + (arama + metin) 2 = 7 | 8 | 8 |
 | danistay | robots 1 + oturum 1 + 3 karar × 2 (arama + metin) = 8 | 9 | 9 |
 | yargitay | robots 1 + oturum 1 + 4 karar × 3 (daire filtreli arama boş, süzgeçsiz arama, metin) + 2008 örneklemi 3 = 17 | 18 | 18 |
 
-14 + 8 + 9 + 18 = 49 ≤ 50. `--i-have-permission` kullanılmaz. Bir kaynakta "stopped" yazarsa (429, captcha, robots, bütçe) o kaynak orada kesilir; yeniden denemeden önce en az 5 dakika bekle.
+10 + 8 + 9 + 18 = 45 ≤ 50. `--i-have-permission` kullanılmaz. Bir kaynakta "stopped" yazarsa (429, captcha, robots, bütçe) o kaynak orada kesilir; yeniden denemeden önce en az 5 dakika bekle.
 
 ## PR'a yapıştırılacak çıktı
 
@@ -64,7 +64,7 @@ Beklenen (probe ve spike ile uyum):
 
 | Kaynak | Beklenen |
 |---|---|
-| aym | ilk üçü `verified_official`; bireysel başvuru satırı elle yorumlanır (probe'da denenmedi, `basvuruNo` eşlemesi varsayım) |
+| aym | ilk üçü `verified_official`; bireysel başvuru satırı (`basvuruNo` araması canlıda `total: 1` döndü) `verified_official` olmalı; bu uçtan uca koşu ilk kez burada |
 | bam | Gaziantep 29.12.2022 `verified_uyap`; aynı karar 01.12.2022 ile `mismatch` (`decision_date`); İstanbul 7. HD sonucu not edilir (Emsal kapsamı belirsiz) |
 | danistay | 2026 kararı `verified_official`; 2004/2006 kararları probe'daki gibi `not_in_source` |
 | yargitay | 2023 ve 2016 `verified_official`; 2014 ve HGK sonuç not edilir; 2008 `not_in_source` (2009 öncesi örneklem sorgusu olarak gerçekten sorulur, bulunursa bu bir bulgudur) |

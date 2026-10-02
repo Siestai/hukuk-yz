@@ -10,6 +10,7 @@ from hukuk_verify.errors import (
     CaptchaRequired,
     RobotsDisallowed,
     SourceUnavailable,
+    UnexpectedResponse,
 )
 from hukuk_verify.models import DecisionKey, LookupResult, OfficialText, Outcome
 from hukuk_verify.ratelimit import RateLimiter
@@ -78,8 +79,10 @@ class SourceAdapter(ABC):
             stop = CaptchaRequired("the site asks for a captcha")
             self.limiter.stop(stop)
             raise stop
-        if response.status_code != 200:
+        if response.status_code >= 500:
             raise SourceUnavailable(f"HTTP {response.status_code}")
+        if response.status_code != 200:
+            raise UnexpectedResponse(f"HTTP {response.status_code}")
         try:
             return response.json()
         except ValueError as exc:

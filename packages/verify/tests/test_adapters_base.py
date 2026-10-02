@@ -19,6 +19,7 @@ from hukuk_verify.errors import (
     RateLimitExhausted,
     RobotsDisallowed,
     SourceUnavailable,
+    UnexpectedResponse,
 )
 from hukuk_verify.models import DecisionKey
 
@@ -158,4 +159,11 @@ async def test_a_network_error_is_an_exception_not_an_empty_result(case: Case) -
 async def test_a_server_error_is_an_exception(case: Case) -> None:
     site = site_for(case, Reply(503, "<html>down</html>", "text/html"))
     with pytest.raises(SourceUnavailable):
+        await make_adapter(case.adapter, site).lookup(case.key)
+
+
+@EVERY_SOURCE
+async def test_a_status_that_is_neither_429_nor_5xx_is_an_unexpected_response(case: Case) -> None:
+    site = site_for(case, Reply(404, "<html>gone</html>", "text/html"))
+    with pytest.raises(UnexpectedResponse, match="HTTP 404"):
         await make_adapter(case.adapter, site).lookup(case.key)

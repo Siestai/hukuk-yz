@@ -52,9 +52,10 @@ def test_summary_counts_per_source() -> None:
 
 def test_markdown_lists_mismatches_and_the_sample() -> None:
     text = render_markdown(build_summary([stats()], dry_run=True))
-    assert "Dry run: yes" in text
+    assert "Network: live; DB write: no" in text
     assert "- yargitay 9. HD E. 2017/1 K. 2020/2" in text
     assert "20 queried, 0 found" in text
+    assert "DB write: yes" in render_markdown(build_summary([stats()], dry_run=False))
     assert "| 2015+ | 1 | 0 | 1 | 0 | 0 |" in text
 
 

@@ -16,17 +16,10 @@ KEY = make_key(
     decision_kind="norm_denetimi",
 )
 UUID = "fa0eb0dc-de88-f3b2-1262-16401f035f00"
-FILE = "/files/normdenetimi/ee5093c9-f74e-4bbf-b279-fa85e22b0ff9.html"
 
 
 def site(*search: Reply) -> Site:
-    return Site(
-        {
-            "/api/core/public/search": list(search),
-            f"/api/core/public/kararlar/{UUID}/dosyalar": Reply.fixture("aym_dosyalar.json"),
-            FILE: Reply.fixture("aym_dosya.html"),
-        }
-    )
+    return Site({"/api/core/public/search": list(search)})
 
 
 async def test_found_is_searched_by_kararTipi_esas_and_karar() -> None:
@@ -68,16 +61,33 @@ async def test_an_individual_application_is_searched_by_its_number() -> None:
     assert "esasNo" not in body
 
 
-async def test_found_verifies_and_hashes_the_first_html_file() -> None:
-    fake = site(Reply.fixture("aym_search_found.json"))
+async def test_individual_application_row_has_no_esas_or_karar_number() -> None:
+    fake = site(Reply.fixture("aym_search_individual.json"), Reply.fixture("aym_search_by_id.json"))
+    key = replace(
+        KEY,
+        decision_kind="bireysel_basvuru",
+        esas_no="2024/41763",
+        karar_no=None,
+        decision_date=date(2025, 7, 8),
+    )
+    result = await verify(make_adapter(AymAdapter, fake), key)
+    assert result.outcome is Outcome.verified_official
+    assert fake.bodies("/api/core/public/search")[1]["kararTipi"] == "BireyselBasvuru"
+
+
+async def test_found_verifies_and_hashes_the_text_of_the_search_by_id() -> None:
+    fake = site(Reply.fixture("aym_search_found.json"), Reply.fixture("aym_search_by_id.json"))
     result = await verify(make_adapter(AymAdapter, fake), KEY)
     assert result.outcome is Outcome.verified_official
     assert result.official_ref == UUID
     assert result.official_text is not None
     assert "FIXTURE TEXT" in result.official_text.body
-    dosyalar = fake.requests[-2]
-    assert dosyalar.url.params["kararTipi"] == "NormDenetimi"
-    assert fake.requests[-1].url.path == FILE
+    assert len(fake.requests) == 3  # robots.txt, search, search by id
+    assert fake.bodies("/api/core/public/search")[1] == {
+        "id": UUID,
+        "size": 1,
+        "kararTipi": "NormDenetimi",
+    }
 
 
 async def test_not_found_is_not_in_source() -> None:
@@ -96,9 +106,7 @@ async def test_a_different_date_is_a_mismatch() -> None:
     assert result.outcome is Outcome.mismatch
 
 
-async def test_a_decision_without_html_files_has_no_text() -> None:
-    fake = site(Reply.fixture("aym_search_found.json"))
-    fake._routes[f"/api/core/public/kararlar/{UUID}/dosyalar"] = Reply(
-        200, '{"success": true, "data": []}'
-    )
-    assert await make_adapter(AymAdapter, fake).fetch_text(UUID) is None
+async def test_a_decision_without_icerik_has_no_text() -> None:
+    for answer in ('{"data": [{"id": "x"}]}', '{"data": [{"id": "x", "icerik": ""}]}'):
+        fake = site(Reply(200, answer))
+        assert await make_adapter(AymAdapter, fake).fetch_text(UUID) is None

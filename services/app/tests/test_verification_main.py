@@ -26,7 +26,13 @@ AYM_KEY = {
 }
 SEARCH = {
     "data": [
-        {"id": "u-1", "esasNo": "2024/157", "kararNo": "2025/121", "kararTarihi": "2025-06-03"}
+        {
+            "id": "u-1",
+            "esasNo": "2024/157",
+            "kararNo": "2025/121",
+            "kararTarihi": "2025-06-03",
+            "icerik": "<p>x</p>",
+        }
     ]
 }
 
@@ -41,10 +47,6 @@ def site(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
         path = request.url.path
         if path == "/api/core/public/search":
             return httpx.Response(200, json=SEARCH)
-        if path.endswith("/dosyalar"):
-            return httpx.Response(200, json={"data": [{"url": "/files/a.html"}]})
-        if path == "/files/a.html":
-            return httpx.Response(200, text="<p>x</p>", headers={"content-type": "text/html"})
         return httpx.Response(404, json={"error": "No static resource"})
 
     async def no_sleep(seconds: float) -> None:
@@ -201,6 +203,15 @@ def test_keys_mode_prints_the_outcome_and_needs_no_database(
     out = capsys.readouterr().out
     assert "aym E. 2024/157 K. 2025/121 -> verified_official" in out
     assert (report / "verify-summary.json").exists()
+
+
+def test_keys_mode_names_the_mismatched_field(
+    tmp_path: Path, site: list[httpx.Request], capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "keys.jsonl"
+    path.write_text(json.dumps({**AYM_KEY, "decision_date": "2025-07-01"}) + "\n", encoding="utf-8")
+    assert cli.main(["--keys", str(path)]) == 0
+    assert "-> mismatch (decision_date)" in capsys.readouterr().out
 
 
 def test_without_permission_a_source_gets_at_most_20_requests(

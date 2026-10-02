@@ -11,11 +11,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.verification.store import Candidate, apply_error, apply_result
-from hukuk_verify import DecisionKey, Outcome, VerifyResult, verify
+from hukuk_verify import DecisionKey, FieldMatch, Outcome, VerifyResult, verify
 from hukuk_verify.adapters import SourceAdapter
 from hukuk_verify.errors import RecordError, SourceStopped, SourceUnavailable, SourceUnreachable
 from hukuk_verify.verify import is_pre_2009
@@ -31,6 +32,16 @@ def year_band(key: DecisionKey) -> str:
         return "no date"
     year = key.decision_date.year
     return "<=2009" if year <= 2009 else "2010-14" if year <= 2014 else "2015+"
+
+
+def outcome_label(outcome: str, matched: dict[str, Any]) -> str:
+    """The outcome for the console; a `mismatch` names the fields that disagreed."""
+    if outcome != Outcome.mismatch.value:
+        return outcome
+    details = [name for name, found in matched.items() if found == FieldMatch.mismatch]
+    if matched.get("ambiguous"):
+        details.append("ambiguous")
+    return f"{outcome} ({', '.join(details)})" if details else outcome
 
 
 def describe(key: DecisionKey) -> str:
@@ -138,7 +149,7 @@ async def run_court(
             stats.skipped_pre_2009 += 1
         if outcome == Outcome.mismatch.value:
             stats.mismatches.append(describe(key))
-        on_result(candidate, outcome)
+        on_result(candidate, outcome_label(outcome, result.matched))
         return outcome
 
     try:

@@ -45,7 +45,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
     out = [
         "# Decision verification summary",
         "",
-        f"Dry run: {'yes' if summary['dry_run'] else 'no'}",
+        f"Network: live; DB write: {'no' if summary['dry_run'] else 'yes'}",
     ]
     for court, s in summary["sources"].items():
         out += [
