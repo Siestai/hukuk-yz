@@ -2,7 +2,7 @@ import asyncio
 import logging
 import signal
 
-from app.logging import configure_logging
+from app.logging_setup import configure_logging
 from app.settings import get_settings
 
 logger = logging.getLogger("app.worker")

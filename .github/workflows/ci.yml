@@ -2,6 +2,7 @@ name: ci
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -26,5 +27,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
       - run: make install
       - run: make lint typecheck test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f services/app/Dockerfile -t hukuk-app:ci .
+      - name: Container runs as non-root
+        run: |
+          uid=$(docker run --rm hukuk-app:ci id -u)
+          echo "uid=$uid"
+          test "$uid" != "0"
+      - name: Image is under 300MB
+        run: |
+          size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
+          echo "size=$size bytes"
+          test "$size" -lt 300000000

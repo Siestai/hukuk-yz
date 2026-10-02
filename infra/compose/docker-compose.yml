@@ -6,9 +6,12 @@ x-app: &app
   env_file: ../../.env
   environment:
     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  restart: unless-stopped
   depends_on:
     postgres:
       condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
 
 services:
   postgres:
@@ -19,6 +22,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "127.0.0.1:5432:5432"
+    restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -27,10 +31,18 @@ services:
       timeout: 5s
       retries: 10
 
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   app:
     <<: *app
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test:
         - CMD
@@ -44,7 +56,6 @@ services:
   worker:
     <<: *app
     command: ["python", "-m", "app.worker"]
-    restart: unless-stopped
 
 volumes:
   pgdata:

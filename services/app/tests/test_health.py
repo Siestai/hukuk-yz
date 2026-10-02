@@ -1,9 +1,9 @@
 import os
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import httpx
 import pytest
-from sqlalchemy import text
 
 from app.db import make_engine
 from app.main import app
@@ -11,6 +11,7 @@ from app.main import app
 UNREACHABLE_URL = "postgresql+asyncpg://nobody:nobody@127.0.0.1:1/none"
 
 
+@asynccontextmanager
 async def _client(database_url: str) -> AsyncIterator[httpx.AsyncClient]:
     app.state.engine = make_engine(database_url)
     transport = httpx.ASGITransport(app=app)
@@ -23,7 +24,7 @@ async def _client(database_url: str) -> AsyncIterator[httpx.AsyncClient]:
 
 @pytest.fixture
 async def client() -> AsyncIterator[httpx.AsyncClient]:
-    async for c in _client(UNREACHABLE_URL):
+    async with _client(UNREACHABLE_URL) as c:
         yield c
 
 
@@ -32,15 +33,7 @@ async def db_client() -> AsyncIterator[httpx.AsyncClient]:
     url = os.environ.get("DATABASE_URL")
     if not url:
         pytest.skip("DATABASE_URL not set")
-    engine = make_engine(url)
-    try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-    except Exception:
-        pytest.skip("database unreachable")
-    finally:
-        await engine.dispose()
-    async for c in _client(url):
+    async with _client(url) as c:
         yield c
 
 

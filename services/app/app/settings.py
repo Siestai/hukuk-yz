@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,8 +9,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(extra="ignore")
 
-    database_url: str = "postgresql+asyncpg://hukuk:change-me@localhost:5432/hukuk"
-    log_level: str = "INFO"
+    database_url: str
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     env: str = "dev"
 
 

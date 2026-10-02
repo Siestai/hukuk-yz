@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -7,11 +8,13 @@ from fastapi import FastAPI, Request, Response
 from sqlalchemy import text
 
 from app.db import make_engine
-from app.logging import configure_logging, request_id_var
+from app.logging_setup import configure_logging, request_id_var
 from app.settings import get_settings
 from hukuk_models import HealthResponse
 
 logger = logging.getLogger("app")
+
+READYZ_TIMEOUT_SECONDS = 3
 
 
 @asynccontextmanager
@@ -49,10 +52,11 @@ async def healthz() -> HealthResponse:
 @app.get("/readyz")
 async def readyz(request: Request, response: Response) -> HealthResponse:
     try:
-        async with request.app.state.engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-    except Exception:
-        logger.exception("readiness check failed")
+        async with asyncio.timeout(READYZ_TIMEOUT_SECONDS):
+            async with request.app.state.engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.warning("readiness check failed: %r", exc)
         response.status_code = 503
         return HealthResponse(status="unavailable")
     return HealthResponse(status="ok")
