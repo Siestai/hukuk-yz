@@ -50,6 +50,10 @@ jobs:
           uid=$(docker run --rm hukuk-app:ci id -u)
           echo "uid=$uid"
           test "$uid" != "0"
+      - name: Console scripts run (venv path matches shebangs)
+        run: |
+          docker run --rm hukuk-app:ci alembic --help > /dev/null
+          docker run --rm hukuk-app:ci uvicorn --version
       - name: Image is under 300MB
         run: |
           size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
