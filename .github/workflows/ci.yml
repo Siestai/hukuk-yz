@@ -32,6 +32,13 @@ jobs:
           enable-cache: true
       - run: make install
       - run: make lint typecheck test
+      - name: Migrate (upgrade, downgrade, upgrade)
+        run: |
+          uv run alembic -c services/app/alembic.ini upgrade head
+          uv run alembic -c services/app/alembic.ini downgrade base
+          uv run alembic -c services/app/alembic.ini upgrade head
+      - name: Alembic check (models match migrations)
+        run: uv run alembic -c services/app/alembic.ini check
 
   docker:
     runs-on: ubuntu-latest
