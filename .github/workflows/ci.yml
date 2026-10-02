@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: hukuk
+          POSTGRES_PASSWORD: hukuk
+          POSTGRES_DB: hukuk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hukuk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://hukuk:hukuk@localhost:5432/hukuk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: make install
+      - run: make lint typecheck test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f services/app/Dockerfile -t hukuk-app:ci .
+      - name: Container runs as non-root
+        run: |
+          uid=$(docker run --rm hukuk-app:ci id -u)
+          echo "uid=$uid"
+          test "$uid" != "0"
+      - name: Image is under 300MB
+        run: |
+          size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
+          echo "size=$size bytes"
+          test "$size" -lt 300000000
