@@ -209,6 +209,7 @@ _DATE_VALUE_RE = re.compile(r"^[ \t:]*\d{1,2}[ \t]*[./-][ \t]*\d{1,2}[ \t]*[./-]
 # A bare "MAHKEMESİ" label ("MAHKEMESİ \n:\nAdana 2. İş Mahkemesi") is followed by its value on a
 # line of its own, which `_scan_meta` skips too.
 _ORIGIN_LABEL_RE = re.compile(r"^[ \t]*MAHKEMES[İI][ \t]*:?[ \t]*$")
+_ORIGIN_START_RE = re.compile(r"^[ \t]*MAHKEMES[İI]\b")
 _META_SKIP_RE = re.compile(
     r"^[ \t]*(?:RG\.|R:G\.|R\.G\.|MAHKEMES[İI]\b|NO[ \t]*:|DAVAC?LI|DAVACI|:|YARGITAY[ \t]+İLAMI|$)"
 )
@@ -256,6 +257,7 @@ class _Meta:
     tarih: str = ""
     esas_candidates: list[str] = field(default_factory=list)
     individual: bool = False
+    lower_court_date: bool = False  # a TARİHİ line followed the origin court: not Yargıtay's
 
 
 def _scan_meta(lines: list[str], first: int, labelled: bool = True) -> _Meta:
@@ -266,6 +268,7 @@ def _scan_meta(lines: list[str], first: int, labelled: bool = True) -> _Meta:
     pending = [] if labelled else ["esas", "karar", "tarih"]  # kinds still waiting for a value
     skipped = 0
     origin_value = False  # the line after a bare "MAHKEMESİ" label is its value
+    after_origin = False  # past a "MAHKEMESİ" line: TARİHİ / NO then describe the lower court
     numbers: list[str] = []
     dates: list[str] = []
     values: dict[str, str] = {}
@@ -279,6 +282,10 @@ def _scan_meta(lines: list[str], first: int, labelled: bool = True) -> _Meta:
             kind = {"basvuru": "esas", "e": "esas", "k": "karar"}.get(kind, kind)
             if kind == "esas" and groups.get("basvuru"):
                 meta.individual = True
+            if after_origin and kind in ("tarih", "karar"):
+                meta.lower_court_date |= kind == "tarih"
+                i += 1
+                continue
             value = m["value"]
             if value:
                 if kind in values:
@@ -288,12 +295,16 @@ def _scan_meta(lines: list[str], first: int, labelled: bool = True) -> _Meta:
                     values[kind] = value
             elif kind not in values:
                 pending.append(kind)
+        elif after_origin and "tarih" not in pending and _DATE_VALUE_RE.match(line):
+            meta.lower_court_date = True
         elif _DATE_VALUE_RE.match(line):
             dates.append(line)
         elif _NUMBER_VALUE_RE.match(line):
             numbers.append(line)
         elif _ORIGIN_LABEL_RE.match(line):
-            origin_value = True
+            origin_value = after_origin = True
+        elif _ORIGIN_START_RE.match(line):
+            after_origin = True
         elif origin_value and line.strip() != ":":
             origin_value = False
         elif not _META_SKIP_RE.match(line):
@@ -636,6 +647,8 @@ def extract_fields(journal: JournalText, layout: Layout) -> DecisionFields:
         f.decision_date = iso or ""
         if invalid:
             f.warnings.append("invalid_date")
+        if meta.lower_court_date and not f.decision_date:
+            f.warnings.append("date_is_lower_court")
     if foreign and not f.decision_date:  # ECtHR articles print the date alone: "13 Ocak 2015"
         named = (parse_date(ln)[0] for ln in lines[:15] if _NAMED_DATE_RE.fullmatch(ln.strip()))
         f.decision_date = next((d for d in named if d), "")

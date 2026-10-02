@@ -54,9 +54,47 @@ def test_ocr_tarih_label_variants(tarih_line: str) -> None:
 
 
 def test_court_of_origin_lines_do_not_stop_the_scan() -> None:
+    # The origin block sits between the numbers and the date, so Karar No still comes through.
     between = "MAHKEMESI \n:\nAdana 2. İş Mahkemesi\n"
     f = parse(_header("Karar No. 2012/6789", "Tarihi: 07.06.2012", between))
-    assert f.decision_date == "2012-06-07"
+    assert f.karar_no == "2012/6789"
+
+
+_ILAMI_TEXT = (
+    "T.C.\nYARGITAY\n9.HUKUK DAİRESİ\nYARGITAY İLAMI\nESAS NO \n:\n2004/784\nKARAR NO \n:\n"
+    "2004/13279\nMAHKEMESİ \n:\nAdana 2bİş Mahkemesi\nTARİHİ 12.12.2003\nNO 230-1403\n"
+    "DAVACI Örnek Kişi adına Avukat Örnek\nDAVA :Davacı, örnek talebi istemiştir.\n"
+    + "Örnek cümle. "
+    * 80
+)
+
+
+def test_date_after_the_origin_court_is_the_lower_courts_and_stays_empty() -> None:
+    f = parse(_ILAMI_TEXT)
+    assert (f.esas_no, f.karar_no) == ("2004/784", "2004/13279")
+    assert f.decision_date == ""
+    assert "date_is_lower_court" in f.warnings
+
+
+def test_inline_origin_court_with_ocr_labels_stays_empty() -> None:
+    text = (
+        "T.C.\nYARGITAY \n9.HUKUK DAIRESi\nYARGITAY I LAM I\nESAS NO :2004/278\n"
+        "KARAR NO =2004/12229\nMAHKEMESI :Bursa 2.1$ Mahkemesi\nTARTHi :8.10.2003\n"
+        "NO : 169-716\nDAVACI :Örnek\nDAVA :Davaci, ornek talebi istemistir.\n" + "Örnek. " * 80
+    )
+    f = parse(text)
+    assert (f.karar_no, f.decision_date) == ("2004/12229", "")
+    assert "date_is_lower_court" in f.warnings
+
+
+def test_date_before_the_origin_court_is_taken() -> None:
+    text = _ILAMI_TEXT.replace(
+        "MAHKEMESİ \n:\nAdana 2bİş Mahkemesi\nTARİHİ 12.12.2003\nNO 230-1403\n",
+        "TARİHİ 07.06.2004\nMAHKEMESİ \n:\nAdana 2bİş Mahkemesi\nNO 230-1403\n",
+    )
+    f = parse(text)
+    assert f.decision_date == "2004-06-07"
+    assert "date_is_lower_court" not in f.warnings
 
 
 def test_ocr_labels_never_pick_values_from_the_body() -> None:
