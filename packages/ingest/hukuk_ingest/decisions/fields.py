@@ -11,7 +11,7 @@ from datetime import date
 from typing import Any
 
 from hukuk_ingest.decisions.clean import FOREIGN_TITLES, JournalText
-from hukuk_ingest.decisions.layout import LABEL_RE, SUMMARY_RE, Layout
+from hukuk_ingest.decisions.layout import LABEL_RE, OCR_LABEL_RE, SUMMARY_RE, Layout
 
 _TR_LOWER = str.maketrans({"İ": "i", "I": "ı"})
 _TR_UPPER = str.maketrans({"i": "İ", "ı": "I"})
@@ -206,8 +206,11 @@ _DATE_VALUE_RE = re.compile(r"^[ \t:]*\d{1,2}[ \t]*[./-][ \t]*\d{1,2}[ \t]*[./-]
 # Lines inside the label block that carry no field: Resmi Gazete refs, blank lines, and the
 # "MAHKEMESİ :", "NO :", "DAVACI", "YARGITAY İLAMI" labels and ":value" lines of the 2004 issues,
 # which sit between ESAS NO and TARİHİ.
+# A bare "MAHKEMESİ" label ("MAHKEMESİ \n:\nAdana 2. İş Mahkemesi") is followed by its value on a
+# line of its own, which `_scan_meta` skips too.
+_ORIGIN_LABEL_RE = re.compile(r"^[ \t]*MAHKEMES[İI][ \t]*:?[ \t]*$")
 _META_SKIP_RE = re.compile(
-    r"^[ \t]*(?:RG\.|R:G\.|R\.G\.|MAHKEMESİ\b|NO[ \t]*:|DAVAC?LI|DAVACI|:|YARGITAY[ \t]+İLAMI|$)"
+    r"^[ \t]*(?:RG\.|R:G\.|R\.G\.|MAHKEMES[İI]\b|NO[ \t]*:|DAVAC?LI|DAVACI|:|YARGITAY[ \t]+İLAMI|$)"
 )
 _RELATED_RE = re.compile(
     r"^[ \t.\d]*İlgili[ \t]+Kanun[ \t]*/?[ \t]*(?:Madde(?:si)?|md)?[ \t]*:?[ \t]*(?P<rest>.*)$"
@@ -262,16 +265,19 @@ def _scan_meta(lines: list[str], first: int, labelled: bool = True) -> _Meta:
     meta = _Meta(first)
     pending = [] if labelled else ["esas", "karar", "tarih"]  # kinds still waiting for a value
     skipped = 0
+    origin_value = False  # the line after a bare "MAHKEMESİ" label is its value
     numbers: list[str] = []
     dates: list[str] = []
     values: dict[str, str] = {}
     i = first
     while i < len(lines):
         line = lines[i]
-        if m := LABEL_RE.match(line):
-            kind = next(k for k in ("esas", "karar", "basvuru", "tarih", "e", "k") if m[k])
+        if m := LABEL_RE.match(line) or OCR_LABEL_RE.match(line):
+            origin_value = False
+            groups = m.groupdict()
+            kind = next(k for k in ("esas", "karar", "basvuru", "tarih", "e", "k") if groups.get(k))
             kind = {"basvuru": "esas", "e": "esas", "k": "karar"}.get(kind, kind)
-            if kind == "esas" and m["basvuru"]:
+            if kind == "esas" and groups.get("basvuru"):
                 meta.individual = True
             value = m["value"]
             if value:
@@ -286,6 +292,10 @@ def _scan_meta(lines: list[str], first: int, labelled: bool = True) -> _Meta:
             dates.append(line)
         elif _NUMBER_VALUE_RE.match(line):
             numbers.append(line)
+        elif _ORIGIN_LABEL_RE.match(line):
+            origin_value = True
+        elif origin_value and line.strip() != ":":
+            origin_value = False
         elif not _META_SKIP_RE.match(line):
             if labelled or dates or skipped == _MAX_UNLABELLED_SKIP:
                 break

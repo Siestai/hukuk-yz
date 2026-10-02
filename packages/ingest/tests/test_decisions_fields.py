@@ -26,6 +26,53 @@ def parse(text: str) -> DecisionFields:
     return extract_fields(journal, detect_layout(journal))
 
 
+# --- OCR typos in header labels ----------------------------------------------------------------
+
+
+def _header(karar_line: str, tarih_line: str, between: str = "") -> str:
+    return era2_text().replace(
+        "Karar No. 2012/6789\nTarihi: 07.06.2012", f"{karar_line}\n{between}{tarih_line}"
+    )
+
+
+@pytest.mark.parametrize(
+    "karar_line",
+    ["KARAR N0: 2012/6789", "KARAR NO0: 2012/6789", "KARAR: 2012/6789", "Karr No. 2012/6789"],
+)
+def test_ocr_karar_label_does_not_stop_the_header_scan(karar_line: str) -> None:
+    f = parse(_header(karar_line, "Tarihi: 07.06.2012"))
+    assert (f.karar_no, f.decision_date) == ("2012/6789", "2012-06-07")
+
+
+@pytest.mark.parametrize(
+    "tarih_line",
+    ["TARİH: 07.06.2012", "TARTHi :07.06.2012", "TARIHI 07.06.2012", "Tar;h;: 07.06.2012",
+     "TARİHİ : 07.06.2012", "Karar Tç07/06/2012"],
+)  # fmt: skip
+def test_ocr_tarih_label_variants(tarih_line: str) -> None:
+    assert parse(_header("Karar No. 2012/6789", tarih_line)).decision_date == "2012-06-07"
+
+
+def test_court_of_origin_lines_do_not_stop_the_scan() -> None:
+    between = "MAHKEMESI \n:\nAdana 2. İş Mahkemesi\n"
+    f = parse(_header("Karar No. 2012/6789", "Tarihi: 07.06.2012", between))
+    assert f.decision_date == "2012-06-07"
+
+
+def test_ocr_labels_never_pick_values_from_the_body() -> None:
+    # Header without a date; the body starts with a line that looks like a typo'd label.
+    text = era2_text().replace("Tarihi: 07.06.2012\n", "")
+    body = "KARAR: 01.01.2020 tarihli\nTARİH: 02.02.2020\nDAVA: Davacı"
+    text = text.replace("DAVA: Davacı", body)
+    f = parse(text)
+    assert f.decision_date == ""
+
+
+def test_ocr_label_with_prose_value_is_not_a_value() -> None:
+    f = parse(_header("KARAR: verildi", "Tarihi: 07.06.2012"))
+    assert f.karar_no == ""
+
+
 # --- normalisation --------------------------------------------------------------------------
 
 

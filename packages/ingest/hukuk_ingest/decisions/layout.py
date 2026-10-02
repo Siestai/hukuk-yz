@@ -32,6 +32,21 @@ LABEL_RE = re.compile(
     r")[ \t]*:?[ \t]*(?P<value>.*?)[ \t]*$",
     re.MULTILINE,
 )
+# OCR variants of the labels above, seen in the archive (eras 1-2 and 4); every one is listed so
+# the set stays reviewable. Tried only after LABEL_RE fails, only while the header scan is already
+# running (`fields._scan_meta`), never to find the start of a header, so a body line cannot match:
+#   KARAR N0:   (zero for O)          KARAR NO0:  (stray zero)       KARAR:  (NO lost)
+#   Karr No.    (letter lost)         TARİH... with the dotted İ misread: TARIHI, TARTHi, Tar;h;
+#   Karar Tç28/3/2024 ("Tarihi" read as "Tç", no separator)
+# The value must be empty or start with a digit, so prose cannot become a value.
+OCR_LABEL_RE = re.compile(
+    r"^[ \t]*(?:"
+    r"(?P<karar>(?:KARAR|Karar)[ \t]*N[O0]{1,2}\b\.?|KARAR[ \t]*(?=:)|Karr[ \t]*No\b\.?)"
+    r"|(?P<tarih>(?:TAR|Tar)[İITi;][Hh][İIi;]?(?=[ \t]*:?[ \t]*(?:\d|$))"
+    r"|Karar[ \t]+T[çc](?=[ \t]*\d))"
+    r")[ \t]*:?[ \t]*(?=\d|$)(?P<value>.*?)[ \t]*$",
+    re.MULTILINE,
+)
 # Era 4: the new Yargıtay template numbers its sections with roman numerals ("I. DAVA",
 # "V. GEREKÇE", "VI. KARAR"), at line start.
 _TEMPLATE_RE = re.compile(
