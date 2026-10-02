@@ -12,6 +12,7 @@ members = [
     "hukuk-app",
     "hukuk-ingest",
     "hukuk-models",
+    "hukuk-verify",
 ]
 
 [[package]]
@@ -319,6 +320,7 @@ dependencies = [
     { name = "hukuk-app" },
     { name = "hukuk-ingest" },
     { name = "hukuk-models" },
+    { name = "hukuk-verify" },
 ]
 
 [package.dev-dependencies]
@@ -335,6 +337,7 @@ requires-dist = [
     { name = "hukuk-app", editable = "services/app" },
     { name = "hukuk-ingest", editable = "packages/ingest" },
     { name = "hukuk-models", editable = "packages/models" },
+    { name = "hukuk-verify", editable = "packages/verify" },
 ]
 
 [package.metadata.requires-dev]
@@ -356,6 +359,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "hukuk-ingest" },
     { name = "hukuk-models" },
+    { name = "hukuk-verify" },
     { name = "pgvector" },
     { name = "pydantic-settings" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -369,6 +373,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "hukuk-ingest", editable = "packages/ingest" },
     { name = "hukuk-models", editable = "packages/models" },
+    { name = "hukuk-verify", editable = "packages/verify" },
     { name = "pgvector", specifier = ">=0.5.0" },
     { name = "pydantic-settings", specifier = ">=2.4" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
@@ -400,6 +405,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pydantic", specifier = ">=2.8" }]
+
+[[package]]
+name = "hukuk-verify"
+version = "0.1.0"
+source = { editable = "packages/verify" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "idna"

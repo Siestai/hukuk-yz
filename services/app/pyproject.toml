@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "hukuk-models",
     "hukuk-ingest",
+    "hukuk-verify",
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "sqlalchemy[asyncio]>=2.0",
@@ -18,6 +19,7 @@ dependencies = [
 [tool.uv.sources]
 hukuk-ingest = { workspace = true }
 hukuk-models = { workspace = true }
+hukuk-verify = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

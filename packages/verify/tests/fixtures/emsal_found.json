@@ -1,0 +1,22 @@
+{
+  "data": {
+    "data": [
+      {
+        "id": "853364500",
+        "daire": "Gaziantep Bölge Adliye Mahkemesi 9. Hukuk Dairesi",
+        "esasNo": "2022/1258",
+        "kararNo": "2022/1822",
+        "kararTarihi": "29.12.2022",
+        "durum": "KESİNLEŞTİ",
+        "index": 1
+      }
+    ],
+    "draw": 0,
+    "recordsTotal": 1,
+    "recordsFiltered": 1
+  },
+  "metadata": {
+    "FMTY": "SUCCESS",
+    "FMC": "ADALET_SUCCESS"
+  }
+}
