@@ -4,11 +4,11 @@ Durum: taslak, 2026-10-02. Bu doküman Faz 1'in temelidir; şema buradan Alembic
 
 ## 1. İlkeler
 
-1. **Kaynak türleri ayrı** (md. 28). Sekiz kategori, her biri kendi tablosu ve alanlarıyla. Ortak bir `source` üst tablosu kimlik, provenance ve lisans tutar. "Document + chunk" tarzı tek genel tablo **yok**: atıf çözümleme için `4857 / madde 18 / 2019-03-01` gibi yapısal anahtar gerekir.
-2. **Bitemporal.** Her yayınlanan kayıt iki zaman ekseninde yaşar:
+1. **Kaynak türleri ayrı** (md. 28). Sekiz kategori, her biri kendi tablosu ve alanlarıyla. Ortak bir `source` üst tablosu kimlik, provenance ve lisans tutar. "Document + chunk" tarzı tek genel tablo doğruluk kaynağı **değildir**: atıf çözümleme için `4857 / madde 18 / 2019-03-01` gibi yapısal anahtar gerekir. `chunk` tablosu (§8) yalnızca tipli kayıtlardan türetilen, yeniden üretilebilir bir arama indeksidir.
+2. **Bitemporal.** Her yayınlanan KB kaydı iki zaman ekseninde yaşar:
    - `valid_from / valid_to`: hukuken geçerlilik (madde ne zaman yürürlükteydi, genelge ne zaman değişti). md. 4.
    - `recorded_at / superseded_at`: bizim sisteme ne zaman girdi, ne zaman yenisiyle değiştirildi. Denetlenebilirlik: "bu cevabı verdiğimizde KB'de ne vardı" sorusu cevaplanabilir (md. 35).
-   Kayıt silinmez, `superseded_at` doldurulur.
+   KB kaydı silinmez, `superseded_at` doldurulur. Bu kural kişisel veri için geçerli değildir: case belgeleri (F) ve memory crypto-shredding ile silinir (`architecture.md` §6.1, md. 31).
 3. **Provenance zorunlu.** Her kayıt: hangi dosya (hash), hangi parser sürümü, hangi iş (job), kim onayladı, ne zaman.
 4. **İnsan onayı olmadan yayın yok.** Durum makinesi aşağıda.
 5. **Metin ve özet ayrı** (md. 20). Editoryal özet (Çalışma ve Toplum ÖZETİ) ayrı alan, ayrı lisans, atıf olarak kullanılmaz.
@@ -130,11 +130,11 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 | keywords | text[] |
 | outcome | `onama` / `bozma` / `kabul` / `red` / ... |
 | full_text | |
-| editorial_summary | Çalışma ve Toplum ÖZETİ; ayrı lisans; **atıf kaynağı değil** |
+| editorial_summary | Çalışma ve Toplum ÖZETİ; ayrı lisans; **atıf kaynağı değil**; yalnızca arama sinyali olarak gömülür (§8) |
 | text_completeness | `full` / `excerpt` / `summary_only` |
 | verification | `unverified` / `verified_uyap` / `verified_official` / `mismatch` |
 | journal_issue, journal_page | provenance ek |
-| embedding (vector), tsv (tsvector) | arama |
+| tsv (tsvector) | kayıt düzeyinde tam metin arama; vektör arama `chunk` tablosunda (§8) |
 
 ### 5.3 İdari düzenleme (D)
 
@@ -152,7 +152,7 @@ Faz 1'de şema tanımlanır, veri girmez (elde yok). Hepsi aynı kalıp: üst ka
 
 1. `packages/citation` ref'i ayrıştırır: `"4857 S. İşK/18-21"`, `"4857 m.18"`, `"İşK 18"`, `"Yargıtay 9. HD 2017/16188 E., 2018/1234 K."`, `"AYM 2015/58 E."`, `"2018/38 sayılı Genelge"`.
 2. Türüne göre tabloya gider; mevzuat için `date` ile sürüm seçer.
-3. Döner: `{status: verified|unverified|ambiguous, record_id, category, display, valid_from, valid_to, url}`.
+3. Döner: `{status: verified|not_in_kb|ambiguous, record_id, category, display, valid_from, valid_to, url}`. `not_in_kb` için resmi kaynaklarda arama ve `external` / `not_found` ayrımı atıf kapısında yapılır (`architecture.md` §5.1).
 4. `ambiguous` (birden fazla eşleşme) inceleme kuyruğuna düşer; veri hatası sinyali.
 
 Parser'ın karar metinlerinden çıkardığı `related_articles` da aynı çözümleyiciden geçer; çözümlenemeyen referanslar QA raporunda listelenir.
@@ -168,17 +168,45 @@ Parser'ın karar metinlerinden çıkardığı `related_articles` da aynı çöz�
 
 ## 8. Embedding
 
-- Chunk'lama kayıt türüne göre: madde sürümü tek chunk; karar `GEREKÇE` bölümü paragraf bazlı; genelge madde bazlı.
-- Her chunk ebeveyn kaydını ve sürümünü bilir; arama sonucu chunk değil kayıt döner.
-- Model seçimi Faz 1 sonunda eval ile (çok dilli, Türkçe hukuk metni). Boyut ve model adı `embedding_model` alanında, model değişince yeniden üretim job'ı.
+Kayıt başına tek embedding yetmez: uzun kararlarda birden fazla konu tek vektörde ortalanır, modelin token sınırı aşılır ve md. 20'nin istediği birebir alıntı için paragraf düzeyinde konum gerekir. Vektör arama bu yüzden ayrı bir `chunk` tablosunda yapılır.
+
+**`chunk`**:
+
+| alan | not |
+|---|---|
+| id | |
+| category | A..H; sonuçlar kategori etiketli döner (md. 28) |
+| parent_kind, parent_id | ebeveyn kayıt (`decision`, `statute_article`, `admin_act`...) |
+| version_id | sürümlü kayıtlarda ilgili `*_version`; `as_of` filtresi chunk düzeyinde çalışır |
+| kind | `body` / `editorial_summary` |
+| license | ebeveynden kopya; `internal_only` chunk metni kullanıcıya veya LLM'e gitmez |
+| ordinal, char_start, char_end | ebeveyn metindeki konum; nokta atıf ve alıntı doğrulaması için |
+| header | embedding'e giren künye: `Yargıtay 9. HD · 2018-03-12 · 4857/17,32 · Kıdem tazminatı`. Gösterilmez |
+| text | |
+| embedding (vector), embedding_model | model değişince yalnızca bu tablo yeniden üretilir |
+| tsv (tsvector) | |
+
+**Bölme kuralları:**
+
+- **Mevzuat:** madde sürümü tek chunk; çok uzun maddeler fıkra bazlı. Yeni sürüm yeni chunk'lar üretir, eskiler sürümüne bağlı kalır.
+- **Karar:** bölüm başlıkları varsa (yeni şablon `I. DAVA … V. GEREKÇE … VI. KARAR`) bölüm bazlı, uzun bölümler paragraf bazlı. Başlık yoksa paragraf veya ~300–500 token pencere, hafif örtüşmeli. ≤ ~500 kelimelik karar tek chunk. Not: arşivdeki 6.334 kararın yalnızca 431'inde `GEREKÇE` başlığı var (çoğu 76–90. sayılar); 2. düzende gövde `DAVA:` ile `SONUÇ:` arasında başlıksız akar. Arşiv boyutu: medyan 959, p90 2.400, maks. 14.902 kelime; toplam ~7,9 M kelime.
+- **Genelge:** madde/bölüm bazlı.
+- **Editoryal özet:** ayrı chunk, `kind = editorial_summary`, `license = internal_only`. Yalnızca arama sinyalidir: eşleşirse kayıt bulunur ama gösterilen ve LLM'e giden metin kararın kendi `body` chunk'larıdır. İzin gelirse `license` güncellenir, yeniden gömme gerekmez.
+
+**Arama davranışı:**
+
+- Arama chunk üzerinde yapılır, sonuç kayda göre gruplanır (kayıt skoru = en iyi chunk skoru); arama sonucu chunk değil kayıt döner, eşleşen chunk'lar konumlarıyla birlikte gelir.
+- Model seçimi Faz 1 sonunda eval ile (çok dilli, Türkçe hukuk metni).
 
 ## 9. Memory servisiyle ilişki
 
 `memory` aynı bitemporal kalıbı kullanır ama KB'den ayrı şemada: `(scope_type, scope_id, key, value jsonb, valid_from, valid_to, recorded_at, superseded_at, source)`. Hukuk dosyası bağlamı (statü, kritik tarihler, "işçi 30+ işyerinde çalışıyor" gibi doğrulanmış olgular) buraya yazılır; `agent` adım 3-6'da buradan okur. KB kurumsal ve paylaşımlı, memory org/kullanıcı/dosya özel. İkisi birbirine FK vermez.
 
+Memory'deki `value` case anahtarıyla şifreli tutulur. `forget` ve case silme bitemporal geçmişi de kapsar ve crypto-shredding ile yapılır (`architecture.md` §6.1). KB'nin "silinmez" kuralı memory'ye uygulanmaz.
+
 ## 10. Faz 1 kapsamı (bu modelden)
 
-1. Alembic: `source`, `ingest_*`, `extraction`, `review`, `statute*`, `decision`, `admin_act*`. Diğer kategoriler boş tablo olarak.
+1. Alembic: `source`, `ingest_*`, `extraction`, `review`, `statute*`, `decision`, `admin_act*`, `chunk`. Diğer kategoriler boş tablo olarak.
 2. Parser: karar (4 düzen), kanun madde bölme, genelge. `.udf` ve e-imzalı PDF için çıkarma stratejisi ayrı iş.
 3. 6.342 karar toplu yükleme + QA raporu + inceleme ekranı.
 4. 4857 ve 5510 madde düzeyi, `Eskiler/` ile ilk sürüm denemesi.
