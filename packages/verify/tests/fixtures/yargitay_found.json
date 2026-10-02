@@ -1,0 +1,22 @@
+{
+  "_comment": "NOT captured: karararama.yargitay.gov.tr was unreachable when this was written (task 06 probe). Built from the contract in docs/spike-karararama-2026-10-02.md (row = id, daire, esasNo, kararNo, kararTarihi; BİGM envelope as on Emsal and Danıştay). Id and date are invented; the E/K is the spike's example.",
+  "data": {
+    "data": [
+      {
+        "id": "100000001",
+        "daire": "9. Hukuk Dairesi",
+        "esasNo": "2017/17327",
+        "kararNo": "2020/14291",
+        "kararTarihi": "09.12.2020",
+        "index": 1
+      }
+    ],
+    "draw": 0,
+    "recordsTotal": 1,
+    "recordsFiltered": 1
+  },
+  "metadata": {
+    "FMTY": "SUCCESS",
+    "FMC": "ADALET_SUCCESS"
+  }
+}

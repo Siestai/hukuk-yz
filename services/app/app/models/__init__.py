@@ -10,7 +10,7 @@ from app.models.common import (
     Review,
     Source,
 )
-from app.models.decision import Decision
+from app.models.decision import Decision, DecisionVerification
 from app.models.misc import (
     CaArticleVersion,
     CalcMethod,
@@ -32,6 +32,7 @@ __all__ = [
     "Chunk",
     "CollectiveAgreement",
     "Decision",
+    "DecisionVerification",
     "Doctrine",
     "Extraction",
     "IngestFile",

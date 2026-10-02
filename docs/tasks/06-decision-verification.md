@@ -1,8 +1,28 @@
 # Görev 06: Kararların resmî kaynakta teyidi (E/K eşleştirme)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: implementasyon hazır (PR onay bekliyor). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/data-model.md` §5.2 (`decision.verification`, `verification_source`, `verification_ref`, `verified_at`), §11; `docs/decisions.md` (2026-10-02: resmî kaynak teyidi, Yargıtay spike'ı); `docs/spike-karararama-2026-10-02.md`; `docs/tasks/05-decision-load.md` ("Kaynak politikası"); `docs/tasks/04-decision-parser.md` (alan biçimleri).
 Üstüne oturduğu iş: Görev 05 (`app.loaders.decisions`, `app.kb.publish_decision`). Görev 05 merge edilmeden implementasyon başlamaz. Tam koşu Orhan'ın onayına bağlıdır (aşağıda "Ağ politikası").
+
+## Değişiklikler (implementasyon)
+
+Orhan'ın onayıyla iki değişiklik, ayrıca implementasyonda netleştirilen noktalar:
+
+1. **Emsal yalnızca BAM kaynağı.** Sayfadaki "Yargıtay" / "Danıştay" girişleri düz dış bağlantı (karararama.yargitay.gov.tr / karararama.danistay.gov.tr); "Emsal'den de aranabilir" cümlesi kaldırıldı (§1 tablo, §3.2).
+2. **Kaynak başına isteğe bağlı proxy** (§8): karararama.yargitay.gov.tr bu sunucudan açılmıyor (zaman aşımı, olasılıkla IP/coğrafya filtresi); Emsal, Danıştay, AYM açılıyor. Varsayılan: proxy yok.
+3. **`--keys <dosya.jsonl>`** (§1): veritabanı olmadan yalnızca arar ve sonucu yazar, hiçbir şey saklamaz; canlı kabul kontrolü için (`docs/verify-acceptance.md`). Proxy ve iletişim ayarları bu yüzden `DATABASE_URL` gerektirmeyen ayrı bir ayar sınıfında (`VerifySettings`).
+4. Netleştirmeler:
+   - `decision_verification` hem "her deneme bir satır, append-only" hem "sonuç değişmediyse yeni satır yok, yalnızca `last_checked_at`" diyordu. Uygulanan: tablo `last_checked_at` kolonu taşır; aynı sonuç (outcome, `official_ref`, `official_text_sha256`, `fuzzy`, `ambiguous`) tekrarlanırsa satır eklenmez, bu kolon ve `decision.verified_at` güncellenir (90 günlük `not_in_source` penceresi bu yüzden doğru işler). Sonuç dışında hiçbir alan değişmez, satır silinmez.
+   - `verification_detail.fuzzy` için ayrı kolon yok: `fuzzy`, `ambiguous`, `skipped` anahtarları `decision_verification.matched` içinde.
+   - 429: ilk 429'da 60 sn, ikincide 120 sn beklenip yeniden denenir; üçüncü ardışık 429'da bekleme yerine kaynak durdurulur (240 sn adımı kullanılmaz).
+   - `--limit` kaynak başına **istek** sayısıdır (robots.txt ve oturum sayfası dahil). `LIVE=1` yoksa CLI hiç istek atmaz, yalnızca kaç karar beklediğini yazar; `--i-have-permission` yoksa kaynak başına en çok 20 istek.
+   - Ağ hatası `decision.verification`'ı `unverified` bırakır ve her koşuda yeniden denenir (90 gün beklemez); aday sırası önce hiç denenmemişler, sonra en eski `last_checked_at`. Bir kaynakta art arda 3 ağ hatasında (bağlantı, zaman aşımı, 5xx) kaynak 429'daki gibi durdurulur (`SourceUnreachable`), rapora `stopped` yazılır, kalan kararlar için `error` satırı yazılmaz; yalnızca `not_in_source` 90 gün sonra yeniden sorulur.
+   - Adlandırılmış kurullar kanonikleştirilir: `Hukuk Genel Kurulu` → `HGK`, `Ceza Genel Kurulu` → `CGK`, `İçtihadı Birleştirme Büyük Genel Kurulu` → `IBK` (`Yargıtay` öneki yok sayılır). `--limit` en az 1; HTTP istemcisi ortamdaki `HTTP(S)_PROXY`'yi okumaz, yalnızca `VERIFY_PROXY_*`; `VERIFY_CACHE_DIR` mutlak yol olmalı (varsayılan `<repo>/data/official`).
+   - `outcome` bir Postgres enum'u değil, CHECK'li metindir (`error` değeri `verification` enum'unda yok). Migration 0004.
+   - Kullanıcı ajanı HTTP başlığı ASCII olmak zorunda: `hukuk-yz-verify/<sürüm> (iletisim: <e-posta>)` ("iletişim" değil).
+   - **AYM metni (canlı kabul kontrolü, 2026-10-02):** ilk sürüm metni `dosyalar` listesindeki HTML'den çekiyordu; bu liste kararın ekleridir ve dosya 404 döner. Düzeltme: metin `POST /api/core/public/search` ile `{"id", "size": 1, "kararTipi"}` gövdesiyle alınıp `icerik` okunur (§3.3); `dosyalar` çağrısı kaldırıldı, AYM karar başına 2 istek. Bireysel başvurunun `basvuruNo` araması canlıda doğrulandı.
+   - HTTP 200 / 429 / 5xx dışındaki durum (örn. 404) `UnexpectedResponse` (`error`, mesajda durum kodu) olur; "ağ hatası" sayılmaz ve art arda 3 ağ hatası sayacını artırmaz (sıfırlar). Konsol `mismatch` için uyuşmayan alanı yazar (`mismatch (decision_date)`, çoklu aday `ambiguous`); rapordaki "Dry run" satırı `Network: live; DB write: no|yes` oldu (`--keys` ağa gider, DB'ye yazmaz).
+   - Yalnızca `bam` Emsal'e gider; BİM yönlendirilmez (arşivde yok). Karar tarihi boş olan karar E/K ve daire ile teyit edilir (`decision_date: absent`). Yargıtay fixture'ı sitenin erişilemezliği yüzünden spike sözleşmesinden kuruldu, gerçek yanıt değil.
 
 ## Hedef
 
@@ -13,7 +33,7 @@ Onaylanmış `decision` satırlarını resmî kaynakta E/K ile aratıp sonucu `d
 | Yargıtay (daire, HGK, İBK) | karararama.yargitay.gov.tr | `verified_official` |
 | BAM / BİM | emsal.uyap.gov.tr (UYAP Emsal) | `verified_uyap` |
 | AYM | kararlarbilgibankasi.anayasa.gov.tr | `verified_official` |
-| Danıştay | karararama.danistay.gov.tr (Yargıtay ile aynı BİGM uygulaması; UYAP Emsal'de de Danıştay araması var) | `verified_official` |
+| Danıştay | karararama.danistay.gov.tr (Yargıtay ile aynı BİGM uygulaması) | `verified_official` |
 
 Bulunamayan karar `not_in_source`, bulunup alanları uyuşmayan karar `mismatch` olur. Yabancı mahkeme, AİHM, ABAD kararları kapsam dışı: `verification` `unverified` kalır ve atıfa açılmaz (kaynak politikasında karşılığı yok, açık soru).
 
@@ -28,7 +48,7 @@ Bulunamayan karar `not_in_source`, bulunup alanları uyuşmayan karar `mismatch`
 ### 1. Yer ve paket ayrımı
 
 - **Yeni paket `packages/verify`** (`hukuk_verify`): kaynak adaptörleri, eşleştirme kuralları, hız sınırlayıcı, robots.txt kontrolü. **DB bilmez**, HTTP istemcisi enjekte edilir; çıktı saf veri sınıfı (`VerifyResult`). Gerekçe: `packages/ingest` ve `packages/calc` kalıbı (AGENTS.md: DB'ye yazan kod `app`'te, paketler saf), adaptörler kayıtlı yanıt fixture'larıyla ağsız test edilir.
-- **`services/app` içinde `app.verification`**: DB okuma/yazma, aday seçimi, idempotentlik, rapor, CLI: `python -m app.verification [--court yargitay|bam|aym|danistay] [--limit N] [--dry-run] [--report <dir>] [--i-have-permission]`. Worker job'u bu görevde yok.
+- **`services/app` içinde `app.verification`**: DB okuma/yazma, aday seçimi, idempotentlik, rapor, CLI: `python -m app.verification [--court yargitay|bam|aym|danistay] [--limit N] [--dry-run] [--report <dir>] [--i-have-permission] [--recheck mismatch] [--no-pre2009-skip] [--keys <dosya.jsonl>]`. Worker job'u bu görevde yok.
 - `packages/ingest`, `packages/citation` değişmez. Yeni bağımlılık: yalnızca `httpx` (zaten varsa yenisi eklenmez; Görev 03 ile aynı karar).
 
 ### 2. Teyit yazımı: `decision` satırlarına (onaydan sonra), extraction adaylarına değil
@@ -55,12 +75,12 @@ Ortak arayüz (`hukuk_verify.adapters.base`): `lookup(query: DecisionKey) -> Loo
 **3.2 UYAP Emsal, BAM** (`adapters/uyap_emsal.py`):
 - Aynı BİGM uygulaması (aynı `POST /aramadetaylist`, `GET /getDokuman?id=`); BAM dairesi `birimHukukMah` alanında tam adla verilir: `"Gaziantep Bölge Adliye Mahkemesi 9. Hukuk Dairesi"`. Seçenek listesi (sayfadaki `select[name="Bam Hukuk Mahkemeleri"]`, 202 seçenek) **tam ad üzerinden**: `bam_region` + `" Bölge Adliye Mahkemesi "` + `n` + `". Hukuk Dairesi"`. Listede olmayan daire (probe'da İstanbul 61. HD, Ankara 5. HD, Kayseri 8. HD yoktu) için daire filtresi konmaz, yalnızca E/K ile sorulur ve dönen `daire` alanı karşılaştırılır. İstanbul seçeneklerinde `Istanbul` (noktasız) / `İstanbul` varyantı var: bölge adı Türkçe-duyarsız normalize edilir.
 - Tarih alanı `dd.MM.yyyy` (`baslangicTarihi` `dd/MM/yyyy` ile `Unparseable date` hatası verdi); tarih filtresi **kullanılmaz**, tarih sonuçta karşılaştırılır.
-- Yargıtay ve Danıştay aramaları da Emsal'den yapılabilir ("Yargıtay Karar Arama", "Danıştay Karar Arama" bağlantıları); Emsal ikinci kaynak olarak yedekte tutulur, bu görevde birincil değil.
+- Emsal yalnızca BAM kaynağıdır. Sayfadaki "Yargıtay" / "Danıştay" girişleri karararama.yargitay.gov.tr / karararama.danistay.gov.tr'ye düz dış bağlantıdır; bu iki mahkeme Emsal'den aranmaz.
 
 **3.3 AYM** (`adapters/aym.py`):
 - Tek sayfa uygulaması (React); aranan veri `POST /api/core/public/search`, JSON gövde: `{"kararTipi": "NormDenetimi" | "BireyselBasvuru", "esasNo": "2024/157", "kararNo": "2025/121", "_timestamp": <ms>, "page": 1, "size": 5, "sort": "yayinTarihi", "order": "desc"}`. `esasNo`/`kararNo` ayrı alanlar (probe: kesin eşleşme, `total: 1`). `kararTipi` verilmezse serbest `query` alanı yalnızca kelime araması yapar ve E/K'yi yakalamaz (probe'da `"2024/157"` sorgusu 19.386 alakasız sonuç döndürdü); bu yüzden `decision_kind` → `kararTipi` eşlemesi zorunlu (`norm_denetimi`/`iptal`/`red` → `NormDenetimi`, `bireysel_basvuru` → `BireyselBasvuru`).
-- Bireysel başvuruda E/K yok, başvuru numarası (`basvuruNo`, `YYYY/N`) ve karar tarihi var. Probe'da bireysel başvuru **denenmedi** (örneklemde yoktu); adaptör `basvuruNo` ile eşler ve bu bir kabul kriteri olarak ayrıca elle doğrulanır.
-- Stabil kimlik: UUID (`id`). Karar sayfası: `https://kararlarbilgibankasi.anayasa.gov.tr/kbb/pages/search/Tumu?id=<base64("kbb:"+uuid), dolgusuz>&type=<kararTipi>`; metin dosyaları `GET /api/core/public/kararlar/<uuid>/dosyalar?kararTipi=...` → `url: /files/normdenetimi/<dosya-uuid>.html`. Probe'da yalnızca dosya listesi alındı; HTML'in kendisi indirilmedi.
+- Bireysel başvuruda E/K yok, başvuru numarası (`basvuruNo`, `YYYY/N`) ve karar tarihi var. Canlıda doğrulandı (2026-10-02, Themis): `{"kararTipi": "BireyselBasvuru", "basvuruNo": "2024/41763", ...}` `total: 1` döner; satırda `basvuruNo` ve `kararTarihi` (`"2025-07-08"`) var, `esasNo`/`kararNo` yok. Adaptör `basvuruNo` ile eşler; uçtan uca koşu Orhan'ın kabul kontrolünde.
+- Stabil kimlik: UUID (`id`). Karar sayfası: `https://kararlarbilgibankasi.anayasa.gov.tr/kbb/pages/search/Tumu?id=<base64("kbb:"+uuid), dolgusuz>&type=<kararTipi>`; karar metni aynı arama ucundan kimlikle alınır: `POST /api/core/public/search`, gövde `{"id": "<karar uuid>", "size": 1, "kararTipi": "NormDenetimi" | "BireyselBasvuru"}`; dönen satırdaki `icerik` alanı (HTML) metindir. `icerik` yok veya boşsa metin yok (`None`). `GET .../kararlar/<uuid>/dosyalar` **kullanılmaz**: o liste kararın metnini değil ekleri ("Başvuru Kararı / Dava Dilekçesi") verir ve `url`'leri (`/files/normdenetimi/<id>.html`) herkese açık erişimde 404 döner. Karar başına 2 istek: arama + kimlikle arama.
 
 **3.4 Danıştay** (`adapters/danistay.py`):
 - `karararama.danistay.gov.tr`: Yargıtay/Emsal ile aynı BİGM kod tabanı (`/aramadetaylist`, `/getDokuman`), alan adları farklı: `daire` (örn. `"10. Daire"`, `"Büyük Gen.Kur."`, `"İdare Dava Daireleri Kurulu"`), `andKelime`/`orKelime`, `esasYil`, `esasIlkSiraNo`... Dönen satırda `daireKurul` alanı. Danıştay sayısı küçük (4); adaptör ilk sürümde yalnızca daire + E/K eşler.
@@ -74,7 +94,7 @@ Sonuç satırı ile `decision` karşılaştırılır; her alan için `match | fu
 |---|---|
 | esas_no, karar_no | **Kesin**: `YYYY/N`, baştaki sıfırlar ve boşluklar normalize edilir. Biri uyuşmazsa sonuç aday sayılmaz (sorgu zaten E/K ile yapıldığı için buna yalnızca birden çok satır dönerse bakılır). |
 | chamber | **Kanonik biçime çevirip karşılaştır**: `"9. HD"` ≡ `"9. Hukuk Dairesi"` ≡ `"Yargıtay 9. Hukuk Dairesi"`; `"n. D"` ≡ `"n. Daire"`; BAM `"İstanbul Bölge Adliye Mahkemesi 35. Hukuk Dairesi"` → (`bam_region="İstanbul"`, `"35. HD"`). Karşılaştırma Türkçe-duyarlı küçük harf (`İ/ı` dahil), noktalama ve fazla boşluk yok sayılır. Daire numarası ve tür (HD/CD/D) **tam eşit** olmalı. `source_chamber` dolu HGK kararında `D`, sonuç metninde (başlık satırı) aranır, uyuşmazlık `fuzzy` (karararama HGK satırında `D` tutmaz). |
-| decision_date | `dd.MM.yyyy` → ISO. **Tam eşit**: `match`. ±3 gün: `fuzzy` (dergi karar tarihi yerine tebliğ/tashih tarihi yazabilir; Görev 04 `date_from_closing` uyarıları). >3 gün: `mismatch`. Karar tarihi boşsa `absent`. |
+| decision_date | `dd.MM.yyyy` → ISO. **Tam eşit**: `match`. ±3 gün: `fuzzy` (dergi karar tarihi yerine tebliğ/tashih tarihi yazabilir; Görev 04 `date_from_closing` uyarıları). >3 gün: `mismatch`. Bizdeki karar tarihi boşsa `absent`; sitenin tarihi okunamazsa `absent` değil `mismatch` (`matched.official_date_unparseable`). |
 | court / bölge | Sonucun kaynağı (adaptör) zaten mahkemeyi belirler; BAM'da bölge uyuşmazlığı `mismatch` (iki bölgede aynı daire ve aynı E/K bulunabilir). |
 
 Birleştirme:
@@ -94,7 +114,7 @@ Birleştirme:
 ### 6. Yeniden çalıştırma (idempotent)
 
 - Aday seçimi: `decision.verification = 'unverified'` veya `verified_at < now() - <yeniden teyit aralığı>` (varsayılan: `not_in_source` ve `error` için 90 gün, `verified_*` için hiç, `mismatch` için elle `--recheck mismatch`).
-- Aynı anahtar için ikinci koşu: yeni `decision_verification` satırı yalnızca sonuç değiştiyse (outcome, `official_ref` veya `official_text_sha256`) yazılır; değişmediyse yalnızca `last_checked_at` günceller. Hiçbir koşu `decision.verification` değerini aşağı çekmez (ör. `verified_official` → `not_in_source`) **sunucu hata dönmediği sürece**: bu durumda `mismatch` yazılır ve raporlanır, sessizce silinmez.
+- Aynı anahtar için ikinci koşu: yeni `decision_verification` satırı yalnızca sonuç değiştiyse (outcome, `official_ref`, `official_text_sha256`, `matched.fuzzy` veya `matched.ambiguous`) yazılır; değişmediyse yalnızca `last_checked_at` günceller. Hiçbir koşu `decision.verification` değerini aşağı çekmez (ör. `verified_official` → `not_in_source`) **sunucu hata dönmediği sürece**: bu durumda `mismatch` yazılır ve raporlanır, sessizce silinmez.
 - Yarıda kesilen koşu: her kayıt kendi transaction'ı; devam etmek için aynı komut yeterli.
 - `--dry-run` yalnızca ağ sorgusu yapıp DB'ye yazmaz; ancak kaynak başına en çok `--limit` (varsayılan 20) istek atar.
 
@@ -110,6 +130,7 @@ Birleştirme:
 - `robots.txt`: her koşu başında okunur ve uyulur. Bilinen durum (2026-10-02 probe'u): `emsal.uyap.gov.tr` ve `karararama.danistay.gov.tr` `/robots.txt` için JSON hata döner (`No static resource robots.txt`), kuralı yok; `kararlarbilgibankasi.anayasa.gov.tr` 404 (nginx); `karararama.yargitay.gov.tr` bu probe'da erişilemedi (aşağıda); `www.danistay.gov.tr` `Disallow:` boş. `robots.txt` bulunmaması izin değildir: kullanım şartları açık soru 2.
 - Captcha: bir sayfa captcha isterse (`DisplayCaptcha`, `reCaptchaTimeout`) adaptör o kaynakta durur, atlatma denenmez. Hiçbir sitede giriş yapılmaz.
 - **Toplu koşu, karararama / Emsal toplu sorgu izni gelene kadar yapılmaz.** CLI `--i-have-permission` bayrağı olmadan 20'den fazla istek atmaz; tam koşu Orhan'ın açık onayına bağlıdır (PR'a yorum veya `decisions.md` notu olarak kaydedilir). Bu görevin kabul testleri en çok 50 canlı istek atar.
+- **Proxy (kaynak başına, isteğe bağlı):** `VERIFY_PROXY_YARGITAY`, `VERIFY_PROXY_EMSAL`, `VERIFY_PROXY_AYM`, `VERIFY_PROXY_DANISTAY` ortam değişkenleri httpx istemcisine `proxy=` olarak verilir. Varsayılan: yok. Ayarlar `app.settings.VerifySettings`'te yaşar, `hukuk_verify` yalnızca yapılandırılmış istemciyi alır. Gerekçe: karararama.yargitay.gov.tr bu sunucudan açılmıyor; Yargıtay için Türkiye çıkışlı bir proxy veya Orhan'ın Mac'i gerekir. `.env.example` örnekleri içerir.
 - Testler ağa çıkmaz (kayıtlı fixture); canlı testler `LIVE=1` ile elle.
 
 ### 9. Rapor
@@ -133,7 +154,7 @@ Yöntem: Görev 04 çıktısından (`decisions.jsonl`) 17 kararlık karışık �
 |---|---|---|---|---|---|---|
 | karararama.yargitay.gov.tr (Yargıtay) | 8 planlandı (3 ≤2009, 2 2010-14, 3 2015+); **0 sorgulandı** | `POST /aramadetaylist` (spike 2026-10-02, tekrar edilemedi) | **Probe makinesinden erişilemedi**: `curl` 20-25 sn zaman aşımı, tarayıcı `Page.navigate` zaman aşımı; DNS çözülüyor (212.175.130.144), `www.yargitay.gov.tr` 200. Büyük olasılıkla IP/coğrafya filtresi veya güvenlik duvarı, kesin neden doğrulanmadı | Sorgu atılamadı | Spike: `GET /getDokuman?id=` | Spike: numerik `id` |
 | emsal.uyap.gov.tr (BAM) | 4: İstanbul 61. HD, Kayseri 8. HD, Ankara 5. HD, Gaziantep 9. HD (hepsi 2021-2025) | `POST /aramadetaylist`, `birimHukukMah` (tam ad) + `esasYil/esasIlkSiraNo/esasSonSiraNo`, `kararYil/...`; XHR uç noktaları sayfa JS'inden: `/arama`, `/aramalist`, `/detayliArama`, `/aramadetaylist` | **0/4 bulundu** (`recordsTotal: 0`). Siteyi doğrulayan kontrol: aynı daire (Gaziantep 9. HD) için kelime aramasında satır döndü (id `853364500`, 2022); 3 dairenin (İstanbul 61, Ankara 5, Kayseri 8) seçenek listesinde karşılığı yok. Emsal tüm kararları içermiyor; kapsam oranı örneklemden çıkarılamaz | Captcha yok (koşullu `isDisplayCaptcha`). **429** (`Erişim Sınırı Aşıldı` HTML sayfası) art arda ~8 istek sonrası (3 sn aralık) ve sonraki 10 sn aralıklı 2 istekte; ~25 sn beklemeyle ve 12 sn aralıkla düzeldi. Karar sayısı sayfada 858.997 | `GET /getDokuman?id=853364500` → `{"data": "<html>"}` (başlık: daire, E/K; kişi adları noktalı) | numerik `id` (satırda); doğrudan karar URL'i yok |
-| kararlarbilgibankasi.anayasa.gov.tr (AYM) | 3 norm denetimi: 2024/157 K 2025/121; 2023/158 K 2024/187; 2015/105 K 2016/133 | `POST /api/core/public/search` JSON: `kararTipi: "NormDenetimi"`, `esasNo`, `kararNo` | **3/3 bulundu** (`total: 1`), E/K ve tarih birebir uyuştu | Captcha yok; 3 sorgu 4 sn aralıkla 429 yok (sayfa yüklemelerindeki ek istekler dahil ~20 XHR) | `GET /api/core/public/kararlar/<uuid>/dosyalar?kararTipi=NormDenetimi` → `/files/normdenetimi/<uuid>.html` (liste alındı, dosya indirilmedi) | UUID (`id`); sayfa URL'i `?id=<base64("kbb:"+uuid)>&type=NormDenetimi`. Bireysel başvuru denenmedi |
+| kararlarbilgibankasi.anayasa.gov.tr (AYM) | 3 norm denetimi: 2024/157 K 2025/121; 2023/158 K 2024/187; 2015/105 K 2016/133 | `POST /api/core/public/search` JSON: `kararTipi: "NormDenetimi"`, `esasNo`, `kararNo` | **3/3 bulundu** (`total: 1`), E/K ve tarih birebir uyuştu | Captcha yok; 3 sorgu 4 sn aralıkla 429 yok (sayfa yüklemelerindeki ek istekler dahil ~20 XHR) | `POST /api/core/public/search` `{"id", "size": 1, "kararTipi"}` → `icerik` (HTML metin; `dosyalar` ekleri verir, metni değil) | UUID (`id`); sayfa URL'i `?id=<base64("kbb:"+uuid)>&type=NormDenetimi`. Bireysel başvuru sonradan canlıda `basvuruNo` ile denendi (`total: 1`) |
 | karararama.danistay.gov.tr (Danıştay) | 2: 10. Daire 2004/6075 K 2006/2159; 3. Daire 2006/3799 K 2007/414 (2006-2007) | `POST /aramadetaylist`, E/K + (gerekirse) `daire`; alan adları `andKelime`, `daire` farklı | **0/2 bulundu**. Kontrol: 10. Daire kelime aramasında 2026 satırları döndü (arama çalışıyor, `daireKurul` alanı, id `1226554300`). Eski dönem kapsamı bilinmiyor | Captcha yok (kod var, koşullu); 429 görülmedi (8-20 sn aralık) | Denenmedi | numerik `id` |
 
 Özet bulgular:
@@ -166,7 +187,7 @@ Yöntem: Görev 04 çıktısından (`decisions.jsonl`) 17 kararlık karışık �
 5. **2009 öncesi ve resmî kaynakta bulunamayan ~1.500 karar** (İbrahim / Baran, açık ürün sorusu, bu görev karar vermez): hiç gösterilmesin mi, tam metin + "resmî veritabanında yer almamaktadır" notuyla mı? `not_in_source` yalnızca alanı doldurur.
 6. **BAM kapsamı** (İbrahim): Emsal tüm BAM kararlarını yayımlamıyorsa (probe: 0/4) `not_in_source` oranı yüksek çıkabilir. Başka BAM kaynağı (UYAP vatandaş, lisanslı veritabanı) aransın mı, yoksa BAM kararı doğrudan atıf dışı mı kalsın?
 7. **`mismatch` sahibi** (Baran / İbrahim): E/K bulundu ama daire veya tarih uyuşmuyorsa kim, hangi ekranda karar verir? Önerimiz: inceleme kuyruğuna geri düşer, atıfa kapalı kalır.
-8. **AYM bireysel başvuru** (Orhan): parser `esas_no` alanında başvuru numarasını mı tutuyor? Probe'da bireysel başvuru örneği yoktu; adaptör `basvuruNo` eşlemesi varsayımdır.
+8. **AYM bireysel başvuru** (Orhan): parser `esas_no` alanında başvuru numarasını mı tutuyor? Probe'da bireysel başvuru örneği yoktu; `basvuruNo` araması canlıda doğrulandı (2026-10-02); parser sorusu açık.
 9. **Yabancı mahkeme / AİHM / ABAD** (İbrahim): kaynak politikası bunları kapsamıyor; `unverified` kalıp atıf dışı mı kalsın, yoksa kendi resmî kaynakları (HUDOC, EUR-Lex) mı eklensin?
 
 ## Notlar Claude Code için
@@ -176,5 +197,5 @@ Yöntem: Görev 04 çıktısından (`decisions.jsonl`) 17 kararlık karışık �
 - Yeni şema (`decision_verification`, rank güncellemesi) için Alembic migration ve `data-model.md` değişikliği aynı PR'da; Orhan onaylamadan merge yok.
 - Adaptör fixture'ları gerçek yanıtlardan **kısaltılmış** ve kişi adı içermeyecek biçimde alınır; gerçek karar metni commit edilmez.
 - Yanıt zarfı: `metadata.FMTY == "ERROR"` bir hatadır, `not_in_source` değil. `429` HTTP durumu ve `Erişim Sınırı Aşıldı` gövdesi ikisi de 429 sayılır (gövde HTML döner, JSON değil).
-- Canlı istek atan her kod yolu `--i-have-permission` ve `LIVE=1` arkasında olsun; varsayılan çalıştırma ağsızdır.
+- Canlı istek atan her kod yolu `LIVE=1` arkasında, 20'den fazlası ayrıca `--i-have-permission` arkasında olsun; varsayılan çalıştırma ağsızdır.
 - Tarayıcı gerekmez: tüm kaynaklar düz HTTP + JSON ile çalışıyor (Yargıtay'da önce `GET /` ile cookie).

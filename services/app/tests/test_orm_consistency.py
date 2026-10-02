@@ -10,6 +10,8 @@ from app.models.common import ENUM_TYPES, VALID_RANGE, Base
 
 VERSIONS = Path(__file__).parents[1] / "alembic" / "versions"
 MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
+# Tables created by later migrations (0004: decision_verification).
+LATER_TABLES = {"decision_verification"}
 
 
 def _load_migration(path: Path = MIGRATION) -> ModuleType:
@@ -28,7 +30,7 @@ def test_enum_labels_match_migration() -> None:
 
 def test_tables_match_migration() -> None:
     migration = _load_migration()
-    assert set(Base.metadata.tables) == set(migration.TABLES)
+    assert set(Base.metadata.tables) == set(migration.TABLES) | LATER_TABLES
     assert len(migration.TABLES) == 19
 
 

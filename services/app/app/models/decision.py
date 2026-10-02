@@ -1,9 +1,10 @@
 """Category C, yargı kararları (data-model.md §5.2)."""
 
+import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Index
+from sqlalchemy import CheckConstraint, ForeignKey, Index, func
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
@@ -83,3 +84,44 @@ class Decision(UuidPkMixin, ProvenanceMixin, Base):
     journal_page: Mapped[int | None]
     # Maintained by trigger decision_tsv_refresh (see migration 0002), not by the app.
     tsv: Mapped[str | None] = mapped_column(TSVECTOR)
+
+
+# Outcomes of one official-source check; `error` is a failed attempt (data-model.md §5.2).
+VERIFICATION_OUTCOMES = (
+    "verified_official",
+    "verified_uyap",
+    "mismatch",
+    "not_in_source",
+    "error",
+)
+
+
+class DecisionVerification(UuidPkMixin, Base):
+    """One distinct result of checking a decision against its official source (task 06 §5).
+
+    Rows are never changed or deleted except `last_checked_at`, which a repeated, identical
+    result refreshes instead of adding a row. `decision.verification*` summarizes the latest
+    non-error row. No decision text is stored here: the official text is only hashed."""
+
+    __tablename__ = "decision_verification"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN (" + ", ".join(f"'{o}'" for o in VERIFICATION_OUTCOMES) + ")",
+            name="outcome",
+        ),
+        Index("ix_decision_verification_decision_id_attempted_at", "decision_id", "attempted_at"),
+    )
+
+    decision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("decision.id"))
+    attempted_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_checked_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # decision.verification_source values: karararama_yargitay, uyap_emsal, aym_kbb,
+    # karararama_danistay
+    source: Mapped[str]
+    outcome: Mapped[str]
+    official_ref: Mapped[str | None]
+    official_url: Mapped[str | None]
+    # Per-field match / fuzzy / mismatch / absent and the site's chamber, E/K and date.
+    matched: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=sql_text("'{}'"))
+    official_text_sha256: Mapped[str | None]
+    error: Mapped[str | None]

@@ -1,0 +1,21 @@
+{
+  "data": {
+    "data": [
+      {
+        "id": "1226554300",
+        "daireKurul": "10. Daire",
+        "esasNo": "2026/940",
+        "kararNo": "2026/402",
+        "kararTarihi": "05.02.2026",
+        "index": 1
+      }
+    ],
+    "draw": 0,
+    "recordsTotal": 1,
+    "recordsFiltered": 1
+  },
+  "metadata": {
+    "FMTY": "SUCCESS",
+    "FMC": "ADALET_SUCCESS"
+  }
+}

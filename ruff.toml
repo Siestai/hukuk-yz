@@ -1,6 +1,6 @@
 line-length = 100
 target-version = "py312"
-src = ["services/app", "packages/models", "packages/ingest"]
+src = ["services/app", "packages/models", "packages/ingest", "packages/verify"]
 
 [lint]
 select = ["E", "F", "I", "B", "UP"]

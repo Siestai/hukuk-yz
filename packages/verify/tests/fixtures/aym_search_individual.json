@@ -1,0 +1,13 @@
+{
+  "_comment": "Individual application row (2026-10-02): basvuruNo and kararTarihi, no esasNo / kararNo; id shortened.",
+  "total": 1,
+  "page": 1,
+  "data": [
+    {
+      "kararTipi": "BireyselBasvuru",
+      "id": "0b6f2c1e-1111-4222-8333-444455556666",
+      "basvuruNo": "2024/41763",
+      "kararTarihi": "2025-07-08"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Veri Modeli v0.2
 
-Durum: v0.2, 2026-10-02 (v0.2: `decision` için `source_chamber`, `bam_region`; Alembic 0003). Bu doküman Faz 1'in temelidir; şema buradan Alembic'e çevrilir.
+Durum: v0.3, 2026-10-02 (v0.2: `decision` için `source_chamber`, `bam_region`; Alembic 0003. v0.3: `decision_verification` tablosu; Alembic 0004). Bu doküman Faz 1'in temelidir; şema buradan Alembic'e çevrilir.
 
 ## 1. İlkeler
 
@@ -137,9 +137,22 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 | editorial_summary | Çalışma ve Toplum ÖZETİ; ayrı lisans; **atıf kaynağı değil**; yalnızca arama sinyali olarak gömülür (§8) |
 | text_completeness | `full` / `excerpt` / `summary_only` |
 | verification | `unverified` / `verified_official` (karararama, E/K eşleşti) / `verified_uyap` / `mismatch` (bulundu ama alanlar farklı) / `not_in_source` (resmi kaynakta yok; 2009 öncesi tipik) |
-| verification_source, verification_ref, verified_at | teyit kaynağı, kaynak id (karararama `getDokuman?id=`), zaman |
+| verification_source, verification_ref, verified_at | `karararama_yargitay` / `uyap_emsal` / `aym_kbb` / `karararama_danistay`; resmî belge kimliği (BİGM `getDokuman?id=`, AYM UUID); son teyit zamanı (UTC). Özeti `decision_verification`'ın son başarılı satırıdır. Yalnızca teyit kodu (`app.verification`) yazar ve `source.source_rank` değerini `verified_*`'ta `official_primary`'ye çıkarır (md. 26) |
 | journal_issue, journal_page | provenance ek |
 | tsv (tsvector) | kayıt düzeyinde tam metin arama; vektör arama `chunk` tablosunda (§8) |
+
+**`decision_verification`** (Alembic 0004, Görev 06): resmî kaynakta yapılan kontroller.
+
+| alan | not |
+|---|---|
+| id, decision_id | |
+| attempted_at, last_checked_at | aynı sonuç tekrarlanırsa yeni satır yazılmaz, `last_checked_at` güncellenir |
+| source | `decision.verification_source` değerleri |
+| outcome | `verified_official` / `verified_uyap` / `mismatch` / `not_in_source` / `error` (CHECK; `error` yalnızca bu tabloda, başarısız deneme) |
+| official_ref, official_url | resmî belge kimliği ve bağlantısı |
+| matched jsonb | alan bazında `match` / `fuzzy` / `mismatch` / `absent` ve sitedeki daire, E/K, tarih; `fuzzy`, `ambiguous`, `skipped` anahtarları |
+| official_text_sha256 | resmî metnin özeti; metin DB'de tutulmaz, ham yanıt `data/official/<kaynak>/<ref>.json` altında (gitignored) |
+| error | başarısız denemenin sınıf adı |
 
 Parser'a özgü alanlar (`layout`, `journal_year`, `journal_no`, `missing`, `warnings`, `parser_version`, `sha256`, `source_path`) `decision` kolonu **değildir**; `extraction.fields` / `extraction.warnings` / `ingest_file` içinde yaşar, çünkü kararı değil çıkarma koşusunu tanımlarlar ve yeniden parse onaylı bir kaydı yeniden yazmamalıdır.
 
@@ -221,7 +234,7 @@ Memory'deki `value` case anahtarıyla şifreli tutulur. `forget` ve case silme b
 
 ## 11. Açık sorular
 
-- ~~Karar `verification`: otomatik mümkün mü?~~ Evet, karararama için (PR #5). Açık: 2009 öncesi kararlar (`not_in_source`) kullanıcıya gösterilsin mi; BAM/AYM/Danıştay teyit kaynağı; toplu sorgu izni.
+- ~~Karar `verification`: otomatik mümkün mü?~~ Evet; Yargıtay, BAM (Emsal), AYM, Danıştay için adaptörler Görev 06'da (`decision_verification`). Açık: 2009 öncesi kararlar (`not_in_source`) kullanıcıya gösterilsin mi; BAM/AYM/Danıştay teyit kaynağı; toplu sorgu izni.
 - `valid_from` çıkarımı başarısız olduğunda varsayılan davranış: inceleme ekranına düşsün (öneri) / RG tarihini kullan.
 - Çalışma ve Toplum özetleri `internal_only` kalırsa inceleme ekranında gösterilsin mi? (Faydalı, ama kullanıcıya gitmemeli.)
 - Çok kiracılı KB: org'a özel kaynak (kendi TİS'i) ortak KB'ye mi, org scope'una mı? Öneri: `source.org_id` nullable; null = ortak.
