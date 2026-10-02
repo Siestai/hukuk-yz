@@ -1,11 +1,9 @@
 """Schema tests against a real Postgres (skipped when DATABASE_URL is unset; CI sets it)."""
 
 import asyncio
-import os
 import uuid
 from collections.abc import AsyncIterator
 from datetime import date
-from pathlib import Path
 
 import pytest
 from alembic.config import Config
@@ -17,28 +15,8 @@ from alembic import command
 from app.db import make_engine
 from app.models.common import Base
 
-ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
 DECISION_LIVE_INDEX = "uq_decision_court_bam_region_chamber_esas_no_karar_no_live"
 HALF_VECTOR = "[" + ",".join(["0.5"] * 1024) + "]"
-
-
-@pytest.fixture(scope="module")
-def database_url() -> str:
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("DATABASE_URL not set")
-    return url
-
-
-@pytest.fixture
-def alembic_config(database_url: str) -> Config:
-    return Config(str(ALEMBIC_INI))
-
-
-@pytest.fixture
-def migrated(alembic_config: Config) -> None:
-    # Sync on purpose: env.py runs its own event loop via asyncio.run().
-    command.upgrade(alembic_config, "head")
 
 
 @pytest.fixture
