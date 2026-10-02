@@ -28,7 +28,12 @@ _KINDS = {
 _BODIES = {
     "hukuk genel kurulu": "HGK",
     "hgk": "HGK",
+    "ceza genel kurulu": "CGK",
+    "cgk": "CGK",
+    "ictihadi birlestirme buyuk genel kurulu": "IBK",
+    "ibk": "IBK",
 }
+_COURT_PREFIX = "yargitay "
 _ESAS_KARAR = re.compile(r"^(\d{4}) ?/ ?(?:\d+ ?- ?)?0*(\d+)$")
 
 
@@ -40,13 +45,14 @@ def fold(text: str) -> str:
 
 def canonical_chamber(raw: str) -> str | None:
     """`"Yargıtay 9. Hukuk Dairesi"`, `"9. HD"` -> `"9 HD"`; `"n. D"` ≡ `"n. Daire"` -> `"n D"`;
-    a named body such as `"Hukuk Genel Kurulu"` -> `"HGK"`. None for an empty string."""
+    a named body (`"Hukuk Genel Kurulu"`, `"Ceza Genel Kurulu"`, `"İçtihadı Birleştirme Büyük
+    Genel Kurulu"`) -> `"HGK"`, `"CGK"`, `"IBK"`. None for an empty string."""
     folded = fold(raw)
     if not folded:
         return None
     if numbered := _NUMBERED.search(folded):
         return f"{numbered.group(1)} {_KINDS[numbered.group(2)]}"
-    return _BODIES.get(folded, folded)
+    return _BODIES.get(folded.removeprefix(_COURT_PREFIX), folded)
 
 
 def bam_region(raw: str) -> str:
@@ -64,8 +70,10 @@ def normalize_number(raw: str) -> str:
 
 
 def compare_dates(wanted: date | None, found: date | None) -> FieldMatch:
-    if wanted is None or found is None:
+    if wanted is None:
         return FieldMatch.absent
+    if found is None:  # the site wrote a date we could not read: not the same as no date
+        return FieldMatch.mismatch
     days = abs((wanted - found).days)
     if days == 0:
         return FieldMatch.match
@@ -175,6 +183,8 @@ def match_rows(key: DecisionKey, rows: list[OfficialRow]) -> Decision:
         },
         "fuzzy": [name for name, found in best.fields().items() if found is FieldMatch.fuzzy],
     }
+    if key.decision_date and best.row.decision_date is None:
+        matched["official_date_unparseable"] = True
     if len(pool) > 1:
         matched["ambiguous"] = True
     return Decision("verified" if chosen else "mismatch", best.row, matched)

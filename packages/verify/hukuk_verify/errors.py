@@ -27,6 +27,10 @@ class RateLimitExhausted(SourceStopped):
     """Three consecutive 429 answers."""
 
 
+class SourceUnreachable(SourceStopped):
+    """Three consecutive network errors or timeouts: the source is treated as down."""
+
+
 class CaptchaRequired(SourceStopped):
     """The site asks for a captcha; it is never solved or bypassed (task 06 §8)."""
 

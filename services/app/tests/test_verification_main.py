@@ -14,6 +14,7 @@ import app.verification.__main__ as cli
 from app.models.common import Court, CourtLevel, Source, SourceRank, Verification
 from app.models.decision import Decision
 from app.settings import get_verify_settings
+from hukuk_verify.adapters import AymAdapter, DanistayAdapter, UyapEmsalAdapter, YargitayAdapter
 from hukuk_verify.ratelimit import RateLimiter
 
 AYM_KEY = {
@@ -83,6 +84,56 @@ def test_request_budget(
     limit: int | None, dry_run: bool, permission: bool, expected: int | None
 ) -> None:
     assert cli.request_budget(limit, dry_run, permission) == expected
+
+
+@pytest.mark.parametrize("value", ["0", "-3"])
+def test_a_limit_below_one_is_refused(value: str, tmp_path: Path) -> None:
+    with pytest.raises(SystemExit) as raised:
+        cli.main(["--keys", str(keys_file(tmp_path)), "--limit", value])
+    assert raised.value.code == 2
+
+
+def test_the_client_ignores_the_proxy_variables_of_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"):
+        monkeypatch.setenv(name, "http://env-proxy.invalid:3128")
+    assert cli.build_client(None, "agent")._mounts == {}
+    assert cli.build_client("http://given.invalid:3128", "agent")._mounts != {}
+
+
+async def test_each_proxy_setting_reaches_only_its_sources_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    proxies = {
+        "VERIFY_PROXY_YARGITAY": "http://yargitay.invalid:1",
+        "VERIFY_PROXY_EMSAL": "http://emsal.invalid:2",
+        "VERIFY_PROXY_AYM": "http://aym.invalid:3",
+        "VERIFY_PROXY_DANISTAY": "http://danistay.invalid:4",
+    }
+    for name, value in proxies.items():
+        monkeypatch.setenv(name, value)
+    get_verify_settings.cache_clear()
+    sent: dict[int, str | None] = {}
+
+    def build(proxy: str | None, agent: str) -> httpx.AsyncClient:
+        client = httpx.AsyncClient()
+        sent[id(client)] = proxy
+        return client
+
+    monkeypatch.setattr(cli, "build_client", build)
+    expected = {
+        "yargitay": ("http://yargitay.invalid:1", YargitayAdapter),
+        "bam": ("http://emsal.invalid:2", UyapEmsalAdapter),
+        "aym": ("http://aym.invalid:3", AymAdapter),
+        "danistay": ("http://danistay.invalid:4", DanistayAdapter),
+    }
+    for court, (proxy, adapter_class) in expected.items():
+        adapter, client = cli._adapter(court, get_verify_settings(), None)
+        assert type(adapter) is adapter_class
+        assert adapter._client is client
+        assert sent[id(client)] == proxy
+        await client.aclose()
 
 
 def test_the_user_agent_identifies_us_and_is_a_valid_header() -> None:

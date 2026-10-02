@@ -39,8 +39,24 @@ def test_daire_spellings_and_kinds() -> None:
     assert len({canonical_chamber(c) for c in ("9. HD", "9. CD", "9. D", "19. HD")}) == 4
 
 
-def test_unnumbered_bodies_and_empty() -> None:
-    assert canonical_chamber("Hukuk Genel Kurulu") == "HGK"
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Hukuk Genel Kurulu", "HGK"),
+        ("Yargıtay Hukuk Genel Kurulu", "HGK"),
+        ("HGK", "HGK"),
+        ("Ceza Genel Kurulu", "CGK"),
+        ("Yargıtay Ceza Genel Kurulu", "CGK"),
+        ("İçtihadı Birleştirme Büyük Genel Kurulu", "IBK"),
+        ("Yargıtay İçtihadı Birleştirme Büyük Genel Kurulu", "IBK"),
+        ("İBK", "IBK"),
+    ],
+)
+def test_named_bodies(raw: str, expected: str) -> None:
+    assert canonical_chamber(raw) == expected
+
+
+def test_empty_chamber_is_none() -> None:
     assert canonical_chamber("") is None
 
 
@@ -77,7 +93,7 @@ def test_dates_exact_within_three_days_beyond() -> None:
     assert compare_dates(base, date(2020, 12, 6)) is FieldMatch.fuzzy
     assert compare_dates(base, date(2020, 12, 13)) is FieldMatch.mismatch
     assert compare_dates(None, base) is FieldMatch.absent
-    assert compare_dates(base, None) is FieldMatch.absent
+    assert compare_dates(base, None) is FieldMatch.mismatch  # the site's date was unreadable
 
 
 def test_no_rows_is_not_in_source() -> None:
@@ -117,6 +133,13 @@ def test_date_beyond_three_days_is_a_mismatch() -> None:
 def test_other_chamber_is_a_mismatch() -> None:
     assert match_rows(make_key(), [row(chamber="22. Hukuk Dairesi")]).kind == "mismatch"
     assert match_rows(make_key(), [row(chamber="")]).kind == "mismatch"
+
+
+def test_an_unparseable_official_date_is_a_mismatch_not_absent() -> None:
+    decision = match_rows(make_key(), [row(when=None)])
+    assert decision.kind == "mismatch"
+    assert decision.matched["decision_date"] == "mismatch"
+    assert decision.matched["official_date_unparseable"] is True
 
 
 def test_decision_without_a_date_is_judged_on_ek_and_chamber() -> None:

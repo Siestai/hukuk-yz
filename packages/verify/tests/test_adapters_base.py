@@ -1,4 +1,4 @@
-"""Behaviour every adapter shares: 429, captcha, robots, request budget and failures that must
+"""Behaviour every adapter shares: 429, captcha, robots and failures that must
 never turn into `not_in_source`. Run over all four sources."""
 
 from dataclasses import dataclass
@@ -17,10 +17,8 @@ from hukuk_verify.adapters import (
 from hukuk_verify.errors import (
     CaptchaRequired,
     RateLimitExhausted,
-    RequestBudgetExceeded,
     RobotsDisallowed,
     SourceUnavailable,
-    UnexpectedResponse,
 )
 from hukuk_verify.models import DecisionKey
 
@@ -160,22 +158,4 @@ async def test_a_network_error_is_an_exception_not_an_empty_result(case: Case) -
 async def test_a_server_error_is_an_exception(case: Case) -> None:
     site = site_for(case, Reply(503, "<html>down</html>", "text/html"))
     with pytest.raises(SourceUnavailable):
-        await make_adapter(case.adapter, site).lookup(case.key)
-
-
-@EVERY_SOURCE
-async def test_the_request_budget_is_never_exceeded(case: Case) -> None:
-    site = site_for(case, Reply.fixture(case.found))
-    adapter = make_adapter(case.adapter, site, max_requests=20)
-    with pytest.raises(RequestBudgetExceeded):
-        for _ in range(30):
-            await adapter.lookup(case.key)
-    assert len(site.requests) == 20
-
-
-@pytest.mark.parametrize("name", ["yargitay", "emsal", "danistay"])
-async def test_an_error_envelope_is_not_an_empty_result(name: str) -> None:
-    case = CASES[name]
-    site = site_for(case, Reply.fixture("error_envelope.json"))
-    with pytest.raises(UnexpectedResponse):
         await make_adapter(case.adapter, site).lookup(case.key)

@@ -2,7 +2,9 @@
 
 import uuid
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import pytest
 from sqlalchemy import select
@@ -61,12 +63,12 @@ async def test_verified_raises_the_source_rank(
 ) -> None:
     async with kb_factory() as session:
         decision_id = await new_decision(session)
-        applied = await apply_result(session, decision_id, found(), NOW)
+        await apply_result(session, decision_id, found(), NOW)
         await session.commit()
 
         decision = await session.get(Decision, decision_id)
         assert decision is not None
-        assert applied.new_row
+        assert len(await attempts(session, decision_id)) == 1
         assert decision.verification is Verification.verified_official
         assert (decision.verification_source, decision.verification_ref) == (
             "karararama_yargitay",
@@ -111,9 +113,8 @@ async def test_a_second_identical_result_adds_no_row(
     async with kb_factory() as session:
         decision_id = await new_decision(session)
         await apply_result(session, decision_id, found(), NOW)
-        again = await apply_result(session, decision_id, found(), LATER)
+        await apply_result(session, decision_id, found(), LATER)
         [row] = await attempts(session, decision_id)
-        assert not again.new_row
         assert (row.attempted_at, row.last_checked_at) == (NOW, LATER)
 
 
@@ -124,6 +125,21 @@ async def test_a_changed_result_adds_a_row(
         decision_id = await new_decision(session)
         await apply_result(session, decision_id, found(text="old"), NOW)
         await apply_result(session, decision_id, found(text="new"), LATER)
+        assert len(await attempts(session, decision_id)) == 2
+
+
+@pytest.mark.parametrize("detail", [{"fuzzy": ["decision_date"]}, {"ambiguous": True}])
+async def test_a_changed_fuzzy_or_ambiguous_detail_adds_a_row(
+    kb_factory: async_sessionmaker[AsyncSession], new_decision: NewDecision, detail: dict[str, Any]
+) -> None:
+    async with kb_factory() as session:
+        decision_id = await new_decision(session)
+        await apply_result(session, decision_id, found(), NOW)
+        await apply_result(session, decision_id, replace(found(), matched=detail), LATER)
+        rows = await attempts(session, decision_id)
+        assert [r.matched.get("fuzzy") for r in rows] == [None, detail.get("fuzzy")]
+        assert [r.matched.get("ambiguous") for r in rows] == [None, detail.get("ambiguous")]
+        await apply_result(session, decision_id, replace(found(), matched=detail), LATER)
         assert len(await attempts(session, decision_id)) == 2
 
 
@@ -198,3 +214,18 @@ async def test_candidates_are_the_due_live_decisions_of_the_court(
         key = next(c.key for c in wider if c.id == unverified)
         assert (key.court, key.court_level, key.chamber) == ("yargitay", "daire", "9. HD")
         assert key.decision_date == date(2020, 12, 9)
+
+
+async def test_candidates_put_never_tried_first_then_the_longest_unchecked(
+    kb_factory: async_sessionmaker[AsyncSession], new_decision: NewDecision
+) -> None:
+    async with kb_factory() as session:
+        # the earliest decision date, so that without the ordering it would come first
+        failed_long_ago = await new_decision(session, decision_date=date(2010, 1, 1))
+        failed_lately = await new_decision(session, decision_date=date(2011, 1, 1))
+        never = await new_decision(session, decision_date=date(2020, 1, 1))
+        await apply_error(session, failed_long_ago, "karararama_yargitay", "boom", NOW)
+        await apply_error(session, failed_lately, "karararama_yargitay", "boom", LATER)
+
+        due = await candidates(session, Court.yargitay, LATER, recheck_mismatch=False)
+        assert [c.id for c in due] == [never, failed_long_ago, failed_lately]

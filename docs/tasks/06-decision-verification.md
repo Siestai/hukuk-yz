@@ -12,11 +12,12 @@ Orhan'ın onayıyla iki değişiklik, ayrıca implementasyonda netleştirilen no
 2. **Kaynak başına isteğe bağlı proxy** (§8): karararama.yargitay.gov.tr bu sunucudan açılmıyor (zaman aşımı, olasılıkla IP/coğrafya filtresi); Emsal, Danıştay, AYM açılıyor. Varsayılan: proxy yok.
 3. **`--keys <dosya.jsonl>`** (§1): veritabanı olmadan yalnızca arar ve sonucu yazar, hiçbir şey saklamaz; canlı kabul kontrolü için (`docs/verify-acceptance.md`). Proxy ve iletişim ayarları bu yüzden `DATABASE_URL` gerektirmeyen ayrı bir ayar sınıfında (`VerifySettings`).
 4. Netleştirmeler:
-   - `decision_verification` hem "her deneme bir satır, append-only" hem "sonuç değişmediyse yeni satır yok, yalnızca `last_checked_at`" diyordu. Uygulanan: tablo `last_checked_at` kolonu taşır; aynı sonuç (outcome, `official_ref`, `official_text_sha256`) tekrarlanırsa satır eklenmez, bu kolon ve `decision.verified_at` güncellenir (90 günlük `not_in_source` penceresi bu yüzden doğru işler). Sonuç dışında hiçbir alan değişmez, satır silinmez.
+   - `decision_verification` hem "her deneme bir satır, append-only" hem "sonuç değişmediyse yeni satır yok, yalnızca `last_checked_at`" diyordu. Uygulanan: tablo `last_checked_at` kolonu taşır; aynı sonuç (outcome, `official_ref`, `official_text_sha256`, `fuzzy`, `ambiguous`) tekrarlanırsa satır eklenmez, bu kolon ve `decision.verified_at` güncellenir (90 günlük `not_in_source` penceresi bu yüzden doğru işler). Sonuç dışında hiçbir alan değişmez, satır silinmez.
    - `verification_detail.fuzzy` için ayrı kolon yok: `fuzzy`, `ambiguous`, `skipped` anahtarları `decision_verification.matched` içinde.
    - 429: ilk 429'da 60 sn, ikincide 120 sn beklenip yeniden denenir; üçüncü ardışık 429'da bekleme yerine kaynak durdurulur (240 sn adımı kullanılmaz).
    - `--limit` kaynak başına **istek** sayısıdır (robots.txt ve oturum sayfası dahil). `LIVE=1` yoksa CLI hiç istek atmaz, yalnızca kaç karar beklediğini yazar; `--i-have-permission` yoksa kaynak başına en çok 20 istek.
-   - Ağ hatası `decision.verification`'ı `unverified` bırakır ve her koşuda yeniden denenir (90 gün beklemez); yalnızca `not_in_source` 90 gün sonra yeniden sorulur.
+   - Ağ hatası `decision.verification`'ı `unverified` bırakır ve her koşuda yeniden denenir (90 gün beklemez); aday sırası önce hiç denenmemişler, sonra en eski `last_checked_at`. Bir kaynakta art arda 3 ağ hatasında (bağlantı, zaman aşımı, 5xx) kaynak 429'daki gibi durdurulur (`SourceUnreachable`), rapora `stopped` yazılır, kalan kararlar için `error` satırı yazılmaz; yalnızca `not_in_source` 90 gün sonra yeniden sorulur.
+   - Adlandırılmış kurullar kanonikleştirilir: `Hukuk Genel Kurulu` → `HGK`, `Ceza Genel Kurulu` → `CGK`, `İçtihadı Birleştirme Büyük Genel Kurulu` → `IBK` (`Yargıtay` öneki yok sayılır). `--limit` en az 1; HTTP istemcisi ortamdaki `HTTP(S)_PROXY`'yi okumaz, yalnızca `VERIFY_PROXY_*`; `VERIFY_CACHE_DIR` mutlak yol olmalı (varsayılan `<repo>/data/official`).
    - `outcome` bir Postgres enum'u değil, CHECK'li metindir (`error` değeri `verification` enum'unda yok). Migration 0004.
    - Kullanıcı ajanı HTTP başlığı ASCII olmak zorunda: `hukuk-yz-verify/<sürüm> (iletisim: <e-posta>)` ("iletişim" değil).
    - Yalnızca `bam` Emsal'e gider; BİM yönlendirilmez (arşivde yok). Karar tarihi boş olan karar E/K ve daire ile teyit edilir (`decision_date: absent`). Yargıtay fixture'ı sitenin erişilemezliği yüzünden spike sözleşmesinden kuruldu, gerçek yanıt değil.
@@ -91,7 +92,7 @@ Sonuç satırı ile `decision` karşılaştırılır; her alan için `match | fu
 |---|---|
 | esas_no, karar_no | **Kesin**: `YYYY/N`, baştaki sıfırlar ve boşluklar normalize edilir. Biri uyuşmazsa sonuç aday sayılmaz (sorgu zaten E/K ile yapıldığı için buna yalnızca birden çok satır dönerse bakılır). |
 | chamber | **Kanonik biçime çevirip karşılaştır**: `"9. HD"` ≡ `"9. Hukuk Dairesi"` ≡ `"Yargıtay 9. Hukuk Dairesi"`; `"n. D"` ≡ `"n. Daire"`; BAM `"İstanbul Bölge Adliye Mahkemesi 35. Hukuk Dairesi"` → (`bam_region="İstanbul"`, `"35. HD"`). Karşılaştırma Türkçe-duyarlı küçük harf (`İ/ı` dahil), noktalama ve fazla boşluk yok sayılır. Daire numarası ve tür (HD/CD/D) **tam eşit** olmalı. `source_chamber` dolu HGK kararında `D`, sonuç metninde (başlık satırı) aranır, uyuşmazlık `fuzzy` (karararama HGK satırında `D` tutmaz). |
-| decision_date | `dd.MM.yyyy` → ISO. **Tam eşit**: `match`. ±3 gün: `fuzzy` (dergi karar tarihi yerine tebliğ/tashih tarihi yazabilir; Görev 04 `date_from_closing` uyarıları). >3 gün: `mismatch`. Karar tarihi boşsa `absent`. |
+| decision_date | `dd.MM.yyyy` → ISO. **Tam eşit**: `match`. ±3 gün: `fuzzy` (dergi karar tarihi yerine tebliğ/tashih tarihi yazabilir; Görev 04 `date_from_closing` uyarıları). >3 gün: `mismatch`. Bizdeki karar tarihi boşsa `absent`; sitenin tarihi okunamazsa `absent` değil `mismatch` (`matched.official_date_unparseable`). |
 | court / bölge | Sonucun kaynağı (adaptör) zaten mahkemeyi belirler; BAM'da bölge uyuşmazlığı `mismatch` (iki bölgede aynı daire ve aynı E/K bulunabilir). |
 
 Birleştirme:
@@ -111,7 +112,7 @@ Birleştirme:
 ### 6. Yeniden çalıştırma (idempotent)
 
 - Aday seçimi: `decision.verification = 'unverified'` veya `verified_at < now() - <yeniden teyit aralığı>` (varsayılan: `not_in_source` ve `error` için 90 gün, `verified_*` için hiç, `mismatch` için elle `--recheck mismatch`).
-- Aynı anahtar için ikinci koşu: yeni `decision_verification` satırı yalnızca sonuç değiştiyse (outcome, `official_ref` veya `official_text_sha256`) yazılır; değişmediyse yalnızca `last_checked_at` günceller. Hiçbir koşu `decision.verification` değerini aşağı çekmez (ör. `verified_official` → `not_in_source`) **sunucu hata dönmediği sürece**: bu durumda `mismatch` yazılır ve raporlanır, sessizce silinmez.
+- Aynı anahtar için ikinci koşu: yeni `decision_verification` satırı yalnızca sonuç değiştiyse (outcome, `official_ref`, `official_text_sha256`, `matched.fuzzy` veya `matched.ambiguous`) yazılır; değişmediyse yalnızca `last_checked_at` günceller. Hiçbir koşu `decision.verification` değerini aşağı çekmez (ör. `verified_official` → `not_in_source`) **sunucu hata dönmediği sürece**: bu durumda `mismatch` yazılır ve raporlanır, sessizce silinmez.
 - Yarıda kesilen koşu: her kayıt kendi transaction'ı; devam etmek için aynı komut yeterli.
 - `--dry-run` yalnızca ağ sorgusu yapıp DB'ye yazmaz; ancak kaynak başına en çok `--limit` (varsayılan 20) istek atar.
 

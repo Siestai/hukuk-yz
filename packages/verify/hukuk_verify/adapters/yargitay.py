@@ -6,8 +6,6 @@ from hukuk_verify.adapters.bigm import BigmAdapter
 from hukuk_verify.matching import expected_chamber
 from hukuk_verify.models import DecisionKey, Outcome
 
-_HUKUK_DAIRESI = "HD"
-
 
 class YargitayAdapter(BigmAdapter):
     SOURCE = "karararama_yargitay"
@@ -19,11 +17,13 @@ class YargitayAdapter(BigmAdapter):
 
     def chamber_filter(self, key: DecisionKey) -> dict[str, str]:
         """`9. HD` -> `birimYrgHukukDaire: "9. Hukuk Dairesi"`; HGK -> `birimYrgKurulDaire`.
-        Other chambers (ceza daireleri, İBK, whose body name is unconfirmed) are searched by E/K
-        alone and told apart by the chamber of the answer."""
+        `9. CD` -> `birimYrgCezaDaire: "9. Ceza Dairesi"`. Other chambers (İBK, whose body name is
+        unconfirmed) are searched by E/K alone and told apart by the chamber of the answer."""
         expected = expected_chamber(key)
         if expected == "HGK":
             return {"birimYrgKurulDaire": "Hukuk Genel Kurulu"}
-        if expected and expected.endswith(f" {_HUKUK_DAIRESI}"):
+        if expected and expected.endswith(" HD"):
             return {"birimYrgHukukDaire": f"{expected.split()[0]}. Hukuk Dairesi"}
+        if expected and expected.endswith(" CD"):
+            return {"birimYrgCezaDaire": f"{expected.split()[0]}. Ceza Dairesi"}
         return {}

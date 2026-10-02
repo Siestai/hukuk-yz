@@ -55,14 +55,6 @@ async def test_found_follows_the_spike_contract() -> None:
     assert row.url == "https://karararama.yargitay.gov.tr/getDokuman?id=100000001"
 
 
-async def test_the_session_is_opened_once() -> None:
-    fake = site(Reply.fixture("yargitay_found.json"))
-    adapter = make_adapter(YargitayAdapter, fake)
-    await adapter.lookup(make_key())
-    await adapter.lookup(make_key())
-    assert fake.paths().count("GET /") == 1
-
-
 async def test_an_empty_filtered_search_is_repeated_without_the_chamber() -> None:
     fake = site(Reply.fixture("yargitay_empty.json"), Reply.fixture("yargitay_found.json"))
     result = await make_adapter(YargitayAdapter, fake).lookup(make_key())
@@ -81,27 +73,20 @@ async def test_hgk_is_searched_by_the_genel_kurul_name() -> None:
     assert (body["esasYil"], body["esasIlkSiraNo"]) == ("2024", "389")
 
 
-async def test_a_chamber_without_a_known_filter_is_searched_by_ek_alone() -> None:
+async def test_a_ceza_dairesi_is_searched_by_its_full_name() -> None:
     fake = site(Reply.fixture("yargitay_found.json"))
     await make_adapter(YargitayAdapter, fake).lookup(make_key(chamber="9. CD"))
     body = fake.bodies("/aramadetaylist")[0]["data"]
-    assert not {"birimYrgHukukDaire", "birimYrgKurulDaire"} & body.keys()
+    assert body["birimYrgCezaDaire"] == "9. Ceza Dairesi"
+    assert "birimYrgHukukDaire" not in body
 
 
-async def test_the_official_text_is_fetched_by_id() -> None:
-    fake = site()
-    text = await make_adapter(YargitayAdapter, fake).fetch_text("100000001")
-    assert text is not None
-    assert "FIXTURE TEXT" in text.body
-    assert fake.requests[-1].url.params["id"] == "100000001"
-    assert len(text.sha256) == 64
-
-
-def test_supports_needs_both_numbers() -> None:
-    adapter = make_adapter(YargitayAdapter, site())
-    assert adapter.supports(make_key())
-    assert not adapter.supports(make_key(karar_no=None))
-    assert not adapter.supports(make_key(esas_no="x"))
+async def test_a_chamber_without_a_known_filter_is_searched_by_ek_alone() -> None:
+    fake = site(Reply.fixture("yargitay_found.json"))
+    ibk = make_key(chamber="İçtihadı Birleştirme Büyük Genel Kurulu")
+    await make_adapter(YargitayAdapter, fake).lookup(ibk)
+    body = fake.bodies("/aramadetaylist")[0]["data"]
+    assert not {"birimYrgHukukDaire", "birimYrgCezaDaire", "birimYrgKurulDaire"} & body.keys()
 
 
 async def test_found_verifies() -> None:

@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.common import Court, Source, SourceRank, Verification
@@ -45,6 +45,16 @@ async def candidates(
     ]
     if recheck_mismatch:
         due.append(Decision.verification == Verification.mismatch)
+    # A source that was unreachable leaves its decisions `unverified`; never-tried ones go first,
+    # then the longest-unchecked, so the same failing decisions do not head every run.
+    last_checked = (
+        select(
+            DecisionVerification.decision_id,
+            func.max(DecisionVerification.last_checked_at).label("at"),
+        )
+        .group_by(DecisionVerification.decision_id)
+        .subquery()
+    )
     rows = await session.execute(
         select(
             Decision.id,
@@ -58,8 +68,9 @@ async def candidates(
             Decision.decision_date,
             Decision.decision_kind,
         )
+        .outerjoin(last_checked, last_checked.c.decision_id == Decision.id)
         .where(Decision.court == court, Decision.superseded_at.is_(None), or_(*due))
-        .order_by(Decision.decision_date, Decision.id)
+        .order_by(last_checked.c.at.asc().nullsfirst(), Decision.decision_date, Decision.id)
     )
     return [
         Candidate(
@@ -94,7 +105,6 @@ async def _latest(session: AsyncSession, decision_id: uuid.UUID) -> DecisionVeri
 @dataclass(frozen=True)
 class Applied:
     outcome: str  # what was written; `mismatch` instead of `not_in_source` for a downgrade
-    new_row: bool
     downgraded: bool
 
 
@@ -116,12 +126,14 @@ async def apply_result(
     sha = result.official_text.sha256 if result.official_text else None
     ref = None if downgraded else result.official_ref
     last = await _latest(session, decision_id)
-    same = last is not None and (last.outcome, last.official_ref, last.official_text_sha256) == (
-        outcome.value,
-        ref,
-        sha,
-    )
-    if last is not None and same:
+    # A change in `fuzzy` or `ambiguous` is history too, even when the verdict is the same.
+    detail = (matched.get("fuzzy"), matched.get("ambiguous"))
+    if last is not None and (
+        last.outcome,
+        last.official_ref,
+        last.official_text_sha256,
+        (last.matched.get("fuzzy"), last.matched.get("ambiguous")),
+    ) == (outcome.value, ref, sha, detail):
         last.last_checked_at = now
     else:
         session.add(
@@ -149,7 +161,7 @@ async def apply_result(
         SourceRank.official_primary if decision.verification in VERIFIED else SourceRank.editorial
     )
     await session.flush()
-    return Applied(outcome.value, new_row=not same, downgraded=downgraded)
+    return Applied(outcome.value, downgraded=downgraded)
 
 
 async def apply_error(

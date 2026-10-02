@@ -17,10 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.verification.store import Candidate, apply_error, apply_result
 from hukuk_verify import DecisionKey, Outcome, VerifyResult, verify
 from hukuk_verify.adapters import SourceAdapter
-from hukuk_verify.errors import RecordError, SourceStopped
+from hukuk_verify.errors import RecordError, SourceStopped, SourceUnavailable, SourceUnreachable
 from hukuk_verify.verify import is_pre_2009
 
 SAMPLE_SIZE = 20
+MAX_CONSECUTIVE_NETWORK_ERRORS = 3
 YEAR_BANDS = ("<=2009", "2010-14", "2015+", "no date")
 _UNSAFE = re.compile(r"[^\w-]")
 
@@ -94,9 +95,12 @@ async def run_court(
     stats.unsupported = len(todo) - len(supported)
     stats.candidates = len(supported)
     write = factory is not None and not options.dry_run
+    network_errors = 0  # consecutive
 
     async def check(candidate: Candidate, skip_pre_2009: bool) -> str:
-        """The outcome written, or `error`."""
+        """The outcome written, or `error`. Raises `SourceUnreachable` on the third network error
+        in a row, after recording it."""
+        nonlocal network_errors
         key = candidate.key
         try:
             result = await verify(adapter, key, skip_pre_2009=skip_pre_2009)
@@ -107,7 +111,16 @@ async def run_court(
                 assert factory is not None
                 async with factory() as session, session.begin():
                     await apply_error(session, candidate.id, adapter.SOURCE, str(exc)[:200], _now())
+            if isinstance(exc, SourceUnavailable):
+                network_errors += 1
+                if network_errors >= MAX_CONSECUTIVE_NETWORK_ERRORS:
+                    raise SourceUnreachable(
+                        f"{MAX_CONSECUTIVE_NETWORK_ERRORS} consecutive network errors"
+                    ) from exc
+            else:
+                network_errors = 0
             return "error"
+        network_errors = 0
         outcome = result.outcome.value
         if write and candidate.id:
             assert factory is not None

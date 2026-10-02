@@ -63,8 +63,11 @@ TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
 
 def build_client(proxy: str | None, user_agent: str) -> httpx.AsyncClient:
-    """The configured client an adapter receives: proxy and identifying User-Agent."""
-    return httpx.AsyncClient(proxy=proxy, headers={"User-Agent": user_agent}, timeout=TIMEOUT)
+    """The configured client an adapter receives: proxy and identifying User-Agent. The proxy
+    comes from `VERIFY_PROXY_*` only; HTTP(S)_PROXY of the environment is not picked up."""
+    return httpx.AsyncClient(
+        proxy=proxy, headers={"User-Agent": user_agent}, timeout=TIMEOUT, trust_env=False
+    )
 
 
 def user_agent(contact: str) -> str:
@@ -197,6 +200,8 @@ async def _run(args: argparse.Namespace) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
+    if args.limit is not None and args.limit < 1:
+        parser.error("--limit must be at least 1")
     if args.keys and args.recheck:
         parser.error("--recheck reads the database; it cannot be combined with --keys")
     return asyncio.run(_run(args))

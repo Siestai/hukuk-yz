@@ -2,7 +2,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -37,7 +40,15 @@ class VerifySettings(BaseSettings):
     verify_min_interval_seconds: float = 12.0
     # Goes into the User-Agent so the sites can reach us (task 06 §8); required for live runs.
     verify_contact: str | None = None
-    verify_cache_dir: Path = Path("data/official")
+    # The raw official answers (gitignored `data/`); absolute, so the run's cwd does not matter.
+    verify_cache_dir: Path = REPO_ROOT / "data" / "official"
+
+    @field_validator("verify_cache_dir")
+    @classmethod
+    def _absolute(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("VERIFY_CACHE_DIR must be an absolute path")
+        return value
 
 
 @lru_cache

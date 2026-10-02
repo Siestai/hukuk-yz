@@ -116,6 +116,24 @@ async def test_a_stopped_source_ends_the_run() -> None:
     assert stub.queried == ["2020/1", "2020/2"]
 
 
+async def test_three_network_errors_in_a_row_stop_the_source() -> None:
+    names = [f"2020/{n}" for n in range(1, 7)]
+    stub = StubSource(broken=names)
+    stats = await run(stub, [candidate(n) for n in names])
+    assert stats.stopped is not None and stats.stopped.startswith("SourceUnreachable")
+    assert stub.queried == names[:3]  # the other three are not tried
+    assert stats.errors == {"SourceUnavailable": 3}
+
+
+async def test_a_success_resets_the_network_error_count() -> None:
+    names = [f"2020/{n}" for n in range(1, 7)]
+    stub = StubSource(known={"2020/3"}, broken={"2020/1", "2020/2", "2020/4", "2020/5"})
+    stats = await run(stub, [candidate(n) for n in names])
+    assert stats.stopped is None
+    assert stub.queried == names
+    assert stats.errors == {"SourceUnavailable": 4}
+
+
 async def test_decisions_without_what_the_query_needs_are_counted_apart() -> None:
     stub = StubSource()
     no_esas = Candidate(
@@ -181,6 +199,23 @@ async def test_a_database_run_writes_decisions_and_the_official_cache(
     assert (tmp_path / "official" / "karararama_yargitay" / "77.json").read_text() == (
         '{"data": "text 77"}'
     )
+
+
+async def test_a_stopped_source_writes_no_error_row_for_the_rest(
+    kb_factory: async_sessionmaker[AsyncSession], new_decision: NewDecision
+) -> None:
+    async with kb_factory() as session:
+        for n in range(5):
+            await new_decision(session, esas_no=f"2020/{n + 1}")
+        await session.commit()
+        todo = await candidates(session, Court.yargitay, datetime.now(UTC), recheck_mismatch=False)
+
+    stub = StubSource(broken=[c.key.esas_no or "" for c in todo])
+    stats = await run_court(kb_factory, "yargitay", stub, todo, RunOptions())
+    assert stats.stopped is not None
+    async with kb_factory() as session:
+        rows = (await session.execute(select(DecisionVerification))).scalars().all()
+        assert [r.outcome for r in rows] == ["error"] * 3
 
 
 async def test_a_dry_run_writes_nothing(

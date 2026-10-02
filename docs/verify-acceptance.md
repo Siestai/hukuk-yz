@@ -1,6 +1,6 @@
 # Canlı kabul kontrolü: resmî kaynak teyidi (Görev 06)
 
-Bu kontrol Orhan'ın Mac'inde (Türkiye çıkışlı IP) elle koşulur. Veritabanı gerekmez; hiçbir şey saklanmaz, yalnızca "karar → sonuç" yazılır. Toplam en çok 48 istek, kaynak başına 12 sn aralık (kod bunun altına inmeyi reddeder). Süre: yaklaşık 10 dakika. Karar metni veya taraf adı çıktıda yer almaz.
+Bu kontrol Orhan'ın Mac'inde (Türkiye çıkışlı IP) elle koşulur. Veritabanı gerekmez; hiçbir şey saklanmaz, yalnızca "karar → sonuç" yazılır. Toplam en çok 49 istek, kaynak başına 12 sn aralık (kod bunun altına inmeyi reddeder). Süre: yaklaşık 10 dakika. Karar metni veya taraf adı çıktıda yer almaz.
 
 ## Hazırlık
 
@@ -41,11 +41,20 @@ JSON
 run() { uv run python -m app.verification --keys /tmp/verify-keys.jsonl --court "$1" --limit "$2" --report "/tmp/verify-$1"; }
 run aym 14
 run bam 8
-run danistay 8
+run danistay 9
 run yargitay 18
 ```
 
-`--limit` kaynak başına istek sayısıdır (robots.txt ve oturum sayfası dahil); 14 + 8 + 8 + 18 = 48 ≤ 50. `--i-have-permission` kullanılmaz. Bir kaynakta "stopped" yazarsa (429, captcha, robots, bütçe) o kaynak orada kesilir; yeniden denemeden önce en az 5 dakika bekle.
+`--limit` kaynak başına istek sayısıdır: robots.txt, oturum sayfası (`GET /`), arama ve `getDokuman` / dosya istekleri hepsi sayılır. Sınırlar, her karar en kötü yolu izlediğinde (bulundu, metni çekildi) gereken istek sayısı artı bir 429 yeniden denemesidir (429 da bir istek sayılır):
+
+| Kaynak | Hesap (en kötü durum) | + 1 (429) | `--limit` |
+|---|---|---|---|
+| aym | robots 1 + 4 karar × 3 (arama, `dosyalar`, html) = 13 | 14 | 14 |
+| bam | robots 1 + oturum 1 + (arama + metin) 2 + (yalnız arama, `mismatch`) 1 + (arama + metin) 2 = 7 | 8 | 8 |
+| danistay | robots 1 + oturum 1 + 3 karar × 2 (arama + metin) = 8 | 9 | 9 |
+| yargitay | robots 1 + oturum 1 + 4 karar × 3 (daire filtreli arama boş, süzgeçsiz arama, metin) + 2008 örneklemi 3 = 17 | 18 | 18 |
+
+14 + 8 + 9 + 18 = 49 ≤ 50. `--i-have-permission` kullanılmaz. Bir kaynakta "stopped" yazarsa (429, captcha, robots, bütçe) o kaynak orada kesilir; yeniden denemeden önce en az 5 dakika bekle.
 
 ## PR'a yapıştırılacak çıktı
 
