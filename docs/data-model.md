@@ -132,7 +132,8 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 | full_text | |
 | editorial_summary | Çalışma ve Toplum ÖZETİ; ayrı lisans; **atıf kaynağı değil**; yalnızca arama sinyali olarak gömülür (§8) |
 | text_completeness | `full` / `excerpt` / `summary_only` |
-| verification | `unverified` / `verified_uyap` / `verified_official` / `mismatch` |
+| verification | `unverified` / `verified_official` (karararama, E/K eşleşti) / `verified_uyap` / `mismatch` (bulundu ama alanlar farklı) / `not_in_source` (resmi kaynakta yok; 2009 öncesi tipik) |
+| verification_source, verification_ref, verified_at | teyit kaynağı, kaynak id (karararama `getDokuman?id=`), zaman |
 | journal_issue, journal_page | provenance ek |
 | tsv (tsvector) | kayıt düzeyinde tam metin arama; vektör arama `chunk` tablosunda (§8) |
 
@@ -214,7 +215,7 @@ Memory'deki `value` case anahtarıyla şifreli tutulur. `forget` ve case silme b
 
 ## 11. Açık sorular
 
-- Karar `verification`: UYAP Emsal'e otomatik doğrulama mümkün mü, yoksa manuel mi? (Baran)
+- ~~Karar `verification`: otomatik mümkün mü?~~ Evet, karararama için (PR #5). Açık: 2009 öncesi kararlar (`not_in_source`) kullanıcıya gösterilsin mi; BAM/AYM/Danıştay teyit kaynağı; toplu sorgu izni.
 - `valid_from` çıkarımı başarısız olduğunda varsayılan davranış: inceleme ekranına düşsün (öneri) / RG tarihini kullan.
 - Çalışma ve Toplum özetleri `internal_only` kalırsa inceleme ekranında gösterilsin mi? (Faydalı, ama kullanıcıya gitmemeli.)
 - Çok kiracılı KB: org'a özel kaynak (kendi TİS'i) ortak KB'ye mi, org scope'una mı? Öneri: `source.org_id` nullable; null = ortak.

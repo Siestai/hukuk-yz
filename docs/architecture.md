@@ -54,6 +54,8 @@ hukuk-yz/
 
 Python tarafı `uv` workspace; her servis ve paket kendi `pyproject.toml`. Frontend `pnpm` workspace.
 
+**Deploy birimi = servis.** `services/` altındaki her klasörün kendi `Dockerfile`'ı ve image'ı vardır; k8s'te ayrı Deployment olarak bağımsız ölçeklenir ve deploy edilir. Monorepo yalnızca kodun tek yerde durmasıdır; `packages/` build sırasında ilgili image'a kopyalanır. CI path filter ile sadece değişen servisi build eder.
+
 ## 4. Veri akışları
 
 ### 4.1 Soru → cevap
@@ -158,7 +160,7 @@ Memory'nin bitemporal modeli case yaşadığı sürece geçerlidir; `forget` ve 
 
 | Konu | Seçenekler | Öneri | Karar |
 |---|---|---|---|
-| Hesap motoru ve atıf kapısı nerede | `app` / `agent` | `app` (veriyle beraber, bağımsız test, dashboard'dan da çağrılır); `agent` performans gerekirse paketi lokal import eder | bekliyor |
+| Hesap motoru ve atıf kapısı nerede | `app` / `agent` | `app` | **`app`** (Orhan, 2026-10-02) |
 | Çalışma ve Toplum özetleri | izin iste / kullanma / sadece iç kullanım | izin iste; gelene kadar `internal_only`. Arada özetler yalnızca arama sinyali olarak gömülür, metni kullanıcıya ve LLM'e gitmez (`data-model.md` §8). Bunun türev kullanım sayılıp sayılmadığı hukukçulara sorulacak | toplantı |
 | LLM sağlayıcı ve bölge | Anthropic/OpenAI direkt / Bedrock-Vertex EU | EU region zorunlu; sağlayıcı eval'e göre | toplantı |
 | İsim/marka | aday listesi | ayrı doküman | toplantı |
