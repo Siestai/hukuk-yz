@@ -41,7 +41,6 @@ def test_extract_text_decodes_legacy_cp1254(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("name", "detected", "status", "reason"),
     [
-        ("legacy.pdf", DetectedType.DOC, "unsupported", "legacy_doc"),
         ("stub.pdf", DetectedType.HTML, "rejected", "html_stub"),
         ("pic.jpg", DetectedType.IMAGE, "needs_ocr", "image"),
         ("sheet.xlsx", DetectedType.XLSX_XLSM, "skipped", "type_xlsx_xlsm"),

@@ -12,6 +12,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from hukuk_ingest.detect import DetectedType
+from hukuk_ingest.legacy_doc import UnsupportedDoc, read_doc
 from hukuk_ingest.quality import PAGE_BREAK
 
 _CDATA_RE = re.compile(r"<content>\s*<!\[CDATA\[(.*?)\]\]>\s*</content>", re.DOTALL)
@@ -79,6 +80,16 @@ def _udf(path: Path) -> Extraction:
     )
 
 
+def _doc(path: Path) -> Extraction:
+    try:
+        text = read_doc(path)
+    except UnsupportedDoc as exc:
+        return Extraction("unsupported", reason=exc.reason)
+    return Extraction(
+        "ok", text, extractor="olefile-piece-table", extractor_version=version("olefile")
+    )
+
+
 def _text(path: Path) -> Extraction:
     data = path.read_bytes()
     try:
@@ -99,7 +110,7 @@ def extract(path: Path, detected: DetectedType) -> Extraction:
         case DetectedType.TEXT:
             return _text(path)
         case DetectedType.DOC:
-            return Extraction("unsupported", reason="legacy_doc")
+            return _doc(path)
         case DetectedType.HTML:
             return Extraction("rejected", reason="html_stub")
         case DetectedType.IMAGE:

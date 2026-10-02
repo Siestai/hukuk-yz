@@ -3,7 +3,11 @@ name = "hukuk-ingest"
 version = "0.1.0"
 description = "Content-based file type detection and text extraction for the hukuk-agent corpus"
 requires-python = ">=3.12"
-dependencies = ["pypdfium2>=4.30", "python-docx>=1.1"]
+dependencies = [
+    "olefile>=0.47",
+    "pypdfium2>=4.30",
+    "python-docx>=1.1",
+]
 
 [project.scripts]
 hukuk-ingest = "hukuk_ingest.cli:main"
