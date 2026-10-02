@@ -1,8 +1,10 @@
 # Build context is the repo root (packages/ is copied into the image):
 #   docker build -f services/app/Dockerfile .
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+# The venv must be built at the path it runs from: console scripts (alembic, uvicorn) get an
+# absolute shebang to the venv python.
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
-WORKDIR /build
+WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY services/app/pyproject.toml services/app/pyproject.toml
 COPY packages/models/pyproject.toml packages/models/pyproject.toml
@@ -19,7 +21,7 @@ FROM python:3.12-slim-bookworm
 ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
 RUN useradd --system --uid 10001 --no-create-home app
 WORKDIR /app
-COPY --from=builder /build/.venv /app/.venv
+COPY --from=builder /app/.venv /app/.venv
 COPY services/app/alembic.ini services/app/alembic.ini
 COPY services/app/alembic services/app/alembic
 WORKDIR /app/services/app
