@@ -37,7 +37,7 @@ Her kaynak türü kaydının üst kimliği.
 | alan | tip | not |
 |---|---|---|
 | id | uuid | |
-| category | enum A..H | |
+| category | enum | A..H, DB etiketleri: `statute` / `treaty` / `decision` / `admin_act` / `collective_agreement` / `case_document` / `doctrine` / `calc` |
 | title | text | |
 | official_ref | text | resmi künye (RG tarih/sayı, E/K no, genelge no) |
 | source_rank | enum | `official_primary` / `official_secondary` / `editorial` / `academic` (md. 26) |
@@ -51,7 +51,7 @@ Her kaynak türü kaydının üst kimliği.
 |---|---|
 | `ingest_job` | id, org_id, created_by, kind (`upload` / `crawl` / `bulk`), status, started_at, finished_at, stats jsonb |
 | `ingest_file` | id, job_id, path, sha256, mime, detected_type, size, error? |
-| `extraction` | id, file_id, parser_name, parser_version, extracted_at, fields jsonb, confidence jsonb, warnings jsonb, raw_text_ref |
+| `extraction` | id, file_id, source_id? (inceleme kuyruğu tipli kayıt oluşmadan kaynağı bulsun diye), parser_name, parser_version, extracted_at, fields jsonb, confidence jsonb, warnings jsonb, raw_text_ref |
 
 `extraction.fields` parser'ın çıkardığı ham alanlar; onaydan sonra tipli tabloya kopyalanır. Böylece parser değişince yeniden çıkarma eski onayı bozmaz.
 
@@ -89,7 +89,7 @@ Toplu yüklemede (6.342 karar) onay tek tek olmaz: inceleme ekranı güven skoru
 
 ### 5.1 Mevzuat (A)
 
-**`statute`**: id, source_id, number (4857), kind (`kanun` / `khk` / `yönetmelik` / `tüzük` / `tebliğ`), short_name (İşK), full_title, rg_date, rg_number, repealed_at?
+**`statute`**: id, source_id, number (4857), kind (`kanun` / `khk` / `yonetmelik` / `tuzuk` / `teblig`), short_name (İşK), full_title, rg_date, rg_number, repealed_at?
 
 **`statute_article`**: id, statute_id, article_no (text: "18", "Ek 2", "Geçici 4"), ordinal (sıralama için)
 
@@ -102,10 +102,12 @@ Toplu yüklemede (6.342 karar) onay tek tek olmaz: inceleme ekranı güven skoru
 | text | madde metni, o sürüm |
 | heading | kenar başlığı |
 | valid_from | yürürlük başlangıcı |
-| valid_to | null = hâlâ yürürlükte |
+| valid_to | null = hâlâ yürürlükte; CHECK `valid_from < valid_to` (yarı açık aralık `[from, to)`) |
 | amending_ref | değiştiren kanun/RG künyesi |
 | change_kind | `original` / `amended` / `repealed` / `added` |
 | provenance alanları | |
+
+Enum etiketleri DB'de ASCII ve `snake_case` (`yonetmelik`, `genel_yazi`); Türkçe karşılığı yalnızca arayüzde gösterilir.
 
 Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND (valid_to IS NULL OR valid_to > date)`. Tek satır dönmeli; birden fazla dönerse veri hatası, QA'da yakalanır.
 
@@ -120,7 +122,7 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 | id, source_id | |
 | court | enum: `aym` / `yargitay` / `danistay` / `bam` / `bim` / `ilk_derece` / `aihm` / `abad` / `foreign` |
 | court_level | enum: `aym` / `ibk` / `hgk_iddk` / `daire` / `bam_bim` / `ilk_derece` / `international` (md. 15-16 otorite sırası) |
-| chamber | "9. HD", "10. HD", "İDDK" |
+| chamber | "9. HD", "10. HD"; NOT NULL DEFAULT `''` (HGK, İBK, AYM gibi dairesiz kararlar boş string; unique indeks NULL'larda çakışmayı kaçırmasın diye) |
 | decision_kind | AYM için: `norm_denetimi` / `iptal` / `bireysel_basvuru` / `red`; diğerleri: `karar` / `ibk` (md. 17) |
 | esas_no, karar_no | "2017/16188" |
 | decision_date | |
@@ -139,7 +141,7 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 
 ### 5.3 İdari düzenleme (D)
 
-**`admin_act`**: id, source_id, issuer (`sgk` / `csgb` / `hazine` / ...), kind (`genelge` / `tebliğ` / `genel_yazı` / `görüş` / `talimat`), number ("2018/38"), subject
+**`admin_act`**: id, source_id, issuer (`sgk` / `csgb` / `hazine` / ...), kind (`genelge` / `teblig` / `genel_yazi` / `gorus` / `talimat`), number ("2018/38"), subject
 
 **`admin_act_version`**: id, act_id, text, valid_from, valid_to, superseded_by_ref, provenance. Genelgeler sık değişir ve birbirini açıkça yürürlükten kaldırır; `superseded_by_ref` zinciri burada tutulur.
 
