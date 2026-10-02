@@ -5,6 +5,7 @@ from app.loaders.decisions import prepare, read_rows
 from app.loaders.report import LoadCounts, build_summary, render_markdown, write_report
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
+BANDS = {"high": 7, "medium": 4, "low": 13}
 
 
 def _summary() -> dict[str, Any]:
@@ -17,7 +18,7 @@ def _summary() -> dict[str, Any]:
 def test_counts_and_bands() -> None:
     s = _summary()
     assert (s["total"], s["new"], s["skipped"], s["errors"]) == (25, 24, 1, 0)
-    assert s["bands"] == {"high": 11, "medium": 5, "low": 8}
+    assert s["bands"] == BANDS
     assert sum(sum(b.values()) for b in s["bands_by_court"].values()) == 24
     assert sum(sum(b.values()) for b in s["bands_by_layout"].values()) == 24
     assert s["bands_by_court"]["(boş)"] == {"high": 0, "medium": 0, "low": 1}

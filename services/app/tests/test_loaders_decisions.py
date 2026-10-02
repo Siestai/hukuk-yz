@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import json
 import uuid
@@ -20,12 +21,13 @@ from app.loaders.decisions import (
     read_files,
     read_rows,
 )
-from app.loaders.normalize import COURT_LEVELS, COURTS, OUTCOMES
+from app.loaders.normalize import BOOKKEEPING, COURT_LEVELS, COURTS, OUTCOMES
 from app.loaders.report import LoadCounts, PreparedRecord, build_summary
 from app.models.common import (
     Extraction,
     IngestFile,
     IngestJob,
+    IngestStatus,
     License,
     RecordStatus,
     Source,
@@ -58,7 +60,8 @@ def test_the_same_pdf_in_two_issues_is_one_record() -> None:
 
 def test_a_record_carries_every_parser_field_and_its_provenance() -> None:
     first = _by_page(_prepared()[0])[10]
-    assert REQUIRED_KEYS <= first.fields.keys()
+    assert REQUIRED_KEYS - BOOKKEEPING <= first.fields.keys()
+    assert not BOOKKEEPING & first.fields.keys()
     assert first.title == "Fixture 00"
     assert first.official_ref == "Yargıtay 9. HD, E. 2003/2518 K. 2003/15276, 23.09.2003"
     assert first.raw_text_ref == f"data/extracted/{first.sha256[:2]}/{first.sha256}.clean.txt"
@@ -196,21 +199,13 @@ def test_dry_run_needs_no_database_and_writes_a_report_without_text(
     monkeypatch.delenv("DATABASE_URL", raising=False)
     out = tmp_path / "report"
     assert decisions.main([str(FIXTURE), "--dry-run", "--report", str(out)]) == 0
-    summary = json.loads((out / "load-summary.json").read_text(encoding="utf-8"))
-    assert (summary["total"], summary["new"], summary["skipped"], summary["errors"]) == (
-        FIXTURE_LINES,
-        FIXTURE_LINES - 1,
-        1,
-        0,
-    )
-    assert sum(summary["bands"].values()) == FIXTURE_LINES - 1
     for name in ("load-summary.json", "load-summary.md"):
         content = (out / name).read_text(encoding="utf-8")
         assert "Fixture" not in content
         assert "gerekçe" not in content
 
 
-def test_approving_needs_a_reviewer_and_a_database() -> None:
+def test_approve_band_needs_a_reviewer_and_no_dry_run() -> None:
     with pytest.raises(SystemExit):
         decisions.main([str(FIXTURE), "--approve-band", "high"])
     with pytest.raises(SystemExit):
@@ -273,6 +268,20 @@ async def test_job_stats_hold_the_summary(kb_factory: async_sessionmaker[AsyncSe
         assert job is not None
         assert job.stats == json.loads(json.dumps(summary))
         assert job.finished_at is not None
+        assert job.status is IngestStatus.completed
+
+
+async def test_a_job_with_errors_is_marked_failed(
+    kb_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    prepared, _ = _prepared()
+    job_id = await load(kb_factory, prepared[:1], LoadCounts())
+    assert job_id is not None
+    await finish_job(kb_factory, job_id, {"errors": 1})
+    async with kb_factory() as session:
+        job = await session.get(IngestJob, job_id)
+        assert job is not None
+        assert job.status is IngestStatus.failed
 
 
 async def test_a_second_run_adds_nothing(kb_factory: async_sessionmaker[AsyncSession]) -> None:
@@ -334,13 +343,85 @@ async def test_approve_band_publishes_the_band_as_unverified(
     }
 
 
+async def test_approve_band_publishes_a_source_with_two_extractions_once(
+    kb_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    prepared, _ = _prepared()
+    await load(kb_factory, prepared, LoadCounts())
+    await load(
+        kb_factory, [dataclasses.replace(p, parser_version="6") for p in prepared], LoadCounts()
+    )
+    high = sum(p.confidence["band"] == "high" for p in prepared)
+    result = await approve_band(kb_factory, "high", uuid.uuid4())
+    assert (result.published, result.conflicts, result.publish_failed) == (high, [], [])
+    async with kb_factory() as session:
+        versions = (
+            (
+                await session.execute(
+                    select(Extraction.parser_version).join(
+                        Decision, Decision.extraction_id == Extraction.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert versions == ["6"] * high
+
+
+async def test_approve_band_counts_a_publish_failure_and_goes_on(
+    kb_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    prepared, _ = _prepared()
+    highs = [p for p in prepared if p.confidence["band"] == "high"]
+    # A stale band: high on record, but without the court_level publish needs.
+    stale = dataclasses.replace(highs[0], fields={**highs[0].fields, "court_level": ""})
+    await load(kb_factory, [stale, *highs[1:]], LoadCounts())
+    result = await approve_band(kb_factory, "high", uuid.uuid4())
+    assert result.published == len(highs) - 1
+    assert result.conflicts == []
+    assert [(sha, "court_level" in reason) for sha, reason in result.publish_failed] == [
+        (stale.sha256[:12], True)
+    ]
+    assert await _count(kb_factory, Decision) == len(highs) - 1
+
+
 async def test_approve_band_reports_a_live_key_collision(
     kb_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     prepared, _ = _prepared()
-    original = next(p for p in prepared if p.confidence["band"] == "high" and p.fields["esas_no"])
-    clone = dataclasses.replace(original, sha256="cd" * 32)  # same key, another file
-    await load(kb_factory, [original, clone], LoadCounts())
-    result = await approve_band(kb_factory, "high", uuid.uuid4())
-    assert (result.published, len(result.conflicts)) == (1, 1)
-    assert await _count(kb_factory, Decision) == 1
+    by_page = _by_page(prepared)
+    pair = (by_page[16], by_page[32])  # different_text group: one key, both low
+    assert pair[0].fields["duplicate_group"]["key"] == pair[1].fields["duplicate_group"]["key"]
+    assert {p.confidence["band"] for p in pair} == {"low"}
+    await load(kb_factory, prepared, LoadCounts())
+    result = await approve_band(kb_factory, "low", uuid.uuid4())
+    assert {sha for sha in result.conflicts} & {p.sha256[:12] for p in pair}
+    assert len(result.conflicts) == 2  # this pair and the date_mismatch pair, one loser each
+    async with kb_factory() as session:
+        published = (
+            (
+                await session.execute(
+                    select(IngestFile.sha256)
+                    .join(Extraction, Extraction.file_id == IngestFile.id)
+                    .join(Decision, Decision.extraction_id == Extraction.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert len({p.sha256 for p in pair} & set(published)) == 1
+
+
+async def test_the_cli_approves_a_band_end_to_end(
+    kb_factory: async_sessionmaker[AsyncSession],
+    database_url: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    prepared, _ = _prepared()
+    high = sum(p.confidence["band"] == "high" for p in prepared)
+    argv = [str(FIXTURE), "--approve-band", "high", "--reviewer", str(uuid.uuid4())]
+    assert await asyncio.to_thread(decisions.main, argv) == 0
+    assert f"published {high}, conflicts 0, publish_failed 0" in capsys.readouterr().out
+    assert await _count(kb_factory, Decision) == high
+    assert await _count(kb_factory, Source) == len(prepared)

@@ -96,9 +96,25 @@ def test_the_score_never_goes_below_zero() -> None:
     assert result["score"] == 0
 
 
-def test_fields_a_court_does_not_have_are_not_missing() -> None:
-    abad = _fields(court="abad", court_level="international", chamber="", esas_no="", karar_no="")
-    assert confidence(abad, []) == {"score": 100, "band": "high", "reasons": []}
+def test_a_court_without_chambers_is_not_missing_a_chamber() -> None:
+    hgk = _fields(court_level="hgk_iddk", chamber="")
+    assert confidence(hgk, []) == {"score": 100, "band": "high", "reasons": []}
+
+
+@pytest.mark.parametrize("overrides", [{"esas_no": "", "karar_no": ""}, {"karar_no": ""}])
+def test_no_court_is_exempt_from_the_critical_fields(overrides: dict[str, Any]) -> None:
+    abad = _fields(court="abad", court_level="international", chamber="", **overrides)
+    assert confidence(abad, [])["band"] == "low"
+
+
+def test_a_court_without_a_level_is_low() -> None:
+    result = confidence(_fields(court_level=""), [])
+    assert (result["band"], result["reasons"]) == ("low", ["court_level_missing"])
+
+
+@pytest.mark.parametrize("warning", ["court_unmapped", "court_level_unmapped"])
+def test_unmapped_court_warnings_are_low(warning: str) -> None:
+    assert confidence(_fields(), [warning])["band"] == "low"
 
 
 def test_warnings_outside_the_table_are_ignored() -> None:

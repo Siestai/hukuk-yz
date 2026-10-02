@@ -6,6 +6,10 @@
 Every decision file becomes `ingest_file` + `source` (status `analyzed`) + `extraction` with a
 confidence score, all under one `ingest_job`. No `decision` row is written unless
 `--approve-band` is given; that flag is for tests and development.
+
+Idempotency (sha256 + parser name + parser version) is a read-then-insert, not a database
+constraint: concurrent runs are not supported, and a retry after a crash between a batch commit
+and `finish_job` may need cleaning up by hand.
 """
 
 import argparse
@@ -22,7 +26,8 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import insert, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.exc import DBAPIError, IntegrityError, InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
@@ -268,6 +273,12 @@ async def _write(
     await session.execute(insert(Extraction), extractions)
 
 
+def _is_row_error(exc: DBAPIError) -> bool:
+    """A database error caused by the row (constraint, value out of range), not by the
+    connection or the server; only these are retried row by row."""
+    return not (isinstance(exc, OperationalError | InterfaceError) or exc.connection_invalidated)
+
+
 def _error_name(exc: Exception) -> str:
     """Exception class only: SQLAlchemy messages carry the statement parameters (decision text)."""
     return type(getattr(exc, "orig", None) or exc).__name__
@@ -301,14 +312,18 @@ async def load(
                 await _write(session, batch, existing, job.id)
                 await session.commit()
             counts.new += len(batch)
-        except Exception:
+        except DBAPIError as batch_exc:
+            if not _is_row_error(batch_exc):
+                raise
             for p in batch:
                 try:
                     async with factory() as session:
                         await _write(session, [p], existing, job.id)
                         await session.commit()
                     counts.new += 1
-                except Exception as exc:
+                except DBAPIError as exc:
+                    if not _is_row_error(exc):
+                        raise
                     counts.errors.append({"ref": p.ref, "error": _error_name(exc)})
     return job.id
 
@@ -316,11 +331,13 @@ async def load(
 async def finish_job(
     factory: async_sessionmaker[AsyncSession], job_id: uuid.UUID, summary: dict[str, Any]
 ) -> None:
+    """`completed`, or `failed` when the summary reports errors."""
+    status = IngestStatus.failed if summary["errors"] else IngestStatus.completed
     async with factory() as session:
         await session.execute(
             update(IngestJob)
             .where(IngestJob.id == job_id)
-            .values(status=IngestStatus.completed, finished_at=datetime.now(UTC), stats=summary)
+            .values(status=status, finished_at=datetime.now(UTC), stats=summary)
         )
         await session.commit()
 
@@ -329,28 +346,37 @@ async def finish_job(
 class ApproveResult:
     published: int = 0
     conflicts: list[str] = field(default_factory=list)
+    publish_failed: list[tuple[str, str]] = field(default_factory=list)
 
 
 async def approve_band(
     factory: async_sessionmaker[AsyncSession], band: str, reviewer_id: uuid.UUID
 ) -> ApproveResult:
-    """Approve every `analyzed` decision extraction of a band and publish it (kb.py). A live-key
-    collision rolls that one back and is listed in `conflicts` (sha256 prefix). Development and
-    tests only: bulk approval belongs to the review screen."""
+    """Approve and publish (kb.py) the newest decision extraction of every source that is still
+    `analyzed`, for the records of a band. A live-key collision is listed in `conflicts`
+    (sha256 prefix); any other record `publish_decision` refuses is listed in `publish_failed`
+    (sha256 prefix, reason). Each record has its own savepoint, so neither stops the run.
+    Development and tests only: bulk approval belongs to the review screen."""
     result = ApproveResult()
     async with factory() as session:
+        newest = (
+            select(Extraction.id, IngestFile.sha256, Extraction.confidence)
+            .ext(distinct_on(Extraction.source_id))
+            .join(IngestFile, IngestFile.id == Extraction.file_id)
+            .join(Source, Source.id == Extraction.source_id)
+            .where(
+                Extraction.parser_name == PARSER_NAME,
+                Source.category == SourceCategory.decision,
+                Source.status == RecordStatus.analyzed,
+            )
+            .order_by(Extraction.source_id, Extraction.extracted_at.desc(), Extraction.id)
+            .subquery()
+        )
         queue = (
             await session.execute(
-                select(Extraction.id, IngestFile.sha256)
-                .join(IngestFile, IngestFile.id == Extraction.file_id)
-                .join(Source, Source.id == Extraction.source_id)
-                .where(
-                    Extraction.parser_name == PARSER_NAME,
-                    Extraction.confidence["band"].as_string() == band,
-                    Source.category == SourceCategory.decision,
-                    Source.status == RecordStatus.analyzed,
-                )
-                .order_by(IngestFile.sha256)
+                select(newest.c.id, newest.c.sha256)
+                .where(newest.c.confidence["band"].as_string() == band)
+                .order_by(newest.c.sha256)
             )
         ).all()
         for extraction_id, sha in queue:
@@ -367,7 +393,9 @@ async def approve_band(
                 result.published += 1
             except IntegrityError:
                 result.conflicts.append(sha[:12])
-            if (result.published + len(result.conflicts)) % BATCH == 0:
+            except ValueError as exc:
+                result.publish_failed.append((sha[:12], str(exc)))
+            if (result.published + len(result.conflicts) + len(result.publish_failed)) % BATCH == 0:
                 await session.commit()
         await session.commit()
     return result
@@ -396,9 +424,14 @@ async def _load_to_db(
             await finish_job(factory, job_id, summary)
         if args.approve_band:
             approved = await approve_band(factory, args.approve_band, args.reviewer)
-            print(f"published {approved.published}, conflicts {len(approved.conflicts)}")
+            print(
+                f"published {approved.published}, conflicts {len(approved.conflicts)}, "
+                f"publish_failed {len(approved.publish_failed)}"
+            )
             for sha in approved.conflicts:
                 print(f"conflict: {sha}")
+            for sha, reason in approved.publish_failed:
+                print(f"publish_failed: {sha}: {reason}")
         return summary
     finally:
         await engine.dispose()

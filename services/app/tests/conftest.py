@@ -11,8 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from alembic import command
 from app.db import make_engine, make_session_factory
-from app.loaders.decisions import load, prepare, read_rows
-from app.loaders.report import LoadCounts
 
 ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
 
@@ -51,14 +49,3 @@ async def kb_factory(
     yield make_session_factory(engine)
     await clean()
     await engine.dispose()
-
-
-@pytest.fixture
-async def kb_loaded(
-    kb_factory: async_sessionmaker[AsyncSession],
-) -> async_sessionmaker[AsyncSession]:
-    """`kb_factory` with the decision fixture loaded as review-queue rows."""
-    rows, _, _ = read_rows(ALEMBIC_INI.parent / "tests" / "fixtures" / "decisions_fixture.jsonl")
-    prepared, _ = prepare(rows, {})
-    await load(kb_factory, prepared, LoadCounts())
-    return kb_factory

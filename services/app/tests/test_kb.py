@@ -1,5 +1,6 @@
 import uuid
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -8,6 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.kb import publish_decision
+from app.loaders.decisions import load, prepare, read_rows
+from app.loaders.report import LoadCounts
 from app.models.common import (
     Court,
     Extraction,
@@ -18,6 +21,19 @@ from app.models.common import (
     Verification,
 )
 from app.models.decision import Decision
+
+FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
+
+
+@pytest.fixture
+async def kb_loaded(
+    kb_factory: async_sessionmaker[AsyncSession],
+) -> async_sessionmaker[AsyncSession]:
+    """`kb_factory` with the decision fixture loaded as review-queue rows."""
+    rows, _, _ = read_rows(FIXTURE)
+    prepared, _ = prepare(rows, {})
+    await load(kb_factory, prepared, LoadCounts())
+    return kb_factory
 
 
 async def _extraction(session: AsyncSession, journal_page: int) -> Extraction:

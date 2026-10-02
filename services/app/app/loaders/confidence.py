@@ -7,11 +7,14 @@ score only orders records inside a band. The review screen sorts by it and may o
 approval of the `high` band; nothing here approves anything.
 
 Why each rule:
-- low: a record whose identity (court, esas, karar, date, chamber) cannot be established cannot be
-  matched against the official source later; no body or summary-only text means there is nothing to
-  cite; a layout the parser does not know means its fields are unreliable; duplicate groups whose
-  texts differ or whose dates disagree need a human to pick the right file, and the shorter copy of
-  a same-text group is redundant.
+- low: a record whose identity (court, esas, karar, date, and chamber where the court has
+  chambers) cannot be established cannot be matched against the official source later; this holds
+  for every court, so a record without E/K (foreign courts, AYM individual applications) is low
+  and never covered by bulk approval. A court the schema does not know (`court_unmapped`,
+  `court_level_unmapped`) or a court without a level cannot be published at all. No body or
+  summary-only text means there is nothing to cite; a layout the parser does not know means its
+  fields are unreliable; duplicate groups whose texts differ or whose dates disagree need a human
+  to pick the right file, and the shorter copy of a same-text group is redundant.
 - medium: the parser found the field but the record contradicts itself or the field was guessed
   (dates from the closing, inferred statutes, approximate body start).
 """
@@ -31,6 +34,9 @@ RULES: dict[str, tuple[Band, int]] = {
     "missing_karar_no": ("low", LOW_PENALTY),
     "missing_decision_date": ("low", LOW_PENALTY),
     "missing_chamber": ("low", LOW_PENALTY),
+    "court_unmapped": ("low", LOW_PENALTY),
+    "court_level_unmapped": ("low", LOW_PENALTY),
+    "court_level_missing": ("low", LOW_PENALTY),
     "layout_unknown": ("low", LOW_PENALTY),
     "body_not_found": ("low", LOW_PENALTY),
     "text_summary_only": ("low", LOW_PENALTY),
@@ -50,13 +56,16 @@ RULES: dict[str, tuple[Band, int]] = {
     "duplicate_same_text": ("medium", MEDIUM_PENALTY),
 }
 _BAND_ORDER: tuple[Band, ...] = ("low", "medium", "high")
-_CRITICAL = (*qa.CRITICAL_FIELDS, "chamber")
 
 
 def reasons_of(fields: dict[str, Any], warnings: list[str]) -> list[str]:
     """Rule-table reasons that fire for a normalized record (`fields` as stored on the
     extraction, `warnings` parser + loader warnings), in table order."""
-    fired = {f"missing_{name}" for name in qa.missing_fields(fields) if name in _CRITICAL}
+    fired = {f"missing_{name}" for name in qa.CRITICAL_FIELDS if not fields[name]}
+    if qa.applies("chamber", fields) and not fields["chamber"]:
+        fired.add("missing_chamber")  # the only exemption: courts without chambers
+    if fields["court"] and not fields["court_level"]:
+        fired.add("court_level_missing")
     fired |= {qa.warning_code(w) for w in warnings}
     if fields["layout"] == "unknown":
         fired.add("layout_unknown")

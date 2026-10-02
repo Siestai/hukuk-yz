@@ -4,6 +4,7 @@ import uuid
 from datetime import date
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.common import (
@@ -15,6 +16,7 @@ from app.models.common import (
     Review,
     ReviewDecision,
     Source,
+    SourceCategory,
     TextCompleteness,
     Verification,
 )
@@ -40,8 +42,21 @@ async def publish_decision(
         raise ValueError("review does not belong to the extraction")
     if review.decision is ReviewDecision.reject:
         raise ValueError("a rejected review cannot be published")
-    source = await session.get(Source, extraction.source_id) if extraction.source_id else None
-    if source is None or source.status is not RecordStatus.analyzed:
+    source = (
+        (
+            await session.execute(
+                select(Source)
+                .where(Source.id == extraction.source_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).scalar_one_or_none()
+        if extraction.source_id
+        else None
+    )
+    if source is None or source.category is not SourceCategory.decision:
+        raise ValueError("extraction has no source of category 'decision'")
+    if source.status is not RecordStatus.analyzed:
         raise ValueError("extraction has no source in status 'analyzed'")
 
     merged: dict[str, Any] = {**extraction.fields, **(review.edits or {})}
