@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,6 +15,10 @@ from hukuk_ingest.decisions.fields import (
 )
 from hukuk_ingest.decisions.layout import detect_layout
 from hukuk_ingest.decisions.parse import parse_text
+from hukuk_ingest.pipeline import cache_base
+
+DATA = Path(__file__).resolve().parents[3] / "data" / "extracted"
+GOLD = Path(__file__).parent / "gold" / "decisions_gold.jsonl"
 
 
 def parse(text: str) -> DecisionFields:
@@ -405,3 +411,41 @@ def test_parse_text_record_has_provenance_and_constant_verification() -> None:
     )
     assert record.sha256 == "cd" * 32
     assert record.missing == []
+
+
+# --- gold set -------------------------------------------------------------------------------
+
+
+def _gold_rows() -> list[dict[str, Any]]:
+    rows = [json.loads(line) for line in GOLD.read_text(encoding="utf-8").splitlines()]
+    return [r for r in rows if "_meta" not in r]
+
+
+@pytest.mark.skipif(not DATA.is_dir(), reason="data/extracted not available")
+def test_gold_set_accuracy() -> None:
+    rows = _gold_rows()
+    assert len(rows) >= 60
+    hits: dict[str, int] = {}
+    for row in rows:
+        clean = cache_base(DATA, row["sha256"]).with_suffix(".clean.txt")
+        if not clean.is_file():
+            pytest.skip("gold decision text is not in data/extracted")
+        got = parse_text(clean.read_text(encoding="utf-8"), "gold", row["sha256"]).to_dict()
+        for name in (
+            "court",
+            "court_level",
+            "chamber",
+            "esas_no",
+            "karar_no",
+            "decision_date",
+            "layout",
+        ):
+            hits[name] = hits.get(name, 0) + (got[name] == row[name])
+        want = [(e["statute"], e["articles"]) for e in row["related_articles"]]
+        have = [(e["statute"], e["articles"]) for e in got["related_articles"]]
+        hits["related_articles"] = hits.get("related_articles", 0) + (want == have)
+    accuracy = {name: n / len(rows) for name, n in hits.items()}
+    for name in ("court", "court_level", "chamber", "esas_no", "karar_no", "decision_date"):
+        assert accuracy[name] == 1.0, (name, accuracy)
+    assert accuracy["related_articles"] >= 0.95, accuracy
+    assert accuracy["layout"] >= 0.95, accuracy
