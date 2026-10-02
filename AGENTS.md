@@ -72,8 +72,14 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
 - Do we need permission from the journal to show its summaries?
 - Should we re-fetch the 6 missing decisions?
 - Baran's filter criteria for AYM / İBK / HGK / Danıştay collection: topics, date range, priority.
-- Who are the target users?
+- ~~Who are the target users?~~ Answered 2026-10-01: accountants (mali müşavir) first, then HR specialists, lawyers, corporate HR, inspectors. See `docs/decisions.md`.
 - What does "offline" mean? No GPU is available, so the LLM goes through an API. KVKK cross-border transfer must be addressed before real personal data is used, since servers are in the EU.
+
+## Decision log and design docs
+
+- **`docs/decisions.md` is the project decision log.** Every decision taken with the partners (WhatsApp group, meetings) or by Orhan lands there with a date and owner. Read it before proposing anything; update it in the same PR as the change it motivates.
+- Design: `docs/architecture.md`, `docs/data-model.md`, `docs/roadmap.md`. Market research: `docs/market-research-2026-10-02.md`.
+- **Verification rule (İbrahim, 2026-10-02):** the journal archive is a search aid only. Any Yargıtay decision shown to a user must be verified against https://karararama.yargitay.gov.tr/ by esas/karar number, and that site is the cited source. Unverified decisions are flagged, never silently passed. In code: `decision.verification`.
 
 ## Infra
 
@@ -84,4 +90,4 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
 ## Conventions
 
 - **User-facing language:** Turkish. **Code and docs:** English or Turkish, kept consistent.
-- **Commits:** ask before committing or branching. No secrets in the repo; secrets live under `data/` (gitignored).
+- **Commits:** an approved task includes its branch and PR; merge is always Orhan's. Commit and PR titles in English, docs in Turkish. No secrets in the repo; secrets live under `data/` (gitignored).
