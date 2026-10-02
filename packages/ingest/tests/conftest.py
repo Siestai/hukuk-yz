@@ -136,3 +136,84 @@ def one_text_file(tmp_path: Path) -> tuple[Path, Path, Path]:
     path = root / "a.txt"
     path.write_text("işçi ve işveren ile ilgili madde " * 5, encoding="utf-8")
     return root, path, tmp_path / "cache"
+
+
+# --- Synthetic decision texts (task 04). Names, numbers and sentences are made up. ----------
+
+_FILLER = "Örnek gerekçe cümlesi uydurma bir metindir. " * 25
+
+
+def era2_text(
+    court: str = "T.C\nYARGITAY\n9. HUKUK DAİRESİ",
+    esas: str = "2011/12345",
+    karar: str = "2012/6789",
+    tarih: str = "07.06.2012",
+    related: str = "4857 S. İşK/18-21\n1475 S. İşK/14",
+    result: str = "Temyiz olunan kararın yukarıda yazılı sebepten BOZULMASINA, "
+    "07.06.2012 gününde oybirliğiyle karar verildi.",
+) -> str:
+    """Journal header, İlgili Kanun, court block with inline labels, keywords, ÖZETİ, DAVA."""
+    return (
+        "Yargıtay Kararları\n117\n"
+        f"İlgili Kanun / Madde\n{related}\n{court}\n"
+        f"Esas No. {esas}\nKarar No. {karar}\nTarihi: {tarih}\n"
+        "• ÖRNEK ANAHTAR BİR\n• ÖRNEK ANAHTAR İKİ\nSATIR KIRILIMI\n"
+        "ÖZETİ: Örnek özet birinci satır\nikinci satır özet.\n"
+        "DAVA: Davacı, örnek talebin kabulünü istemiştir.\n"
+        "Yerel mahkeme, isteği reddetmiştir.\n"
+        "Hüküm süresi içinde davacı vekili tarafından temyiz edilmiş olmakla dosya incelendi.\n"
+        f"{_FILLER}\n\fYargıtay Kararları\n118\n{_FILLER}\n"
+        f"SONUÇ: {result}"
+    )
+
+
+def era1_text() -> str:
+    """Summary first: the court block with ESAS NO:/KARAR NO:/TARİHİ: follows the ÖZÜ."""
+    return (
+        "Yargıtay Kararları\n10\n"
+        "İlgili Kanun/md:\n1475 s.İşK: 14\nBK:90\n"
+        "• ÖRNEK ANAHTAR\nÖZÜ: Örnek özet satırı\nikinci satır.\n"
+        "T.C.\nYARGITAY\n10. Hukuk Dairesi\n"
+        "ESAS NO: 2003/111\nKARAR NO: 2003/222\nTARİHİ: 6.11.2003\n"
+        "DAVA: Davacı, örnek talebin kabulünü istemiştir.\n"
+        f"Yerel mahkeme, davayı reddetmiştir.\n{_FILLER}\n"
+        "SONUÇ: Temyiz olunan hükmün yukarıda yazılı sebepten ONANMASINA, "
+        "6.11.2003 gününde oybirliği ile karar verildi."
+    )
+
+
+def era3_text() -> str:
+    """Two-column extraction: the labels in a row, then the values in the same order."""
+    return (
+        "YARGITAY\n22. HUKUK DAİRESİ\nEsas No.\nKarar No.\nTarihi:\n"
+        "2014/90305\n2014/91998\n11.02.2014\n"
+        "İlgili Kanun / Madde\n6356 S. STK/25,26\n"
+        "• ÖRNEK ANAHTAR\nÖZETİ Örnek özet.\n"
+        f"DAVA: Davacı, örnek talebin kabulünü istemiştir.\n{_FILLER}\n"
+        "SONUÇ: Temyiz olunan kararın DÜZELTİLEREK ONANMASINA, "
+        "11.02.2014 tarihinde oybirliğiyle karar verildi."
+    )
+
+
+def era4_text() -> str:
+    """New Yargıtay template: roman-numbered sections."""
+    return (
+        "Yargıtay Kararları – Çalışma ve Toplum, 2024/1\n1\n"
+        "İlgili Kanun / Madde\n4857 S. İşK/41,63,68\n"
+        "T.C\nYARGITAY\n9. HUKUK DAİRESİ\n"
+        "Esas No. 2023/99001\nKarar No. 2023/99002\nTarihi: 08.11.2023\n"
+        "•ÖRNEK ANAHTAR\nÖZETİ: Örnek özet.\n"
+        f"I. DAVA\nDavacı örnek talepte bulunmuştur.\nV. GEREKÇE\n{_FILLER}\n"
+        "\fYargıtay Kararları – Çalışma ve Toplum, 2024/1\n2\n"
+        "VI. KARAR\nTemyiz olunan kararın BOZULMASINA, 08.11.2023 tarihinde oy birliğiyle "
+        "karar verildi."
+    )
+
+
+def foreign_text() -> str:
+    return (
+        "Alman Federal Mahkeme Kararları\n205\nHamm Eyalet İş Mahkemesi*\n"
+        "Karar Tarihi : 29.06.2005\nSayısı : 14 Sa 469/05\n"
+        "Örnek başlık cümlesi.\nÖzü:\nÖrnek özet.\n"
+        f"Olay:\nÖrnek olay anlatımı. {_FILLER}\n"
+    )
