@@ -122,6 +122,7 @@ class Court(PgEnum):
     aihm = "aihm"
     abad = "abad"
     foreign = "foreign"
+    uyusmazlik = "uyusmazlik"
 
 
 class CourtLevel(PgEnum):
@@ -132,6 +133,7 @@ class CourtLevel(PgEnum):
     bam_bim = "bam_bim"
     ilk_derece = "ilk_derece"
     international = "international"
+    uyusmazlik = "uyusmazlik"
 
 
 class Jurisdiction(PgEnum):

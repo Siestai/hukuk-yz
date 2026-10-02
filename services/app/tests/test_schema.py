@@ -81,6 +81,13 @@ def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) ->
     assert expected <= _tables(database_url)
 
 
+def test_downgrade_to_0002_and_back(alembic_config: Config, database_url: str) -> None:
+    command.upgrade(alembic_config, "head")
+    command.downgrade(alembic_config, "0002")
+    command.upgrade(alembic_config, "head")
+    command.check(alembic_config)
+
+
 def test_alembic_check_has_no_drift(alembic_config: Config, migrated: None) -> None:
     command.check(alembic_config)  # raises CommandError when models and migration differ
 
@@ -206,7 +213,7 @@ async def test_decision_unique_partial(conn: AsyncConnection) -> None:
     source_id = await _source(conn, "decision")
     first = await _decision(conn, source_id)
 
-    with pytest.raises(IntegrityError, match="uq_decision_court_chamber_esas_no_karar_no_live"):
+    with pytest.raises(IntegrityError, match="uq_decision_court_bam_region_chamber_esas_no"):
         async with conn.begin_nested():
             await _decision(conn, source_id)
 
@@ -224,9 +231,49 @@ async def test_chamberless_duplicate_is_rejected(conn: AsyncConnection) -> None:
     # chamber is NOT NULL DEFAULT '', so HGK rows (no chamber) collide like any other
     source_id = await _source(conn, "decision")
     await _hgk_decision(conn, source_id)
-    with pytest.raises(IntegrityError, match="uq_decision_court_chamber_esas_no_karar_no_live"):
+    with pytest.raises(IntegrityError, match="uq_decision_court_bam_region_chamber_esas_no"):
         async with conn.begin_nested():
             await _hgk_decision(conn, source_id)
+
+
+async def _bam_decision(conn: AsyncConnection, source_id: uuid.UUID, region: str) -> None:
+    await conn.execute(
+        text(
+            "INSERT INTO decision (court, court_level, chamber, bam_region, esas_no, karar_no, "
+            "text_completeness, source_id) VALUES ('bam', 'bam_bim', '12. HD', :r, "
+            "'2020/100', '2021/200', 'full', :s)"
+        ),
+        {"r": region, "s": source_id},
+    )
+
+
+async def test_same_chamber_and_numbers_in_different_bam_regions_coexist(
+    conn: AsyncConnection,
+) -> None:
+    source_id = await _source(conn, "decision")
+    await _bam_decision(conn, source_id, "İstanbul")
+    await _bam_decision(conn, source_id, "Ankara")
+
+
+async def test_same_bam_region_collides(conn: AsyncConnection) -> None:
+    source_id = await _source(conn, "decision")
+    await _bam_decision(conn, source_id, "İstanbul")
+    with pytest.raises(IntegrityError, match="uq_decision_court_bam_region_chamber_esas_no"):
+        async with conn.begin_nested():
+            await _bam_decision(conn, source_id, "İstanbul")
+
+
+async def test_uyusmazlik_court_is_accepted(conn: AsyncConnection) -> None:
+    source_id = await _source(conn, "decision")
+    result = await conn.execute(
+        text(
+            "INSERT INTO decision (court, court_level, esas_no, karar_no, text_completeness, "
+            "source_id) VALUES ('uyusmazlik', 'uyusmazlik', '2020/10', '2021/20', 'full', :s) "
+            "RETURNING source_chamber, bam_region, jurisdiction"
+        ),
+        {"s": source_id},
+    )
+    assert tuple(result.one()) == ("", "", None)
 
 
 async def test_statute_kind_number_is_unique(conn: AsyncConnection) -> None:

@@ -24,15 +24,17 @@ from app.models.common import (
 class Decision(UuidPkMixin, ProvenanceMixin, Base):
     __tablename__ = "decision"
     __table_args__ = (
-        # One live record per (court, chamber, esas, karar). chamber is NOT NULL DEFAULT '' (not
+        # One live record per (court, bam_region, chamber, esas, karar); two BAM regions can each
+        # have a "12. HD" with the same E/K. chamber and bam_region are NOT NULL DEFAULT '' (not
         # nullable) because Postgres unique indexes treat NULLs as distinct: HGK / İBK / AYM /
         # İDDK decisions have no chamber and would otherwise never collide. A plain column keeps
         # the index a simple column index that `alembic check` compares reliably (an expression
         # index over coalesce(chamber, '') would not be). esas_no / karar_no stay nullable and
         # NULL-distinct on purpose: ~4% of archive decisions lack them and must not collide.
         Index(
-            "uq_decision_court_chamber_esas_no_karar_no_live",
+            "uq_decision_court_bam_region_chamber_esas_no_karar_no_live",
             "court",
+            "bam_region",
             "chamber",
             "esas_no",
             "karar_no",
@@ -47,13 +49,18 @@ class Decision(UuidPkMixin, ProvenanceMixin, Base):
     court_level: Mapped[CourtLevel] = mapped_column(CourtLevel.pg_type("court_level"))
     # '' = no chamber (HGK, İBK, AYM, ...); see the unique index above
     chamber: Mapped[str] = mapped_column(server_default=sql_text("''"))
+    # HGK esas is written YYYY/D-N: D (the originating chamber) goes here, esas_no keeps YYYY/N
+    # (karararama format). '' when not applicable.
+    source_chamber: Mapped[str] = mapped_column(server_default=sql_text("''"))
+    # BAM / BİM region ("İstanbul", "Ankara"); '' for other courts
+    bam_region: Mapped[str] = mapped_column(server_default=sql_text("''"))
     # AYM: norm_denetimi / iptal / bireysel_basvuru / red; others: karar / ibk (md. 17)
     decision_kind: Mapped[str | None]
     esas_no: Mapped[str | None]
     karar_no: Mapped[str | None]
     decision_date: Mapped[date | None]
     event_date_hint: Mapped[date | None]
-    # null for courts outside the adli/idari split (AYM, AİHM, ABAD)
+    # null for courts outside the adli/idari split (AYM, AİHM, ABAD, Uyuşmazlık Mahkemesi)
     jurisdiction: Mapped[Jurisdiction | None] = mapped_column(Jurisdiction.pg_type("jurisdiction"))
     related_articles: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, server_default=sql_text("'[]'")
