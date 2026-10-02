@@ -1,4 +1,4 @@
-"""`hukuk-ingest scan <dir> --out <report_dir>`."""
+"""`hukuk-ingest scan <dir> --out <report_dir>` and `hukuk-ingest decisions parse ...`."""
 
 import argparse
 import json
@@ -13,6 +13,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
+from hukuk_ingest.decisions.run import run as parse_decisions
 from hukuk_ingest.pipeline import FileResult, error_result, process_file
 from hukuk_ingest.report import build_summary, dump_json, render_markdown
 
@@ -123,11 +124,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--text-cache", type=Path, default=Path("data/extracted"))
     p.add_argument("--workers", type=int, default=os.cpu_count() or 1)
     p.add_argument("--force", action="store_true", help="ignore cached extractions")
+    d = sub.add_parser(
+        "decisions", help="parse the extracted decision texts of the journal archive"
+    )
+    d_sub = d.add_subparsers(dest="decisions_command", required=True)
+    dp = d_sub.add_parser("parse", help="extract the decision fields into decisions.jsonl")
+    dp.add_argument("--scan-report", type=Path, required=True, help="files.jsonl of `scan`")
+    dp.add_argument("--text-cache", type=Path, default=Path("data/extracted"))
+    dp.add_argument("--out", type=Path, required=True, help="report directory")
+    dp.add_argument("--workers", type=int, default=os.cpu_count() or 1)
+    dp.add_argument("--issue", type=int, help="only this journal issue")
     args = parser.parse_args(argv)
-    if not args.dir.is_dir():
-        parser.error(f"not a directory: {args.dir}")
     if args.workers < 1:
         parser.error("--workers must be >= 1")
+    if args.command == "decisions":
+        if not args.scan_report.is_file():
+            parser.error(f"not a file: {args.scan_report}")
+        _, result = parse_decisions(
+            args.scan_report, args.text_cache, args.out, args.workers, args.issue
+        )
+        print(
+            f"{result['decisions']} decisions in {result['total_seconds']} s, "
+            f"{len(result['errors'])} errors"
+        )
+        return 1 if result["errors"] else 0
+    if not args.dir.is_dir():
+        parser.error(f"not a directory: {args.dir}")
 
     _, summary = scan(args.dir, args.out, args.text_cache, args.workers, args.force)
     print(
