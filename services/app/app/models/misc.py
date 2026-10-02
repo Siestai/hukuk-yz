@@ -4,14 +4,18 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric
-from sqlalchemy import text as sql_text
-from sqlalchemy.dialects.postgresql import JSONB, ExcludeConstraint
+from sqlalchemy import ForeignKey, Numeric
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.common import Base, BitemporalMixin, ProvenanceMixin, UuidPkMixin
-
-VALID_RANGE = "valid_to IS NULL OR valid_from <= valid_to"
+from app.models.common import (
+    Base,
+    BitemporalMixin,
+    ProvenanceMixin,
+    UuidPkMixin,
+    no_overlap,
+    valid_range_check,
+)
 
 
 class Treaty(UuidPkMixin, Base):
@@ -26,9 +30,9 @@ class Treaty(UuidPkMixin, Base):
 
 class TreatyArticleVersion(UuidPkMixin, ProvenanceMixin, BitemporalMixin, Base):
     __tablename__ = "treaty_article_version"
-    __table_args__ = (CheckConstraint(VALID_RANGE, name="valid_range"),)
+    __table_args__ = (valid_range_check(),)
 
-    treaty_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("treaty.id"))
+    treaty_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("treaty.id"), index=True)
     article_no: Mapped[str]
     text: Mapped[str]
 
@@ -46,9 +50,9 @@ class CollectiveAgreement(UuidPkMixin, Base):
 
 class CaArticleVersion(UuidPkMixin, ProvenanceMixin, BitemporalMixin, Base):
     __tablename__ = "ca_article_version"
-    __table_args__ = (CheckConstraint(VALID_RANGE, name="valid_range"),)
+    __table_args__ = (valid_range_check(),)
 
-    ca_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("collective_agreement.id"))
+    ca_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("collective_agreement.id"), index=True)
     article_no: Mapped[str]
     text: Mapped[str]
 
@@ -80,14 +84,8 @@ class CalcParameterVersion(UuidPkMixin, ProvenanceMixin, BitemporalMixin, Base):
 
     __tablename__ = "calc_parameter_version"
     __table_args__ = (
-        CheckConstraint(VALID_RANGE, name="valid_range"),
-        ExcludeConstraint(
-            ("param", "="),
-            (sql_text("daterange(valid_from, valid_to)"), "&&"),
-            using="gist",
-            where=sql_text("superseded_at IS NULL"),
-            name="ex_calc_parameter_version_no_overlap",
-        ),
+        valid_range_check(),
+        no_overlap("calc_parameter_version", "param"),
     )
 
     param: Mapped[str]

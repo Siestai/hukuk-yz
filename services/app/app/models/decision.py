@@ -24,8 +24,12 @@ from app.models.common import (
 class Decision(UuidPkMixin, ProvenanceMixin, Base):
     __tablename__ = "decision"
     __table_args__ = (
-        # One live record per (court, chamber, esas, karar). NULLs are distinct on purpose:
-        # ~4% of archive decisions lack esas/karar and must not collide with each other.
+        # One live record per (court, chamber, esas, karar). chamber is NOT NULL DEFAULT '' (not
+        # nullable) because Postgres unique indexes treat NULLs as distinct: HGK / İBK / AYM /
+        # İDDK decisions have no chamber and would otherwise never collide. A plain column keeps
+        # the index a simple column index that `alembic check` compares reliably (an expression
+        # index over coalesce(chamber, '') would not be). esas_no / karar_no stay nullable and
+        # NULL-distinct on purpose: ~4% of archive decisions lack them and must not collide.
         Index(
             "uq_decision_court_chamber_esas_no_karar_no_live",
             "court",
@@ -35,12 +39,14 @@ class Decision(UuidPkMixin, ProvenanceMixin, Base):
             unique=True,
             postgresql_where=sql_text("superseded_at IS NULL"),
         ),
+        Index("ix_decision_court_level_decision_date", "court_level", "decision_date"),
         Index("ix_decision_tsv", "tsv", postgresql_using="gin"),
     )
 
     court: Mapped[Court] = mapped_column(Court.pg_type("court"))
     court_level: Mapped[CourtLevel] = mapped_column(CourtLevel.pg_type("court_level"))
-    chamber: Mapped[str | None]
+    # '' = no chamber (HGK, İBK, AYM, ...); see the unique index above
+    chamber: Mapped[str] = mapped_column(server_default=sql_text("''"))
     # AYM: norm_denetimi / iptal / bireysel_basvuru / red; others: karar / ibk (md. 17)
     decision_kind: Mapped[str | None]
     esas_no: Mapped[str | None]

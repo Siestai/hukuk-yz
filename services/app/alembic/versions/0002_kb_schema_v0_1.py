@@ -24,7 +24,7 @@ depends_on = None
 
 EXTENSIONS = ("vector", "unaccent", "pgcrypto", "btree_gist")
 
-# Postgres enum name -> labels. tests/test_models.py checks these against the ORM enums.
+# Postgres enum name -> labels. tests/test_orm_consistency.py checks these against the ORM enums.
 ENUMS: dict[str, tuple[str, ...]] = {
     # data-model.md §2 (A..H spelled out)
     "source_category": (
@@ -119,7 +119,10 @@ TABLES = (
     "chunk",
 )
 
-VALID_RANGE = "valid_to IS NULL OR valid_from <= valid_to"
+# Strict "<": daterange(valid_from, valid_to) is [from, to), so from = to is an empty range that
+# bypasses the EXCLUDE constraint and is never returned by an as_of query.
+# Must equal app.models.common.VALID_RANGE (checked in tests/test_orm_consistency.py).
+VALID_RANGE = "valid_to IS NULL OR valid_from < valid_to"
 
 
 def _enum(name: str) -> pg.ENUM:
@@ -164,6 +167,12 @@ def _provenance_fks(table: str) -> list[sa.ForeignKeyConstraint]:
     ]
 
 
+def _provenance_indexes(table: str) -> None:
+    """btree indexes on the provenance FKs (review-screen lookups per source/extraction)."""
+    for column in ("source_id", "extraction_id", "review_id"):
+        op.create_index(f"ix_{table}_{column}", table, [column])
+
+
 def _valid_range_check() -> sa.CheckConstraint:
     # The naming convention turns "valid_range" into ck_<table>_valid_range.
     return sa.CheckConstraint(VALID_RANGE, name="valid_range")
@@ -184,9 +193,19 @@ def _no_overlap(table: str, key: str) -> None:
 
 def upgrade() -> None:
     for extension in EXTENSIONS:
-        # vector: pgvector (§8); unaccent: tsvector input; pgcrypto: gen_random_uuid() on
-        # older servers; btree_gist: uuid/text equality inside the EXCLUDE constraints.
+        # vector: pgvector (§8); unaccent: dictionary of turkish_unaccent; pgcrypto:
+        # gen_random_uuid() on older servers; btree_gist: uuid/text equality inside the
+        # EXCLUDE constraints.
         op.execute(f"CREATE EXTENSION IF NOT EXISTS {extension}")
+
+    # Unaccent-then-stem Turkish configuration (the plain 'turkish' one cannot be changed).
+    # Chain order matters: unaccent is a filtering dictionary that passes its output to
+    # turkish_stem. Used by both tsv triggers and by every tsquery site.
+    op.execute("CREATE TEXT SEARCH CONFIGURATION turkish_unaccent (COPY = turkish)")
+    op.execute(
+        "ALTER TEXT SEARCH CONFIGURATION turkish_unaccent "
+        "ALTER MAPPING FOR hword, hword_part, word WITH unaccent, turkish_stem"
+    )
 
     for name, labels in ENUMS.items():
         pg.ENUM(*labels, name=name).create(op.get_bind(), checkfirst=False)
@@ -220,7 +239,8 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name="pk_source"),
     )
-    op.create_index("ix_source_status", "source", ["status"])
+    # The review queue always filters by category, then status.
+    op.create_index("ix_source_category_status", "source", ["category", "status"])
 
     # ingest_job (§3). created_by has no FK: there is no user table yet.
     op.create_table(
@@ -251,12 +271,16 @@ def upgrade() -> None:
         _fk("ingest_file", "ingest_job", "job_id"),
     )
     op.create_index("ix_ingest_file_sha256", "ingest_file", ["sha256"])
+    op.create_index("ix_ingest_file_job_id", "ingest_file", ["job_id"])
 
     # extraction (§3): raw parser output, kept apart from approved typed rows.
     op.create_table(
         "extraction",
         _id(),
         sa.Column("file_id", sa.Uuid(), nullable=False),
+        # Lets the review queue find pending extractions of an 'analyzed' source before any
+        # typed row exists (§4). Nullable: not every extraction is tied to a source yet.
+        sa.Column("source_id", sa.Uuid(), nullable=True),
         sa.Column("parser_name", sa.Text(), nullable=False),
         sa.Column("parser_version", sa.Text(), nullable=False),
         sa.Column(
@@ -271,7 +295,10 @@ def upgrade() -> None:
         sa.Column("raw_text_ref", sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="pk_extraction"),
         _fk("extraction", "ingest_file", "file_id"),
+        _fk("extraction", "source", "source_id"),
     )
+    op.create_index("ix_extraction_file_id", "extraction", ["file_id"])
+    op.create_index("ix_extraction_source_id", "extraction", ["source_id"])
 
     # review (§3): the human approval gate. reviewer_id has no FK yet (no user table).
     op.create_table(
@@ -291,6 +318,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name="pk_review"),
         _fk("review", "extraction", "extraction_id"),
     )
+    op.create_index("ix_review_extraction_id", "review", ["extraction_id"])
 
     # ---- §5.1 mevzuat (A) -------------------------------------------------------------
 
@@ -308,6 +336,15 @@ def upgrade() -> None:
         sa.Column("repealed_at", sa.Date(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="pk_statute"),
         _fk("statute", "source", "source_id"),
+    )
+    # One statute per (kind, number): a second row for the same law (e.g. from Eskiler/) would
+    # make every /citation/resolve "ambiguous"; fail at load time instead.
+    op.create_index(
+        "uq_statute_kind_number",
+        "statute",
+        ["kind", "number"],
+        unique=True,
+        postgresql_where=sa.text("number IS NOT NULL"),
     )
 
     # statute_article: article_no is text ("18", "Ek 2", "Geçici 4").
@@ -342,6 +379,11 @@ def upgrade() -> None:
         _valid_range_check(),
     )
     _no_overlap("statute_article_version", "article_id")
+    _provenance_indexes("statute_article_version")
+    # The gist EXCLUDE index is partial (superseded_at IS NULL): history needs its own index.
+    op.create_index(
+        "ix_statute_article_version_article_id", "statute_article_version", ["article_id"]
+    )
 
     # ---- §5.2 yargı kararları (C) -----------------------------------------------------
 
@@ -352,7 +394,11 @@ def upgrade() -> None:
         _id(),
         sa.Column("court", _enum("court"), nullable=False),
         sa.Column("court_level", _enum("court_level"), nullable=False),
-        sa.Column("chamber", sa.Text(), nullable=True),
+        # NOT NULL DEFAULT '' (not NULL): Postgres unique indexes treat NULLs as distinct, so
+        # chamber-less courts (HGK, İBK, AYM, İDDK) would never collide on the index below.
+        # A plain column keeps the index a simple column index that `alembic check` compares
+        # reliably; an expression index over coalesce(chamber, '') would not be.
+        sa.Column("chamber", sa.Text(), server_default=sa.text("''"), nullable=False),
         sa.Column("decision_kind", sa.Text(), nullable=True),
         sa.Column("esas_no", sa.Text(), nullable=True),
         sa.Column("karar_no", sa.Text(), nullable=True),
@@ -378,8 +424,8 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name="pk_decision"),
         *_provenance_fks("decision"),
     )
-    # One live record per (court, chamber, esas_no, karar_no). NULLs stay distinct on purpose:
-    # ~4% of the archive lacks esas/karar and those must not collide with each other.
+    # One live record per (court, chamber, esas_no, karar_no). esas_no / karar_no NULLs stay
+    # distinct on purpose: ~4% of the archive lacks them and those must not collide.
     op.create_index(
         "uq_decision_court_chamber_esas_no_karar_no_live",
         "decision",
@@ -387,17 +433,23 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("superseded_at IS NULL"),
     )
+    op.create_index(
+        "ix_decision_court_level_decision_date", "decision", ["court_level", "decision_date"]
+    )
     op.create_index("ix_decision_tsv", "decision", ["tsv"], postgresql_using="gin")
+    _provenance_indexes("decision")
 
-    # NOTE (tsv design): a generated column cannot be used because unaccent() is only STABLE,
-    # and generated expressions must be IMMUTABLE. A trigger has no such restriction, keeps the
-    # 'turkish' config + unaccent the spec asks for, and needs no wrapper function marked
-    # IMMUTABLE by hand (which would silently break if the unaccent dictionary changed).
+    # NOTE (tsv design): a generated column cannot be used because to_tsvector with a config
+    # that contains unaccent is not IMMUTABLE, and generated expressions must be. A trigger has
+    # no such restriction and needs no wrapper function marked IMMUTABLE by hand (which would
+    # silently break if the unaccent dictionary changed). The 'turkish_unaccent' configuration
+    # (created above) unaccents tokens first and stems them afterwards, so the query side only
+    # needs plainto_tsquery('turkish_unaccent', q).
     op.execute(
         """
         CREATE FUNCTION decision_tsv_refresh() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
-            NEW.tsv := to_tsvector('turkish', unaccent(coalesce(NEW.full_text, '')));
+            NEW.tsv := to_tsvector('turkish_unaccent', coalesce(NEW.full_text, ''));
             RETURN NEW;
         END
         $$
@@ -437,6 +489,8 @@ def upgrade() -> None:
         _valid_range_check(),
     )
     _no_overlap("admin_act_version", "act_id")
+    _provenance_indexes("admin_act_version")
+    op.create_index("ix_admin_act_version_act_id", "admin_act_version", ["act_id"])
 
     # ---- §5.4 B, E, G, H: schema only, no data in Phase 1 ------------------------------
     # case_document (F) is deliberately not created: outside the KB (§2), separate task.
@@ -465,6 +519,8 @@ def upgrade() -> None:
         *_provenance_fks("treaty_article_version"),
         _valid_range_check(),
     )
+    _provenance_indexes("treaty_article_version")
+    op.create_index("ix_treaty_article_version_treaty_id", "treaty_article_version", ["treaty_id"])
 
     # E: collective_agreement (TİS) + ca_article_version
     op.create_table(
@@ -491,6 +547,8 @@ def upgrade() -> None:
         *_provenance_fks("ca_article_version"),
         _valid_range_check(),
     )
+    _provenance_indexes("ca_article_version")
+    op.create_index("ix_ca_article_version_ca_id", "ca_article_version", ["ca_id"])
 
     # G: doctrine (single table; carries provenance itself, license check via source)
     op.create_table(
@@ -504,6 +562,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name="pk_doctrine"),
         *_provenance_fks("doctrine"),
     )
+    _provenance_indexes("doctrine")
 
     # H: calc_method + calc_parameter_version
     op.create_table(
@@ -534,6 +593,7 @@ def upgrade() -> None:
         _valid_range_check(),
     )
     _no_overlap("calc_parameter_version", "param")
+    _provenance_indexes("calc_parameter_version")
 
     # ---- §8 chunk ---------------------------------------------------------------------
 
@@ -561,13 +621,15 @@ def upgrade() -> None:
     )
     op.create_index("ix_chunk_parent_kind_parent_id", "chunk", ["parent_kind", "parent_id"])
     op.create_index("ix_chunk_category_kind_license", "chunk", ["category", "kind", "license"])
+    # as_of filtering happens per chunk via version_id (§8).
+    op.create_index("ix_chunk_version_id", "chunk", ["version_id"])
     op.create_index("ix_chunk_tsv", "chunk", ["tsv"], postgresql_using="gin")
     # Same trigger approach as decision.tsv; indexes the body text only, not the header.
     op.execute(
         """
         CREATE FUNCTION chunk_tsv_refresh() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
-            NEW.tsv := to_tsvector('turkish', unaccent(coalesce(NEW.text, '')));
+            NEW.tsv := to_tsvector('turkish_unaccent', coalesce(NEW.text, ''));
             RETURN NEW;
         END
         $$
@@ -585,6 +647,7 @@ def downgrade() -> None:
         op.drop_table(table)
     op.execute("DROP FUNCTION chunk_tsv_refresh()")
     op.execute("DROP FUNCTION decision_tsv_refresh()")
+    op.execute("DROP TEXT SEARCH CONFIGURATION turkish_unaccent")
     for name in reversed(ENUMS):
         op.execute(f"DROP TYPE {name}")
     # Extensions are left installed on purpose: they may be shared with other schemas and

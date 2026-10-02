@@ -18,6 +18,8 @@ class Chunk(UuidPkMixin, Base):
     __table_args__ = (
         Index("ix_chunk_parent_kind_parent_id", "parent_kind", "parent_id"),
         Index("ix_chunk_category_kind_license", "category", "kind", "license"),
+        # as_of filtering happens per chunk via version_id (data-model.md §8)
+        Index("ix_chunk_version_id", "version_id"),
         Index("ix_chunk_tsv", "tsv", postgresql_using="gin"),
         # No HNSW index yet: pointless without data (decided in task 02).
     )

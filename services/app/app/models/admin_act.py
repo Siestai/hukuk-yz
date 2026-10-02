@@ -2,9 +2,7 @@
 
 import uuid
 
-from sqlalchemy import CheckConstraint, ForeignKey
-from sqlalchemy import text as sql_text
-from sqlalchemy.dialects.postgresql import ExcludeConstraint
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.common import (
@@ -14,6 +12,8 @@ from app.models.common import (
     BitemporalMixin,
     ProvenanceMixin,
     UuidPkMixin,
+    no_overlap,
+    valid_range_check,
 )
 
 
@@ -31,17 +31,11 @@ class AdminAct(UuidPkMixin, Base):
 class AdminActVersion(UuidPkMixin, ProvenanceMixin, BitemporalMixin, Base):
     __tablename__ = "admin_act_version"
     __table_args__ = (
-        CheckConstraint("valid_to IS NULL OR valid_from <= valid_to", name="valid_range"),
-        ExcludeConstraint(
-            ("act_id", "="),
-            (sql_text("daterange(valid_from, valid_to)"), "&&"),
-            using="gist",
-            where=sql_text("superseded_at IS NULL"),
-            name="ex_admin_act_version_no_overlap",
-        ),
+        valid_range_check(),
+        no_overlap("admin_act_version", "act_id"),
     )
 
-    act_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("admin_act.id"))
+    act_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("admin_act.id"), index=True)
     text: Mapped[str]
     # Chain of "this genelge repeals that one" references
     superseded_by_ref: Mapped[str | None]

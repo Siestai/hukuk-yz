@@ -3,9 +3,8 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, UniqueConstraint
 from sqlalchemy import text as sql_text
-from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.common import (
@@ -15,11 +14,24 @@ from app.models.common import (
     ProvenanceMixin,
     StatuteKind,
     UuidPkMixin,
+    no_overlap,
+    valid_range_check,
 )
 
 
 class Statute(UuidPkMixin, Base):
     __tablename__ = "statute"
+    __table_args__ = (
+        # A second row for the same law (e.g. from Eskiler/) would make every
+        # /citation/resolve "ambiguous"; fail at load time instead.
+        Index(
+            "uq_statute_kind_number",
+            "kind",
+            "number",
+            unique=True,
+            postgresql_where=sql_text("number IS NOT NULL"),
+        ),
+    )
 
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("source.id"))
     # text: yönetmelik numbers are not always plain integers
@@ -47,17 +59,12 @@ class StatuteArticleVersion(UuidPkMixin, ProvenanceMixin, BitemporalMixin, Base)
 
     __tablename__ = "statute_article_version"
     __table_args__ = (
-        CheckConstraint("valid_to IS NULL OR valid_from <= valid_to", name="valid_range"),
-        ExcludeConstraint(
-            ("article_id", "="),
-            (sql_text("daterange(valid_from, valid_to)"), "&&"),
-            using="gist",
-            where=sql_text("superseded_at IS NULL"),
-            name="ex_statute_article_version_no_overlap",
-        ),
+        valid_range_check(),
+        no_overlap("statute_article_version", "article_id"),
     )
 
-    article_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("statute_article.id"))
+    # index: the partial gist EXCLUDE index cannot serve history / audit lookups
+    article_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("statute_article.id"), index=True)
     text: Mapped[str]
     heading: Mapped[str | None]
     amending_ref: Mapped[str | None]

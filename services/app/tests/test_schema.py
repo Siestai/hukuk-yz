@@ -144,7 +144,7 @@ async def test_overlapping_live_versions_are_rejected(conn: AsyncConnection) -> 
     article_id = await _article(conn, source_id)
     await _version(conn, source_id, article_id, date(2019, 1, 1), date(2020, 1, 1))
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError, match="ex_statute_article_version_no_overlap"):
         async with conn.begin_nested():
             await _version(conn, source_id, article_id, date(2019, 6, 1), None)
 
@@ -162,9 +162,18 @@ async def test_adjacent_and_superseded_versions_are_allowed(conn: AsyncConnectio
 async def test_valid_range_check(conn: AsyncConnection) -> None:
     source_id = await _source(conn)
     article_id = await _article(conn, source_id)
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError, match="ck_statute_article_version_valid_range"):
         async with conn.begin_nested():
             await _version(conn, source_id, article_id, date(2020, 1, 1), date(2019, 1, 1))
+
+
+async def test_valid_range_check_is_strict(conn: AsyncConnection) -> None:
+    # from = to is an empty [from, to) range: it would dodge the EXCLUDE and never be found
+    source_id = await _source(conn)
+    article_id = await _article(conn, source_id)
+    with pytest.raises(IntegrityError, match="ck_statute_article_version_valid_range"):
+        async with conn.begin_nested():
+            await _version(conn, source_id, article_id, date(2020, 1, 1), date(2020, 1, 1))
 
 
 async def _decision(
@@ -182,11 +191,22 @@ async def _decision(
     return _uuid(result.scalar_one())
 
 
+async def _hgk_decision(conn: AsyncConnection, source_id: uuid.UUID) -> None:
+    # chamber omitted on purpose: HGK has none, the column default ('') applies
+    await conn.execute(
+        text(
+            "INSERT INTO decision (court, court_level, esas_no, karar_no, text_completeness, "
+            "source_id) VALUES ('yargitay', 'hgk_iddk', '2017/9-100', '2018/200', 'full', :s)"
+        ),
+        {"s": source_id},
+    )
+
+
 async def test_decision_unique_partial(conn: AsyncConnection) -> None:
     source_id = await _source(conn, "decision")
     first = await _decision(conn, source_id)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError, match="uq_decision_court_chamber_esas_no_karar_no_live"):
         async with conn.begin_nested():
             await _decision(conn, source_id)
 
@@ -200,13 +220,30 @@ async def test_decision_unique_partial(conn: AsyncConnection) -> None:
     await _decision(conn, source_id, superseded=True)
 
 
+async def test_chamberless_duplicate_is_rejected(conn: AsyncConnection) -> None:
+    # chamber is NOT NULL DEFAULT '', so HGK rows (no chamber) collide like any other
+    source_id = await _source(conn, "decision")
+    await _hgk_decision(conn, source_id)
+    with pytest.raises(IntegrityError, match="uq_decision_court_chamber_esas_no_karar_no_live"):
+        async with conn.begin_nested():
+            await _hgk_decision(conn, source_id)
+
+
+async def test_statute_kind_number_is_unique(conn: AsyncConnection) -> None:
+    source_id = await _source(conn)
+    await _article(conn, source_id)  # creates statute kanun/4857
+    with pytest.raises(IntegrityError, match="uq_statute_kind_number"):
+        async with conn.begin_nested():
+            await _article(conn, source_id)
+
+
 async def test_decision_defaults_and_tsv_trigger(conn: AsyncConnection) -> None:
     source_id = await _source(conn, "decision")
     decision_id = await _decision(conn, source_id)
     row = (
         await conn.execute(
             text(
-                "SELECT verification, tsv @@ plainto_tsquery('turkish', unaccent('Tazminati')) "
+                "SELECT verification, tsv @@ plainto_tsquery('turkish_unaccent', 'Tazminati') "
                 "FROM decision WHERE id = :i"
             ),
             {"i": decision_id},

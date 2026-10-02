@@ -1,7 +1,7 @@
 """Declarative base, shared enums, mixins and the common tables (data-model.md §3).
 
 Enum values are the Postgres enum labels (snake_case, ASCII). The migration repeats the
-labels literally; tests/test_models.py checks that the two stay in sync.
+labels literally; tests/test_orm_consistency.py checks that the two stay in sync.
 """
 
 import enum
@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -19,7 +20,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB, ExcludeConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
@@ -218,9 +219,11 @@ class UuidPkMixin:
 class ProvenanceMixin:
     """Embedded provenance of every typed KB record (data-model.md §3, §1 rule 2-3)."""
 
-    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("source.id"))
-    extraction_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("extraction.id"))
-    review_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("review.id"))
+    # Indexed: every "which typed row belongs to this source / extraction / review" lookup
+    # on the review screen would otherwise be a seq scan.
+    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("source.id"), index=True)
+    extraction_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("extraction.id"), index=True)
+    review_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("review.id"), index=True)
     recorded_at: Mapped[datetime] = mapped_column(server_default=func.now())
     superseded_at: Mapped[datetime | None]
     # No user table yet; free text so system actors ("bulk-import") fit too.
@@ -234,11 +237,37 @@ class BitemporalMixin:
     valid_to: Mapped[date | None]
 
 
+# Strict: daterange(valid_from, valid_to) is [from, to), so from = to would be an empty range
+# that never overlaps anything (bypassing the EXCLUDE) and is never returned by an as_of query.
+# The migration repeats this literal; tests/test_orm_consistency.py checks they match.
+VALID_RANGE = "valid_to IS NULL OR valid_from < valid_to"
+
+
+def valid_range_check() -> CheckConstraint:
+    """CHECK for every *_version table; the naming convention yields ck_<table>_valid_range."""
+    return CheckConstraint(VALID_RANGE, name="valid_range")
+
+
+def no_overlap(table: str, key_column: str) -> ExcludeConstraint:
+    """Forbid overlapping live versions of one key (named ex_<table>_no_overlap).
+
+    Superseded rows (superseded_at set) are history and may overlap. Needs btree_gist.
+    """
+    return ExcludeConstraint(
+        (key_column, "="),
+        (text("daterange(valid_from, valid_to)"), "&&"),
+        using="gist",
+        where=text("superseded_at IS NULL"),
+        name=f"ex_{table}_no_overlap",
+    )
+
+
 class Source(UuidPkMixin, Base):
     """data-model.md §3: parent identity of every source record."""
 
     __tablename__ = "source"
-    __table_args__ = (Index("ix_source_status", "status"),)
+    # The review queue always filters by category, then status.
+    __table_args__ = (Index("ix_source_category_status", "category", "status"),)
 
     category: Mapped[SourceCategory] = mapped_column(SourceCategory.pg_type("source_category"))
     title: Mapped[str]
@@ -279,7 +308,7 @@ class IngestFile(UuidPkMixin, Base):
     __tablename__ = "ingest_file"
     __table_args__ = (Index("ix_ingest_file_sha256", "sha256"),)
 
-    job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ingest_job.id"))
+    job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ingest_job.id"), index=True)
     path: Mapped[str]
     sha256: Mapped[str]
     mime: Mapped[str | None]
@@ -293,7 +322,10 @@ class Extraction(UuidPkMixin, Base):
 
     __tablename__ = "extraction"
 
-    file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ingest_file.id"))
+    file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ingest_file.id"), index=True)
+    # Lets the review queue find pending extractions of an 'analyzed' source before any typed
+    # row exists (data-model.md §4). Nullable: not every extraction is tied to a source yet.
+    source_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("source.id"), index=True)
     parser_name: Mapped[str]
     parser_version: Mapped[str]
     extracted_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -308,7 +340,7 @@ class Review(UuidPkMixin, Base):
 
     __tablename__ = "review"
 
-    extraction_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("extraction.id"))
+    extraction_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("extraction.id"), index=True)
     reviewer_id: Mapped[uuid.UUID]
     decision: Mapped[ReviewDecision] = mapped_column(ReviewDecision.pg_type("review_decision"))
     edits: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
