@@ -86,7 +86,7 @@ class Quality:
     foreign_script_ratio: float
     empty_pages: int
     interior_empty_pages: int
-    worst_pagestopword_ratio: float | None
+    worst_page_stopword_ratio: float | None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -123,7 +123,7 @@ def measure(text: str, pages: int | None) -> Quality:
         foreign_script_ratio=round(foreign / n, 4) if n else 0.0,
         empty_pages=empty_pages,
         interior_empty_pages=interior_empty_pages,
-        worst_pagestopword_ratio=None if worst is None else round(worst, 4),
+        worst_page_stopword_ratio=None if worst is None else round(worst, 4),
     )
 
 
@@ -151,6 +151,6 @@ def judge(q: Quality) -> Verdict:
         warnings.append("borderline_quality")
     if q.empty_pages:
         warnings.append("empty_pages")
-    if q.worst_pagestopword_ratio is not None and q.worst_pagestopword_ratio < BAD_OCR_RATIO:
+    if q.worst_page_stopword_ratio is not None and q.worst_page_stopword_ratio < BAD_OCR_RATIO:
         warnings.append("weak_page_text")
     return Verdict(True, warnings=tuple(warnings))

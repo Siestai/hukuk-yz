@@ -38,9 +38,27 @@ def test_read_doc_maps_table_cells_to_tabs_and_strips_controls(tmp_path: Path) -
     assert read_doc(_write(tmp_path, pieces=pieces)) == "ücret\tıslak\t\tsonra\nsatır\n"
 
 
+def test_read_doc_keeps_non_breaking_hyphen_and_drops_optional_hyphen(tmp_path: Path) -> None:
+    pieces = [("Sosyal\x1eGüvenlik ya\x1fzılı\r", True)]
+    assert read_doc(_write(tmp_path, pieces=pieces)) == "Sosyal-Güvenlik yazılı\n"
+
+
+def test_read_doc_stops_at_the_end_of_the_main_story(tmp_path: Path) -> None:
+    pieces = [("MADDE 1 - metin\r", True), ("dipnot\r", False), ("üstbilgi\r", True)]
+    assert read_doc(_write(tmp_path, pieces=pieces, ccp_text=16 + 3)) == "MADDE 1 - metin\ndip"
+
+
 def test_read_doc_uses_1table_stream_when_flagged(tmp_path: Path) -> None:
     path = _write(tmp_path, table_stream="1Table")
     assert read_doc(path) == "Madde 1 - işçi\n"
+
+
+@pytest.mark.parametrize("kwargs", [{"clx_cut": 5}, {"clx_cut": 20}, {"fc_shift": 100_000}])
+def test_read_doc_raises_value_error_on_truncated_structures(
+    tmp_path: Path, kwargs: dict[str, Any]
+) -> None:
+    with pytest.raises(ValueError):
+        read_doc(_write(tmp_path, **kwargs))
 
 
 @pytest.mark.parametrize(

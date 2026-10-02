@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import struct
 import zipfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -10,6 +9,7 @@ from pathlib import Path
 import pytest
 from docx import Document
 from word_doc import make_doc
+from word_doc import make_ole2 as ole2
 
 from hukuk_ingest import ocr
 
@@ -118,27 +118,8 @@ def real_tesseract(monkeypatch: pytest.MonkeyPatch) -> ocr.Tesseract:
 
 
 def make_ole2(*stream_names: str) -> bytes:
-    """Minimal OLE2 compound file (v3): one FAT sector, one directory sector, empty streams."""
-    assert len(stream_names) <= 3
-    free = struct.pack("<I", 0xFFFFFFFF)
-    header = bytearray(512)
-    header[0:8] = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
-    struct.pack_into("<HHHHH", header, 24, 0x3E, 3, 0xFFFE, 9, 6)
-    struct.pack_into("<III", header, 44, 1, 1, 0)  # FAT sectors, first dir sector, tx sig
-    struct.pack_into("<IIIII", header, 56, 4096, 0xFFFFFFFE, 0, 0xFFFFFFFE, 0)
-    header[76:80] = struct.pack("<I", 0)  # DIFAT[0] -> FAT is sector 0
-    header[80:512] = free * 108
-    fat = struct.pack("<II", 0xFFFFFFFD, 0xFFFFFFFE) + free * 126
-
-    def entry(name: str, kind: int) -> bytes:
-        raw = name.encode("utf-16-le")
-        body = bytearray(128)
-        body[: len(raw)] = raw
-        struct.pack_into("<HB", body, 64, len(raw) + 2, kind)
-        return bytes(body)
-
-    directory = entry("Root Entry", 5) + b"".join(entry(n, 2) for n in stream_names)
-    return bytes(header) + fat + directory.ljust(512, b"\x00")
+    """Minimal OLE2 compound file with empty streams of the given names."""
+    return ole2({name: b"" for name in stream_names})
 
 
 def make_zip(path: Path, members: dict[str, str | bytes]) -> Path:

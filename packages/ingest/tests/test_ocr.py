@@ -125,6 +125,21 @@ def test_default_engine_is_none_without_binary_or_tur_model(
     assert default_engine() is None
 
 
+@pytest.mark.parametrize("script", ["", "echo; echo tesseract 9", "exit 2\n"])
+def test_default_engine_is_none_when_version_output_is_unusable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, script: str
+) -> None:
+    tessdata = tmp_path / "tessdata"
+    tessdata.mkdir()
+    (tessdata / "tur.traineddata").write_bytes(b"model")
+    langs = f"echo 'List of available languages in \"{tessdata}/\" (2):'; echo eng; echo tur"
+    binary = _fake_binary(
+        tmp_path, f'case "$1" in\n--version) {script or "true"};;\n--list-langs) {langs};;\nesac\n'
+    )
+    monkeypatch.setenv("HUKUK_TESSERACT", str(binary))
+    assert default_engine() is None
+
+
 def test_tesseract_rotation_parses_osd_and_defaults_to_zero(tmp_path: Path) -> None:
     osd = _fake_binary(
         tmp_path, 'printf "Page number: 0\\nOrientation in degrees: 90\\nRotate: 270\\n"\n'
@@ -139,10 +154,11 @@ def test_tesseract_runs_with_one_openmp_thread(tmp_path: Path) -> None:
     assert Tesseract(str(binary), "v", "m").recognize(b"img", sauvola=False).strip() == "threads=1"
 
 
-def test_tesseract_failure_raises(tmp_path: Path) -> None:
-    binary = _fake_binary(tmp_path, "exit 3\n")
-    with pytest.raises(RuntimeError, match="exited with 3"):
-        Tesseract(str(binary), "v", "m").recognize(b"img", sauvola=False)
+def test_tesseract_nonzero_exit_is_an_empty_page_so_later_passes_still_run(
+    tmp_path: Path,
+) -> None:
+    binary = _fake_binary(tmp_path, "echo 'Too few characters' >&2; exit 1\n")
+    assert Tesseract(str(binary), "v", "m").recognize(b"img", sauvola=False) == ""
 
 
 @pytest.mark.parametrize("name", ["scan.pdf", "scan.png"])

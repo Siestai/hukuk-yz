@@ -106,11 +106,17 @@ def _write_atomic(target: Path, data: str) -> None:
         tmp.unlink(missing_ok=True)
 
 
-def _load_meta(base: Path, ocr_key: str) -> dict[str, Any] | None:
+def _ocr_setup(ocr: bool) -> tuple[Engine | None, str]:
+    """The engine and the cache key of this OCR setup: its fingerprint, "off" or "unavailable"."""
+    engine = default_engine() if ocr else None
+    return engine, engine.fingerprint if engine else ("unavailable" if ocr else "off")
+
+
+def _load_meta(base: Path, ocr: bool) -> dict[str, Any] | None:
     """The cached entry, or None when it is absent, stale, malformed or incomplete.
 
-    Entries that went through the OCR route are valid only for the OCR setup that produced them
-    (`ocr_key`: the engine fingerprint, "off" or "unavailable"); the rest do not depend on it.
+    Entries that went through the OCR route are valid only for the OCR setup that produced them;
+    the rest do not depend on it, so the engine is resolved only when an entry needs the check.
     """
     try:
         meta = json.loads(base.with_suffix(".meta.json").read_text(encoding="utf-8"))
@@ -124,7 +130,7 @@ def _load_meta(base: Path, ocr_key: str) -> dict[str, Any] | None:
         return None
     if not isinstance(meta["warnings"], list):
         return None
-    if meta.get("ocr_key") not in (None, ocr_key):
+    if meta.get("ocr_key") is not None and meta["ocr_key"] != _ocr_setup(ocr)[1]:
         return None
     if meta["text_ref"] and not (
         base.with_suffix(".raw.txt").is_file() and base.with_suffix(".clean.txt").is_file()
@@ -154,16 +160,13 @@ def process_file(
         result.detected_type = detection.type.value
         result.extension_mismatch = detection.extension_mismatch
         base = cache_base(cache_dir, result.sha256)
-        engine = default_engine() if ocr else None
-        ocr_key = engine.fingerprint if engine else ("unavailable" if ocr else "off")
-
-        meta = None if force else _load_meta(base, ocr_key)
+        meta = None if force else _load_meta(base, ocr)
         if meta is not None:
             for key in _CACHED_FIELDS:
                 setattr(result, key, meta[key])
             result.cached = True
         else:
-            _extract_and_store(path, detection.type, base, result, engine, ocr_key)
+            _extract_and_store(path, detection.type, base, result, ocr)
     except Exception as exc:  # one bad file must not stop the run
         result.status = "error"
         result.reason = "exception"
@@ -240,8 +243,7 @@ def _extract_and_store(
     detected: DetectedType,
     base: Path,
     result: FileResult,
-    engine: Engine | None,
-    ocr_key: str,
+    ocr: bool,
 ) -> None:
     ex = extract(path, detected)
     result.status, result.reason, result.pages = ex.status, ex.reason, ex.pages
@@ -252,10 +254,10 @@ def _extract_and_store(
         text = _score(result, text, ex.pages, judged=detected is DetectedType.PDF)
     used_ocr_key = None
     if result.status == "needs_ocr":
-        used_ocr_key = ocr_key
+        engine, used_ocr_key = _ocr_setup(ocr)
         if engine is not None:
             text = _run_ocr(path, detected, text, result, engine)
-        elif ocr_key == "unavailable":
+        elif used_ocr_key == "unavailable":
             result.warnings.append("ocr_unavailable")
     if text is not None:
         # Text is kept even for needs_ocr: a broken layer is still useful for debugging.

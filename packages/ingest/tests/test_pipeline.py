@@ -35,6 +35,18 @@ def test_process_file_writes_raw_and_clean_text(one_text_file: OneFile) -> None:
     assert base.with_suffix(".clean.txt").is_file()
 
 
+def test_process_file_resolves_the_ocr_engine_only_for_files_that_need_ocr(
+    one_text_file: OneFile, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom() -> None:
+        raise AssertionError("engine resolved")
+
+    monkeypatch.setattr(pipeline, "default_engine", boom)
+    root, path, cache = one_text_file
+    assert process_file(path, root, cache).status == "ok"
+    assert process_file(path, root, cache).cached
+
+
 def test_process_file_second_call_is_cached_and_force_bypasses(one_text_file: OneFile) -> None:
     root, path, cache = one_text_file
     assert not process_file(path, root, cache).cached

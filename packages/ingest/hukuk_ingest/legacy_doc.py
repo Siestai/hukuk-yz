@@ -11,7 +11,8 @@ _FLAG_TABLE_1 = 0x0200
 _FC_CLX_OFFSET = 0x01A2
 _PIECE_COMPRESSED = 0x40000000
 _FIELD_BEGIN, _FIELD_SEPARATOR, _FIELD_END = "\x13", "\x14", "\x15"
-_CHAR_MAP = str.maketrans({"\r": "\n", "\x07": "\t", "\x0b": "\n", "\x0c": "\n"})
+_CCP_TEXT_OFFSET = 0x004C  # FibRgLw97.ccpText: characters of the main document story
+_CHAR_MAP = str.maketrans({"\r": "\n", "\x07": "\t", "\x0b": "\n", "\x0c": "\n", "\x1e": "-"})
 _CONTROL = {chr(c) for c in (*range(0x00, 0x09), *range(0x0E, 0x20))}
 
 
@@ -25,20 +26,25 @@ class UnsupportedDoc(Exception):
 
 def _pieces(clx: bytes) -> list[tuple[int, int, int]]:
     """(first cp, last cp, fc) for each piece of the PlcPcd inside the CLX."""
-    i = 0
-    while clx[i] == 0x01:  # Prc: formatting data, skipped
-        i += 3 + struct.unpack_from("<H", clx, i + 1)[0]
-    if clx[i] != 0x02:
-        raise ValueError("no piece table in CLX")
-    (lcb,) = struct.unpack_from("<I", clx, i + 1)
-    plc = clx[i + 5 : i + 5 + lcb]
-    n = (lcb - 4) // 12
-    cps = struct.unpack_from(f"<{n + 1}I", plc, 0)
-    pcd_base = 4 * (n + 1)
-    return [
-        (cps[k], cps[k + 1], struct.unpack_from("<I", plc, pcd_base + 8 * k + 2)[0])
-        for k in range(n)
-    ]
+    try:
+        i = 0
+        while clx[i] == 0x01:  # Prc: formatting data, skipped
+            i += 3 + struct.unpack_from("<H", clx, i + 1)[0]
+        if clx[i] != 0x02:
+            raise ValueError("no piece table in CLX")
+        (lcb,) = struct.unpack_from("<I", clx, i + 1)
+        plc = clx[i + 5 : i + 5 + lcb]
+        if len(plc) != lcb:
+            raise ValueError("truncated piece table")
+        n = (lcb - 4) // 12
+        cps = struct.unpack_from(f"<{n + 1}I", plc, 0)
+        pcd_base = 4 * (n + 1)
+        return [
+            (cps[k], cps[k + 1], struct.unpack_from("<I", plc, pcd_base + 8 * k + 2)[0])
+            for k in range(n)
+        ]
+    except (IndexError, struct.error) as exc:
+        raise ValueError(f"corrupt piece table: {exc}") from exc
 
 
 def _strip_fields(text: str) -> str:
@@ -60,7 +66,11 @@ def _strip_fields(text: str) -> str:
 
 
 def read_doc(path: Path) -> str:
-    """The document text; raises `UnsupportedDoc` for encrypted and pre-Word-97 files."""
+    """The main-story text (no footnotes, headers or text boxes).
+
+    Raises `UnsupportedDoc` for encrypted and pre-Word-97 files and `ValueError` for truncated or
+    corrupt ones.
+    """
     ole = olefile.OleFileIO(path)
     try:
         word = ole.openstream("WordDocument").read()
@@ -73,14 +83,21 @@ def read_doc(path: Path) -> str:
         table = ole.openstream("1Table" if flags & _FLAG_TABLE_1 else "0Table").read()
     finally:
         ole.close()
-    fc_clx, lcb_clx = struct.unpack_from("<II", word, _FC_CLX_OFFSET)
+    try:
+        fc_clx, lcb_clx = struct.unpack_from("<II", word, _FC_CLX_OFFSET)
+        (ccp_text,) = struct.unpack_from("<I", word, _CCP_TEXT_OFFSET)
+    except struct.error as exc:
+        raise ValueError(f"truncated FIB: {exc}") from exc
     parts: list[str] = []
     for first, last, fc in _pieces(table[fc_clx : fc_clx + lcb_clx]):
-        count = last - first
-        if fc & _PIECE_COMPRESSED:
-            start = (fc & ~_PIECE_COMPRESSED) // 2
-            parts.append(word[start : start + count].decode("cp1254", errors="replace"))
-        else:
-            parts.append(word[fc : fc + 2 * count].decode("utf-16-le", errors="replace"))
+        count = min(last, ccp_text) - first
+        if count <= 0:
+            break
+        compressed = bool(fc & _PIECE_COMPRESSED)
+        start = (fc & ~_PIECE_COMPRESSED) // 2 if compressed else fc
+        chunk = word[start : start + (count if compressed else 2 * count)]
+        if len(chunk) != (count if compressed else 2 * count):
+            raise ValueError("text piece lies beyond the WordDocument stream")
+        parts.append(chunk.decode("cp1254" if compressed else "utf-16-le", errors="replace"))
     text = _strip_fields("".join(parts)).translate(_CHAR_MAP)
     return "".join(ch for ch in text if ch not in _CONTROL)

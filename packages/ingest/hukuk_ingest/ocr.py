@@ -74,8 +74,8 @@ class Tesseract:
     def recognize(self, image: bytes, *, sauvola: bool) -> str:
         args = ["-l", LANG, "--psm", str(PSM), *(SAUVOLA_ARGS if sauvola else ())]
         done = self._run(args, image)
-        if done.returncode != 0:
-            raise RuntimeError(f"tesseract exited with {done.returncode}")
+        if done.returncode != 0:  # e.g. "Too few characters" on a blank page: a weak page
+            return ""
         return done.stdout.decode("utf-8")
 
     def rotation(self, image: bytes) -> int:
@@ -112,8 +112,10 @@ def default_engine() -> Tesseract | None:
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    first = (done.stdout or done.stderr).splitlines()[0].strip()
-    return Tesseract(binary, first, hashlib.sha256(model).hexdigest()[:12])
+    lines = (done.stdout or done.stderr).splitlines()
+    if done.returncode != 0 or not lines or not lines[0].strip():
+        return None
+    return Tesseract(binary, lines[0].strip(), hashlib.sha256(model).hexdigest()[:12])
 
 
 @dataclass(frozen=True)
