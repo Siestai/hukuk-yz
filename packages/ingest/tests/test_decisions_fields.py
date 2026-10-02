@@ -97,9 +97,58 @@ def test_date_before_the_origin_court_is_taken() -> None:
     assert "date_is_lower_court" not in f.warnings
 
 
+def _with_closing(text: str, closing: str) -> str:
+    return text + f"\nSONUÇ: Temyiz olunan karar BOZULMASINA, {closing} karar verildi.\n"
+
+
+def test_closing_date_fills_a_lower_court_date() -> None:
+    f = parse(_with_closing(_ILAMI_TEXT, "iadesine, 8.6.2004 gününde oybirliğiyle"))
+    assert f.decision_date == "2004-06-08"
+    assert "date_from_closing" in f.warnings
+    assert "date_is_lower_court" in f.warnings
+
+
+def test_closing_date_tolerates_missing_space_and_ocr_spacing() -> None:
+    f = parse(_with_closing(_ILAMI_TEXT, "iadesine,17.6.2004 tarihinde oy birliğiyle"))
+    assert f.decision_date == "2004-06-17"
+
+
+def test_closing_date_with_implausible_year_is_rejected() -> None:
+    f = parse(_with_closing(_ILAMI_TEXT, "iadesine, 8.6.2010 gününde oyçokluğuyla"))
+    assert f.decision_date == ""
+    assert "closing_date_rejected" in f.warnings
+    assert "date_from_closing" not in f.warnings
+
+
+def test_closing_date_uses_the_last_match_in_the_tail_only() -> None:
+    early = "Eski karar 1.1.2004 gününde oybirliğiyle karar verildi. " + "Örnek. " * 400
+    f = parse(_with_closing(_ILAMI_TEXT + early, "iadesine, 9.6.2004 gününde oybirliğiyle"))
+    assert f.decision_date == "2004-06-09"
+    only_early = parse(_ILAMI_TEXT + early + "Örnek. " * 100)
+    assert only_early.decision_date == ""
+
+
+def test_closing_date_never_overrides_the_header_date() -> None:
+    f = parse(
+        _with_closing(
+            _header("Karar No. 2012/6789", "Tarihi: 07.06.2012"),
+            "iadesine, 8.6.2012 gününde oybirliğiyle",
+        )
+    )
+    assert f.decision_date == "2012-06-07"
+    assert "header_closing_date_mismatch" in f.warnings
+    assert "date_from_closing" not in f.warnings
+
+
+def test_matching_header_and_closing_date_do_not_warn() -> None:
+    f = parse(era2_text())
+    assert f.decision_date == "2012-06-07"
+    assert "header_closing_date_mismatch" not in f.warnings
+
+
 def test_ocr_labels_never_pick_values_from_the_body() -> None:
     # Header without a date; the body starts with a line that looks like a typo'd label.
-    text = era2_text().replace("Tarihi: 07.06.2012\n", "")
+    text = era2_text(result="BOZULMASINA.").replace("Tarihi: 07.06.2012\n", "")
     body = "KARAR: 01.01.2020 tarihli\nTARİH: 02.02.2020\nDAVA: Davacı"
     text = text.replace("DAVA: Davacı", body)
     f = parse(text)
@@ -167,7 +216,7 @@ def test_text_without_a_date_token_is_not_invalid() -> None:
 
 @pytest.mark.parametrize("tarih", ["31.02.2012", "08/04/20219"])
 def test_invalid_decision_date_adds_a_warning(tarih: str) -> None:
-    f = parse(era2_text(tarih=tarih))
+    f = parse(era2_text(tarih=tarih, result="BOZULMASINA."))
     assert f.decision_date == ""
     assert "invalid_date" in f.warnings
 

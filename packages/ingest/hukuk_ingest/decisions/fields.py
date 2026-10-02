@@ -84,6 +84,21 @@ def parse_date(raw: str) -> tuple[str | None, bool]:
         return None, True
 
 
+# "...iadesine, 8.6.2004 gününde oybirliğiyle karar verildi." Run on the lower-cased tail of the
+# body; the space before the date may be missing, and OCR may split "oy birliğiyle".
+_CLOSING_TAIL = 1500
+_CLOSING_DATE_RE = re.compile(
+    r"(\d{1,2}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{4})(?!\d)\s*(?:gününde|tarihinde)\s+"
+    r"oy\s*(?:birliğiyle|çokluğuyla)\s+karar\s+verildi"
+)
+
+
+def closing_date(full_text: str) -> str:
+    """ISO date of the last closing formula in the final part of the body, or ""."""
+    matches = _CLOSING_DATE_RE.findall(tr_lower(full_text[-_CLOSING_TAIL:]))
+    return (parse_date(matches[-1])[0] or "") if matches else ""
+
+
 # --- Court ----------------------------------------------------------------------------------
 
 # Matched against the squashed upper-case line. Besides court names: the "T.C. / TÜRK MİLLETİ
@@ -681,6 +696,17 @@ def extract_fields(journal: JournalText, layout: Layout) -> DecisionFields:
         f.full_text = "\n".join(lines[body_line:]).strip()
         f.text_completeness = "full" if len(f.full_text) >= _MIN_FULL_CHARS else "excerpt"
         f.outcome = _outcome(f.full_text)
+
+    if has_body and (closing := closing_date(f.full_text)):
+        if not f.decision_date:
+            karar_year = f.karar_no[:4]
+            if karar_year.isdigit() and abs(int(closing[:4]) - int(karar_year)) > 1:
+                f.warnings.append("closing_date_rejected")
+            else:
+                f.decision_date = closing
+                f.warnings.append("date_from_closing")
+        elif closing != f.decision_date:
+            f.warnings.append("header_closing_date_mismatch")
 
     entries, related_end, related_warnings = _parse_related(
         lines[: body_line if has_body else _HEAD_LINES], f.decision_date or None

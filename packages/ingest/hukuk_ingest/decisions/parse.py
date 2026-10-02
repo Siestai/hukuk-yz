@@ -12,7 +12,7 @@ from hukuk_ingest.decisions.layout import detect_layout
 from hukuk_ingest.pipeline import cache_base
 
 # Bump when the parser's rules change the output.
-PARSER_VERSION = "4"
+PARSER_VERSION = "5"
 ARCHIVE_DIR = "Yargi_Kararlari_Arsivi"
 _ISSUE_RE = re.compile(rf"^{ARCHIVE_DIR}/(\d+)\.\s*Sayı")
 
