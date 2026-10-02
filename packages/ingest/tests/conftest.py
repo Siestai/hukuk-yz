@@ -31,12 +31,12 @@ class FakeEngine:
     def __init__(self, texts: list[str], turn: int = 0) -> None:
         self.texts = list(texts)
         self.turn = turn
-        self.calls: list[tuple[bool, list[bytes]]] = []  # (sauvola, PGM width and height)
+        self.calls: list[tuple[int, list[bytes]]] = []  # (thresholding, PGM width and height)
         self.osd_calls = 0
 
-    def recognize(self, image: bytes, *, sauvola: bool) -> str:
+    def recognize(self, image: bytes, *, thresholding: int) -> str:
         dims = image.split(b"\n")[1].split() if image.startswith(b"P5") else []
-        self.calls.append((sauvola, dims))
+        self.calls.append((thresholding, dims))
         return self.texts.pop(0)
 
     def rotation(self, image: bytes) -> int:

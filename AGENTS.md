@@ -95,7 +95,7 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
 
 ## OCR and legacy `.doc` (task 07)
 
-- `hukuk-ingest scan` OCRs `needs_ocr` files (scans, photos, bad or partial text layers) with a local **Tesseract** binary run via `subprocess` (`packages/ingest/hukuk_ingest/ocr.py`); nothing is sent to an API. `--no-ocr` turns it off; without Tesseract the files stay `needs_ocr` with an `ocr_unavailable` warning. The page images are rotated only for PDFs (there is no imaging library for photos).
+- `hukuk-ingest scan` OCRs `needs_ocr` files (scans, photos, bad or partial text layers) with a local **Tesseract** binary run via `subprocess` (`packages/ingest/hukuk_ingest/ocr.py`); nothing is sent to an API. `--no-ocr` turns it off; without Tesseract the files stay `needs_ocr` with an `ocr_unavailable` warning. Weak pages get a second pass that tries both adaptive thresholdings (`thresholding_method` 1 Otsu and 2 Sauvola) and keeps the better; a third pass rotates by OSD. The page images are rotated only for PDFs (there is no imaging library for photos).
 - Old Word 97-2003 `.doc` files (also those named `.pdf`) are read in pure Python with `olefile` (`legacy_doc.py`).
 - **Server install (no root):** a conda-forge/micromamba env with `tesseract` (`micromamba create -n ocr -c conda-forge tesseract`); its `share/tessdata` must hold `tur.traineddata` and `osd.traineddata`. Set `HUKUK_TESSERACT` to the env's `bin/tesseract` and `TESSDATA_PREFIX` to its `share/tessdata`; the default is `tesseract` on `PATH`.
 - **CI** installs `tesseract-ocr` and `tesseract-ocr-tur` via apt, so the OCR integration tests run there; locally they skip when Tesseract is missing.

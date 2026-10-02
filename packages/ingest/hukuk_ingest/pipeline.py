@@ -234,6 +234,8 @@ def _run_ocr(
     result.pages = len(doc.passes)
     result.extractor, result.extractor_version = "tesseract", engine.extractor_version
     scored = _score(result, doc.text, result.pages, judged=True, ocr_passes=doc.passes)
+    if result.quality is not None:
+        result.quality["ocr_threshold"] = doc.thresholds
     result.warnings.append("ocr")
     return scored
 

@@ -155,7 +155,7 @@ def test_process_file_ocr_replaces_missing_text_layer(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root, scan, cache = _scan_corpus(tmp_path)
-    _use_engine(monkeypatch, FakeEngine([GOOD, WEAK, GOOD]))  # page 2: weak, then Sauvola
+    _use_engine(monkeypatch, FakeEngine([GOOD, WEAK, GOOD, WEAK]))  # page 2: weak, method 1 wins
     result = process_file(scan, root, cache)
     assert (result.status, result.reason, result.pages) == ("ok", None, 2)
     assert (result.extractor, result.extractor_version) == ("tesseract", "fake 1+tur-abc")
@@ -170,7 +170,7 @@ def test_process_file_ocr_with_unusable_text_is_ocr_low_quality(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root, scan, cache = _scan_corpus(tmp_path)
-    _use_engine(monkeypatch, FakeEngine([WEAK] * 4))
+    _use_engine(monkeypatch, FakeEngine([WEAK] * 6))
     result = process_file(scan, root, cache)
     assert (result.status, result.reason) == ("needs_ocr", "ocr_low_quality")
     assert "ocr" in result.warnings

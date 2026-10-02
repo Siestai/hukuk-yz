@@ -98,7 +98,7 @@ def render_markdown(s: dict[str, Any]) -> str:
         "",
         f"Files: {ocr['files']}; pages: {ocr['pages']}; duration: {ocr['seconds']} s",
         "",
-        "Pass distribution (1 default, 2 Sauvola, 3 rotated): "
+        "Pass distribution (1 default, 2 adaptive thresholding, 3 rotated): "
         + ", ".join(f"{n}: {c}" for n, c in ocr["passes"].items()),
         "",
         f"### ocr_low_quality ({len(ocr['low_quality'])}): ask the partners for a clean copy",

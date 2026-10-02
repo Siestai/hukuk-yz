@@ -19,7 +19,8 @@ from hukuk_ingest.quality import PAGE_BREAK, stopword_ratio
 LANG = "tur"
 DPI = 300
 PSM = 3
-SAUVOLA_ARGS = ("-c", "thresholding_method=2")
+# Leptonica adaptive Otsu (1) and Sauvola (2); pass 2 tries both. 0 is the default (Otsu).
+THRESHOLDING_METHODS = (1, 2)
 TIMEOUT_SECONDS = 600
 _BINARY_ENV = "HUKUK_TESSERACT"
 _TESSDATA_ENV = "TESSDATA_PREFIX"
@@ -36,7 +37,9 @@ class Engine(Protocol):
     @property
     def fingerprint(self) -> str: ...
 
-    def recognize(self, image: bytes, *, sauvola: bool) -> str: ...
+    def recognize(self, image: bytes, *, thresholding: int) -> str:
+        """`thresholding` is Tesseract's `thresholding_method`; 0 is its default."""
+        ...
 
     def rotation(self, image: bytes) -> int:
         """Clockwise degrees (0/90/180/270) that bring the page upright; 0 when undetectable."""
@@ -56,7 +59,10 @@ class Tesseract:
     @property
     def fingerprint(self) -> str:
         """Everything that decides OCR output: engine version, model and settings."""
-        settings = (DPI, LANG, PSM, SAUVOLA_ARGS, quality.MIN_CHARS_PER_PAGE, quality.BAD_OCR_RATIO)
+        settings = (DPI, LANG, PSM, THRESHOLDING_METHODS) + (
+            quality.MIN_CHARS_PER_PAGE,
+            quality.BAD_OCR_RATIO,
+        )
         parts = (self.version, self.model_hash, settings)
         return hashlib.sha256(repr(parts).encode()).hexdigest()[:16]
 
@@ -71,8 +77,10 @@ class Tesseract:
             check=False,
         )
 
-    def recognize(self, image: bytes, *, sauvola: bool) -> str:
-        args = ["-l", LANG, "--psm", str(PSM), *(SAUVOLA_ARGS if sauvola else ())]
+    def recognize(self, image: bytes, *, thresholding: int) -> str:
+        args = ["-l", LANG, "--psm", str(PSM)]
+        if thresholding:
+            args += ["-c", f"thresholding_method={thresholding}"]
         done = self._run(args, image)
         if done.returncode != 0:  # e.g. "Too few characters" on a blank page: a weak page
             return ""
@@ -121,8 +129,11 @@ def default_engine() -> Tesseract | None:
 @dataclass(frozen=True)
 class OcrDocument:
     text: str
-    # Per page: the pass that produced it (1 default, 2 Sauvola, 3 rotated); None = not OCR'd.
+    # Per page: the pass that produced it (1 default, 2 adaptive thresholding, 3 rotated);
+    # None = not OCR'd.
     passes: list[int | None]
+    # Per page: the thresholding_method of the winning pass 2 (1 or 2); None otherwise.
+    thresholds: list[int | None]
 
 
 # Renders the page rotated clockwise by the given degrees.
@@ -143,18 +154,20 @@ def _better(new: str, old: str) -> bool:
     return sum(not c.isspace() for c in new) > sum(not c.isspace() for c in old)
 
 
-def _ocr_page(engine: Engine, image: bytes, rotate: Rotate | None) -> tuple[str, int]:
-    best, best_pass = engine.recognize(image, sauvola=False), 1
+def _ocr_page(engine: Engine, image: bytes, rotate: Rotate | None) -> tuple[str, int, int | None]:
+    """(text, pass, thresholding method of pass 2 when it won)."""
+    best, best_pass, method = engine.recognize(image, thresholding=0), 1, None
     if not _is_weak(best):
-        return best, best_pass
-    second = engine.recognize(image, sauvola=True)
-    if _better(second, best):
-        best, best_pass = second, 2
+        return best, best_pass, method
+    for candidate in THRESHOLDING_METHODS:
+        second = engine.recognize(image, thresholding=candidate)
+        if _better(second, best):
+            best, best_pass, method = second, 2, candidate
     if _is_weak(best) and rotate is not None and (turn := engine.rotation(image)):
-        third = engine.recognize(rotate(turn), sauvola=False)
+        third = engine.recognize(rotate(turn), thresholding=0)
         if _better(third, best):
-            best, best_pass = third, 3
-    return best, best_pass
+            best, best_pass, method = third, 3, None
+    return best, best_pass, method
 
 
 def _pgm(bitmap: pdfium.PdfBitmap) -> bytes:
@@ -170,12 +183,14 @@ def ocr_pdf(engine: Engine, path: Path, layer_pages: list[str] | None = None) ->
     per page) is given; the text of the other pages is kept."""
     texts: list[str] = []
     passes: list[int | None] = []
+    thresholds: list[int | None] = []
     doc = pdfium.PdfDocument(path)
     try:
         for i in range(len(doc)):
             if layer_pages is not None and layer_pages[i].strip():
                 texts.append(layer_pages[i])
                 passes.append(None)
+                thresholds.append(None)
                 continue
             page = doc[i]
             try:
@@ -183,18 +198,19 @@ def ocr_pdf(engine: Engine, path: Path, layer_pages: list[str] | None = None) ->
                 def render(turn: int, page: pdfium.PdfPage = page) -> bytes:
                     return _pgm(page.render(scale=DPI / 72, grayscale=True, rotation=turn))
 
-                text, used = _ocr_page(engine, render(0), render)
+                text, used, method = _ocr_page(engine, render(0), render)
             finally:
                 page.close()
             texts.append(text)
             passes.append(used)
+            thresholds.append(method)
     finally:
         doc.close()
-    return OcrDocument(PAGE_BREAK.join(texts), passes)
+    return OcrDocument(PAGE_BREAK.join(texts), passes, thresholds)
 
 
 def ocr_image(engine: Engine, path: Path) -> OcrDocument:
     """A photo or scan is one page; rotation is not tried (no imaging library to rotate with)."""
     data = path.read_bytes()
-    text, used = _ocr_page(engine, data, None)
-    return OcrDocument(text, [used])
+    text, used, method = _ocr_page(engine, data, None)
+    return OcrDocument(text, [used], [method])

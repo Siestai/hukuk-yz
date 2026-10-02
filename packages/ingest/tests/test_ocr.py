@@ -21,40 +21,48 @@ def test_ocr_pdf_keeps_first_pass_when_page_is_sound(tmp_path: Path) -> None:
     engine = FakeEngine([GOOD, GOOD])
     doc = ocr_pdf(engine, _pdf(tmp_path, ["", ""]))
     assert doc.passes == [1, 1]
+    assert doc.thresholds == [None, None]
     assert doc.text == GOOD + PAGE_BREAK + GOOD
-    assert [sauvola for sauvola, _ in engine.calls] == [False, False]
+    assert [method for method, _ in engine.calls] == [0, 0]
     assert engine.osd_calls == 0
 
 
-def test_ocr_pdf_retries_weak_page_with_sauvola(tmp_path: Path) -> None:
-    engine = FakeEngine([WEAK, GOOD])
+def test_ocr_pdf_keeps_adaptive_otsu_when_it_is_better(tmp_path: Path) -> None:
+    engine = FakeEngine([WEAK, GOOD, WEAKER_LONG])
     doc = ocr_pdf(engine, _pdf(tmp_path, [""]))
-    assert (doc.text, doc.passes) == (GOOD, [2])
-    assert [sauvola for sauvola, _ in engine.calls] == [False, True]
+    assert (doc.text, doc.passes, doc.thresholds) == (GOOD, [2], [1])
+    assert [method for method, _ in engine.calls] == [0, 1, 2]
     assert engine.osd_calls == 0
 
 
-def test_ocr_pdf_keeps_first_pass_when_sauvola_is_no_better(tmp_path: Path) -> None:
-    engine = FakeEngine([WEAKER_LONG, WEAK])
+def test_ocr_pdf_keeps_sauvola_when_it_is_better(tmp_path: Path) -> None:
+    engine = FakeEngine([WEAK, WEAKER_LONG, GOOD])
+    doc = ocr_pdf(engine, _pdf(tmp_path, [""]))
+    assert (doc.text, doc.passes, doc.thresholds) == (GOOD, [2], [2])
+    assert engine.osd_calls == 0
+
+
+def test_ocr_pdf_keeps_first_pass_when_adaptive_is_no_better(tmp_path: Path) -> None:
+    engine = FakeEngine([WEAKER_LONG, WEAK, WEAK])
     doc = ocr_pdf(engine, _pdf(tmp_path, [""]))  # OSD finds no rotation
-    assert (doc.text, doc.passes) == (WEAKER_LONG, [1])
+    assert (doc.text, doc.passes, doc.thresholds) == (WEAKER_LONG, [1], [None])
 
 
-def test_ocr_pdf_falls_back_to_rotated_render_after_osd(tmp_path: Path) -> None:
-    engine = FakeEngine([WEAK, WEAK, GOOD], turn=90)
+def test_ocr_pdf_falls_back_to_rotated_render_when_both_methods_are_weak(tmp_path: Path) -> None:
+    engine = FakeEngine([WEAK, WEAK, WEAK, GOOD], turn=90)
     doc = ocr_pdf(engine, _pdf(tmp_path, [""]))
-    assert (doc.text, doc.passes) == (GOOD, [3])
+    assert (doc.text, doc.passes, doc.thresholds) == (GOOD, [3], [None])
     assert engine.osd_calls == 1
-    (_, plain), (_, sauvola), (rotated_sauvola, rotated) = engine.calls
-    assert plain == sauvola == rotated[::-1]  # width and height swapped
-    assert rotated_sauvola is False
+    (_, plain), (_, otsu), (_, sauvola), (rotated_method, rotated) = engine.calls
+    assert plain == otsu == sauvola == rotated[::-1]  # width and height swapped
+    assert rotated_method == 0
 
 
 def test_ocr_pdf_without_rotation_keeps_best_earlier_pass(tmp_path: Path) -> None:
-    engine = FakeEngine([WEAK, WEAKER_LONG], turn=0)
+    engine = FakeEngine([WEAK, WEAKER_LONG, WEAK], turn=0)
     doc = ocr_pdf(engine, _pdf(tmp_path, [""]))
-    assert (doc.text, doc.passes) == (WEAKER_LONG, [2])
-    assert len(engine.calls) == 2
+    assert (doc.text, doc.passes, doc.thresholds) == (WEAKER_LONG, [2], [1])
+    assert len(engine.calls) == 3
 
 
 def test_ocr_pdf_partial_layer_ocrs_only_textless_pages(tmp_path: Path) -> None:
@@ -67,10 +75,10 @@ def test_ocr_pdf_partial_layer_ocrs_only_textless_pages(tmp_path: Path) -> None:
 
 
 def test_ocr_image_never_tries_rotation() -> None:
-    engine = FakeEngine([WEAK, WEAK], turn=90)
+    engine = FakeEngine([WEAK] * 3, turn=90)
     doc = ocr_image(engine, FIXTURES / "scan.png")
     assert doc.passes == [1]
-    assert len(engine.calls) == 2
+    assert len(engine.calls) == 3
     assert engine.osd_calls == 0
 
 
@@ -83,6 +91,9 @@ def test_tesseract_fingerprint_changes_with_version_model_and_settings(
     assert base.fingerprint != Tesseract("t", "tesseract 5.5.3", "bbbbbbbbbbbb").fingerprint
     before = base.fingerprint
     monkeypatch.setattr(ocr, "DPI", 200)
+    assert base.fingerprint != before
+    monkeypatch.undo()
+    monkeypatch.setattr(ocr, "THRESHOLDING_METHODS", (1,))
     assert base.fingerprint != before
     assert base.extractor_version == "tesseract 5.5.3+tur-aaaaaaaaaaaa"
 
@@ -151,14 +162,14 @@ def test_tesseract_rotation_parses_osd_and_defaults_to_zero(tmp_path: Path) -> N
 
 def test_tesseract_runs_with_one_openmp_thread(tmp_path: Path) -> None:
     binary = _fake_binary(tmp_path, 'echo "threads=$OMP_THREAD_LIMIT"\n')
-    assert Tesseract(str(binary), "v", "m").recognize(b"img", sauvola=False).strip() == "threads=1"
+    assert Tesseract(str(binary), "v", "m").recognize(b"img", thresholding=0).strip() == "threads=1"
 
 
 def test_tesseract_nonzero_exit_is_an_empty_page_so_later_passes_still_run(
     tmp_path: Path,
 ) -> None:
     binary = _fake_binary(tmp_path, "echo 'Too few characters' >&2; exit 1\n")
-    assert Tesseract(str(binary), "v", "m").recognize(b"img", sauvola=False) == ""
+    assert Tesseract(str(binary), "v", "m").recognize(b"img", thresholding=0) == ""
 
 
 @pytest.mark.parametrize("name", ["scan.pdf", "scan.png"])
