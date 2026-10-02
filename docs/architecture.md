@@ -95,11 +95,11 @@ dashboard-web  inceleme ekranı: çıkarılan alanlar, güven skoru, uyarılar
 | md. 20 | Karar metni ≠ özet | kayıtta `full_text` ve `editorial_summary` ayrı; özet "editoryal" etiketli, ÖZETİ kaynak gösterilmez |
 | md. 22 | Eksik bilgide varsayım yok | agent adım 6 ve 27; `interrupt` ile soru; cevapta `missing_info[]` |
 | md. 23 | Kesinlik düzeyi | cevapta `certainty` enum: açık_norm / bağlayıcı_karar / yerleşik_içtihat / tartışmalı / eksik_bilgi |
-| md. 25 | Uydurma kaynak yasak | **Atıf kapısı** (5.1). Çözümlenemeyen atıf cevaptan düşer veya `unverified` etiketi alır; test edilebilir, agent'tan bağımsız |
+| md. 25 | Uydurma kaynak yasak | **Atıf kapısı** (5.1). Hiçbir yerde bulunamayan atıf her zaman cevaptan düşer; KB dışı resmi kaynakta bulunan atıf etiket + URL ile gösterilir; test edilebilir, agent'tan bağımsız |
 | md. 26 | Birincil kaynak önceliği | kayıtta `source_rank`: resmi/birincil > ikincil; arama sıralamasında ağırlık |
-| md. 28 | 8 kaynak kategorisi karışmaz | ayrı tablolar, ortak `source` üst tablosu; tek vektör havuzu yok, arama kategori filtreli |
+| md. 28 | 8 kaynak kategorisi karışmaz | ayrı tablolar, ortak `source` üst tablosu; `chunk` arama indeksi türetilmiş ve `category` etiketli, sonuçlar kategoriyle döner ve kategori filtrelenebilir |
 | md. 29 | Hesap ayrı katman | `packages/calc`; LLM parametre çıkarır, motor hesaplar, adımlar cevapta gösterilir; Excel'ler test oracle |
-| md. 31 | KVKK | DB EU'da; LLM çağrısı EU region; case belgeleri şifreli; silme hakkı için `memory.forget` + case silme |
+| md. 31 | KVKK | DB EU'da; LLM çağrısı EU region; kişisel veri case başına ayrı anahtarla şifreli; silme hakkı ve imha süresi için crypto-shredding (6.1) |
 | md. 32 | Telif | her kaynakta `license` alanı; Çalışma ve Toplum özetleri izin gelene kadar `internal_only` |
 | md. 33 | 31 adımlı muhakeme | LangGraph düğümleri; her adım kendi atıflarıyla `reasoning_chain`'e yazar |
 | md. 35 | Gerekçe zinciri | cevap şemasında `reasoning_chain[]`; UI'da açılır blok |
@@ -110,9 +110,18 @@ dashboard-web  inceleme ekranı: çıkarılan alanlar, güven skoru, uyarılar
 
 1. Metinden atıfları ayrıştır (`packages/citation`): kanun/madde, karar (mahkeme + E/K + tarih), genelge/tebliğ no, uluslararası sözleşme.
 2. Her atfı KB'de çözümle; mevzuat için olay tarihi parametresi ile.
-3. Sonuç: `verified` (KB'de, yayında) / `unverified` (bulunamadı) / `external` (web kaynaktan, KB'de değil).
-4. Politika (konfigüre edilebilir): `unverified` atıf içeren cümle düşer, ya da etiketle gösterilir. Varsayılan: etiketle + UI'da uyarı. Atıfsız kalan cevap "kaynaksız" bandı alır.
-5. Her kapı kararı loglanır; eval setinin bir metriği budur.
+3. KB'de yoksa onaylı resmi kaynak listesinde ara (RG, mevzuat.gov.tr, AYM, Yargıtay, Danıştay, SGK; liste toplantıda kesinleşir).
+4. Sonuç ve politika:
+
+   | Sonuç | Anlamı | Davranış |
+   |---|---|---|
+   | `verified` | KB'de, yayında | Normal gösterilir |
+   | `external` | KB'de yok, resmi kaynakta bulundu | "KB'de doğrulanmadı" etiketi + kaynak URL'i ile gösterilir; KB'ye eklenmek üzere inceleme kuyruğuna düşer |
+   | `not_found` | Hiçbir yerde bulunamadı | **Her zaman düşer**, hiçbir modda gösterilmez. Atfın dayandığı iddia ya çıkarılır ya da "bu konuda doğrulanmış kaynak bulunamadı" ifadesiyle değiştirilir |
+
+   md. 25 doğrulanamayan kaynağın açıkça belirtilmesine izin verir, ama var olmayan ya da yanlış atıflı kaynağı "kritik hata" sayar. `not_found` atıf etiketlense bile kullanıcı tarafından kopyalanıp dilekçeye taşınabilir, bu yüzden gösterilmez. Atıfsız kalan cevap "kaynaksız" bandı alır.
+5. Her kapı kararı loglanır. Düşen `not_found` atıf oranı eval setinin halüsinasyon metriğidir.
+6. Karar alıntılarında (md. 20, "kararda bu ifade yer almaktadır") alıntının atıf verilen chunk'ın metninde birebir geçtiği kontrol edilir; geçmiyorsa alıntı düşer.
 
 ## 6. Altyapı
 
@@ -120,9 +129,23 @@ dashboard-web  inceleme ekranı: çıkarılan alanlar, güven skoru, uyarılar
 - **Hedef:** Kubernetes. 12-factor baştan: config env'den, stateless süreçler, stdout log, graceful shutdown, `/healthz` + `/readyz` her serviste. Helm chart Faz 3.
 - **Postgres** cluster dışında; pgvector + tsvector + pg_trgm. LangGraph checkpoint (`PostgresSaver`), kuyruk ve memory şeması aynı instance, ayrı şemalar.
 - **Kuyruk:** Postgres tabanlı (`SELECT … FOR UPDATE SKIP LOCKED`) Faz 1; NATS Faz 2 (event'ler: `ingest.completed`, `escalation.requested`, `kb.published`).
-- **LLM gateway:** `agent` içinde ince katman (LiteLLM değerlendirilecek); her çağrı `org, user, case, model, tokens, cost` ile loglanır; `app` bu log'u maliyet raporuna çevirir.
+- **LLM gateway:** `agent` içinde ince katman (LiteLLM değerlendirilecek); her çağrı `org, user, case, model, tokens, cost` ile loglanır; `app` bu log'u maliyet raporuna çevirir. Log saklama kuralı 6.1'de.
 - **Secrets:** env; k8s'te Secret/external-secrets. Kod ikisini ayırt etmez.
 - **Ödeme:** iyzico veya PayTR (Stripe TR'de merchant olarak çalışmıyor). Abonelik + eskalasyon kredisi. e-Fatura entegrasyonu Faz 3'te araştırılır.
+
+### 6.1 Kişisel veri: silme ve saklama (md. 31)
+
+KB kamuya açık hukuk kaynaklarından oluşur; silinmez, bitemporal kalır. Kişisel veri ise silinebilir olmalıdır: md. 31 "saklama ve imha süreleri" ister, 6698 silme hakkı tanır.
+
+| Veri | Kural |
+|---|---|
+| KB (A–E, G, H) | Silinmez. `superseded_at` / `withdrawn` |
+| Case belgeleri (F), memory kayıtları | Case başına ayrı veri anahtarıyla (DEK) şifreli. DEK'ler bir ana anahtarla (KEK) sarılı tutulur, KEK secret store'da. Silmede DEK imha edilir (**crypto-shredding**): DB satırları ve yedeklerdeki kopyalar okunamaz hale gelir |
+| LLM çağrı metni (prompt + cevap) | Case DEK'iyle şifreli, süreli (varsayılan 30 gün, konfigüre edilebilir). Hata ayıklama ve eval için. Case silinince onlar da okunamaz |
+| LLM çağrı metadata'sı, atıf kapısı kararları | Kalıcı. İçerik yok: org, user, case id, model, token, maliyet, atıf kayıt id'leri, kapı sonucu |
+| Saklama süresi | Case kapandıktan sonra N gün içinde otomatik imha (N ortaklarla belirlenir) |
+
+Memory'nin bitemporal modeli case yaşadığı sürece geçerlidir; `forget` ve case silme bitemporal geçmişi de kapsar.
 
 ## 7. Dil ve araçlar
 
@@ -136,7 +159,7 @@ dashboard-web  inceleme ekranı: çıkarılan alanlar, güven skoru, uyarılar
 | Konu | Seçenekler | Öneri | Karar |
 |---|---|---|---|
 | Hesap motoru ve atıf kapısı nerede | `app` / `agent` | `app` (veriyle beraber, bağımsız test, dashboard'dan da çağrılır); `agent` performans gerekirse paketi lokal import eder | bekliyor |
-| Çalışma ve Toplum özetleri | izin iste / kullanma / sadece iç kullanım | izin iste; gelene kadar `internal_only` | toplantı |
+| Çalışma ve Toplum özetleri | izin iste / kullanma / sadece iç kullanım | izin iste; gelene kadar `internal_only`. Arada özetler yalnızca arama sinyali olarak gömülür, metni kullanıcıya ve LLM'e gitmez (`data-model.md` §8). Bunun türev kullanım sayılıp sayılmadığı hukukçulara sorulacak | toplantı |
 | LLM sağlayıcı ve bölge | Anthropic/OpenAI direkt / Bedrock-Vertex EU | EU region zorunlu; sağlayıcı eval'e göre | toplantı |
 | İsim/marka | aday listesi | ayrı doküman | toplantı |
 | Kaynak site listesi | ortaklardan | her site için crawler + değişiklik takibi | toplantı |
