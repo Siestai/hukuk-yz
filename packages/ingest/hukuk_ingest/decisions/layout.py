@@ -42,6 +42,9 @@ _TEMPLATE_RE = re.compile(
 _TWO_COLUMN_RE = re.compile(
     r"^[ \t]*(?:Esas No|Baş\. No|Başvuru No)\.?[ \t]*\n"
     r"[ \t]*(?:Karar No|Karar Tarihi)\.?:?[ \t]*\n",
+    # Python's IGNORECASE folds i/I/İ/ı together (not Turkish-correct). Harmless here: the labels
+    # are fixed words and a stray dotted/dotless variant should still match. Text that must tell
+    # İ from I (court and chamber names) goes through `fields.tr_lower` / `tr_upper` instead.
     re.IGNORECASE | re.MULTILINE,
 )
 

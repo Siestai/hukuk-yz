@@ -111,6 +111,37 @@ def test_unknown_layout_critical_gaps_and_duplicates_are_listed(tmp_path: Path) 
     (dup,) = summary["duplicate_candidates"]
     assert dup["key"] == ["yargitay", "9. HD", "2011/12345", "2012/6789"]
     assert len(dup["refs"]) == 2
+    assert dup["dup_kind"] == "same_text"
+
+
+def test_duplicate_groups_are_classified_by_kind(tmp_path: Path) -> None:
+    full = era2_text()
+    texts = {
+        f"{ARCHIVE}/20.Sayı-X/a.pdf": full,
+        f"{ARCHIVE}/21.Sayı-X/b.pdf": full,  # same_text
+        f"{ARCHIVE}/22.Sayı-X/c.pdf": era2_text(esas="2011/1"),
+        f"{ARCHIVE}/23.Sayı-X/d.pdf": era2_text(esas="2011/1").split("\fYargıtay")[0],  # excerpt
+        f"{ARCHIVE}/24.Sayı-X/e.pdf": era2_text(esas="2011/2"),
+        f"{ARCHIVE}/25.Sayı-X/f.pdf": era2_text(esas="2011/2", tarih="08.06.2012"),  # date
+        f"{ARCHIVE}/26.Sayı-X/g.pdf": era2_text(esas="2011/3"),
+        f"{ARCHIVE}/27.Sayı-X/h.pdf": era2_text(esas="2011/3", result="Kararın ONANMASINA.").split(
+            "DAVA:"
+        )[0]
+        + "DAVA: "
+        + " ".join(f"kelime{i}" for i in range(300)),
+    }
+    report, cache = _write_report(tmp_path, texts)
+    _parse(tmp_path, report, cache, "--workers", "1")
+    summary = json.loads((tmp_path / "out" / "summary.json").read_text(encoding="utf-8"))
+    kinds = {d["key"][2]: d["dup_kind"] for d in summary["duplicate_candidates"]}
+    assert kinds == {
+        "2011/12345": "same_text",
+        "2011/1": "excerpt",
+        "2011/2": "date_mismatch",
+        "2011/3": "different_text",
+    }
+    markdown = (tmp_path / "out" / "summary.md").read_text(encoding="utf-8")
+    assert "cross-issue repeats" in markdown and "| date_mismatch |" in markdown
 
 
 def test_a_failing_file_becomes_an_error_row_and_does_not_stop_the_run(tmp_path: Path) -> None:

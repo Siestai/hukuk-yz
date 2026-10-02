@@ -23,6 +23,10 @@ AGENTS_COURTS = {
     "Danıştay": 4,
 }
 _TOP_WARNINGS = 20
+_SHINGLE = 5  # words per shingle when comparing the texts of a duplicate group
+_SAME_CONTAINMENT = 0.95  # share of the shorter text found in the longer one
+_SAME_LENGTH = 0.9  # shorter / longer text length
+_EXCERPT_CONTAINMENT = 0.5  # "one text contains most of the other"
 
 
 def court_group(r: DecisionRecord) -> str:
@@ -50,6 +54,38 @@ def flag_date_outliers(records: list[DecisionRecord]) -> None:
         reference = r.journal_year or medians.get(r.journal_issue or -1)
         if qa.date_outside_issue_year(r.decision_date, reference):
             r.warnings.append("date_outside_issue_year")
+
+
+def _shingles(text: str) -> set[tuple[str, ...]]:
+    words = text.split()
+    return {tuple(words[i : i + _SHINGLE]) for i in range(max(len(words) - _SHINGLE + 1, 1))}
+
+
+def dup_kind(group: list[DecisionRecord]) -> str:
+    """Why a same-key group is not a parser collapse: `date_mismatch` (same court, chamber, E/K,
+    different decision_date), else `same_text` (near-identical full_text), `excerpt` (one text
+    contains most of the other, or the lengths differ), `different_text` (texts barely overlap:
+    two decisions printed under one header key, or no body found; beyond the three asked for)."""
+    if len({r.decision_date for r in group}) > 1:
+        return "date_mismatch"
+    longest = max(group, key=lambda r: len(r.full_text))
+    reference = _shingles(longest.full_text)
+    kinds = set()
+    for r in group:
+        if r is longest:
+            continue
+        shared = len(_shingles(r.full_text) & reference) / len(_shingles(r.full_text))
+        length = len(r.full_text) / max(len(longest.full_text), 1)
+        if shared >= _SAME_CONTAINMENT and length >= _SAME_LENGTH:
+            kinds.add("same_text")
+        elif shared >= _EXCERPT_CONTAINMENT:
+            kinds.add("excerpt")
+        else:
+            kinds.add("different_text")
+    for kind in ("different_text", "excerpt", "same_text"):  # the weakest match describes the group
+        if kind in kinds:
+            return kind
+    return "same_text"
 
 
 def _ref(r: DecisionRecord) -> str:
@@ -93,7 +129,7 @@ def build_summary(records: list[DecisionRecord], total_seconds: float) -> dict[s
             if any(m in qa.CRITICAL_FIELDS for m in r.missing)
         ],
         "duplicate_candidates": [
-            {"key": list(k), "refs": [_ref(r) for r in group]}
+            {"key": list(k), "dup_kind": dup_kind(group), "refs": [_ref(r) for r in group]}
             for k, group in sorted(keys.items())
             if len(group) > 1
         ],
@@ -143,8 +179,24 @@ def render_markdown(s: dict[str, Any]) -> str:
     out += [f"- {ref}" for ref in s["layout_unknown"]]
     out += ["", f"## Critical field missing ({len(s['critical_missing'])})", ""]
     out += [f"- {m['ref']}: {', '.join(m['missing'])}" for m in s["critical_missing"]]
-    out += ["", f"## Duplicate candidates ({len(s['duplicate_candidates'])})", ""]
-    out += [f"- {' / '.join(d['key'])}: {', '.join(d['refs'])}" for d in s["duplicate_candidates"]]
+    kinds = Counter(d["dup_kind"] for d in s["duplicate_candidates"])
+    out += [
+        "",
+        f"## Duplicate candidates across issues ({len(s['duplicate_candidates'])})",
+        "",
+        "The same court, chamber, esas and karar number in more than one file. These are "
+        "cross-issue repeats of the journal (the same decision printed again, in full or as an "
+        "excerpt), not parser collapses of different decisions.",
+        "",
+        "Kinds: " + ", ".join(f"{k} {n}" for k, n in sorted(kinds.items())),
+        "",
+        "| dup_kind | key | files |",
+        "|---|---|---|",
+    ]
+    out += [
+        f"| {d['dup_kind']} | {' / '.join(d['key'])} | {', '.join(d['refs'])} |"
+        for d in s["duplicate_candidates"]
+    ]
     out += ["", f"## Errors ({len(s['errors'])})", ""]
     out += [f"- {e['ref']}: {e['error']}" for e in s["errors"]]
     return "\n".join(out) + "\n"

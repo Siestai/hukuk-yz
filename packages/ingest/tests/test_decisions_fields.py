@@ -70,12 +70,19 @@ def test_nonexistent_date_is_empty_and_flagged_invalid(raw: str) -> None:
     assert parse_date(raw) == (None, True)
 
 
-def test_five_digit_year_is_not_a_date() -> None:
-    assert parse_date("08/04/20219") == (None, False)
+@pytest.mark.parametrize("raw", ["08/04/20219", "12.05.20", "7.6.200"])
+def test_malformed_year_is_empty_and_flagged_invalid(raw: str) -> None:
+    assert parse_date(raw) == (None, True)
 
 
-def test_invalid_decision_date_adds_a_warning() -> None:
-    f = parse(era2_text(tarih="31.02.2012"))
+def test_text_without_a_date_token_is_not_invalid() -> None:
+    assert parse_date("") == (None, False)
+    assert parse_date("tarihsiz") == (None, False)
+
+
+@pytest.mark.parametrize("tarih", ["31.02.2012", "08/04/20219"])
+def test_invalid_decision_date_adds_a_warning(tarih: str) -> None:
+    f = parse(era2_text(tarih=tarih))
     assert f.decision_date == ""
     assert "invalid_date" in f.warnings
 
@@ -91,6 +98,8 @@ def test_invalid_decision_date_adds_a_warning() -> None:
         ("YARGITAY\n22. HUKUK \nDAİRESİ", "22. HD"),
         ("T.C\nY A R G I T A Y\n10. Hukuk Dairesi", "10. HD"),
         ("T.C\nYARGITAY\n5. CEZA DAİRESİ", "5. CD"),
+        ("YARGITAY\n9. HUKUK \nAİRESİ", "9. HD"),  # wrapped header lost the "D"
+        ("YARGITAY\n9. HUKUK \nDAİRESİ", "9. HD"),
     ],
 )
 def test_chamber_is_canonical(court_lines: str, chamber: str) -> None:
@@ -101,6 +110,29 @@ def test_chamber_is_canonical(court_lines: str, chamber: str) -> None:
         chamber,
         "adli",
     )
+
+
+def _warnings(court: str) -> list[str]:
+    return parse_text(era2_text(court=court), "p", "ab" * 32).warnings
+
+
+def test_daire_without_a_chamber_number_warns() -> None:
+    warnings = _warnings("T.C\nYARGITAY\nHUKUK DAİRESİ")
+    assert "chamber_missing" in warnings
+    assert "chamber_missing" in _warnings("T.C.\nİSTANBUL\nBÖLGE ADLİYE MAHKEMESİ\nHUKUK DAİRESİ")
+
+
+def test_chamber_missing_is_not_reported_for_found_or_chamberless_courts() -> None:
+    assert "chamber_missing" not in _warnings("T.C\nYARGITAY\n9. HUKUK DAİRESİ")
+    assert "chamber_missing" not in _warnings("T.C\nYARGITAY\nHUKUK GENEL KURULU")
+
+
+def test_karar_year_differing_from_the_date_year_is_flagged_not_changed() -> None:
+    record = parse_text(era2_text(karar="2011/6789"), "p", "ab" * 32)
+    assert record.karar_no == "2011/6789"
+    assert record.decision_date == "2012-06-07"
+    assert "karar_year_ne_date_year" in record.warnings
+    assert "karar_year_ne_date_year" not in parse_text(era2_text(), "p", "ab" * 32).warnings
 
 
 def test_court_in_the_body_is_not_the_court() -> None:
@@ -328,7 +360,6 @@ def test_printed_statute_number_wins_over_the_abbreviation() -> None:
         ("İşK", None, (None, False)),  # dated abbreviation without a decision date
         ("SGK", None, (5510, False)),
         ("Bağ-Kur K", None, (1479, False)),
-        ("STK", None, (6356, False)),
         ("XYZ", "2012-01-01", (None, False)),
     ],
 )
@@ -336,6 +367,35 @@ def test_abbreviation_mapping(
     label: str, decision_date: str | None, expected: tuple[int | None, bool]
 ) -> None:
     assert resolve_statute(None, label, decision_date) == expected
+
+
+@pytest.mark.parametrize(
+    ("label", "decision_date", "expected"),
+    [
+        ("STK", "2012-11-06", (2821, True)),  # Sendikalar Kanunu until 6356 came into force
+        ("STK", "2012-11-07", (6356, True)),
+        ("STSK", "2012-11-06", (2821, True)),
+        ("STSK", "2012-11-07", (6356, True)),
+        ("STİSK", "2012-11-06", (2821, True)),
+        ("STİSK", "2012-11-07", (6356, True)),
+        ("TSK", "2012-11-06", (2822, True)),  # TİSGLK 2822 until 6356 replaced its content
+        ("TSK", "2012-11-07", (6356, True)),
+        ("TSGLK", "2012-11-06", (2822, True)),
+        ("TSGLK", "2012-11-07", (6356, True)),
+        ("STK", None, (None, False)),  # dated abbreviation without a decision date
+        ("TSGLK", None, (None, False)),
+    ],
+)
+def test_union_statute_abbreviations_change_at_6356(
+    label: str, decision_date: str | None, expected: tuple[int | None, bool]
+) -> None:
+    assert resolve_statute(None, label, decision_date) == expected
+
+
+def test_union_abbreviation_is_inferred_from_the_decision_date_in_a_record() -> None:
+    f = parse(era2_text(related="STK/25", tarih="03.03.2009"))
+    assert f.related_articles[0]["statute"] == 2821
+    assert "statute_inferred_from_date" in f.warnings
 
 
 def test_dated_abbreviation_adds_the_inferred_warning() -> None:

@@ -41,6 +41,8 @@ _STRATA: tuple[tuple[str, Any, int], ...] = (
 
 
 def select(records: list[dict[str, Any]], seed: int = SEED) -> list[dict[str, Any]]:
+    """Draws from the records it is given; `main` passes only status=ok rows (error rows have
+    no layout or court to stratify on)."""
     rng = random.Random(seed)
     ordered = sorted(records, key=lambda r: r["sha256"])  # input order must not matter
     chosen: dict[str, dict[str, Any]] = {}

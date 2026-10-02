@@ -65,16 +65,19 @@ _MONTHS = {
 _NUMERIC_DATE_RE = re.compile(r"(?<!\d)(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})(?!\d)")
 # "7 Haziran 2004"
 _NAMED_DATE_RE = re.compile(r"\b(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)\s+(\d{4})\b")
+# A date-shaped token that the strict pattern rejected: malformed year ("08/04/20219", "12.05.20").
+_MALFORMED_DATE_RE = re.compile(r"(?<!\d)\d{1,2}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d+")
 
 
 def parse_date(raw: str) -> tuple[str | None, bool]:
-    """(ISO date, found_but_invalid). A date that does not exist (31.02.2004) is invalid."""
+    """(ISO date, found_but_invalid). A date that does not exist (31.02.2004) or has a malformed
+    year (08/04/20219) is invalid; the intended date is never guessed."""
     if m := _NUMERIC_DATE_RE.search(raw):
         day, month, year = int(m[1]), int(m[2]), int(m[3])
     elif (m := _NAMED_DATE_RE.search(raw)) and tr_lower(m[2]) in _MONTHS:
         day, month, year = int(m[1]), _MONTHS[tr_lower(m[2])], int(m[3])
     else:
-        return None, False
+        return None, _MALFORMED_DATE_RE.search(raw) is not None
     try:
         return date(year, month, day).isoformat(), False
     except ValueError:
@@ -93,7 +96,9 @@ _COURT_LINE_RE = re.compile(
 _CITY_RE = re.compile(r"^[A-ZÇĞİÖŞÜ]{3,25}$")
 _MAX_COURT_LINES = 7
 _MAX_UNLABELLED_SKIP = 2
-_CHAMBER_RE = re.compile(r"(\d{1,2})\.?(HUKUK|CEZA)?DA[İI]RE")
+# "9. HUKUK \nAİRESİ": the wrapped header loses the "D" of "DAİRESİ" in some extractions. `squashed`
+# already joins the wrapped words, so only the optional "D" is needed.
+_CHAMBER_RE = re.compile(r"(\d{1,2})\.?(HUKUK|CEZA)?D?A[İI]RE")
 _ORDINAL_CHAMBERS = {
     "BİRİNCİ": 1,
     "İKİNCİ": 2,
@@ -347,12 +352,18 @@ _MAX_RANGE = 200
 # Abbreviation → statute number for labels printed without a number. Keys are `_abbr_key`.
 _STATIC_STATUTES = {
     "sgk": 5510, "ssgsk": 5510, "ssgssk": 5510, "ssgskk": 5510, "ssk": 506,
-    "stk": 6356, "tsk": 6356, "stsk": 6356, "stisk": 6356, "tsglk": 2822,
     "bağkur": 1479, "bağkurk": 1479, "bağk": 1479, "isgk": 6331, "tbk": 6098,
     "işmk": 7036, "iik": 2004, "tck": 5237, "möhuk": 5718, "vuk": 213,
 }  # fmt: skip
 # Abbreviations whose statute changed on a known date: (old, new, first day of the new one).
+# 6356 (in force 2012-11-07) replaced both union statutes: Sendikalar Kanunu 2821 and Toplu İş
+# Sözleşmesi, Grev ve Lokavt Kanunu 2822.
 _DATED_STATUTES = {
+    "stk": (2821, 6356, "2012-11-07"),
+    "stsk": (2821, 6356, "2012-11-07"),
+    "stisk": (2821, 6356, "2012-11-07"),
+    "tsk": (2822, 6356, "2012-11-07"),
+    "tsglk": (2822, 6356, "2012-11-07"),
     "bk": (818, 6098, "2012-07-01"),
     "humk": (1086, 6100, "2011-10-01"),
     "hmk": (1086, 6100, "2011-10-01"),

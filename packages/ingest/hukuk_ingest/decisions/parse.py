@@ -12,7 +12,7 @@ from hukuk_ingest.decisions.layout import detect_layout
 from hukuk_ingest.pipeline import cache_base
 
 # Bump when the parser's rules change the output.
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 ARCHIVE_DIR = "Yargi_Kararlari_Arsivi"
 _ISSUE_RE = re.compile(rf"^{ARCHIVE_DIR}/(\d+)\.\s*Sayı")
 
@@ -81,7 +81,7 @@ def parse_text(text: str, source_path: str, sha256: str) -> DecisionRecord:
         "outcome", "editorial_summary", "full_text", "text_completeness",
     ):  # fmt: skip
         setattr(record, name, getattr(fields, name))
-    record.warnings = qa.record_warnings(fields.warnings, layout, bool(fields.full_text))
+    record.warnings = qa.record_warnings(fields.warnings, layout, record.to_dict())
     record.missing = qa.missing_fields(record.to_dict())
     return record
 

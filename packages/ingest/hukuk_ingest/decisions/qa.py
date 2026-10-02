@@ -43,11 +43,18 @@ def missing_fields(record: dict[str, Any]) -> list[str]:
     return [name for name in FIELDS if applies(name, record) and not record[name]]
 
 
-def record_warnings(warnings: list[str], layout: Layout, has_body: bool) -> list[str]:
+def record_warnings(warnings: list[str], layout: Layout, record: dict[str, Any]) -> list[str]:
+    """Extraction warnings plus the rules computed from the finished record. A karar_no year that
+    differs from the decision_date year is kept as printed and only flagged (task 05 checks it)."""
     out = list(warnings)
+    if applies("chamber", record) and not record["chamber"]:
+        out.append("chamber_missing")
+    if record["karar_no"] and record["decision_date"]:
+        if record["karar_no"][:4] != record["decision_date"][:4]:
+            out.append("karar_year_ne_date_year")
     if layout is Layout.UNKNOWN:
         out.append("layout_unknown")
-    if not has_body:
+    if not record["full_text"]:
         out.append("body_not_found")
     return out
 
