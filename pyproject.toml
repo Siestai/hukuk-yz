@@ -3,13 +3,14 @@ name = "hukuk-agent"
 version = "0.1.0"
 description = "Turkish labour and social security law research assistant (monorepo root)"
 requires-python = ">=3.12"
-dependencies = ["hukuk-app", "hukuk-models"]
+dependencies = ["hukuk-app", "hukuk-ingest", "hukuk-models"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
 hukuk-app = { workspace = true }
+hukuk-ingest = { workspace = true }
 hukuk-models = { workspace = true }
 
 [tool.uv.workspace]
@@ -27,4 +28,4 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-testpaths = ["services/app/tests", "packages/models/tests"]
+testpaths = ["services/app/tests", "packages/models/tests", "packages/ingest/tests"]

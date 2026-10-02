@@ -6,10 +6,12 @@ WORKDIR /build
 COPY pyproject.toml uv.lock ./
 COPY services/app/pyproject.toml services/app/pyproject.toml
 COPY packages/models/pyproject.toml packages/models/pyproject.toml
+COPY packages/ingest/pyproject.toml packages/ingest/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-workspace --package hukuk-app
 COPY services/app/app services/app/app
 COPY packages/models/hukuk_models packages/models/hukuk_models
+COPY packages/ingest/hukuk_ingest packages/ingest/hukuk_ingest
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package hukuk-app
 
