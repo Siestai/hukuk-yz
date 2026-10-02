@@ -27,7 +27,7 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
     - 6 are failed downloads (the site's HTML index page). Those decisions are missing; re-fetching them needs approval.
   - `Mevzuat/`: 280 files in Kanunlar, Genelge, Genel Yazı, Yönetmelik (+İSG), Tebliğ, Görüş, Diğer and Yargı Kararları. Each has an `Eskiler/` subfolder for older versions.
     - Formats: PDF, Word, UYAP `.udf` (a zip with XML inside), images.
-    - E-signed SGK genelge PDFs extract as scrambled text and need layout-aware extraction or OCR.
+    - E-signed SGK genelge PDFs extract cleanly with `pypdfium2` (they were scrambled only under `pdftotext`). The real gap is scans: 25 Mevzuat PDFs have no text layer, ~5 have a broken OCR layer, plus 16 images (task 03 spike, 2026-10-02).
   - Root: 4 Excel calculators (SGK Otomasyon, Bordro, Net-Brüt, İPC-PEK). Use them only as test oracles for the calculation engine; they are not legal norms.
   - `Kitaplar/`: empty so far.
 - `data/text/`: cached `pdftotext` output of every decision.
