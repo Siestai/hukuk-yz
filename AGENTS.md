@@ -1,6 +1,6 @@
 # hukuk-agent
 
-An AI legal research and reasoning assistant for Turkish labour and social security law. It covers iş hukuku, SGK, sendika/TİS and İSG. Partners: Orhan (software), Baran and İbrahim (legal; approvers at institutions). Status 2026-10-01: data exploration is done; no app code yet.
+An AI legal research and reasoning assistant for Turkish labour and social security law. It covers iş hukuku, SGK, sendika/TİS and İSG. Partners: Orhan (software), Baran and İbrahim (legal; approvers at institutions). Status 2026-10-02: data exploration done; monorepo scaffold (app, worker, compose, CI) merged; KB schema (task 02) in progress. Repo: `Siestai/hukuk-yz` (public).
 
 ## Source of requirements
 
@@ -83,9 +83,15 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
 
 ## Infra
 
-- See `~/Desktop/SERVERS.md`.
-- Target deployment: `personal-orhanors` (46.225.92.71), managed from https://console.siestai.com. It also hosts the hukuk Hermes agent.
-- Keep this project separate from Siestai infra (it is a partnership).
+- Server details live outside the repo in `~/Desktop/SERVERS.md` (Orhan's machine). Never put IPs of new hosts, phone numbers, tokens or allowlists here: the repo is public.
+- Target deployment: `personal-orhanors`, a Dokploy remote server managed from https://console.siestai.com. Runtime infra stays separate from Siestai apps even though the repo lives in the Siestai org.
+- **Themis (Hermes Agent, Nous Research)** runs on the same server:
+  - Plain `docker compose` in `/opt/hermes-hukuk`, container `hermes-hukuk`, `gateway run`. No published ports, no Docker socket, `no-new-privileges`, 1.5 GB RAM / 1.5 CPU limit.
+  - State in `/opt/hermes-hukuk/data` → `/opt/data` in the container.
+  - Project data: Drive copy at `/opt/data/projects/hukuk-yz/data/raw/` (6,626 files, sha256-verified; `MANIFEST.txt` lists path, bytes, sha256).
+  - Channels: Telegram (Orhan) and the partners' WhatsApp group, both behind allowlists.
+  - Models: main `claude-opus-5-5`; subagents `claude-sonnet-5-5` (`delegation.model`); context compression at 80k tokens.
+  - `.env` and `config.yaml` are mounted **read-only**: Themis cannot change its own access, model or token settings. Changes go through Orhan / Claude Code on the host, followed by `docker compose up -d --force-recreate`.
 
 ## Conventions
 
