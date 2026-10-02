@@ -115,5 +115,5 @@ Tesseract 5.5.3, `tur` modeli, 300 dpi gri tonlama, `--psm 3`; kurulum conda-for
 
 ## Açık sorular
 
-1. `ocr_low_quality` kalan dosya olursa (beklenen 0-1): elle mi yazılsın, ortaklardan temiz kopya mı istensin, yoksa atlanır mı? (Orhan)
+1. ~~`ocr_low_quality` kalan dosya olursa ne yapılır?~~ **Karar (Orhan, 2026-10-02):** dosya `needs_ocr/ocr_low_quality` olarak kalır, elle yazılmaz ve atlanmaz; ortaklardan temiz kopyası istenir. Rapor bu listeyi ayrıca verir ki ortaklara gidecek istek doğrudan oradan çıksın.
 2. Görüş yazılarında kişi adı / TC no var. KB'ye yüklenirken maskelenmesi gerekir (md. 31). Bu görev metni olduğu gibi `data/extracted/` (gitignored) altına yazar; maskeleme KB yükleme görevinde. Onay? (Orhan)
