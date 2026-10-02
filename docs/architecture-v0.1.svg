@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="960" viewBox="0 0 1400 960" font-family="JetBrains Mono, DejaVu Sans Mono, monospace">
+<defs>
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
+  <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker>
+  <marker id="arg" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#34d399"/></marker>
+  <marker id="arv" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#a78bfa"/></marker>
+  <marker id="aro" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#fb923c"/></marker>
+</defs>
+<rect width="1400" height="960" fill="#020617"/>
+<rect width="1400" height="960" fill="url(#grid)"/>
+
+<text x="40" y="44" fill="#e2e8f0" font-size="20" font-weight="bold">Hukuk-YZ · Mimari v0.1</text>
+<text x="40" y="66" fill="#64748b" font-size="11">6 servis · Python/TS · Postgres · hedef Kubernetes · 2026-10-01</text>
+
+<!-- Boundaries -->
+<rect x="40" y="90" width="1320" height="120" rx="12" fill="none" stroke="#94a3b8" stroke-dasharray="8,4"/>
+<text x="56" y="110" fill="#94a3b8" font-size="10">KULLANICILAR</text>
+
+<rect x="40" y="240" width="1320" height="580" rx="12" fill="none" stroke="#fbbf24" stroke-dasharray="8,4"/>
+<text x="56" y="260" fill="#fbbf24" font-size="10">KUBERNETES CLUSTER (ileride) · bugün: docker compose, Hetzner Nürnberg</text>
+
+<!-- Arrows (behind boxes) -->
+<!-- users -> proxy -->
+<line x1="200" y1="190" x2="560" y2="300" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+<line x1="500" y1="190" x2="640" y2="300" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+<line x1="800" y1="190" x2="720" y2="300" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- telegram -> app (webhook, via proxy) -->
+<line x1="1100" y1="190" x2="800" y2="300" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- proxy -> web / dashboard-web / app -->
+<line x1="600" y1="360" x2="250" y2="430" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ar)"/>
+<line x1="640" y1="360" x2="450" y2="430" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ar)"/>
+<line x1="700" y1="360" x2="700" y2="430" stroke="#34d399" stroke-width="1.5" marker-end="url(#arg)"/>
+<!-- proxy -> app forwardauth (dashed rose) -->
+<path d="M 820 330 C 900 330, 900 440, 820 455" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#ar)"/>
+<text x="900" y="400" fill="#fb7185" font-size="8">ForwardAuth /auth/verify</text>
+<!-- web/dashboard -> app api -->
+<line x1="250" y1="490" x2="580" y2="490" stroke="#34d399" stroke-width="1.5" marker-end="url(#arg)"/>
+<!-- app -> agent -->
+<line x1="820" y1="480" x2="1000" y2="480" stroke="#34d399" stroke-width="1.5" marker-end="url(#arg)"/>
+<text x="840" y="470" fill="#34d399" font-size="8">soru / dosya bağlamı</text>
+<!-- agent -> app (kb, citation, calc) -->
+<path d="M 1000 520 C 940 540, 880 540, 820 520" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arg)"/>
+<text x="850" y="555" fill="#34d399" font-size="8">KB arama · atıf doğrulama · hesap motoru</text>
+<!-- agent -> memory -->
+<line x1="1100" y1="540" x2="1100" y2="620" stroke="#34d399" stroke-width="1.5" marker-end="url(#arg)"/>
+<text x="1110" y="585" fill="#34d399" font-size="8">store / recall</text>
+<!-- agent -> LLM gateway (external) -->
+<line x1="1200" y1="490" x2="1290" y2="490" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- app -> worker (queue) -->
+<line x1="700" y1="540" x2="700" y2="620" stroke="#fb923c" stroke-width="1.5" marker-end="url(#aro)"/>
+<text x="710" y="585" fill="#fb923c" font-size="8">Postgres kuyruğu → NATS (Faz 2)</text>
+<!-- app, worker, agent(ckpt), memory -> postgres -->
+<line x1="640" y1="540" x2="420" y2="700" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arv)"/>
+<line x1="620" y1="690" x2="520" y2="710" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arv)"/>
+<path d="M 1020 540 C 900 600, 700 640, 520 730" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arv)"/>
+<text x="760" y="640" fill="#a78bfa" font-size="8">checkpoint</text>
+<path d="M 1020 680 C 900 760, 700 770, 520 745" fill="none" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arv)"/>
+<text x="800" y="770" fill="#a78bfa" font-size="8">kendi şeması (pgvector)</text>
+<!-- worker -> raw data -->
+<line x1="620" y1="670" x2="520" y2="650" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- app -> payment -->
+<line x1="580" y1="530" x2="300" y2="600" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ar)"/>
+<!-- app -> telegram out -->
+
+<!-- USERS -->
+<g><rect x="100" y="130" width="200" height="60" rx="6" fill="#0f172a"/><rect x="100" y="130" width="200" height="60" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="200" y="155" fill="#e2e8f0" font-size="12" text-anchor="middle">Mali müşavir / İK / Avukat</text><text x="200" y="172" fill="#94a3b8" font-size="9" text-anchor="middle">tarayıcı</text></g>
+<g><rect x="400" y="130" width="200" height="60" rx="6" fill="#0f172a"/><rect x="400" y="130" width="200" height="60" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="500" y="155" fill="#e2e8f0" font-size="12" text-anchor="middle">Admin / Ortaklar</text><text x="500" y="172" fill="#94a3b8" font-size="9" text-anchor="middle">Baran · İbrahim · Orhan</text></g>
+<g><rect x="700" y="130" width="200" height="60" rx="6" fill="#0f172a"/><rect x="700" y="130" width="200" height="60" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="800" y="155" fill="#e2e8f0" font-size="12" text-anchor="middle">Uzman (eskalasyon)</text><text x="800" y="172" fill="#94a3b8" font-size="9" text-anchor="middle">insan onayı düğümü</text></g>
+<g><rect x="1000" y="130" width="200" height="60" rx="6" fill="#0f172a"/><rect x="1000" y="130" width="200" height="60" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="1100" y="155" fill="#e2e8f0" font-size="12" text-anchor="middle">Telegram</text><text x="1100" y="172" fill="#94a3b8" font-size="9" text-anchor="middle">bot webhook</text></g>
+
+<!-- PROXY -->
+<g><rect x="580" y="300" width="240" height="60" rx="6" fill="#0f172a"/><rect x="580" y="300" width="240" height="60" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+<text x="700" y="325" fill="#e2e8f0" font-size="12" text-anchor="middle">proxy · Traefik</text><text x="700" y="342" fill="#fb7185" font-size="9" text-anchor="middle">TLS · routing · ForwardAuth (konfig, kod değil)</text></g>
+
+<!-- WEB -->
+<g><rect x="60" y="430" width="190" height="80" rx="6" fill="#0f172a"/><rect x="60" y="430" width="190" height="80" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+<text x="155" y="455" fill="#e2e8f0" font-size="12" text-anchor="middle">web</text><text x="155" y="472" fill="#22d3ee" font-size="9" text-anchor="middle">Next.js · chat UI</text><text x="155" y="488" fill="#64748b" font-size="8" text-anchor="middle">atıf chip · kesinlik rozeti</text><text x="155" y="500" fill="#64748b" font-size="8" text-anchor="middle">gerekçe zinciri · eksik bilgi</text></g>
+<g><rect x="270" y="430" width="190" height="80" rx="6" fill="#0f172a"/><rect x="270" y="430" width="190" height="80" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+<text x="365" y="455" fill="#e2e8f0" font-size="12" text-anchor="middle">dashboard-web</text><text x="365" y="472" fill="#22d3ee" font-size="9" text-anchor="middle">Next.js · admin</text><text x="365" y="488" fill="#64748b" font-size="8" text-anchor="middle">ingestion · KB arama · org/kullanıcı</text><text x="365" y="500" fill="#64748b" font-size="8" text-anchor="middle">AI tüketim ve maliyet</text></g>
+
+<!-- APP -->
+<g><rect x="580" y="430" width="240" height="110" rx="6" fill="#0f172a"/><rect x="580" y="430" width="240" height="110" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+<text x="700" y="452" fill="#e2e8f0" font-size="12" text-anchor="middle">app · FastAPI</text><text x="700" y="468" fill="#34d399" font-size="9" text-anchor="middle">veri sahibi · Postgres'in tek yazarı</text>
+<text x="700" y="486" fill="#cbd5e1" font-size="8" text-anchor="middle">auth · org/kullanıcı · dosya (case)</text>
+<text x="700" y="498" fill="#cbd5e1" font-size="8" text-anchor="middle">KB CRUD + arama · atıf doğrulama (m.25)</text>
+<text x="700" y="510" fill="#cbd5e1" font-size="8" text-anchor="middle">hesap motoru (m.29) · kanallar · maliyet · ödeme</text>
+<text x="700" y="528" fill="#64748b" font-size="8" text-anchor="middle">packages/: calc · citation · models</text></g>
+
+<!-- AGENT -->
+<g><rect x="1000" y="430" width="200" height="110" rx="6" fill="#0f172a"/><rect x="1000" y="430" width="200" height="110" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+<text x="1100" y="452" fill="#e2e8f0" font-size="12" text-anchor="middle">agent · LangGraph</text><text x="1100" y="468" fill="#34d399" font-size="9" text-anchor="middle">durumsuz · m.33 zinciri</text>
+<text x="1100" y="486" fill="#cbd5e1" font-size="8" text-anchor="middle">statü → tarihler → mevzuat →</text>
+<text x="1100" y="498" fill="#cbd5e1" font-size="8" text-anchor="middle">içtihat → somut olay → hesap → sonuç</text>
+<text x="1100" y="514" fill="#cbd5e1" font-size="8" text-anchor="middle">interrupt: eskalasyon / eksik bilgi</text>
+<text x="1100" y="528" fill="#64748b" font-size="8" text-anchor="middle">LLM gateway (maliyet log)</text></g>
+
+<!-- LLM external -->
+<g><rect x="1240" y="460" width="110" height="60" rx="6" fill="#0f172a"/><rect x="1240" y="460" width="110" height="60" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="1295" y="485" fill="#e2e8f0" font-size="11" text-anchor="middle">LLM API</text><text x="1295" y="500" fill="#94a3b8" font-size="8" text-anchor="middle">EU region · KVKK</text></g>
+
+<!-- WORKER -->
+<g><rect x="620" y="620" width="160" height="80" rx="6" fill="#0f172a"/><rect x="620" y="620" width="160" height="80" rx="6" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.5"/>
+<text x="700" y="645" fill="#e2e8f0" font-size="12" text-anchor="middle">worker</text><text x="700" y="661" fill="#fb923c" font-size="9" text-anchor="middle">app kodu, ayrı süreç</text>
+<text x="700" y="677" fill="#cbd5e1" font-size="8" text-anchor="middle">PDF parse · mevzuat sürümleme</text><text x="700" y="689" fill="#cbd5e1" font-size="8" text-anchor="middle">kaynak crawler · embedding</text></g>
+
+<!-- MEMORY -->
+<g><rect x="1000" y="620" width="200" height="80" rx="6" fill="#0f172a"/><rect x="1000" y="620" width="200" height="80" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+<text x="1100" y="645" fill="#e2e8f0" font-size="12" text-anchor="middle">memory · FastAPI</text><text x="1100" y="661" fill="#34d399" font-size="9" text-anchor="middle">generic · domain bilmez</text>
+<text x="1100" y="677" fill="#cbd5e1" font-size="8" text-anchor="middle">store / recall / forget / summarize</text><text x="1100" y="689" fill="#64748b" font-size="8" text-anchor="middle">scope: tenant · user · case → ileride OSS</text></g>
+
+<!-- RAW DATA -->
+<g><rect x="340" y="610" width="180" height="70" rx="6" fill="#0f172a"/><rect x="340" y="610" width="180" height="70" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="430" y="633" fill="#e2e8f0" font-size="11" text-anchor="middle">Ham veri</text><text x="430" y="649" fill="#94a3b8" font-size="8" text-anchor="middle">6.342 karar · 280 mevzuat · 4 Excel</text><text x="430" y="663" fill="#94a3b8" font-size="8" text-anchor="middle">+ kaynak siteleri (ortak listesi)</text></g>
+
+<!-- POSTGRES -->
+<g><rect x="340" y="700" width="180" height="90" rx="6" fill="#0f172a"/><rect x="340" y="700" width="180" height="90" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="430" y="723" fill="#e2e8f0" font-size="12" text-anchor="middle">Postgres</text><text x="430" y="739" fill="#a78bfa" font-size="9" text-anchor="middle">pgvector + tsvector · cluster dışı</text>
+<text x="430" y="755" fill="#cbd5e1" font-size="8" text-anchor="middle">KB: kaynak türleri ayrı (m.28)</text><text x="430" y="767" fill="#cbd5e1" font-size="8" text-anchor="middle">mevzuat madde + tarih aralığı (m.4)</text><text x="430" y="779" fill="#cbd5e1" font-size="8" text-anchor="middle">kuyruk · checkpoint · memory şeması</text></g>
+
+<!-- PAYMENT -->
+<g><rect x="100" y="600" width="200" height="50" rx="6" fill="#0f172a"/><rect x="100" y="600" width="200" height="50" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="200" y="622" fill="#e2e8f0" font-size="11" text-anchor="middle">Ödeme · iyzico / PayTR</text><text x="200" y="638" fill="#94a3b8" font-size="8" text-anchor="middle">abonelik + eskalasyon kredisi · e-fatura</text></g>
+
+<!-- Legend -->
+<g transform="translate(40,850)">
+<text x="0" y="0" fill="#64748b" font-size="10">LEJANT</text>
+<rect x="0" y="12" width="14" height="14" rx="3" fill="rgba(8,51,68,0.4)" stroke="#22d3ee"/><text x="20" y="23" fill="#94a3b8" font-size="9">Frontend (TS/Next.js)</text>
+<rect x="180" y="12" width="14" height="14" rx="3" fill="rgba(6,78,59,0.4)" stroke="#34d399"/><text x="200" y="23" fill="#94a3b8" font-size="9">Backend (Python/FastAPI)</text>
+<rect x="380" y="12" width="14" height="14" rx="3" fill="rgba(76,29,149,0.4)" stroke="#a78bfa"/><text x="400" y="23" fill="#94a3b8" font-size="9">Veri</text>
+<rect x="460" y="12" width="14" height="14" rx="3" fill="rgba(251,146,60,0.3)" stroke="#fb923c"/><text x="480" y="23" fill="#94a3b8" font-size="9">Async iş</text>
+<rect x="560" y="12" width="14" height="14" rx="3" fill="rgba(136,19,55,0.4)" stroke="#fb7185"/><text x="580" y="23" fill="#94a3b8" font-size="9">Güvenlik / auth</text>
+<rect x="700" y="12" width="14" height="14" rx="3" fill="rgba(30,41,59,0.5)" stroke="#94a3b8"/><text x="720" y="23" fill="#94a3b8" font-size="9">Dış sistem</text>
+<text x="0" y="50" fill="#64748b" font-size="9">Kurallar: app tek yazar · agent durumsuz · atıf doğrulanmadan cevap yok (m.25) · hesap LLM'de değil (m.29) · 12-factor · Postgres kuyruğu → NATS (Faz 2) · Helm (Faz 3)</text>
+</g>
+</svg>
