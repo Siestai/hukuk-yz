@@ -3,10 +3,11 @@ import os
 from pathlib import Path
 
 import pytest
-from conftest import make_ole2, make_pdf
+from conftest import FIXTURES, GOOD, WEAK, FakeEngine, make_ole2, make_pdf
 
 from hukuk_ingest import pipeline, quality
 from hukuk_ingest.extract import Extraction
+from hukuk_ingest.ocr import Tesseract
 from hukuk_ingest.pipeline import FileResult, process_file
 
 OneFile = tuple[Path, Path, Path]
@@ -124,3 +125,127 @@ def test_write_atomic_removes_temp_file_on_error(
     with pytest.raises(OSError):
         pipeline._write_atomic(tmp_path / "d" / "x.txt", "data")
     assert not list((tmp_path / "d").glob("*.tmp"))
+
+
+def _scan_corpus(tmp_path: Path) -> tuple[Path, Path, Path]:
+    root = tmp_path / "c"
+    root.mkdir()
+    (root / "scan.pdf").write_bytes(make_pdf(["", ""]))
+    (root / "a.txt").write_text("işçi ve işveren ile ilgili madde " * 5, encoding="utf-8")
+    return root, root / "scan.pdf", tmp_path / "cache"
+
+
+def _use_engine(monkeypatch: pytest.MonkeyPatch, engine: FakeEngine | None) -> None:
+    monkeypatch.setattr(pipeline, "default_engine", lambda: engine)
+
+
+def test_process_file_ocr_replaces_missing_text_layer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, scan, cache = _scan_corpus(tmp_path)
+    _use_engine(monkeypatch, FakeEngine([GOOD, WEAK, GOOD]))  # page 2: weak, then Sauvola
+    result = process_file(scan, root, cache)
+    assert (result.status, result.reason, result.pages) == ("ok", None, 2)
+    assert (result.extractor, result.extractor_version) == ("tesseract", "fake 1+tur-abc")
+    assert "ocr" in result.warnings
+    assert result.quality is not None
+    assert result.quality["ocr_pass"] == [1, 2]
+    raw = pipeline.cache_base(cache, result.sha256).with_suffix(".raw.txt")
+    assert raw.read_text(encoding="utf-8") == GOOD + "\f" + GOOD
+
+
+def test_process_file_ocr_with_unusable_text_is_ocr_low_quality(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, scan, cache = _scan_corpus(tmp_path)
+    _use_engine(monkeypatch, FakeEngine([WEAK] * 4))
+    result = process_file(scan, root, cache)
+    assert (result.status, result.reason) == ("needs_ocr", "ocr_low_quality")
+    assert "ocr" in result.warnings
+
+
+def test_process_file_ocr_of_partial_layer_keeps_text_pages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "c"
+    root.mkdir()
+    (root / "p.pdf").write_bytes(make_pdf([GOOD[:200], "", GOOD[:200]]))
+    engine = FakeEngine([GOOD])
+    _use_engine(monkeypatch, engine)
+    first = process_file(root / "p.pdf", root, tmp_path / "cache")
+    assert first.status == "ok"
+    assert first.quality is not None
+    assert first.quality["ocr_pass"] == [None, 1, None]
+    assert len(engine.calls) == 1
+
+
+def test_process_file_ocr_reads_images(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = tmp_path / "c"
+    root.mkdir()
+    (root / "pic.png").write_bytes((FIXTURES / "scan.png").read_bytes())
+    _use_engine(monkeypatch, FakeEngine([GOOD]))
+    result = process_file(root / "pic.png", root, tmp_path / "cache")
+    assert (result.detected_type, result.status, result.pages) == ("image", "ok", 1)
+
+
+def test_process_file_without_engine_stays_needs_ocr_and_says_why(tmp_path: Path) -> None:
+    root, scan, cache = _scan_corpus(tmp_path)
+    result = process_file(scan, root, cache)
+    assert (result.status, result.reason) == ("needs_ocr", "no_text_layer")
+    assert result.warnings == ["ocr_unavailable"]
+
+
+def test_process_file_no_ocr_flag_skips_ocr_silently(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, scan, cache = _scan_corpus(tmp_path)
+    engine = FakeEngine([GOOD])
+    _use_engine(monkeypatch, engine)
+    result = process_file(scan, root, cache, ocr=False)
+    assert (result.status, result.reason, result.warnings) == ("needs_ocr", "no_text_layer", [])
+    assert not engine.calls
+
+
+def test_ocr_result_is_cached_until_the_ocr_setup_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, scan, cache = _scan_corpus(tmp_path)
+    engine = FakeEngine([GOOD, GOOD])
+    _use_engine(monkeypatch, engine)
+    assert not process_file(scan, root, cache).cached
+    assert process_file(scan, root, cache).cached
+    assert len(engine.calls) == 2  # the second run did not OCR again
+    engine.fingerprint = "fp2"
+    engine.texts = [GOOD, GOOD]
+    assert not process_file(scan, root, cache).cached
+    assert process_file(scan, root, cache).cached
+    _use_engine(monkeypatch, None)  # Tesseract disappeared: the OCR'd entry no longer applies
+    assert not process_file(scan, root, cache).cached
+
+
+def test_files_without_ocr_stay_cached_when_the_ocr_setup_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, _, cache = _scan_corpus(tmp_path)
+    engine = FakeEngine([])
+    _use_engine(monkeypatch, engine)
+    assert not process_file(root / "a.txt", root, cache).cached
+    engine.fingerprint = "fp2"
+    assert process_file(root / "a.txt", root, cache).cached
+
+
+def test_real_tesseract_ocrs_synthetic_scans_to_ok(
+    tmp_path: Path, real_tesseract: Tesseract
+) -> None:
+    root = tmp_path / "c"
+    root.mkdir()
+    for name in ("scan.pdf", "scan.png"):
+        (root / name).write_bytes((FIXTURES / name).read_bytes())
+    for name in ("scan.pdf", "scan.png"):
+        result = process_file(root / name, root, tmp_path / "cache")
+        assert (result.status, result.extractor) == ("ok", "tesseract")
+        assert result.extractor_version == real_tesseract.extractor_version
+        assert "ocr" in result.warnings
+        clean = pipeline.cache_base(tmp_path / "cache", result.sha256).with_suffix(".clean.txt")
+        text = clean.read_text(encoding="utf-8")
+        assert all(w in text for w in ("kıdem", "tazminatı", "ücret"))
