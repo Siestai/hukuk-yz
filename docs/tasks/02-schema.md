@@ -1,6 +1,6 @@
 # Görev 02: Alembic şeması v0.1
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: tamamlandı (PR #9). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/data-model.md` (tamamı; §3, §4, §5, §8, §10 bağlayıcı). Üstüne oturduğu iş: Görev 01 (iskelet, boş `0001_init`).
 
 ## Hedef
@@ -46,7 +46,7 @@ Bağlam: `docs/data-model.md` (tamamı; §3, §4, §5, §8, §10 bağlayıcı). 
 ## Notlar Claude Code için
 
 - Alan adları `data-model.md`'deki gibi; Türkçe alan adı yok (`esas_no`, `karar_no` kalır, bunlar terim).
-- Her `*_version` tablosunda `valid_from <= valid_to` CHECK.
+- Her `*_version` tablosunda `valid_from < valid_to` CHECK (yarı açık aralık; PR #9'da sıkılaştırıldı).
 - `recorded_at` default `now()`, `superseded_at` null.
 - `uuid` PK, `gen_random_uuid()` server default.
 - Timestamp'ler `timestamptz`.
