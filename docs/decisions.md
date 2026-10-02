@@ -16,6 +16,7 @@
 - **İş yönetimi**: ortakların da kullanacağı araç olarak Notion önerildi (Orhan karar verecek). GitHub = kod, Notion = planlama/kararlar/sorular.
 - **Hesap motoru ve atıf kapısı `app`'te** (Orhan, 2026-10-02): `packages/calc` ve `packages/citation` saf paket; HTTP'yi `app` sunar, `agent` çağırır, dashboard da kullanır.
 - **Yargıtay teyit spike'ı** (Orhan + Claude Code, PR #5): karararama otomatik teyit çalışıyor; ~6 istek/dk sınırı; 2015+ tam, 2010-14 yarım, 2009 öncesi yok (arşivin ~%25'i). Ortaklara 3 soru: 2009 öncesi ne olacak, BAM/AYM/Danıştay hangi kaynaktan, toplu sorgu izni. `verification` enum'una `not_in_source` eklendi.
+- **Resmî kaynak teyidi: Emsal yalnızca BAM, kaynak başına proxy** (Görev 06 implementasyonu, Orhan onayı PR'da): Emsal'deki Yargıtay/Danıştay girişleri dış bağlantıdır, bu mahkemeler kendi sitelerinden aranır. karararama.yargitay.gov.tr sunucudan açılmadığı için her kaynağa isteğe bağlı çıkış proxy'si (`VERIFY_PROXY_<KAYNAK>`) eklendi; varsayılan yok. Ayrıntı: `docs/tasks/06-decision-verification.md`.
 - **Faz 1 geliştirme akışı** (Orhan + Themis): dilim = 1-3 saatlik Claude Code işi, tek PR. Themis görev dosyasını `docs/tasks/NN-*.md`'ye yazar, branch açar, `claude -p` ile çalıştırır, kabul kriterlerini kendisi koşar, PR açar; Orhan merge eder. Kabul kriteri koşulmadan PR yok.
 
 ## Açık öneriler (karar bekliyor)
