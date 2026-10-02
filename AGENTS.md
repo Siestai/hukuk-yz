@@ -90,7 +90,7 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
   - State in `/opt/hermes-hukuk/data` → `/opt/data` in the container.
   - Project data: Drive copy at `/opt/data/projects/hukuk-yz/data/raw/` (6,626 files, sha256-verified; `MANIFEST.txt` lists path, bytes, sha256).
   - Channels: Telegram (Orhan) and the partners' WhatsApp group, both behind allowlists.
-  - Models: main `claude-fable-5.1`; subagents `claude-sonnet-5-5` (`delegation.model`); context compression at 80k tokens.
+  - Models: main `claude-opus-5-5`; subagents `claude-sonnet-5-5` (`delegation.model`); context compression at 80k tokens.
   - `.env` and `config.yaml` are mounted **read-only**: Themis cannot change its own access, model or token settings. Changes go through Orhan / Claude Code on the host, followed by `docker compose up -d --force-recreate`.
 
 ## Conventions
