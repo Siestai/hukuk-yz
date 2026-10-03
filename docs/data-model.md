@@ -138,7 +138,7 @@ Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND
 | decision_date | |
 | event_date_hint | metinden çıkarılan olay tarihi (varsa; md. 4 için) |
 | jurisdiction | `adli` / `idari` |
-| related_articles | jsonb: `[{statute: 4857, articles: [18,19,20,21]}]` |
+| related_articles | jsonb: `[{statute: 4857, label: "4857 SK", articles: ["18","19","20","21"], raw: "..."}]` (parser çıktısı; `statute` tanınmayan kanunda null) |
 | keywords | text[] |
 | outcome | ASCII snake_case etiketler (ASCII enum kuralı): `bozma`, `onama`, `duzelterek_onama`, `kabul`, `red`, `ihlal`, `ihlal_yok`. Serbest metin kalır; parser `kismen_bozma` üretmez, o yüzden listede yok. Parser şu an "düzelterek onama" yazar; `duzelterek_onama` normalizasyonu yükleme sırasında yapılır |
 | full_text | |
