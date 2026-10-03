@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.kb import PARSER_NAME
 from app.loaders import decisions
 from app.loaders.decisions import (
     REQUIRED_KEYS,
@@ -33,7 +34,6 @@ from app.models.common import (
 )
 from app.models.decision import Decision
 from app.models.user import AppUser
-from app.review import PARSER_NAME
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
 FIXTURE_LINES = 25  # one of them repeats another's sha256 (the same PDF in two issues)

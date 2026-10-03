@@ -4,18 +4,22 @@ import asyncio
 import uuid
 from collections.abc import AsyncIterator
 from datetime import date
+from pathlib import Path
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker
 
 from alembic import command
 from app.db import make_engine
-from app.models.common import Base
+from app.loaders.decisions import load, prepare, read_rows
+from app.loaders.report import LoadCounts
+from app.models.common import Base, Extraction, Review
 
 DECISION_LIVE_INDEX = "uq_decision_court_bam_region_chamber_esas_no_karar_no_live"
+DECISIONS_FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
 HALF_VECTOR = "[" + ",".join(["0.5"] * 1024) + "]"
 
 
@@ -62,6 +66,79 @@ def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) ->
 
 def test_alembic_check_has_no_drift(alembic_config: Config, migrated: None) -> None:
     command.check(alembic_config)  # raises CommandError when models and migration differ
+
+
+async def _load_fixture(factory: async_sessionmaker[AsyncSession]) -> None:
+    rows, _, _ = read_rows(DECISIONS_FIXTURE)
+    prepared, _ = prepare(rows, {})
+    await load(factory, prepared, LoadCounts())
+
+
+async def test_the_reviewer_fk_migration_runs_over_legacy_reviews(
+    kb_factory: async_sessionmaker[AsyncSession], alembic_config: Config
+) -> None:
+    await _load_fixture(kb_factory)
+    async with kb_factory() as session:
+        extraction_id = (await session.execute(select(Extraction.id).limit(1))).scalar_one()
+    await asyncio.to_thread(command.downgrade, alembic_config, "0005")
+    try:
+        async with kb_factory() as session:  # what the task 05 CLI wrote: a reviewer, no user
+            await session.execute(
+                text(
+                    "INSERT INTO review (extraction_id, reviewer_id, decision) "
+                    "VALUES (:e, :r, 'approve')"
+                ),
+                {"e": extraction_id, "r": uuid.uuid4()},
+            )
+            await session.commit()
+    finally:
+        await asyncio.to_thread(command.upgrade, alembic_config, "head")
+    async with kb_factory() as session:
+        assert (await session.execute(select(func.count()).select_from(Review))).scalar_one() == 1
+        validated = (
+            await session.execute(
+                text(
+                    "SELECT convalidated FROM pg_constraint "
+                    "WHERE conname = 'fk_review_reviewer_id_app_user'"
+                )
+            )
+        ).scalar_one()
+    assert validated is False
+
+
+async def test_the_queue_columns_of_extraction_follow_fields(
+    kb_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    await _load_fixture(kb_factory)
+    async with kb_factory() as session:
+        extraction = (
+            await session.execute(
+                select(Extraction).where(Extraction.fields["journal_page"].as_integer() == 11)
+            )
+        ).scalar_one()
+        fields = extraction.fields
+        assert (extraction.court, extraction.chamber, extraction.esas_no) == (
+            fields["court"],
+            fields["chamber"],
+            fields["esas_no"],
+        )
+        assert (extraction.karar_no, extraction.decision_date, extraction.journal_issue) == (
+            fields["karar_no"],
+            fields["decision_date"],
+            fields["journal_issue"],
+        )
+        assert extraction.duplicate_group == fields.get("duplicate_group")
+        assert (extraction.duplicate_key is None) == ("duplicate_group" not in fields)
+
+        await session.execute(
+            text(
+                "UPDATE extraction SET fields = fields || "
+                '\'{"court": "aym", "journal_issue": 7}\' WHERE id = :id'
+            ),
+            {"id": extraction.id},
+        )
+        await session.refresh(extraction)
+        assert (extraction.court, extraction.journal_issue) == ("aym", 7)
 
 
 def _uuid(value: object) -> uuid.UUID:

@@ -1,8 +1,15 @@
 import uuid
 from datetime import date, datetime
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 
 class HealthResponse(BaseModel):
@@ -43,6 +50,23 @@ class ReviewFilters(BaseModel):
     q: str | None = None
 
 
+class RelatedArticle(BaseModel):
+    """One entry of `related_articles`, as the parser writes it: `statute` is the law number
+    (None when the label could not be mapped), `articles` the article numbers as printed
+    ("18", "17/3"), `raw` the line it came from ("" for an entry added by hand)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    statute: int | None
+    label: str
+    articles: list[str]
+    raw: str
+
+
+NonEmptyText = Annotated[str, StringConstraints(min_length=1)]
+IsoDate = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}$")]
+
+
 class DecisionEdits(BaseModel):
     """The `fields` a reviewer may correct, each optional but never null; `full_text` and
     `editorial_summary` are not among them. Enum values mirror the schema enums of the app
@@ -63,16 +87,23 @@ class DecisionEdits(BaseModel):
     source_chamber: str | None = None
     bam_region: str | None = None
     decision_kind: str | None = None
-    esas_no: str | None = None
-    karar_no: str | None = None
-    decision_date: date | None = None
+    esas_no: NonEmptyText | None = None
+    karar_no: NonEmptyText | None = None
+    decision_date: IsoDate | None = None
     jurisdiction: Literal["adli", "idari"] | None = None
-    related_articles: list[dict[str, Any]] | None = None
+    related_articles: list[RelatedArticle] | None = None
     keywords: list[str] | None = None
     outcome: (
         Literal["bozma", "onama", "duzelterek_onama", "kabul", "red", "ihlal", "ihlal_yok"] | None
     ) = None
     text_completeness: Literal["full", "excerpt", "summary_only"] | None = None
+
+    @field_validator("decision_date")
+    @classmethod
+    def _real_date(cls, value: str | None) -> str | None:
+        if value is not None:
+            date.fromisoformat(value)  # 2019-02-30 is not a date
+        return value
 
     @model_validator(mode="after")
     def _no_nulls(self) -> Self:
@@ -90,6 +121,8 @@ class ReviewActionRequest(BaseModel):
     def _required_parts(self) -> Self:
         if self.action == "edit" and not (self.edits and self.edits.model_fields_set):
             raise ValueError("edits are required for action 'edit'")
+        if self.action != "edit" and self.edits is not None:
+            raise ValueError(f"edits are only for action 'edit', not '{self.action}'")
         if self.action == "reject" and not (self.note and self.note.strip()):
             raise ValueError("note is required for action 'reject'")
         return self
@@ -106,6 +139,10 @@ class BulkApproveRequest(BaseModel):
     filters: ReviewFilters = ReviewFilters()
     expected_count: int = Field(ge=0)
     limit: int = Field(default=100, ge=1, le=100)
+    # sha256 of the last record of the previous call (its `next_cursor`); the run goes in sha256
+    # order, so a record that stays in the queue (a conflict) is passed, not met again.
+    # `expected_count` counts the matching records after it.
+    cursor: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class BulkFailure(BaseModel):
@@ -117,7 +154,8 @@ class BulkApproveResponse(BaseModel):
     published: int
     conflicts: list[uuid.UUID]
     failed: list[BulkFailure]
-    remaining: int
+    remaining: int  # matching records after `next_cursor`
+    next_cursor: str | None  # None when nothing remains
 
 
 class ReviewListItem(BaseModel):

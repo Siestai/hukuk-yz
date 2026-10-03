@@ -1,30 +1,29 @@
 """Review API of decision extractions (task 09): queue, detail, approve / edit / reject and
-bulk approval of the high band.
-
-The queue is the newest `decisions` extraction of every source still `analyzed`. `queue()` and
-`publish_batch()` are the one query and the one publish path of both this API and the
-`--approve-band` CLI of the loader.
+bulk approval of the high band. HTTP only: the queue query and the writes after a review are in
+`app.kb`, shared with the `--approve-band` CLI of the loader.
 """
 
 import uuid
-from collections import Counter
-from collections.abc import Sequence
-from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import ColumnElement, Select, Subquery, func, literal, literal_column, or_, select
-from sqlalchemy.dialects.postgresql import JSONB, distinct_on
+from sqlalchemy import Select, and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.auth import Db, require_role
-from app.kb import publish_decision
+from app.kb import (
+    PARSER_NAME,
+    StaleExtraction,
+    approve_extraction,
+    publish_batch,
+    queue,
+    reject_extraction,
+)
 from app.models.common import (
     Court,
     Extraction,
-    IngestFile,
-    RecordStatus,
     Review,
     ReviewDecision,
     Source,
@@ -50,153 +49,34 @@ from hukuk_models import (
     ReviewSummary,
 )
 
-PARSER_NAME = "decisions"
 TOP_REASONS = 15
 
-Sort = Literal["score_asc", "score_desc"]
+ListSort = Literal["score_asc", "score_desc"]
 
 _reviewer = require_role("reviewer")
 Reviewer = Annotated[AppUser, Depends(_reviewer)]
 router = APIRouter(prefix="/review/decisions", tags=["review"], dependencies=[Depends(_reviewer)])
 
 
-def _slim(fields: Any) -> Any:
-    """`fields` without the two long texts."""
-    return fields.op("-", return_type=JSONB)(
-        literal_column("ARRAY['full_text', 'editorial_summary']")
-    )
+async def _count(db: AsyncSession, stmt: Select[Any]) -> int:
+    return (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
 
 
-def newest_extractions(source_id: uuid.UUID | None = None, with_slim: bool = False) -> Subquery:
-    """The newest `decisions` extraction of every decision source (of one source if given).
-    `fields` hold the decision text (some 25 KB per row, out of line), so the subquery reads
-    them only on request: `slim` (`fields` without the long texts, cut once per row) is there
-    for the filters that need a field."""
-    stmt = (
-        select(
-            Extraction.id,
-            Extraction.source_id,
-            IngestFile.sha256,
-            Source.title,
-            Source.status,
-            Extraction.confidence,
-        )
-        .ext(distinct_on(Extraction.source_id))
-        .join(IngestFile, IngestFile.id == Extraction.file_id)
-        .join(Source, Source.id == Extraction.source_id)
-        .where(Extraction.parser_name == PARSER_NAME, Source.category == SourceCategory.decision)
-        .order_by(Extraction.source_id, Extraction.extracted_at.desc(), Extraction.id)
-    )
-    if with_slim:
-        stmt = stmt.add_columns(_slim(Extraction.fields).label("slim"))
-    if source_id:
-        stmt = stmt.where(Extraction.source_id == source_id)
-    return stmt.subquery()
-
-
-def queue(band: Band | None, filters: ReviewFilters, sort: Sort = "score_asc") -> Select[Any]:
-    """The review queue: newest extraction of every `analyzed` decision source, filtered and
-    ordered (most suspicious first by default; ties by sha256). Rows carry no fields."""
-    newest = newest_extractions(
-        with_slim=filters.court is not None or filters.journal_issue is not None or bool(filters.q)
-    )
-    score = newest.c.confidence["score"].as_integer()
-    conditions: list[ColumnElement[bool]] = [newest.c.status == RecordStatus.analyzed]
-    if band:
-        conditions.append(newest.c.confidence["band"].as_string() == band)
-    if filters.court is not None:
-        conditions.append(newest.c.slim["court"].as_string() == filters.court)
-    if filters.reason is not None:
-        conditions.append(newest.c.confidence["reasons"].contains([filters.reason]))
-    if filters.journal_issue is not None:
-        conditions.append(newest.c.slim["journal_issue"].as_integer() == filters.journal_issue)
-    if filters.q:
-        conditions.append(
-            or_(
-                newest.c.slim["esas_no"].as_string().icontains(filters.q, autoescape=True),
-                newest.c.slim["karar_no"].as_string().icontains(filters.q, autoescape=True),
-                newest.c.title.icontains(filters.q, autoescape=True),
-            )
-        )
-    return (
-        select(
-            newest.c.id,
-            newest.c.source_id,
-            newest.c.sha256,
-            newest.c.title,
-            newest.c.confidence,
-            newest.c.confidence["band"].as_string().label("band"),
-            score.label("score"),
-        )
-        .where(*conditions)
-        .order_by(score.asc() if sort == "score_asc" else score.desc(), newest.c.sha256)
-    )
-
-
-async def approve_extraction(
-    session: AsyncSession,
-    extraction_id: uuid.UUID,
-    reviewer_id: uuid.UUID,
-    decision: ReviewDecision = ReviewDecision.approve,
-    edits: dict[str, Any] | None = None,
-    note: str | None = None,
-) -> tuple[uuid.UUID, uuid.UUID]:
-    """`review` row + `publish_decision` in a savepoint; returns (review_id, decision_id). On
-    IntegrityError (live-key collision) or ValueError (not publishable) the savepoint is rolled
-    back and nothing is left behind; the caller commits."""
-    async with session.begin_nested():
-        review = Review(
-            extraction_id=extraction_id,
-            reviewer_id=reviewer_id,
-            decision=decision,
-            edits=edits,
-            note=note,
-        )
-        session.add(review)
-        await session.flush()
-        return review.id, await publish_decision(session, extraction_id, review.id)
-
-
-@dataclass
-class BatchResult:
-    published: int = 0
-    conflicts: list[uuid.UUID] = field(default_factory=list)
-    failed: list[tuple[uuid.UUID, str]] = field(default_factory=list)
-
-
-async def publish_batch(
-    session: AsyncSession, extraction_ids: Sequence[uuid.UUID], reviewer_id: uuid.UUID
-) -> BatchResult:
-    """Approve and publish each extraction in its own savepoint: a live-key collision goes to
-    `conflicts`, any other record `publish_decision` refuses to `failed` (id, reason); neither
-    stops the run. The caller commits."""
-    result = BatchResult()
-    for extraction_id in extraction_ids:
-        try:
-            await approve_extraction(session, extraction_id, reviewer_id)
-            result.published += 1
-        except IntegrityError:
-            result.conflicts.append(extraction_id)
-        except ValueError as exc:
-            result.failed.append((extraction_id, str(exc)))
-    return result
-
-
-def _list_item(row: Any, slim: dict[str, Any]) -> ReviewListItem:
+def _list_item(row: Any) -> ReviewListItem:
     return ReviewListItem(
         extraction_id=row.id,
         source_id=row.source_id,
         title=row.title,
-        court=slim["court"],
-        chamber=slim["chamber"],
-        esas_no=slim["esas_no"],
-        karar_no=slim["karar_no"],
-        decision_date=slim["decision_date"],
-        journal_issue=slim["journal_issue"],
+        court=row.court,
+        chamber=row.chamber,
+        esas_no=row.esas_no,
+        karar_no=row.karar_no,
+        decision_date=row.decision_date,
+        journal_issue=row.journal_issue,
         band=row.band,
         score=row.score,
         reasons=row.confidence["reasons"],
-        duplicate_group=slim.get("duplicate_group"),
+        duplicate_group=row.duplicate_group,
     )
 
 
@@ -208,13 +88,12 @@ async def list_decisions(
     reason: str | None = None,
     journal_issue: int | None = None,
     q: str | None = None,
-    sort: Sort = "score_asc",
+    sort: ListSort = "score_asc",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ReviewListResponse:
     filters = ReviewFilters(court=court, reason=reason, journal_issue=journal_issue, q=q)
     stmt = queue(band, filters, sort)
-    # One scan for page and total: a filter on a field reads every `fields` once.
     rows = (
         await db.execute(
             stmt.add_columns(func.count().over().label("total")).limit(limit).offset(offset)
@@ -223,35 +102,31 @@ async def list_decisions(
     if rows:
         total = rows[0].total
     elif offset:  # past the last page
-        total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
+        total = await _count(db, stmt)
     else:
         total = 0
-    slims: dict[uuid.UUID, dict[str, Any]] = dict(
-        (
-            await db.execute(
-                select(Extraction.id, _slim(Extraction.fields)).where(
-                    Extraction.id.in_([row.id for row in rows])
-                )
-            )
-        ).all()
-    )
-    return ReviewListResponse(total=total, items=[_list_item(r, slims[r.id]) for r in rows])
+    return ReviewListResponse(total=total, items=[_list_item(r) for r in rows])
 
 
 @router.get("/summary")
 async def summary(db: Db) -> ReviewSummary:
-    pending_query = queue(None, ReviewFilters())
-    pending = (await db.execute(pending_query)).all()
-    court = Extraction.fields["court"].as_string().label("court")
+    pending = queue(None, ReviewFilters()).subquery()
+    by_band: dict[str, int] = dict(
+        (await db.execute(select(pending.c.band, func.count()).group_by(pending.c.band))).all()
+    )
     by_court = (
+        await db.execute(select(pending.c.court, func.count()).group_by(pending.c.court))
+    ).all()
+    reason = func.jsonb_array_elements_text(pending.c.confidence["reasons"]).column_valued("reason")
+    reasons = (
         await db.execute(
-            select(court, func.count())
-            .where(Extraction.id.in_(select(pending_query.subquery().c.id)))
-            .group_by(court)
+            select(reason, func.count().label("n"))
+            .select_from(pending)
+            .group_by(reason)
+            .order_by(func.count().desc(), reason)
+            .limit(TOP_REASONS)
         )
     ).all()
-    reasons = Counter(r for row in pending for r in row.confidence["reasons"])
-    bands = Counter(row.band for row in pending)
     counts = dict(
         (
             await db.execute(
@@ -264,14 +139,13 @@ async def summary(db: Db) -> ReviewSummary:
         ).all()
     )
     return ReviewSummary(
-        by_band={"high": bands["high"], "medium": bands["medium"], "low": bands["low"]},
+        by_band={
+            "high": by_band.get("high", 0),
+            "medium": by_band.get("medium", 0),
+            "low": by_band.get("low", 0),
+        },
         by_court=dict(by_court),
-        top_reasons=[
-            ReasonCount(reason=reason, count=count)
-            for reason, count in sorted(reasons.items(), key=lambda kv: (-kv[1], kv[0]))[
-                :TOP_REASONS
-            ]
-        ],
+        top_reasons=[ReasonCount(reason=reason, count=count) for reason, count in reasons],
         approved=counts.get(ReviewDecision.approve, 0) + counts.get(ReviewDecision.edit, 0),
         rejected=counts.get(ReviewDecision.reject, 0),
     )
@@ -279,21 +153,26 @@ async def summary(db: Db) -> ReviewSummary:
 
 @router.post("/bulk-approve")
 async def bulk_approve(body: BulkApproveRequest, user: Reviewer, db: Db) -> BulkApproveResponse:
-    stmt = queue(body.band, body.filters)
-    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
+    def pending(after: str | None) -> Select[Any]:
+        return queue(body.band, body.filters, "sha256", after)
+
+    total = await _count(db, pending(body.cursor))
     if total != body.expected_count:
         raise HTTPException(
             status_code=409,
             detail=f"Eşleşen kayıt sayısı değişti: {total} (beklenen {body.expected_count})",
         )
-    ids = [row.id for row in (await db.execute(stmt.limit(body.limit))).all()]
-    result = await publish_batch(db, ids, user.id)
+    rows = (await db.execute(pending(body.cursor).limit(body.limit))).all()
+    result = await publish_batch(db, [row.id for row in rows], user.id, body.band)
     await db.commit()
+    last = rows[-1].sha256 if rows else None
+    remaining = await _count(db, pending(last)) if last else 0
     return BulkApproveResponse(
         published=result.published,
         conflicts=result.conflicts,
         failed=[BulkFailure(extraction_id=i, reason=reason) for i, reason in result.failed],
-        remaining=total - result.published,
+        remaining=remaining,
+        next_cursor=last if remaining else None,
     )
 
 
@@ -301,18 +180,32 @@ async def bulk_approve(body: BulkApproveRequest, user: Reviewer, db: Db) -> Bulk
 async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
     extraction, source = await _decision_extraction(db, extraction_id)
     duplicates: list[DuplicateOut] = []
-    if group := extraction.fields.get("duplicate_group"):
-        newest = newest_extractions(with_slim=True)
+    if extraction.duplicate_key is not None:
+        # Candidates by the indexed group key first; of those, the newest of their source.
+        newer = aliased(Extraction)
         rows = await db.execute(
             select(
                 Extraction.id,
                 Extraction.confidence,
                 func.length(Extraction.fields["full_text"].as_string()),
             )
-            .join(newest, newest.c.id == Extraction.id)
+            .join(Source, Source.id == Extraction.source_id)
             .where(
-                newest.c.slim["duplicate_group"]["key"] == literal(group["key"], JSONB),
+                Extraction.duplicate_key == extraction.duplicate_key,
+                Extraction.parser_name == PARSER_NAME,
                 Extraction.id != extraction_id,
+                Source.category == SourceCategory.decision,
+                ~exists().where(
+                    newer.source_id == Extraction.source_id,
+                    newer.parser_name == PARSER_NAME,
+                    or_(
+                        newer.extracted_at > Extraction.extracted_at,
+                        and_(
+                            newer.extracted_at == Extraction.extracted_at,
+                            newer.id < Extraction.id,
+                        ),
+                    ),
+                ),
             )
             .order_by(Extraction.id)
         )
@@ -361,51 +254,39 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
 async def act(
     extraction_id: uuid.UUID, body: ReviewActionRequest, user: Reviewer, db: Db
 ) -> ReviewActionResponse:
-    extraction, source = await _decision_extraction(db, extraction_id)
-    # Lock the source: a concurrent action on it waits here and then sees the new status.
-    await db.refresh(source, with_for_update=True)
-    if source.status is not RecordStatus.analyzed:
-        raise HTTPException(status_code=409, detail="Kayıt artık incelemede değil")
-    newest = newest_extractions(source.id)
-    if (await db.execute(select(newest.c.id))).scalar_one() != extraction_id:
-        raise HTTPException(status_code=409, detail="Kaynağın daha yeni bir extraction'ı var")
-
-    if body.action == "reject":
-        review = Review(
-            extraction_id=extraction_id,
-            reviewer_id=user.id,
-            decision=ReviewDecision.reject,
-            note=body.note,
-        )
-        db.add(review)
-        source.status = RecordStatus.rejected
-        await db.flush()
-        await db.commit()
-        return ReviewActionResponse(review_id=review.id, decision_id=None, source_status="rejected")
-
+    extraction, _ = await _decision_extraction(db, extraction_id)
     edits = (
         body.edits.model_dump(mode="json", exclude_unset=True)
         if body.action == "edit" and body.edits
         else None
     )
-    merged = {**extraction.fields, **(edits or {})}
     try:
-        review_id, decision_id = await approve_extraction(
-            db, extraction_id, user.id, ReviewDecision(body.action), edits, body.note
-        )
-    except IntegrityError:
-        conflict = await _live_conflict(db, merged)
-        if conflict is None:
-            raise
+        if body.action == "reject":
+            assert body.note  # ReviewActionRequest guarantees it
+            review_id = await reject_extraction(db, extraction_id, user.id, body.note)
+            decision_id = None
+        else:
+            review_id, decision_id = await approve_extraction(
+                db, extraction_id, user.id, ReviewDecision(body.action), edits, body.note
+            )
+    except StaleExtraction as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    except IntegrityError:  # a live-key collision; any other violation is a ValueError
+        conflict = await _live_conflict(db, {**extraction.fields, **(edits or {})})
         raise HTTPException(
             status_code=409,
-            detail={"message": "Aynı künyeli canlı karar var", "decision_id": str(conflict)},
+            detail={
+                "message": "Aynı künyeli canlı karar var",
+                "decision_id": str(conflict) if conflict else None,
+            },
         ) from None
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     await db.commit()
     return ReviewActionResponse(
-        review_id=review_id, decision_id=decision_id, source_status="approved"
+        review_id=review_id,
+        decision_id=decision_id,
+        source_status="rejected" if body.action == "reject" else "approved",
     )
 
 

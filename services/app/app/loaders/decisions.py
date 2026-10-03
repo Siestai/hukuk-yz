@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth import normalize_email
 from app.db import make_engine, make_session_factory
+from app.kb import PARSER_NAME, publish_batch, queue
 from app.loaders.confidence import confidence
 from app.loaders.normalize import normalize
 from app.loaders.report import LoadCounts, PreparedRecord, build_summary, write_report
@@ -47,7 +48,6 @@ from app.models.common import (
     SourceRank,
 )
 from app.models.user import AppUser
-from app.review import PARSER_NAME, publish_batch, queue
 from app.settings import get_settings
 from hukuk_ingest.decisions.parse import DecisionRecord
 from hukuk_ingest.decisions.report import dup_kind
@@ -351,18 +351,18 @@ class ApproveResult:
 async def approve_band(
     factory: async_sessionmaker[AsyncSession], band: Band, reviewer_id: uuid.UUID
 ) -> ApproveResult:
-    """Approve and publish (app.review) the newest decision extraction of every source that is
+    """Approve and publish (app.kb) the newest decision extraction of every source that is
     still `analyzed`, for the records of a band. A live-key collision is listed in `conflicts`
     (sha256 prefix); any other record `publish_decision` refuses is listed in `publish_failed`
     (sha256 prefix, reason). Each record has its own savepoint, so neither stops the run.
     Development and tests only: bulk approval belongs to the review screen."""
     result = ApproveResult()
     async with factory() as session:
-        queue_rows = (await session.execute(queue(band, ReviewFilters()))).all()
+        queue_rows = (await session.execute(queue(band, ReviewFilters(), "sha256"))).all()
         sha = {row.id: row.sha256[:12] for row in queue_rows}
         ids = list(sha)
         for start in range(0, len(ids), BATCH):
-            batch = await publish_batch(session, ids[start : start + BATCH], reviewer_id)
+            batch = await publish_batch(session, ids[start : start + BATCH], reviewer_id, band)
             await session.commit()
             result.published += batch.published
             result.conflicts += [sha[i] for i in batch.conflicts]

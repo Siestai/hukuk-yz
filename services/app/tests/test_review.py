@@ -9,12 +9,10 @@ from typing import Any, Literal, get_args, get_origin
 
 import httpx
 import pytest
-from alembic.config import Config
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from alembic import command
 from app.auth import hash_password
 from app.db import make_engine
 from app.loaders.decisions import load, prepare
@@ -322,6 +320,15 @@ async def test_the_detail_shows_fields_duplicates_and_reviews(
     }
     assert (await client.get(f"{BASE}/{third}", headers=me.headers)).json()["duplicates"] == []
 
+    # a newer extraction of source 2 that left the group: it is no longer a duplicate of 1
+    left = {k: v for k, v in prepared[1].fields.items() if k != "duplicate_group"}
+    await load(
+        kb_factory,
+        [dataclasses.replace(prepared[1], parser_version="6", fields=left)],
+        LoadCounts(),
+    )
+    assert (await client.get(f"{BASE}/{first}", headers=me.headers)).json()["duplicates"] == []
+
     await client.post(
         f"{BASE}/{third}", json={"action": "reject", "note": "kopya"}, headers=me.headers
     )
@@ -384,6 +391,9 @@ async def test_edit_publishes_the_edited_fields(
         "decision_date": "2019-04-01",
         "keywords": ["kıdem"],
         "text_completeness": "excerpt",
+        "related_articles": [
+            {"statute": 4857, "label": "İşK", "articles": ["17", "18"], "raw": ""}
+        ],
     }
     response = await client.post(
         f"{BASE}/{extraction_id}", json={"action": "edit", "edits": edits}, headers=me.headers
@@ -398,6 +408,7 @@ async def test_edit_publishes_the_edited_fields(
         "2019-04-01",
         "excerpt",
     )
+    assert decision.related_articles == edits["related_articles"]
     assert decision.esas_no == record.fields["esas_no"]  # untouched fields come from the extraction
 
 
@@ -411,6 +422,18 @@ async def test_edit_publishes_the_edited_fields(
         {"action": "edit", "edits": {"full_text": "başka"}},
         {"action": "edit", "edits": {"editorial_summary": "başka"}},
         {"action": "edit", "edits": {"chamber": None}},
+        {"action": "edit", "edits": {"esas_no": ""}},
+        {"action": "edit", "edits": {"karar_no": ""}},
+        {"action": "edit", "edits": {"decision_date": "2019-3-12"}},
+        {"action": "edit", "edits": {"decision_date": "20190312"}},
+        {"action": "edit", "edits": {"decision_date": "2019-03-12T10:00:00"}},
+        {"action": "edit", "edits": {"decision_date": "2019-02-30"}},
+        {"action": "edit", "edits": {"related_articles": [{"statute": "4857"}]}},
+        {"action": "edit", "edits": {"related_articles": [{"kanun": 4857, "maddeler": [18]}]}},
+        {"action": "edit", "edits": {"related_articles": [[4857, 18]]}},
+        {"action": "approve", "edits": {"chamber": "10. HD"}},
+        {"action": "approve", "edits": {}},
+        {"action": "reject", "note": "n", "edits": {"chamber": "10. HD"}},
         {"action": "edit", "edits": {}},
         {"action": "edit"},
         {"action": "merge"},
@@ -571,13 +594,27 @@ async def test_bulk_approval_stops_at_the_limit_and_reports_what_remains(
         f"{BASE}/bulk-approve", json=_bulk(5, filters=filters, limit=2), headers=me.headers
     )
     assert response.status_code == 200
-    assert response.json() == {"published": 2, "conflicts": [], "failed": [], "remaining": 3}
+    assert response.json() == {
+        "published": 2,
+        "conflicts": [],
+        "failed": [],
+        "remaining": 3,
+        "next_cursor": prepared[1].sha256,
+    }
     assert await _count(kb_factory, Decision) == 2
 
     response = await client.post(
-        f"{BASE}/bulk-approve", json=_bulk(3, filters=filters), headers=me.headers
+        f"{BASE}/bulk-approve",
+        json=_bulk(3, filters=filters, cursor=prepared[1].sha256),
+        headers=me.headers,
     )
-    assert response.json() == {"published": 3, "conflicts": [], "failed": [], "remaining": 0}
+    assert response.json() == {
+        "published": 3,
+        "conflicts": [],
+        "failed": [],
+        "remaining": 0,
+        "next_cursor": None,
+    }
     async with kb_factory() as session:
         reviewers = set((await session.execute(select(Review.reviewer_id))).scalars())
         approved = (
@@ -618,11 +655,74 @@ async def test_a_conflict_in_bulk_approval_does_not_stop_the_others(
         "published": 2,
         "conflicts": [str(conflicting)],
         "failed": [],
-        "remaining": 1,
+        "remaining": 0,
+        "next_cursor": None,
     }
     assert await _status(kb_factory, conflicting) is RecordStatus.analyzed
     assert await _count(kb_factory, Review) == 2
     assert await _count(kb_factory, Decision) == 3
+
+
+async def test_repeated_bulk_calls_pass_a_standing_conflict_and_finish(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login, new_decision: NewDecision
+) -> None:
+    prepared = await _seed(kb_factory, *[{}] * 6)
+    async with kb_factory() as session:  # a live decision with the key of record 2
+        await new_decision(session, esas_no="2017/2", karar_no="2019/2", chamber="9. HD")
+        await session.commit()
+    conflicting = str(await _eid(kb_factory, prepared[1]))
+
+    published, conflicts, calls = 0, [], 0
+    body = _bulk(6, limit=2)
+    while True:
+        calls += 1
+        assert calls <= 3, "the loop does not make progress"
+        response = await client.post(f"{BASE}/bulk-approve", json=body, headers=me.headers)
+        assert response.status_code == 200
+        result = response.json()
+        published += result["published"]
+        conflicts += result["conflicts"]
+        if result["next_cursor"] is None:
+            break
+        body = _bulk(result["remaining"], limit=2, cursor=result["next_cursor"])
+    assert (published, conflicts, calls) == (5, [conflicting], 3)
+    assert result["remaining"] == 0
+    assert await _status(kb_factory, uuid.UUID(conflicting)) is RecordStatus.analyzed
+
+
+async def test_bulk_expected_count_counts_the_records_after_the_cursor(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {}, {})
+    cursor = prepared[0].sha256
+    response = await client.post(
+        f"{BASE}/bulk-approve", json=_bulk(3, cursor=cursor), headers=me.headers
+    )
+    assert response.status_code == 409  # 2 match after the cursor
+    response = await client.post(
+        f"{BASE}/bulk-approve", json=_bulk(2, cursor=cursor), headers=me.headers
+    )
+    assert response.json()["published"] == 2
+    assert await _status(kb_factory, await _eid(kb_factory, prepared[0])) is RecordStatus.analyzed
+
+
+async def test_a_bulk_cursor_is_a_sha256(client: httpx.AsyncClient, me: Login) -> None:
+    response = await client.post(
+        f"{BASE}/bulk-approve", json=_bulk(0, cursor="abc"), headers=me.headers
+    )
+    assert response.status_code == 422
+
+
+async def test_two_concurrent_actions_on_the_same_record_give_one_success_and_one_409(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    responses = await asyncio.gather(
+        *[client.post(url, json={"action": "approve"}, headers=me.headers) for _ in range(2)]
+    )
+    assert sorted(r.status_code for r in responses) == [200, 409]
+    assert (await _count(kb_factory, Review), await _count(kb_factory, Decision)) == (1, 1)
 
 
 # --- access -----------------------------------------------------------------------------------
@@ -670,39 +770,6 @@ async def test_a_review_needs_an_existing_reviewer(kb_factory: Factory, reviewer
             )
         )
         await session.commit()
-
-
-async def test_the_reviewer_fk_migration_runs_over_legacy_reviews(
-    kb_factory: Factory, alembic_config: Config
-) -> None:
-    (record,) = await _seed(kb_factory, {})
-    extraction_id = await _eid(kb_factory, record)
-    await asyncio.to_thread(command.downgrade, alembic_config, "0005")
-    try:
-        async with (
-            kb_factory() as session
-        ):  # what the task 05 CLI wrote: a reviewer that is no user
-            await session.execute(
-                text(
-                    "INSERT INTO review (extraction_id, reviewer_id, decision) "
-                    "VALUES (:e, :r, 'approve')"
-                ),
-                {"e": extraction_id, "r": uuid.uuid4()},
-            )
-            await session.commit()
-    finally:
-        await asyncio.to_thread(command.upgrade, alembic_config, "head")
-    assert await _count(kb_factory, Review) == 1
-    async with kb_factory() as session:
-        validated = (
-            await session.execute(
-                text(
-                    "SELECT convalidated FROM pg_constraint "
-                    "WHERE conname = 'fk_review_reviewer_id_app_user'"
-                )
-            )
-        ).scalar_one()
-    assert validated is False
 
 
 # --- schemas ----------------------------------------------------------------------------------
