@@ -3,6 +3,7 @@
 Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/architecture.md` (servisler, `app` tek veri yazarı), `docs/tasks/08-auth.md`, `docs/tasks/09-review-api.md`, `docs/tasks/10a-dashboard-api-prep.md`, `docs/decisions.md` 2026-10-03 (i18n, arayüzde DB yok, shadcn, PDF, alan adı).
 Skill'ler: `frontend-ui` (bağlayıcı), `task-pr-hygiene`.
+Tasarım: `docs/design/dashboard-v0.md` (bağlayıcı: token değerleri, fontlar, ekran kuralları, giriş alıntısı).
 Önce: Görev 10a merge edilmiş olmalı (hata kodları ve OpenAPI şeması bu görevin tip üretimine girer).
 
 ## Hedef
@@ -14,16 +15,16 @@ Skill'ler: `frontend-ui` (bağlayıcı), `task-pr-hygiene`.
 1. **Workspace ve iskelet.**
    - Kökte pnpm workspace (`pnpm-workspace.yaml`): `services/dashboard-web`, `packages/ui`. Node sürümü `.nvmrc` / `engines` ile sabit (güncel LTS).
    - Next.js (App Router), TypeScript strict, ESLint, Prettier. `output: "standalone"`.
-   - `packages/ui`: Tailwind tema token'ları (CSS değişkenleri; açık tema, nötr palet; marka sonra), shadcn/ui bileşenleri bu token'lardan beslenir. Bileşenlerde sabit renk / keyfi Tailwind değeri yok (lint kuralı veya CI'da grep kontrolü).
+   - `packages/ui`: Tailwind tema token'ları (CSS değişkenleri; değerler `docs/design/dashboard-v0.md`'den; IBM Plex fontları `next/font` ile yerel), shadcn/ui bileşenleri bu token'lardan beslenir. Bileşenlerde sabit renk / keyfi Tailwind değeri yok (lint kuralı veya CI'da grep kontrolü).
 2. **i18n.** `next-intl`, varsayılan ve tek dil `tr`, Türkçe adreslerde dil öneki yok. `messages/tr.json` ekran bazlı anahtarlarla. Bileşenlerde kullanıcıya görünen sabit metin yok (eslint kuralı: `i18next/no-literal-string` veya eşdeğeri, JSX metni için). Enum etiketleri (`court`, `band`, güven sebebi kodları) `enums.*` anahtarlarından; API hata kodları `errors.*` anahtarlarından. Tarih ve sayı `Intl` + `tr-TR`.
 3. **API erişimi.**
    - Tarayıcı yalnız dashboard'la konuşur; dashboard `/api/*` isteklerini `APP_API_URL`'e iletir (Next rewrite veya route handler). `app` internete açılmaz. İletimde istemci IP'si `X-Forwarded-For` ile geçer (10a'daki rate limit için).
    - Tipler `app`'in OpenAPI şemasından üretilir (`openapi-typescript` + `openapi-fetch` veya eşdeğeri). Şema dosyası `app` içinden bir komutla çıkarılır (`python -m app.openapi > services/dashboard-web/openapi.json`); CI şemanın güncel olduğunu kontrol eder (yeniden üret, `git diff --exit-code`).
    - Veritabanı istemcisi, ORM, `DATABASE_URL` yok.
 4. **Ekranlar.**
-   - `/giris`: e-posta + parola. Hatalar koddan çevrilir (`unauthorized`, `too_many_attempts` + kalan süre). Başarıda `/`'a.
+   - `/giris`: sol panelde logo + rastgele ünlü söz (`content/login-quotes.tr.json`, liste `docs/design/login-quotes.tr.json`'dan; seçim sunucuda, her yüklemede), sağda e-posta + parola. Hatalar koddan çevrilir (`unauthorized`, `too_many_attempts` + kalan süre). Başarıda `/`'a.
    - Oturumsuz her istek `/giris`'e yönlenir (middleware `/auth/me` ile değil cookie varlığıyla ön kontrol; asıl kontrol API'de, 401 gelirse girişe dön).
-   - Üst çubuk: ürün adı (token/mesaj, marka sonra), kullanıcı adı ve rolü, çıkış.
+   - Yan menü: logo + ad (`brand.name` = "Libria", çalışma adı), "İnceleme kuyruğu" (bekleyen sayısıyla), ileride gelecek bölümler pasif; altta kullanıcı adı, rolü, çıkış.
    - `/` (inceleme kuyruğu):
      - Özet kartları (`/review/decisions/summary`): banda göre bekleyen, mahkemeye göre bekleyen, toplam onaylanan / reddedilen, en sık sebepler.
      - Tablo (`/review/decisions`): başlık, mahkeme, daire, E/K, tarih, dergi sayısı, bant (renkli rozet, token'dan), skor, sebepler, mükerrer işareti. Varsayılan sıralama en şüpheli önce.

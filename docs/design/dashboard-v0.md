@@ -1,0 +1,46 @@
+# Dashboard tasarım yönü v0 (2026-10-03)
+
+Durum: onaylandı (Orhan, 2026-10-03). Görev 10b ve 10c bu belgeye göre yapılır. Marka kesinleşince yalnız token değerleri ve ad değişir, bileşenler değişmez.
+
+Kaynak taslak (repo dışında; karar metni ve dergi PDF'i içerdiği için commit edilmez): `hukuk-yz/design/2026-10-03-dashboard/`.
+
+## Ad ve logo
+
+- Çalışma adı **Libria** (test adı; Orhan, 2026-10-03). Ad tek yerde: `messages/tr.json` → `brand.name`, logo `packages/ui` içinde tek bileşen. Değişirse iki dosya değişir.
+- Logo taslağı: terazi işareti, tek renk, `currentColor` ile boyanır.
+
+## Yön
+
+Yön A (kurumsal) temel alınır: açık zemin, beyaz yüzeyler, beyaz yan menü, orta yoğunluk. Detay ekranındaki karar başlığı ve "Çıkarılan metin" sekmesi serif yazıyla (B yönünden).
+
+## Token'lar (`packages/ui`, CSS değişkenleri → Tailwind teması)
+
+| token | değer | kullanım |
+|---|---|---|
+| `--bg` | `#F4F6F9` | sayfa zemini |
+| `--surface` / `--surface-2` / `--sunken` | `#FFFFFF` / `#F8F9FB` / `#E9EDF2` | kart, tablo başlığı, PDF zemini |
+| `--ink` / `--ink-2` / `--ink-3` | `#16202E` / `#4A5668` / `#7A8596` | metin, ikincil metin, soluk |
+| `--line` / `--line-2` | `#DDE3EA` / `#EEF1F5` | kenar, satır ayırıcı |
+| `--primary` / `--primary-soft` | `#0B2A5B` / `#E6ECF5` | ana düğme, seçili durum (lacivert) |
+| `--accent` | `#C9A227` | odak halkası (altın) |
+| `--high` / `--high-soft` | `#24704F` / `#E3F1EA` | yüksek güven |
+| `--medium` / `--medium-soft` | `#8A5D00` / `#FBF0D9` | orta güven, "Kontrol et" işareti |
+| `--low` / `--low-soft` | `#A3392A` / `#F8E4E0` | düşük güven, hata, ret |
+| `--radius` / `--radius-sm` | `8px` / `6px` | |
+| `--row` | `44px` | tablo satır yüksekliği |
+
+Yazı: IBM Plex Sans (arayüz), IBM Plex Mono (esas/karar no, tarih, sayılar; hizalı karşılaştırma için), IBM Plex Serif (detay başlığı, karar metni, giriş alıntısı). Fontlar `next/font` ile kendi sunucumuzdan; dış CDN yok (CSP).
+
+## Ekran kuralları
+
+- Kuyruk: üstte bant dağılımı (yatay çubuk + üç sayı, tıklayınca filtre) ve en sık 5 sebep; altında filtreler ve tablo. Varsayılan sıralama en şüpheli önce. Sebepler okunur etiketle (`enums.reason.*`), en fazla 2 + "+N".
+- "Toplu onayla" düğmesi her zaman görünür, yalnız yüksek bant filtresinde etkin.
+- Detay: sol alanlar + sabit aksiyon çubuğu (Reddet, Düzelt, Onayla; kısayollar A/E/R, J/K sonraki/önceki), sağ PDF / çıkarılan metin sekmeleri. Şüpheli alan "Kontrol et" işaretli; üstte sebebin açıklaması. Dergi özeti "Editoryal içerik, resmî kaynak değil" etiketli kesik çerçevede.
+- Toplu onay: sayı büyük; "kendi adımla onaylıyorum" kutusu işaretlenmeden düğme kapalı; "teyit edilmemiş olarak yayınlanır" notu; ilerleme, yayınlanan / çakışan / başarısız sayaçları, durdur.
+
+## Giriş ekranı alıntısı
+
+- Sol panelde her sayfa yüklemesinde rastgele bir ünlü söz ve sahibi gösterilir (Orhan, 2026-10-03).
+- Liste: `docs/design/login-quotes.tr.json`, 100 söz (`text`, `author`). Kaynak tartışmalı atıflar elendi; Türkçe atasözleri "Atasözü" olarak.
+- Uygulamada `messages/tr.json`'a değil, dile göre içerik dosyasına (`services/dashboard-web/content/login-quotes.<locale>.json`) girer; başka dil eklenirse kendi listesi olur.
+- Seçim sunucuda yapılır (hidrasyon farkı olmasın), sayfa önbelleğe alınmaz.
