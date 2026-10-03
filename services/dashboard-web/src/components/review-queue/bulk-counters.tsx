@@ -16,17 +16,21 @@ export function BulkCounters({ state }: { state: BulkState }) {
     return (
         <div className="grid gap-3">
             <Progress aria-label={t("label")} value={state.done} max={state.total} />
-            <p className="text-sm text-ink">
-                {t("progress", { done: state.done, total: state.total })}
-            </p>
-            <dl className="grid grid-cols-3 gap-3 text-sm">
-                {counters.map(([key, count]) => (
-                    <div key={key}>
-                        <dt className="text-ink-2">{t(key)}</dt>
-                        <dd className="text-lg font-semibold text-ink">{t("count", { count })}</dd>
-                    </div>
-                ))}
-            </dl>
+            <div aria-live="polite" className="grid gap-3">
+                <p className="text-sm text-ink">
+                    {t("progress", { done: state.done, total: state.total })}
+                </p>
+                <dl className="grid grid-cols-3 gap-3 text-sm">
+                    {counters.map(([key, count]) => (
+                        <div key={key}>
+                            <dt className="text-ink-2">{t(key)}</dt>
+                            <dd className="text-lg font-semibold text-ink">
+                                {t("count", { count })}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+            </div>
         </div>
     );
 }

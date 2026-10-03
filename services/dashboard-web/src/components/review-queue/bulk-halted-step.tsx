@@ -8,6 +8,7 @@ import type { BulkEnd, BulkState } from "@/lib/bulk-approve";
 import { useErrorMessage } from "@/lib/use-error-message";
 import { BulkConfirmCheck } from "./bulk-confirm-check";
 import { BulkCounters } from "./bulk-counters";
+import { BulkStepHeading } from "./bulk-step-heading";
 
 type Props = {
     state: BulkState;
@@ -25,11 +26,12 @@ export function BulkHaltedStep({ state, end, onRetry, onResume, onReport }: Prop
 
     return (
         <div className="grid gap-4">
+            <BulkStepHeading>{t("heading")}</BulkStepHeading>
             <BulkCounters state={state} />
             {end.kind === "count_changed" ? (
                 <>
                     <p role="alert" className="text-sm font-medium text-ink">
-                        {t("countChanged", { total: end.total })}
+                        {state.lost ? t("mayHaveApplied") : t("countChanged", { total: end.total })}
                     </p>
                     {end.total > 0 ? (
                         <BulkConfirmCheck
@@ -40,9 +42,12 @@ export function BulkHaltedStep({ state, end, onRetry, onResume, onReport }: Prop
                     ) : null}
                 </>
             ) : (
-                <p role="alert" className="text-sm text-destructive">
-                    {errorMessage(end.kind === "failed" ? end.code : undefined)}
-                </p>
+                <>
+                    <p role="alert" className="text-sm text-destructive">
+                        {errorMessage(end.kind === "failed" ? end.code : undefined)}
+                    </p>
+                    <p className="text-sm text-ink-2">{t("mayHaveApplied")}</p>
+                </>
             )}
             <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onReport}>

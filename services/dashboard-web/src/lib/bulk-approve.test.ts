@@ -5,6 +5,7 @@ import { ApiFailure } from "./api/review-client";
 import {
     BULK_FAILURE_CODES,
     bulkFailureCode,
+    bulkFailureDetail,
     bulkFilters,
     isRetryable,
     resumeState,
@@ -149,6 +150,70 @@ describe("runBulk", () => {
         expect(body(request, 1)).toMatchObject({ cursor: SHA(1), expected_count: 50 });
     });
 
+    it("keeps a lost call in the state through a retry that meets a changed queue", async () => {
+        const { go } = run([
+            answer({ published: 100, remaining: 50, next_cursor: SHA(1) }),
+            new ApiFailure("upstream_unavailable"),
+            new ApiFailure("bulk_count_changed", { total: 0, expected: 50 }),
+            answer({ published: 10 }),
+        ]);
+        const halted = await go();
+        expect(halted.state.lost).toEqual({ cursor: SHA(1), expected: 50 });
+        const retried = await go(halted.state);
+        expect(retried.end).toEqual({ kind: "count_changed", total: 0 });
+        expect(retried.state.lost).toEqual({ cursor: SHA(1), expected: 50 });
+        // A call with another count is not the lost one: the doubt stays.
+        const resumed = await go(resumeState(retried.state, 40));
+        expect(resumed.end.kind).toBe("finished");
+        expect(resumed.state.lost).toEqual({ cursor: SHA(1), expected: 50 });
+    });
+
+    it("clears the lost call when its repeat is answered", async () => {
+        const { go } = run([new ApiFailure("upstream_unavailable"), answer({ published: 5 })], {
+            total: 5,
+        });
+        const halted = await go();
+        expect(halted.state.lost).toEqual({ cursor: null, expected: 5 });
+        expect((await go(halted.state)).state.lost).toBeNull();
+    });
+
+    it("ends as failed when the cursor does not move", async () => {
+        const { request, go } = run([
+            answer({ published: 100, remaining: 150, next_cursor: SHA(1) }),
+            answer({ published: 1, remaining: 149, next_cursor: SHA(1) }),
+        ]);
+        const { end, state } = await go();
+        expect(end).toEqual({ kind: "failed", code: "bulk_no_progress", params: {} });
+        expect(request).toHaveBeenCalledTimes(2);
+        expect(state.published).toBe(101);
+    });
+
+    it("ends as failed when a call handled nothing but names a cursor", async () => {
+        const { request, go } = run([answer({ remaining: 250, next_cursor: SHA(1) })]);
+        const { end } = await go();
+        expect(end).toEqual({ kind: "failed", code: "bulk_no_progress", params: {} });
+        expect(request).toHaveBeenCalledOnce();
+    });
+
+    it("names a conflicting or failed record once", async () => {
+        const failed = { extraction_id: ID(2), reason: "extraction has no source" };
+        const { go } = run(
+            [
+                answer({
+                    conflicts: [ID(1), ID(1)],
+                    failed: [failed, failed],
+                    remaining: 10,
+                    next_cursor: SHA(1),
+                }),
+                answer({ published: 8, conflicts: [ID(1)], failed: [failed] }),
+            ],
+            { total: 12 },
+        );
+        const { state } = await go();
+        expect(state.conflicts).toEqual([ID(1)]);
+        expect(state.failed).toEqual([{ id: ID(2), reason: failed.reason }]);
+    });
+
     it("treats a call that threw something else as a network error", async () => {
         const request = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
         const { end } = await runBulk({
@@ -200,6 +265,12 @@ describe("bulkFailureCode", () => {
         expect(bulkFailureCode("extraction is no longer in band high")).toBe("band_changed");
         expect(bulkFailureCode("database constraint violated: ix_x")).toBe("constraint_violated");
         expect(bulkFailureCode("something new")).toBeUndefined();
+    });
+
+    it("keeps the name of a violated constraint and nothing else", () => {
+        expect(bulkFailureDetail("database constraint violated: ix_x")).toBe(": ix_x");
+        expect(bulkFailureDetail("extraction is no longer in band high")).toBe("");
+        expect(bulkFailureDetail("something new")).toBe("");
     });
 
     it("only knows reasons that app.kb still words that way", () => {

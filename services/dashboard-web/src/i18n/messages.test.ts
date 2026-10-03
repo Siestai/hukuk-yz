@@ -70,6 +70,7 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "review.detail.pdf": schemaEnum("ReviewDetail", "pdf").filter((v) => v !== "available"),
     "review.detail.history.decision": schemaEnum("ReviewOut", "decision"),
     "review.bulk.run": ["published", "conflicts", "failed"],
+    "review.bulk.report.heading": ["finished", "stopped", "failed"],
     "review.queue.sort": SORTS,
     "review.queue.flash": FLASHES,
     // "server" is read by key; the others are the client checks of the form.

@@ -43,6 +43,7 @@ export function BulkApproveDialog({ onClose, returnFocusTo, params, total, sampl
             onClose={close}
             title={t("title")}
             dismissible={run.phase !== "running"}
+            aria-busy={run.phase === "running"}
             returnFocusTo={returnFocusTo}
             className="max-w-2xl"
         >

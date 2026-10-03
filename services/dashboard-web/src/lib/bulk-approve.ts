@@ -28,6 +28,11 @@ export type BulkState = {
     total: number;
     cursor: string | null;
     expected: number;
+    /**
+     * The call (by its cursor and expected count) whose answer never arrived: the API may have
+     * applied it. Only a repeat of that very call that gets an answer clears it.
+     */
+    lost: { cursor: string | null; expected: number } | null;
 };
 
 export function startState(total: number): BulkState {
@@ -39,6 +44,7 @@ export function startState(total: number): BulkState {
         total,
         cursor: null,
         expected: total,
+        lost: null,
     };
 }
 
@@ -57,6 +63,25 @@ export type BulkEnd =
 /** A call that did not reach the API may be repeated as it was; anything else the API refused. */
 export function isRetryable(end: BulkEnd): boolean {
     return end.kind === "failed" && end.code === "upstream_unavailable";
+}
+
+function sameCall(lost: BulkState["lost"], call: NonNullable<BulkState["lost"]>): boolean {
+    return lost !== null && lost.cursor === call.cursor && lost.expected === call.expected;
+}
+
+/** The failures of an answer that are not yet listed (a record is named once). */
+function uniqueFailures(
+    answered: BulkResponse["failed"],
+    listed: BulkState["failed"],
+): BulkState["failed"] {
+    const seen = new Set(listed.map((f) => f.id));
+    const fresh: BulkState["failed"] = [];
+    for (const f of answered) {
+        if (seen.has(f.extraction_id)) continue;
+        seen.add(f.extraction_id);
+        fresh.push({ id: f.extraction_id, reason: f.reason });
+    }
+    return fresh;
 }
 
 type Run = {
@@ -84,6 +109,7 @@ export async function runBulk({
     let current = state;
     for (;;) {
         if (shouldStop()) return { state: current, end: { kind: "stopped" } };
+        const call = { cursor: current.cursor, expected: current.expected };
         let answer: BulkResponse;
         try {
             answer = await request({
@@ -100,6 +126,7 @@ export async function runBulk({
             if (failure.code === "bulk_count_changed" && typeof total === "number") {
                 return { state: current, end: { kind: "count_changed", total } };
             }
+            if (failure.code === "upstream_unavailable") current = { ...current, lost: call };
             return {
                 state: current,
                 end: { kind: "failed", code: failure.code, params: failure.params },
@@ -109,17 +136,25 @@ export async function runBulk({
         current = {
             ...current,
             published: current.published + answer.published,
-            conflicts: [...current.conflicts, ...answer.conflicts],
-            failed: [
-                ...current.failed,
-                ...answer.failed.map((f) => ({ id: f.extraction_id, reason: f.reason })),
+            conflicts: [
+                ...current.conflicts,
+                ...new Set(answer.conflicts.filter((id) => !current.conflicts.includes(id))),
             ],
+            failed: [...current.failed, ...uniqueFailures(answer.failed, current.failed)],
             done: current.done + handled,
             cursor: answer.next_cursor,
             expected: answer.remaining,
+            lost: sameCall(current.lost, call) ? null : current.lost,
         };
         onProgress(current);
         if (answer.next_cursor === null) return { state: current, end: { kind: "finished" } };
+        // A cursor that does not move, or a call that handled nothing, would loop for ever.
+        if (answer.next_cursor === call.cursor || handled === 0) {
+            return {
+                state: current,
+                end: { kind: "failed", code: "bulk_no_progress", params: {} },
+            };
+        }
     }
 }
 
@@ -139,6 +174,8 @@ const FAILURE_PREFIXES: [prefix: string, code: string][] = [
     ["extraction is no longer in band ", "band_changed"],
     ["database constraint violated", "constraint_violated"],
 ];
+/** The codes whose reason carries a name after the prefix (the constraint), shown after the label. */
+const DETAIL_CODES = ["constraint_violated"];
 
 export const BULK_FAILURE_CODES = [
     ...Object.values(FAILURE_CODES),
@@ -150,4 +187,12 @@ export function bulkFailureCode(reason: string): string | undefined {
     return (
         FAILURE_CODES[reason] ?? FAILURE_PREFIXES.find(([prefix]) => reason.startsWith(prefix))?.[1]
     );
+}
+
+/** What follows the prefix of a reason whose label keeps it (": ix_name"), else an empty string. */
+export function bulkFailureDetail(reason: string): string {
+    const prefix = FAILURE_PREFIXES.find(
+        ([p, code]) => DETAIL_CODES.includes(code) && reason.startsWith(p),
+    )?.[0];
+    return prefix ? reason.slice(prefix.length) : "";
 }

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
+import type { QueueParams } from "@/lib/queue-params";
 import { renderWithIntl } from "@/test/intl";
 import { BulkApproveDialog } from "./bulk-approve-dialog";
 import type { BulkSample } from "./bulk-confirm-step";
@@ -30,17 +31,19 @@ const refused = (code: string, params: Record<string, unknown> = {}) => ({
     error: { error: { code, params } },
 });
 
+const element = (total: number, onClose: () => void, p: QueueParams = params) => (
+    <BulkApproveDialog
+        onClose={onClose}
+        returnFocusTo={{ current: null }}
+        params={p}
+        total={total}
+        sample={sample}
+    />
+);
+
 function setup(total = 250, onClose = vi.fn()) {
-    renderWithIntl(
-        <BulkApproveDialog
-            onClose={onClose}
-            returnFocusTo={{ current: null }}
-            params={params}
-            total={total}
-            sample={sample}
-        />,
-    );
-    return { user: userEvent.setup(), onClose };
+    const view = renderWithIntl(element(total, onClose));
+    return { user: userEvent.setup(), onClose, view };
 }
 
 const dialog = () => screen.getByRole("dialog");
@@ -121,7 +124,8 @@ describe("BulkApproveDialog run", () => {
             [SHA(2), 50, 100],
         ]);
         expect(bodies[0]).toMatchObject({ band: "high", filters: { court: "bam" } });
-        expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "250");
+        expect(screen.getByRole("progressbar")).toHaveAttribute("value", "250");
+        expect(screen.getByRole("heading", { name: bulk.report.heading.finished })).toHaveFocus();
         expect(screen.getByText("250 / 250")).toBeInTheDocument();
         expect(screen.getByText(messages.enums.bulkFailure.newer_extraction)).toBeInTheDocument();
     });
@@ -133,8 +137,11 @@ describe("BulkApproveDialog run", () => {
         await user.click(start());
 
         const bar = screen.getByRole("progressbar");
-        expect(bar).toHaveAttribute("aria-valuemax", "250");
-        expect(bar).toHaveAttribute("aria-valuenow", "0");
+        expect(bar).toHaveAttribute("max", "250");
+        expect(bar).toHaveAttribute("value", "0");
+        expect(bar).not.toHaveAttribute("aria-valuenow");
+        expect(dialog()).toHaveAttribute("aria-busy", "true");
+        expect(screen.getByRole("heading", { name: bulk.run.heading })).toHaveFocus();
         expect(screen.getByText("0 / 250")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: bulk.cancel })).not.toBeInTheDocument();
         escape();
@@ -145,7 +152,7 @@ describe("BulkApproveDialog run", () => {
             done({ published: 90, conflicts: [ID(1)], remaining: 160, next_cursor: SHA(1) }),
         );
         await waitFor(() => expect(screen.getByText("91 / 250")).toBeInTheDocument());
-        expect(bar).toHaveAttribute("aria-valuenow", "91");
+        expect(bar).toHaveAttribute("value", "91");
         const counters = screen.getByText(bulk.run.published).parentElement;
         expect(counters).toHaveTextContent("90");
         expect(screen.getByText(bulk.run.conflicts).parentElement).toHaveTextContent("1");
@@ -205,6 +212,66 @@ describe("BulkApproveDialog run", () => {
         await screen.findByRole("button", { name: bulk.report.close });
         expect(POST).toHaveBeenCalledTimes(2);
         expect(POST.mock.calls[1]?.[1]).toEqual(POST.mock.calls[0]?.[1]);
+    });
+
+    it("says a repeated call may already have been applied when it meets a changed queue", async () => {
+        POST.mockRejectedValueOnce(new TypeError("fetch failed")).mockResolvedValueOnce(
+            refused("bulk_count_changed", { total: 2, expected: 3 }),
+        );
+        const { user } = setup(3);
+        await user.click(checkbox());
+        await user.click(start());
+        await screen.findByText(messages.errors.upstream_unavailable);
+        expect(screen.getByText(bulk.halted.mayHaveApplied)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: bulk.halted.retry }));
+
+        await screen.findByRole("button", { name: "2 kaydı onaylamaya devam et" });
+        expect(screen.getByText(bulk.halted.mayHaveApplied)).toBeInTheDocument();
+        expect(screen.queryByText(/Kuyruk değişti: şimdi/)).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: bulk.halted.report }));
+        expect(screen.getByText(bulk.report.undercounted)).toBeInTheDocument();
+        expect(screen.getByText("Kuyruk değişti: 2 kayıt işlenmedi.")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: bulk.report.heading.stopped })).toHaveFocus();
+    });
+
+    it("reports a run whose queue changed as incomplete, with the new count", async () => {
+        POST.mockResolvedValueOnce(
+            done({ published: 100, remaining: 150, next_cursor: SHA(1) }),
+        ).mockResolvedValueOnce(refused("bulk_count_changed", { total: 140, expected: 150 }));
+        const { user } = setup(250);
+        await user.click(checkbox());
+        await user.click(start());
+        await user.click(await screen.findByRole("button", { name: bulk.halted.report }));
+        expect(screen.getByText("Kuyruk değişti: 140 kayıt işlenmedi.")).toBeInTheDocument();
+        expect(screen.queryByText(bulk.report.undercounted)).not.toBeInTheDocument();
+    });
+
+    it("ends as failed when the server does not advance", async () => {
+        POST.mockResolvedValueOnce(done({ remaining: 3, next_cursor: SHA(1) }));
+        const { user } = setup(3);
+        await user.click(checkbox());
+        await user.click(start());
+        await screen.findByText(new RegExp(messages.errors.bulk_no_progress));
+        expect(POST).toHaveBeenCalledTimes(1);
+        expect(
+            screen.getByRole("heading", { name: bulk.report.heading.failed }),
+        ).toBeInTheDocument();
+    });
+
+    it("keeps the filters it started with when the props change mid-run", async () => {
+        const first = hold();
+        const { user, onClose, view } = setup(250);
+        await user.click(checkbox());
+        await user.click(start());
+        view.rerender(element(7, onClose, { ...params, court: "yargitay_daire" }));
+        POST.mockResolvedValueOnce(done({ published: 150 }));
+        await first(done({ published: 100, remaining: 150, next_cursor: SHA(1) }));
+        await screen.findByRole("button", { name: bulk.report.close });
+        const bodies = POST.mock.calls.map(([, init]) => init.body);
+        expect(bodies.map((b) => [b.filters, b.expected_count])).toEqual([
+            [{ court: "bam" }, 250],
+            [{ court: "bam" }, 150],
+        ]);
     });
 
     it("ends on a refusal with its translated message and the partial report", async () => {

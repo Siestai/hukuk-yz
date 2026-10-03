@@ -14,9 +14,6 @@ function Progress({
             data-slot="progress"
             value={value}
             max={max}
-            aria-valuemin={0}
-            aria-valuenow={value}
-            aria-valuemax={max}
             className={cn(
                 "h-2 w-full appearance-none overflow-hidden rounded-sm bg-sunken [&::-webkit-progress-bar]:bg-sunken [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary",
                 className,

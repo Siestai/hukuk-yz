@@ -10,6 +10,7 @@ import { detailHref, type QueueParams } from "@/lib/queue-params";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 import { useErrorMessage } from "@/lib/use-error-message";
 import { BulkCounters } from "./bulk-counters";
+import { BulkStepHeading } from "./bulk-step-heading";
 
 /** How many records of a list the report names; the rest is a count. */
 const MAX_LISTED = 20;
@@ -45,7 +46,10 @@ export function BulkReportStep({ state, end, params, onClose }: Props) {
     const t = useTranslations("review.bulk.report");
     const labels = useEnumLabels();
     const errorMessage = useErrorMessage();
-    const unprocessed = state.total - state.done;
+    // After a changed queue the API's new count is the one left to do.
+    const unprocessed = end?.kind === "count_changed" ? end.total : state.total - state.done;
+    const heading =
+        end?.kind === "finished" ? "finished" : end?.kind === "failed" ? "failed" : "stopped";
 
     const more = (count: number) =>
         count > MAX_LISTED ? (
@@ -54,10 +58,18 @@ export function BulkReportStep({ state, end, params, onClose }: Props) {
 
     return (
         <div className="grid gap-4">
+            <BulkStepHeading>{t(`heading.${heading}`)}</BulkStepHeading>
             <BulkCounters state={state} />
-            {end?.kind === "stopped" ? (
+            {end?.kind === "stopped" || end?.kind === "count_changed" ? (
                 <p role="status" className="text-sm text-ink-2">
-                    {t("stopped", { count: unprocessed })}
+                    {end.kind === "stopped"
+                        ? t("stopped", { count: unprocessed })
+                        : t("countChanged", { count: unprocessed })}
+                </p>
+            ) : null}
+            {state.lost ? (
+                <p role="status" className="text-sm text-ink-2">
+                    {t("undercounted")}
                 </p>
             ) : null}
             {end?.kind === "failed" ? (

@@ -17,9 +17,14 @@ import {
 /** Where the dialog is: asking, calling the API, waiting for the user after a halt, or reporting. */
 export type BulkPhase = "confirm" | "running" | "halted" | "report";
 
-/** The run of a bulk approval as the dialog sees it; the loop itself is `runBulk`. */
+/**
+ * The run of a bulk approval as the dialog sees it; the loop itself is `runBulk`. `filters` and
+ * `total` are read when `start` is called; later changes of them do not reach the run.
+ */
 export function useBulkApprove({ filters, total }: { filters: BulkFilters; total: number }) {
     const api = useRef(createApiClient());
+    // What the run covers is fixed when it starts: the page may change its props under the dialog.
+    const started = useRef({ filters, total });
     const stopRequested = useRef(false);
     const [phase, setPhase] = useState<BulkPhase>("confirm");
     const [state, setState] = useState(() => startState(total));
@@ -34,7 +39,7 @@ export function useBulkApprove({ filters, total }: { filters: BulkFilters; total
         setPhase("running");
         const result = await runBulk({
             request: (body) => postBulkApprove(api.current, body),
-            filters,
+            filters: started.current.filters,
             state: from,
             onProgress: setState,
             shouldStop: () => stopRequested.current,
@@ -52,7 +57,10 @@ export function useBulkApprove({ filters, total }: { filters: BulkFilters; total
         state,
         end,
         stopping,
-        start: () => run(startState(total)),
+        start: () => {
+            started.current = { filters, total };
+            return run(startState(total));
+        },
         /** Repeats the call that failed, with the same cursor and expected count. */
         retry: () => run(state),
         /** Goes on from the same cursor over the `expected` records the API now counts. */

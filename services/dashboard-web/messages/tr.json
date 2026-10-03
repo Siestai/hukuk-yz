@@ -118,6 +118,7 @@
       "start": "Onayı başlat",
       "cancel": "Vazgeç",
       "run": {
+        "heading": "Toplu onay sürüyor",
         "label": "Toplu onay ilerlemesi",
         "progress": "{done, number} / {total, number}",
         "published": "Yayınlanan",
@@ -129,13 +130,22 @@
         "stop": "Durdur"
       },
       "halted": {
+        "heading": "Toplu onay duraklatıldı",
+        "mayHaveApplied": "Önceki deneme uygulanmış olabilir; kuyruk yenilendikten sonra kalan sayıyı kontrol edin.",
         "countChanged": "Kuyruk değişti: şimdi {total, number} kayıt var.",
         "resume": "{total, number} kaydı onaylamaya devam et",
         "retry": "Aynı çağrıyı yeniden dene",
         "report": "Raporu göster"
       },
       "report": {
+        "heading": {
+          "finished": "Toplu onay tamamlandı",
+          "stopped": "Toplu onay durduruldu",
+          "failed": "Toplu onay yarıda kaldı"
+        },
         "stopped": "Durduruldu: {count, number} kayıt işlenmedi.",
+        "countChanged": "Kuyruk değişti: {count, number} kayıt işlenmedi.",
+        "undercounted": "Bir çağrının sonucu bilinmiyor: yayınlanan sayısı eksik görünebilir. Yenilenen kuyruk esas alınır.",
         "unprocessed": "{count, number} kayıt işlenmedi.",
         "conflicts": "Çakışan kayıtlar",
         "conflictsHint": "Kuyrukta kaldılar; tek tek inceleyin.",
@@ -252,7 +262,8 @@
     "extraction_not_found": "Kayıt bulunamadı.",
     "forbidden": "Bu işlem için yetkiniz yok.",
     "bulk_count_changed": "Kuyruktaki kayıt sayısı değişti.",
-    "bulk_band_not_allowed": "Toplu onay yalnız yüksek güven bandında yapılır."
+    "bulk_band_not_allowed": "Toplu onay yalnız yüksek güven bandında yapılır.",
+    "bulk_no_progress": "Sunucu ilerlemedi; toplu onay durduruldu."
   },
   "enums": {
     "role": {

@@ -1,6 +1,6 @@
 import { useMessages, useTranslations } from "next-intl";
 
-import { bulkFailureCode } from "@/lib/bulk-approve";
+import { bulkFailureCode, bulkFailureDetail } from "@/lib/bulk-approve";
 
 /** Display text of API enum values (`enums.*`); unknown values fall back to the raw value. */
 export function useEnumLabels() {
@@ -22,7 +22,7 @@ export function useEnumLabels() {
         // The reason of a bulk failure is the API's wording; one without a label is shown as it came.
         bulkFailure: (value: string) => {
             const code = bulkFailureCode(value);
-            return code ? label("bulkFailure", code) : value;
+            return code ? `${label("bulkFailure", code)}${bulkFailureDetail(value)}` : value;
         },
         isKnownReason: (value: string) => t.has(`enums.reason.${value}`),
         warning: (value: string) => {
