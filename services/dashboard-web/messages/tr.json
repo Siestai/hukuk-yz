@@ -1,9 +1,43 @@
 {
   "brand": {
     "name": "Libria",
+    "subtitle": "Yönetim paneli",
     "logoLabel": "Libria logosu"
   },
-  "foundation": {
-    "ready": "Temel hazır"
+  "login": {
+    "title": "Giriş yap",
+    "hint": "Hesabınızı yönetici açar.",
+    "email": "E-posta",
+    "password": "Parola",
+    "submit": "Giriş yap",
+    "submitting": "Giriş yapılıyor",
+    "required": "E-posta ve parolayı girin.",
+    "internalNotice": "İç kullanım. Erişim yalnızca davetli kullanıcılara açıktır."
+  },
+  "nav": {
+    "label": "Ana menü",
+    "queue": "İnceleme kuyruğu",
+    "sources": "Kaynaklar",
+    "knowledgeBase": "Bilgi tabanı",
+    "comingSoon": "Yakında",
+    "logout": "Çıkış yap"
+  },
+  "review": {
+    "queue": {
+      "title": "İnceleme kuyruğu"
+    }
+  },
+  "errors": {
+    "unauthorized": "E-posta veya parola hatalı.",
+    "too_many_attempts": "Çok fazla hatalı deneme. {minutes, plural, other {# dakika}} sonra tekrar deneyin.",
+    "validation_error": "Girilen bilgiler geçersiz. Alanları kontrol edin.",
+    "upstream_unavailable": "Sunucuya ulaşılamıyor. Biraz sonra tekrar deneyin.",
+    "generic": "Beklenmeyen bir hata oluştu. Daha sonra tekrar deneyin."
+  },
+  "enums": {
+    "role": {
+      "admin": "Yönetici",
+      "reviewer": "İnceleyici"
+    }
   }
 }

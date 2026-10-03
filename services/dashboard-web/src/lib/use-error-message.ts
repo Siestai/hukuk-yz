@@ -1,0 +1,24 @@
+import { useTranslations } from "next-intl";
+
+/** Turns an API error code (or the BFF's `upstream_unavailable`) into its translated message. */
+export function useErrorMessage() {
+    const t = useTranslations("errors");
+    return (code: string | undefined, params: Record<string, unknown> = {}): string => {
+        switch (code) {
+            case "unauthorized":
+                return t("unauthorized");
+            case "too_many_attempts": {
+                const seconds = Number(params.retry_after);
+                return t("too_many_attempts", {
+                    minutes: Math.max(1, Math.ceil(Number.isFinite(seconds) ? seconds / 60 : 1)),
+                });
+            }
+            case "validation_error":
+                return t("validation_error");
+            case "upstream_unavailable":
+                return t("upstream_unavailable");
+            default:
+                return t("generic");
+        }
+    };
+}
