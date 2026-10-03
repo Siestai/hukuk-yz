@@ -1,7 +1,7 @@
 COMPOSE = docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.local.yml
 DASHBOARD_PORT = $(or $(shell sed -n 's/^DASHBOARD_HOST_PORT=//p' .env 2>/dev/null),3000)
 
-.PHONY: install lint typecheck test up down migrate migration db-reset env dev user load-archive demo-data web-dev e2e
+.PHONY: install lint typecheck test up down migrate migration db-reset env dev-env dev user load-archive demo-data web-dev e2e
 
 install:
 	uv sync
@@ -16,12 +16,14 @@ typecheck:
 test:
 	uv run pytest
 
-# Also the plain-http guard: a Secure session cookie would be dropped by the browser on localhost.
 env:
 	@test -f .env || cp .env.example .env
+
+# Local stack only (plain http): COOKIE_SECURE must be false, see infra/scripts/dev-env.sh.
+dev-env: env
 	@infra/scripts/dev-env.sh
 
-up: env
+up: dev-env
 	$(COMPOSE) up -d --build
 
 down:
@@ -42,7 +44,7 @@ db-reset: env
 	$(MAKE) migrate
 
 # Whole stack for local use (docs/local-dev.md): postgres, migrations, app, worker, dashboard-web.
-dev: env
+dev: dev-env
 	$(COMPOSE) up -d --build
 	@echo "Dashboard: http://localhost:$(DASHBOARD_PORT)  (next: make user ..., then make demo-data or make load-archive)"
 
@@ -61,7 +63,7 @@ user: env
 # against the compose database. The scan skips OCR (the decision PDFs have a text layer).
 # Exit code 1 of scan/parse/load means "finished, some files/records had errors" (see the printed
 # summary and report); any other code fails the target. Ends with the whole stack up.
-load-archive: env
+load-archive: dev-env
 	@test -d data/drive/Yargi_Kararlari_Arsivi || { echo "data/drive/Yargi_Kararlari_Arsivi is missing: copy the Drive folder to data/drive first (docs/local-dev.md)"; exit 1; }
 	infra/scripts/set-env.sh ARCHIVE_HOST_DIR ../../data/drive
 	$(COMPOSE) up -d --wait app
@@ -74,7 +76,7 @@ load-archive: env
 # The synthetic fixture (infra/demo/README.md): no private data needed. Points the app's /archive
 # mount at the demo PDFs, so the PDF tab works. Ends with the whole stack up (after db-reset the
 # dashboard-web and worker containers are down until now).
-demo-data: env
+demo-data: dev-env
 	infra/scripts/set-env.sh ARCHIVE_HOST_DIR ../../infra/demo/archive
 	$(COMPOSE) up -d --wait app
 	$(COMPOSE) run --rm -v "$(CURDIR)/infra/demo:/demo:ro" app python -m app.loaders.decisions /demo/decisions.jsonl --files /demo/files.jsonl

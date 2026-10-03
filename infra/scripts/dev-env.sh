@@ -1,6 +1,6 @@
 #!/bin/sh
-# Guard run by the Makefile `env` target (so `make up` and `make dev` both get it): local dev runs over plain http, where a Secure session cookie is dropped by the
-# browser (login would loop). A .env that is still an untouched copy of .env.example gets
+# Guard run by the Makefile `dev-env` target (`make up` and `make dev`): local dev runs over plain
+# http, where a Secure session cookie is dropped by the browser (login would loop). A .env that is still an untouched copy of .env.example gets
 # COOKIE_SECURE=false; any other .env must already say so. Production defaults stay untouched.
 set -eu
 file=${ENV_FILE:-.env}
