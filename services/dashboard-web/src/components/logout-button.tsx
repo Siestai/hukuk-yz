@@ -19,7 +19,11 @@ export function LogoutButton() {
         setPending(true);
         setError(null);
         try {
-            const { response } = await createApiClient().POST("/auth/logout");
+            // The API takes an unsafe request only as JSON (cross-site forms cannot send that), and
+            // this one has no body to make the client add the header.
+            const { response } = await createApiClient().POST("/auth/logout", {
+                headers: { "Content-Type": "application/json" },
+            });
             // 401: the session is already gone, which is what the user wanted.
             if (response.ok || response.status === 401) {
                 router.replace("/giris");

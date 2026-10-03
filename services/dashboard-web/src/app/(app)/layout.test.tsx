@@ -136,7 +136,9 @@ describe("AppLayout", () => {
         post.mockResolvedValue({ response: new Response(null, { status: 204 }) });
         await renderLayout();
         await userEvent.setup().click(screen.getByRole("button", { name: messages.nav.logout }));
-        expect(post).toHaveBeenCalledWith("/auth/logout");
+        expect(post).toHaveBeenCalledWith("/auth/logout", {
+            headers: { "Content-Type": "application/json" },
+        });
         expect(replace).toHaveBeenCalledWith("/giris");
     });
 });

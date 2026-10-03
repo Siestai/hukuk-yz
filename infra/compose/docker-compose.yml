@@ -41,6 +41,12 @@ services:
 
   app:
     <<: *app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Decision PDFs (GET /review/decisions/{id}/file): the Drive copy, mounted read-only below.
+      ARCHIVE_ROOT: /archive
+    volumes:
+      - ${ARCHIVE_HOST_DIR:-../../data/drive}:/archive:ro
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -52,6 +58,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Browser entry point: the only service that is exposed in production (docs/deploy.md). No
+  # database credentials: it talks to `app` over HTTP only.
+  dashboard-web:
+    build:
+      context: ../..
+      dockerfile: services/dashboard-web/Dockerfile
+    environment:
+      APP_API_URL: http://app:8000
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+    ports:
+      - "127.0.0.1:${DASHBOARD_HOST_PORT:-3000}:3000"
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
 
   worker:
     <<: *app
