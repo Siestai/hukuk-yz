@@ -21,7 +21,7 @@ export async function QueueResults({
     }
     return (
         <>
-            <QueueTable items={result.data.items} />
+            <QueueTable items={result.data.items} params={params} />
             <QueuePagination params={params} total={result.data.total} />
         </>
     );

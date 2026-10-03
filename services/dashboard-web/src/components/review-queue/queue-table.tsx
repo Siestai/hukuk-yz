@@ -1,8 +1,10 @@
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@hukuk/ui";
+import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
-import { formats } from "@/i18n/formats";
 import type { components } from "@/lib/api/schema";
+import { detailHref, type QueueParams } from "@/lib/queue-params";
+import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
 export type QueueItem = components["schemas"]["ReviewListItem"];
@@ -27,16 +29,12 @@ function DuplicateIcon({ label }: { label: string }) {
     );
 }
 
-export function QueueTable({ items }: { items: QueueItem[] }) {
+export function QueueTable({ items, params }: { items: QueueItem[]; params: QueueParams }) {
     const t = useTranslations("review.queue.table");
     const format = useFormatter();
     const labels = useEnumLabels();
 
-    // A date-only ISO value is midnight UTC; formatting it in UTC keeps the calendar day.
-    const date = (iso: string) =>
-        /^\d{4}-\d{2}-\d{2}$/.test(iso)
-            ? format.dateTime(new Date(iso), { ...formats.dateTime.date, timeZone: "UTC" })
-            : iso || "-";
+    const { date } = useDates();
     const numbers = (item: QueueItem) =>
         [
             item.esas_no && t("esas", { value: item.esas_no }),
@@ -75,7 +73,7 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
                 {items.map((item) => {
                     const rest = item.reasons.slice(MAX_REASON_CHIPS);
                     return (
-                        <TableRow key={item.extraction_id}>
+                        <TableRow key={item.extraction_id} className="relative">
                             <TableCell>
                                 <div className="flex items-center gap-2">
                                     <Badge variant={item.band}>{labels.band(item.band)}</Badge>
@@ -87,11 +85,14 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
                             <TableCell className="max-w-96 py-2">
                                 <div className="flex items-start gap-2">
                                     <div className="min-w-0">
-                                        <p
-                                            title={item.title}
-                                            className="line-clamp-2 font-medium text-ink"
-                                        >
-                                            {item.title}
+                                        <p className="line-clamp-2 font-medium text-ink">
+                                            <Link
+                                                href={detailHref(item.extraction_id, params)}
+                                                title={item.title}
+                                                className="after:absolute after:inset-0 hover:underline focus-visible:underline"
+                                            >
+                                                {item.title}
+                                            </Link>
                                         </p>
                                         {item.chamber ? (
                                             <p className="text-xs text-ink-3">{item.chamber}</p>

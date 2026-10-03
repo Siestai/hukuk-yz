@@ -232,16 +232,13 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
             for id_, conf, length in rows
         ]
     reviews = (
-        (
-            await db.execute(
-                select(Review)
-                .where(Review.extraction_id == extraction_id)
-                .order_by(Review.reviewed_at, Review.id)
-            )
+        await db.execute(
+            select(Review, AppUser.display_name)
+            .join(AppUser, AppUser.id == Review.reviewer_id)
+            .where(Review.extraction_id == extraction_id)
+            .order_by(Review.reviewed_at, Review.id)
         )
-        .scalars()
-        .all()
-    )
+    ).all()
     return ReviewDetail(
         extraction_id=extraction.id,
         source_id=source.id,
@@ -256,12 +253,13 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
             ReviewOut(
                 id=r.id,
                 reviewer_id=r.reviewer_id,
+                reviewer_name=name,
                 decision=r.decision.value,
                 edits=r.edits,
                 note=r.note,
                 reviewed_at=r.reviewed_at,
             )
-            for r in reviews
+            for r, name in reviews
         ],
     )
 

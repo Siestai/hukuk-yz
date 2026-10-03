@@ -180,6 +180,29 @@ describe("api proxy", () => {
         expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
     });
 
+    it("lets only our own pages frame the original PDF and ignores the upstream CSP", async () => {
+        const id = "3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10";
+        fetchMock.mockImplementation(
+            async () =>
+                new Response("%PDF", {
+                    headers: {
+                        "content-type": "application/pdf",
+                        "content-disposition": 'inline; filename="k.pdf"',
+                        "content-security-policy": "frame-ancestors *",
+                        "x-frame-options": "ALLOWALL",
+                    },
+                }),
+        );
+        const pdf = await call(GET, `review/decisions/${id}/file`);
+        expect(pdf.headers.get("content-type")).toBe("application/pdf");
+        expect(pdf.headers.get("content-disposition")).toContain("inline");
+        expect(pdf.headers.get("content-security-policy")).toBe("frame-ancestors 'self'");
+        expect(pdf.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+        const other = await call(GET, `review/decisions/${id}`);
+        expect(other.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+        expect(other.headers.get("x-frame-options")).toBe("DENY");
+    });
+
     it("maps a refused connection to 502 upstream_unavailable", async () => {
         fetchMock.mockRejectedValue(new TypeError("fetch failed"));
         const response = await call(GET, "auth/me");

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import config from "../../next.config";
-import { contentSecurityPolicy, staticSecurityHeaders } from "./security-headers";
+import { apiFrameHeaders, contentSecurityPolicy, staticSecurityHeaders } from "./security-headers";
 
 const directives = (csp: string) =>
     Object.fromEntries(csp.split("; ").map((d) => [d.split(" ")[0], d]));
@@ -57,5 +57,30 @@ describe("staticSecurityHeaders", () => {
         const rules = await config.headers?.();
         expect(rules?.[0]?.source).toBe("/:path*");
         expect(rules?.[0]?.headers.map((h) => h.key)).toContain("X-Content-Type-Options");
+    });
+});
+
+describe("apiFrameHeaders", () => {
+    const id = "3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10";
+
+    it("lets the same origin frame the PDF of a decision", () => {
+        expect(apiFrameHeaders(`/api/review/decisions/${id}/file`)).toEqual({
+            "Content-Security-Policy": "frame-ancestors 'self'",
+            "X-Frame-Options": "SAMEORIGIN",
+        });
+    });
+
+    it.each([
+        `/api/review/decisions/${id}`,
+        `/api/review/decisions/${id}/file/extra`,
+        `/api/review/decisions/${id}/files`,
+        "/api/review/decisions/not-a-uuid/file",
+        "/api/auth/me",
+        "/",
+    ])("forbids framing %s", (path) => {
+        expect(apiFrameHeaders(path)).toEqual({
+            "Content-Security-Policy": "frame-ancestors 'none'",
+            "X-Frame-Options": "DENY",
+        });
     });
 });

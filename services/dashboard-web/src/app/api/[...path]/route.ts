@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { appApiUrl } from "@/lib/env";
+import { apiFrameHeaders } from "@/lib/security-headers";
 import { upstreamHeaders } from "@/lib/upstream";
 
 // Browser -> this server -> `app`: `app` is never exposed. Only the prefixes the UI uses pass; under
@@ -88,6 +89,10 @@ async function forward(
     for (const name of RESPONSE_HEADERS) {
         const value = upstream.headers.get(name);
         if (value) out.set(name, value);
+    }
+    // Set here, never taken from upstream: the allowlist above drops any CSP or frame header of `app`.
+    for (const [name, value] of Object.entries(apiFrameHeaders(request.nextUrl.pathname))) {
+        out.set(name, value);
     }
     for (const cookie of upstream.headers.getSetCookie()) out.append("set-cookie", cookie);
     return new Response(upstream.body, { status: upstream.status, headers: out });

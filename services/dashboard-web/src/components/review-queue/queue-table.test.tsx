@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
+import type { QueueParams } from "@/lib/queue-params";
 import { renderWithIntl } from "@/test/intl";
 import { QueueTable, type QueueItem } from "./queue-table";
 
@@ -21,8 +22,10 @@ const item: QueueItem = {
     duplicate_group: null,
 };
 
+const queue: QueueParams = { sort: "score_asc", page: 1 };
+
 function renderRow(overrides: Partial<QueueItem> = {}) {
-    renderWithIntl(<QueueTable items={[{ ...item, ...overrides }]} />);
+    renderWithIntl(<QueueTable items={[{ ...item, ...overrides }]} params={queue} />);
     return screen.getAllByRole("row")[1] as HTMLElement;
 }
 
@@ -91,6 +94,23 @@ describe("QueueTable", () => {
         expect(within(row).getByText(title)).toHaveAttribute("title", title);
     });
 
+    it("links the title to the detail screen with the queue state", () => {
+        renderWithIntl(
+            <QueueTable
+                items={[item]}
+                params={{ band: "low", court: "yargitay", sort: "score_desc", page: 3 }}
+            />,
+        );
+        expect(screen.getByRole("link", { name: "KIDEM TAZMİNATI" })).toHaveAttribute(
+            "href",
+            "/kararlar/e1?band=low&court=yargitay&sort=score_desc&page=3",
+        );
+    });
+
+    it("links without a query when the queue state is the default", () => {
+        expect(within(renderRow()).getByRole("link")).toHaveAttribute("href", "/kararlar/e1");
+    });
+
     it("does not shift a date-only value across a timezone", () => {
         expect(
             within(renderRow({ decision_date: "2021-01-01" })).getByText("01.01.2021"),
@@ -120,13 +140,14 @@ describe("QueueTable", () => {
         expect(within(renderRow()).queryByRole("img")).toBeNull();
     });
 
-    it("renders one row per item and no links", () => {
+    it("renders one row and one link per item", () => {
         renderWithIntl(
             <QueueTable
                 items={[item, { ...item, extraction_id: "e2" }, { ...item, extraction_id: "e3" }]}
+                params={queue}
             />,
         );
         expect(screen.getAllByRole("row")).toHaveLength(4);
-        expect(screen.queryByRole("link")).toBeNull();
+        expect(screen.getAllByRole("link")).toHaveLength(3);
     });
 });

@@ -244,6 +244,7 @@ class DuplicateOut(BaseModel):
 class ReviewOut(BaseModel):
     id: uuid.UUID
     reviewer_id: uuid.UUID
+    reviewer_name: str
     decision: Literal["approve", "edit", "reject"]
     edits: dict[str, Any] | None
     note: str | None

@@ -935,11 +935,16 @@
             "format": "uuid",
             "title": "Reviewer Id",
             "type": "string"
+          },
+          "reviewer_name": {
+            "title": "Reviewer Name",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "reviewer_id",
+          "reviewer_name",
           "decision",
           "edits",
           "note",

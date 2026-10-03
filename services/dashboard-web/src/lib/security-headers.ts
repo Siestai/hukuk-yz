@@ -1,3 +1,5 @@
+import { UUID } from "./uuid";
+
 const dev = () => process.env.NODE_ENV === "development";
 
 /**
@@ -33,4 +35,19 @@ export function staticSecurityHeaders(isDev = dev()): { key: string; value: stri
         { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=31536000" }]),
     ];
+}
+
+const PDF_FILE_PATH = new RegExp(`^/api/review/decisions/${UUID.source}/file$`, "i");
+
+/**
+ * Framing headers of an `/api` response (pages get theirs from the CSP in proxy.ts). The original
+ * PDF of a decision is shown in an iframe of our own pages, so only that path may be framed, and
+ * only by the same origin; everything else may not be framed at all.
+ */
+export function apiFrameHeaders(pathname: string): Record<string, string> {
+    const own = PDF_FILE_PATH.test(pathname);
+    return {
+        "Content-Security-Policy": `frame-ancestors ${own ? "'self'" : "'none'"}`,
+        "X-Frame-Options": own ? "SAMEORIGIN" : "DENY",
+    };
 }

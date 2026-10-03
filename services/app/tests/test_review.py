@@ -343,6 +343,7 @@ async def test_the_detail_shows_fields_duplicates_and_reviews(
         "kopya",
         str(me.id),
     )
+    assert review["reviewer_name"] == "baran@x.test"
 
 
 async def test_an_unknown_extraction_is_404(

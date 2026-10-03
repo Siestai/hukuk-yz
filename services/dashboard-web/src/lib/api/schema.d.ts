@@ -512,6 +512,8 @@ export interface components {
              * Format: uuid
              */
             reviewer_id: string;
+            /** Reviewer Name */
+            reviewer_name: string;
         };
         /** ReviewSummary */
         ReviewSummary: {
