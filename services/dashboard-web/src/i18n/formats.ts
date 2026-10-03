@@ -15,6 +15,6 @@ export const formats = {
     },
     number: {
         integer: { maximumFractionDigits: 0 },
-        score: { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+        score: { maximumFractionDigits: 0 },
     },
 } satisfies Formats;

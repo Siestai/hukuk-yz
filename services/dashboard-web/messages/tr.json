@@ -24,7 +24,68 @@
   },
   "review": {
     "queue": {
-      "title": "İnceleme kuyruğu"
+      "title": "İnceleme kuyruğu",
+      "subtitle": "{total, number} karar onay bekliyor",
+      "sort": {
+        "label": "Sıralama",
+        "score_asc": "En şüpheli önce",
+        "score_desc": "En güvenli önce"
+      },
+      "bulkApprove": "Toplu onayla",
+      "bulkApproveSoon": "Yakında: toplu onay sonraki sürümle gelecek.",
+      "summary": {
+        "bandTitle": "Güven dağılımı",
+        "bandChart": "Bekleyen kararların güven dağılımı: {details}",
+        "bandCount": "{band} {count, number}",
+        "topReasons": "En sık sebepler",
+        "noReasons": "Sebep kaydı yok.",
+        "totalsTitle": "Sonuçlar",
+        "approved": "Onaylanan",
+        "rejected": "Reddedilen"
+      },
+      "filters": {
+        "label": "Filtreler",
+        "band": "Güven",
+        "allBands": "Tümü",
+        "court": "Mahkeme",
+        "allCourts": "Tüm mahkemeler",
+        "reason": "Sebep",
+        "allReasons": "Tüm sebepler",
+        "journalIssue": "Dergi sayısı",
+        "search": "Esas / karar no veya başlık",
+        "searchPlaceholder": "Ara",
+        "clear": "Filtreleri temizle"
+      },
+      "table": {
+        "label": "Onay bekleyen kararlar",
+        "confidence": "Güven",
+        "decision": "Karar",
+        "court": "Mahkeme",
+        "numbers": "Esas / Karar",
+        "date": "Tarih",
+        "issue": "Sayı",
+        "reasons": "Sebepler",
+        "esas": "E. {value}",
+        "karar": "K. {value}",
+        "duplicate": "Mükerrer kayıt grubunda",
+        "unknownReason": "Bilinmeyen sebep"
+      },
+      "empty": {
+        "none": "Onay bekleyen karar yok.",
+        "filtered": "Bu filtrelerle kayıt yok",
+        "pastEnd": "Bu sayfada kayıt yok",
+        "firstPage": "İlk sayfaya dön"
+      },
+      "pagination": {
+        "label": "Sayfalar",
+        "range": "{from, number}-{to, number} / {total, number}",
+        "previous": "Önceki",
+        "next": "Sonraki",
+        "page": "Sayfa {page, number}"
+      },
+      "error": {
+        "title": "Kuyruk yüklenemedi"
+      }
     }
   },
   "errors": {
@@ -39,6 +100,50 @@
     "role": {
       "admin": "Yönetici",
       "reviewer": "İnceleyici"
+    },
+    "band": {
+      "high": "Yüksek",
+      "medium": "Orta",
+      "low": "Düşük"
+    },
+    "court": {
+      "unknown": "Belirsiz",
+      "aym": "AYM",
+      "yargitay": "Yargıtay",
+      "danistay": "Danıştay",
+      "bam": "BAM",
+      "bim": "BİM",
+      "ilk_derece": "İlk derece",
+      "aihm": "AİHM",
+      "abad": "ABAD",
+      "foreign": "Yabancı"
+    },
+    "reason": {
+      "missing_court": "Mahkeme yok",
+      "missing_esas_no": "Esas no yok",
+      "missing_karar_no": "Karar no yok",
+      "missing_decision_date": "Karar tarihi yok",
+      "missing_chamber": "Daire yok",
+      "court_unmapped": "Mahkeme tanınmadı",
+      "court_level_unmapped": "Mahkeme derecesi tanınmadı",
+      "court_level_missing": "Mahkeme derecesi yok",
+      "layout_unknown": "Bilinmeyen sayfa düzeni",
+      "body_not_found": "Karar metni bulunamadı",
+      "text_summary_only": "Yalnız özet",
+      "duplicate_different_text": "Mükerrer, metin farklı",
+      "duplicate_date_mismatch": "Mükerrer, tarih farklı",
+      "duplicate_of": "Başka kaydın mükerreri",
+      "header_closing_date_mismatch": "Başlık ve kapanış tarihi farklı",
+      "karar_year_ne_date_year": "Karar yılı ile tarih yılı farklı",
+      "date_is_lower_court": "Tarih ilk derece kararına ait",
+      "date_from_closing": "Tarih kapanıştan alındı",
+      "body_start_approximate": "Metnin başlangıcı yaklaşık",
+      "statute_inferred_from_date": "Kanun tarihten çıkarıldı",
+      "statute_unmapped": "Kanun tanınmadı",
+      "date_outside_issue_year": "Tarih dergi yılının dışında",
+      "multiple_esas_candidates": "Birden çok esas no adayı",
+      "duplicate_excerpt": "Mükerrer, alıntı",
+      "duplicate_same_text": "Mükerrer, metin aynı"
     }
   },
   "errorPage": {
