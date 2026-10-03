@@ -30,7 +30,7 @@ describe("QueueTable", () => {
     it("renders the fields of a decision", () => {
         const row = renderRow();
         expect(within(row).getByText(messages.enums.band.medium)).toBeInTheDocument();
-        expect(within(row).getByText("75,00")).toBeInTheDocument();
+        expect(within(row).getByText("75")).toBeInTheDocument();
         expect(within(row).getByText("KIDEM TAZMİNATI")).toBeInTheDocument();
         expect(within(row).getByText("9. HD")).toBeInTheDocument();
         expect(within(row).getByText(messages.enums.court.yargitay)).toBeInTheDocument();

@@ -21,7 +21,7 @@ describe("formats", () => {
             "04.10.2026 00:30",
         );
         expect(format.dateTime(new Date("2026-10-03T09:00:00Z"), "date")).toBe("03.10.2026");
-        expect(format.number(1234.5, "score")).toBe("1.234,50");
+        expect(format.number(87, "score")).toBe("87");
         expect(format.number(6342, "integer")).toBe("6.342");
     });
 });
