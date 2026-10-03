@@ -9,6 +9,8 @@ const config: NextConfig = {
     output: "standalone",
     outputFileTracingRoot: join(import.meta.dirname, "../.."),
     transpilePackages: ["@hukuk/ui"],
+    // The repo's AGENTS.md and .claude/skills are the agent guidance; no generated copies.
+    agentRules: false,
 };
 
 export default withNextIntl(config);

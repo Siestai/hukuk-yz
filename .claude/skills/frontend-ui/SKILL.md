@@ -47,3 +47,5 @@ Run from the repo root (`pnpm` is pinned by `packageManager`; Node from `.nvmrc`
 - `pnpm install --frozen-lockfile`
 - `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm format:check`
 - `pnpm openapi`: regenerate `services/dashboard-web/openapi.json` and `src/lib/api/schema.d.ts` after any API change (commit both; CI checks they are current).
+
+Next.js here is version 16 and differs from older versions (for example `middleware.ts` is now `proxy.ts`). Before using a Next API, check the docs shipped in `services/dashboard-web/node_modules/next/dist/docs/`.
