@@ -21,10 +21,12 @@ from app.models.misc import (
     TreatyArticleVersion,
 )
 from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
+from app.models.user import AppUser, UserSession
 
 __all__ = [
     "AdminAct",
     "AdminActVersion",
+    "AppUser",
     "Base",
     "CaArticleVersion",
     "CalcMethod",
@@ -44,4 +46,5 @@ __all__ = [
     "StatuteArticleVersion",
     "Treaty",
     "TreatyArticleVersion",
+    "UserSession",
 ]

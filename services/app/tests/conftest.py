@@ -64,6 +64,23 @@ async def kb_factory(
     await engine.dispose()
 
 
+@pytest.fixture
+async def users_factory(
+    database_url: str, migrated: None
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    """Sessions for the auth tests: app_user (and with it user_session) is emptied around them."""
+    engine = make_engine(database_url)
+
+    async def clean() -> None:
+        async with engine.begin() as connection:
+            await connection.execute(text("TRUNCATE app_user CASCADE"))
+
+    await clean()
+    yield make_session_factory(engine)
+    await clean()
+    await engine.dispose()
+
+
 NewDecision = Callable[..., Awaitable[uuid.UUID]]
 
 

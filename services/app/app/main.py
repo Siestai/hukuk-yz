@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from sqlalchemy import text
 
+from app.auth import router as auth_router
 from app.db import make_engine
 from app.logging_setup import configure_logging, request_id_var
 from app.settings import get_settings
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="hukuk-agent", lifespan=lifespan)
+app.include_router(auth_router)
 
 
 @app.middleware("http")

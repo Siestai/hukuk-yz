@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     database_url: str
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     env: str = "dev"
+    session_ttl_hours: int = 12
+    # False only for plain-http dev; the cookie is then sent without the Secure flag.
+    cookie_secure: bool = True
 
 
 @lru_cache

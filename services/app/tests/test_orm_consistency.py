@@ -7,11 +7,13 @@ from types import ModuleType
 from sqlalchemy import CheckConstraint
 
 from app.models.common import ENUM_TYPES, VALID_RANGE, Base
+from app.models.user import USER_ROLE_TYPE, UserRole
 
 VERSIONS = Path(__file__).parents[1] / "alembic" / "versions"
 MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
-# Tables created by later migrations (0004: decision_verification).
-LATER_TABLES = {"decision_verification"}
+USERS_MIGRATION = VERSIONS / "0005_users_and_sessions.py"
+# Tables created by later migrations (0004: decision_verification; 0005: users and sessions).
+LATER_TABLES = {"decision_verification", "app_user", "user_session"}
 
 
 def _load_migration(path: Path = MIGRATION) -> ModuleType:
@@ -28,10 +30,25 @@ def test_enum_labels_match_migration() -> None:
     assert orm == migration.ENUMS
 
 
+def test_user_role_labels_match_migration() -> None:
+    migration = _load_migration(USERS_MIGRATION)
+    assert USER_ROLE_TYPE == "user_role"
+    assert tuple(m.value for m in UserRole) == migration.USER_ROLES
+
+
 def test_tables_match_migration() -> None:
     migration = _load_migration()
     assert set(Base.metadata.tables) == set(migration.TABLES) | LATER_TABLES
     assert len(migration.TABLES) == 19
+
+
+def test_user_tables_are_in_the_users_migration() -> None:
+    migration = USERS_MIGRATION.read_text()
+    for name in ("app_user", "user_session", "uq_app_user_email", "uq_user_session_token_hash"):
+        assert f'"{name}"' in migration, name
+    orm = {i.name for t in Base.metadata.tables.values() for i in t.indexes}
+    assert "ix_user_session_user_id" in orm
+    assert '"ix_user_session_user_id"' in migration
 
 
 def test_case_document_is_not_a_kb_table() -> None:
