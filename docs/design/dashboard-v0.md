@@ -26,7 +26,7 @@ Yön A (kurumsal) temel alınır: açık zemin, beyaz yüzeyler, beyaz yan menü
 | `--high` / `--high-soft` | `#24704F` / `#E3F1EA` | yüksek güven |
 | `--medium` / `--medium-soft` | `#8A5D00` / `#FBF0D9` | orta güven, "Kontrol et" işareti |
 | `--low` / `--low-soft` | `#A3392A` / `#F8E4E0` | düşük güven, hata, ret |
-| `--radius` / `--radius-sm` | `8px` / `6px` | |
+| `--ui-radius` / `--ui-radius-sm` | `8px` / `6px` | |
 | `--row` | `44px` | tablo satır yüksekliği |
 
 Yazı: IBM Plex Sans (arayüz), IBM Plex Mono (esas/karar no, tarih, sayılar; hizalı karşılaştırma için), IBM Plex Serif (detay başlığı, karar metni, giriş alıntısı). Fontlar `next/font` ile kendi sunucumuzdan; dış CDN yok (CSP).

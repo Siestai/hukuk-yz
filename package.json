@@ -1,0 +1,19 @@
+{
+  "name": "hukuk-yz",
+  "private": true,
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "format:check": "prettier --check services/dashboard-web packages/ui",
+    "openapi": "uv run python -m app.openapi > services/dashboard-web/openapi.json && pnpm --filter dashboard-web openapi:types"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
+  }
+}

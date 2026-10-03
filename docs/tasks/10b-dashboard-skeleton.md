@@ -55,6 +55,27 @@ Tasarım: `docs/design/dashboard-v0.md` (bağlayıcı: token değerleri, fontlar
 5. Oturumsuz `/` → `/giris`; yanlış parola Türkçe mesaj; 6. yanlış deneme "çok fazla deneme, N dakika sonra" mesajı.
 6. Güvenlik başlıkları yanıtta var (test ya da `curl -I` çıktısı PR'da).
 
+## PR bölümü
+
+Görev üç PR'a bölünür (Orhan, 2026-10-03):
+
+- **10b-1, temel:** workspace, Next.js, `packages/ui` token'ları ve shadcn bileşenleri, i18n, OpenAPI tipleri, lint kuralları, CI işi `web`. Gerçek ekran yok.
+- **10b-2, oturum:** giriş ekranı ve rastgele söz, `/api` BFF vekili (`X-Forwarded-For`), middleware yönlendirmesi, uygulama kabuğu ve yan menü, çıkış, güvenlik başlıkları.
+- **10b-3, inceleme kuyruğu:** özet kartları, tablo, URL filtreleri, sayfalama.
+
+Kapsam maddelerinin dağılımı: 1, 2 ve 7'nin `web` işi 10b-1; 3'ün tip üretimi 10b-1, vekil 10b-2; 4'ün giriş ve yan menüsü 10b-2, kuyruk ekranı 10b-3; 5 10b-2. Madde 6 (Dockerfile, compose, `docs/deploy.md`) ve 7'nin Docker build adımı bu üç PR'ın dışında, Görev 10d'dedir.
+
+Kabul kriterlerinin dağılımı:
+
+| Kriter | PR |
+|---|---|
+| 1. Python `make lint typecheck test` ve pnpm işleri yeşil, CI yeşil | her PR |
+| 2. `grep` kontrolleri (DB istemcisi yok, sabit renk ve keyfi değer yok) | 10b-1 (lint kuralları ve testleri), sonraki PR'larda korunur |
+| 3. Yerel çalıştırma, elle deneme, ekran görüntüleri | giriş 10b-2, kuyruk ve filtre 10b-3 |
+| 4. OpenAPI tipleri commit'li ve CI'da güncel | 10b-1 |
+| 5. Oturumsuz `/` → `/giris`, hata mesajları | 10b-2 |
+| 6. Güvenlik başlıkları | 10b-2 |
+
 ## Notlar Claude Code için
 
 - `frontend-ui` skill'i bu görevde bağlayıcı; ondan sapma gerekirse kod yazmadan önce PR açıklamasına gerekçeyle yaz.

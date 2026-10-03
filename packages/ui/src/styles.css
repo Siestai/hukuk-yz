@@ -1,0 +1,107 @@
+/* Design tokens: docs/design/dashboard-v0.md. A rebrand edits only these values. */
+:root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #f8f9fb;
+    --sunken: #e9edf2;
+    --ink: #16202e;
+    --ink-2: #4a5668;
+    --ink-3: #7a8596;
+    --line: #dde3ea;
+    --line-2: #eef1f5;
+    --primary: #0b2a5b;
+    --primary-soft: #e6ecf5;
+    --accent: #c9a227;
+    --high: #24704f;
+    --high-soft: #e3f1ea;
+    --medium: #8a5d00;
+    --medium-soft: #fbf0d9;
+    --low: #a3392a;
+    --low-soft: #f8e4e0;
+    --ui-radius: 8px;
+    --ui-radius-sm: 6px;
+    --row: 44px;
+
+    /* shadcn semantic variables, mapped onto the tokens above. */
+    --background: var(--bg);
+    --foreground: var(--ink);
+    --card: var(--surface);
+    --card-foreground: var(--ink);
+    --popover: var(--surface);
+    --popover-foreground: var(--ink);
+    --primary-foreground: var(--surface);
+    --secondary: var(--primary-soft);
+    --secondary-foreground: var(--primary);
+    --muted: var(--sunken);
+    --muted-foreground: var(--ink-2);
+    --destructive: var(--low);
+    --destructive-foreground: var(--surface);
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--accent);
+}
+
+@theme inline {
+    /* Reset Tailwind's default palette and radius scale: only our tokens generate utilities. */
+    --color-*: initial;
+    --radius-*: initial;
+
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-sunken: var(--sunken);
+    --color-ink: var(--ink);
+    --color-ink-2: var(--ink-2);
+    --color-ink-3: var(--ink-3);
+    --color-line: var(--line);
+    --color-line-2: var(--line-2);
+    --color-primary: var(--primary);
+    --color-primary-soft: var(--primary-soft);
+    --color-accent: var(--accent);
+    --color-high: var(--high);
+    --color-high-soft: var(--high-soft);
+    --color-medium: var(--medium);
+    --color-medium-soft: var(--medium-soft);
+    --color-low: var(--low);
+    --color-low-soft: var(--low-soft);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --radius-sm: var(--ui-radius-sm);
+    --radius-md: var(--ui-radius);
+    --spacing-row: var(--row);
+}
+
+@theme {
+    --font-sans:
+        var(--font-plex-sans-latin), var(--font-plex-sans-ext), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-plex-mono-latin), var(--font-plex-mono-ext), ui-monospace, monospace;
+    --font-serif:
+        var(--font-plex-serif-latin), var(--font-plex-serif-ext), ui-serif, Georgia, serif;
+}
+
+@layer base {
+    * {
+        border-color: var(--border);
+    }
+    body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+    }
+}

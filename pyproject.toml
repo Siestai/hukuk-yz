@@ -16,6 +16,7 @@ hukuk-verify = { workspace = true }
 
 [tool.uv.workspace]
 members = ["services/app", "packages/*"]
+exclude = ["packages/ui"]
 
 [dependency-groups]
 dev = [

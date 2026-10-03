@@ -11,3 +11,5 @@ Ayağa kaldırma (uv ve Docker gerekir):
 5. `curl localhost:8000/healthz` ve `curl localhost:8000/readyz` — 200 dönmeli.
 6. `make lint typecheck test` — Postgres testleri için `DATABASE_URL` tanımlayın, yoksa atlanır.
 7. `make down` — durdurur.
+
+Frontend (Node 24 ve pnpm gerekir): `pnpm install`, sonra `pnpm lint typecheck test build format:check` ayrı ayrı; API değişince `pnpm openapi`.
