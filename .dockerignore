@@ -8,3 +8,8 @@ docs
 .mypy_cache
 .ruff_cache
 .pytest_cache
+node_modules
+**/node_modules
+.next
+**/.next
+coverage

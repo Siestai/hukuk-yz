@@ -1,3 +1,11 @@
 packages:
   - services/dashboard-web
   - packages/ui
+
+# Only unrs-resolver (eslint import resolver) runs an install script; the others ship prebuilt
+# binaries through optional dependencies and need no build.
+onlyBuiltDependencies:
+  - unrs-resolver
+ignoredBuiltDependencies:
+  - "@parcel/watcher"
+  - "@swc/core"

@@ -18,8 +18,8 @@
     --medium-soft: #fbf0d9;
     --low: #a3392a;
     --low-soft: #f8e4e0;
-    --radius: 8px;
-    --radius-sm: 6px;
+    --ui-radius: 8px;
+    --ui-radius-sm: 6px;
     --row: 44px;
 
     /* shadcn semantic variables, mapped onto the tokens above. */
@@ -42,6 +42,10 @@
 }
 
 @theme inline {
+    /* Reset Tailwind's default palette and radius scale: only our tokens generate utilities. */
+    --color-*: initial;
+    --radius-*: initial;
+
     --color-bg: var(--bg);
     --color-surface: var(--surface);
     --color-surface-2: var(--surface-2);
@@ -78,14 +82,17 @@
     --color-input: var(--input);
     --color-ring: var(--ring);
 
-    --radius-md: var(--radius);
+    --radius-sm: var(--ui-radius-sm);
+    --radius-md: var(--ui-radius);
     --spacing-row: var(--row);
 }
 
 @theme {
-    --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-    --font-mono: var(--font-plex-mono), ui-monospace, monospace;
-    --font-serif: var(--font-plex-serif), ui-serif, Georgia, serif;
+    --font-sans:
+        var(--font-plex-sans-latin), var(--font-plex-sans-ext), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-plex-mono-latin), var(--font-plex-mono-ext), ui-monospace, monospace;
+    --font-serif:
+        var(--font-plex-serif-latin), var(--font-plex-serif-ext), ui-serif, Georgia, serif;
 }
 
 @layer base {
