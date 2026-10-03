@@ -140,7 +140,7 @@ describe("BulkApproveDialog run", () => {
         expect(bar).toHaveAttribute("max", "250");
         expect(bar).toHaveAttribute("value", "0");
         expect(bar).not.toHaveAttribute("aria-valuenow");
-        expect(dialog()).toHaveAttribute("aria-busy", "true");
+        expect(dialog()).not.toHaveAttribute("aria-busy");
         expect(screen.getByRole("heading", { name: bulk.run.heading })).toHaveFocus();
         expect(screen.getByText("0 / 250")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: bulk.cancel })).not.toBeInTheDocument();
