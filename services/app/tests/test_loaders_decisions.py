@@ -1,7 +1,6 @@
 import asyncio
 import dataclasses
 import json
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -9,9 +8,9 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.kb import PARSER_NAME
 from app.loaders import decisions
 from app.loaders.decisions import (
-    PARSER_NAME,
     REQUIRED_KEYS,
     approve_band,
     finish_job,
@@ -34,6 +33,7 @@ from app.models.common import (
     SourceRank,
 )
 from app.models.decision import Decision
+from app.models.user import AppUser
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
 FIXTURE_LINES = 25  # one of them repeats another's sha256 (the same PDF in two issues)
@@ -205,12 +205,12 @@ def test_dry_run_needs_no_database_and_writes_a_report_without_text(
         assert "gerekçe" not in content
 
 
-def test_approve_band_needs_a_reviewer_and_no_dry_run() -> None:
+def test_approve_band_needs_a_reviewer_email_and_no_dry_run() -> None:
     with pytest.raises(SystemExit):
         decisions.main([str(FIXTURE), "--approve-band", "high"])
     with pytest.raises(SystemExit):
         decisions.main(
-            [str(FIXTURE), "--dry-run", "--approve-band", "high", "--reviewer", str(uuid.uuid4())]
+            [str(FIXTURE), "--dry-run", "--approve-band", "high", "--reviewer-email", "a@x.test"]
         )
 
 
@@ -323,12 +323,12 @@ async def test_one_bad_row_does_not_lose_its_batch(
 
 
 async def test_approve_band_publishes_the_band_as_unverified(
-    kb_factory: async_sessionmaker[AsyncSession],
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     prepared, _ = _prepared()
     await load(kb_factory, prepared, LoadCounts())
     high = sum(p.confidence["band"] == "high" for p in prepared)
-    result = await approve_band(kb_factory, "high", uuid.uuid4())
+    result = await approve_band(kb_factory, "high", reviewer.id)
     assert (result.published, result.conflicts) == (high, [])
     async with kb_factory() as session:
         rows = (await session.execute(select(Decision))).scalars().all()
@@ -344,7 +344,7 @@ async def test_approve_band_publishes_the_band_as_unverified(
 
 
 async def test_approve_band_publishes_a_source_with_two_extractions_once(
-    kb_factory: async_sessionmaker[AsyncSession],
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     prepared, _ = _prepared()
     await load(kb_factory, prepared, LoadCounts())
@@ -352,7 +352,7 @@ async def test_approve_band_publishes_a_source_with_two_extractions_once(
         kb_factory, [dataclasses.replace(p, parser_version="6") for p in prepared], LoadCounts()
     )
     high = sum(p.confidence["band"] == "high" for p in prepared)
-    result = await approve_band(kb_factory, "high", uuid.uuid4())
+    result = await approve_band(kb_factory, "high", reviewer.id)
     assert (result.published, result.conflicts, result.publish_failed) == (high, [], [])
     async with kb_factory() as session:
         versions = (
@@ -370,14 +370,14 @@ async def test_approve_band_publishes_a_source_with_two_extractions_once(
 
 
 async def test_approve_band_counts_a_publish_failure_and_goes_on(
-    kb_factory: async_sessionmaker[AsyncSession],
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     prepared, _ = _prepared()
     highs = [p for p in prepared if p.confidence["band"] == "high"]
     # A stale band: high on record, but without the court_level publish needs.
     stale = dataclasses.replace(highs[0], fields={**highs[0].fields, "court_level": ""})
     await load(kb_factory, [stale, *highs[1:]], LoadCounts())
-    result = await approve_band(kb_factory, "high", uuid.uuid4())
+    result = await approve_band(kb_factory, "high", reviewer.id)
     assert result.published == len(highs) - 1
     assert result.conflicts == []
     assert [(sha, "court_level" in reason) for sha, reason in result.publish_failed] == [
@@ -387,7 +387,7 @@ async def test_approve_band_counts_a_publish_failure_and_goes_on(
 
 
 async def test_approve_band_reports_a_live_key_collision(
-    kb_factory: async_sessionmaker[AsyncSession],
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     prepared, _ = _prepared()
     by_page = _by_page(prepared)
@@ -395,7 +395,7 @@ async def test_approve_band_reports_a_live_key_collision(
     assert pair[0].fields["duplicate_group"]["key"] == pair[1].fields["duplicate_group"]["key"]
     assert {p.confidence["band"] for p in pair} == {"low"}
     await load(kb_factory, prepared, LoadCounts())
-    result = await approve_band(kb_factory, "low", uuid.uuid4())
+    result = await approve_band(kb_factory, "low", reviewer.id)
     assert {sha for sha in result.conflicts} & {p.sha256[:12] for p in pair}
     assert len(result.conflicts) == 2  # this pair and the date_mismatch pair, one loser each
     async with kb_factory() as session:
@@ -416,12 +416,22 @@ async def test_approve_band_reports_a_live_key_collision(
 async def test_the_cli_approves_a_band_end_to_end(
     kb_factory: async_sessionmaker[AsyncSession],
     database_url: str,
+    reviewer: AppUser,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     prepared, _ = _prepared()
     high = sum(p.confidence["band"] == "high" for p in prepared)
-    argv = [str(FIXTURE), "--approve-band", "high", "--reviewer", str(uuid.uuid4())]
+    argv = [str(FIXTURE), "--approve-band", "high", "--reviewer-email", reviewer.email.upper()]
     assert await asyncio.to_thread(decisions.main, argv) == 0
     assert f"published {high}, conflicts 0, publish_failed 0" in capsys.readouterr().out
     assert await _count(kb_factory, Decision) == high
     assert await _count(kb_factory, Source) == len(prepared)
+
+
+async def test_the_cli_refuses_an_unknown_reviewer_before_loading(
+    kb_factory: async_sessionmaker[AsyncSession], database_url: str
+) -> None:
+    argv = [str(FIXTURE), "--approve-band", "high", "--reviewer-email", "nobody@x.test"]
+    with pytest.raises(SystemExit, match="nobody@x.test"):
+        await asyncio.to_thread(decisions.main, argv)
+    assert await _count(kb_factory, Source) == 0

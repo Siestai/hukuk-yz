@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
     Index,
@@ -334,6 +335,35 @@ class Extraction(UuidPkMixin, Base):
     warnings: Mapped[list[Any]] = mapped_column(JSONB, server_default=text("'[]'"))
     raw_text_ref: Mapped[str | None]
 
+    # What the review queue filters and shows, cut out of `fields` (the decision text, ~25 KB
+    # per row, stored out of line) when the row is written, so the queue never reads `fields`.
+    # `decisions` extractions only; NULL for the others.
+    court: Mapped[str | None] = mapped_column(Computed("fields ->> 'court'", persisted=True))
+    chamber: Mapped[str | None] = mapped_column(Computed("fields ->> 'chamber'", persisted=True))
+    esas_no: Mapped[str | None] = mapped_column(Computed("fields ->> 'esas_no'", persisted=True))
+    karar_no: Mapped[str | None] = mapped_column(Computed("fields ->> 'karar_no'", persisted=True))
+    decision_date: Mapped[str | None] = mapped_column(
+        Computed("fields ->> 'decision_date'", persisted=True)
+    )
+    journal_issue: Mapped[int | None] = mapped_column(
+        Computed("(fields ->> 'journal_issue')::integer", persisted=True)
+    )
+    duplicate_group: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, Computed("fields -> 'duplicate_group'", persisted=True)
+    )
+    # The group's key as text: members of a group share it.
+    duplicate_key: Mapped[str | None] = mapped_column(
+        Computed("fields #>> '{duplicate_group,key}'", persisted=True)
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_extraction_duplicate_key",
+            "duplicate_key",
+            postgresql_where=text("duplicate_key IS NOT NULL"),
+        ),
+    )
+
 
 class Review(UuidPkMixin, Base):
     """data-model.md §3: human approval gate (§1 rule 4)."""
@@ -341,7 +371,9 @@ class Review(UuidPkMixin, Base):
     __tablename__ = "review"
 
     extraction_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("extraction.id"), index=True)
-    reviewer_id: Mapped[uuid.UUID]
+    # The migration (0006) adds the FK NOT VALID: CLI reviews of task 05 may name a reviewer
+    # that is no user; every new row must name one.
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"))
     decision: Mapped[ReviewDecision] = mapped_column(ReviewDecision.pg_type("review_decision"))
     edits: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     note: Mapped[str | None]

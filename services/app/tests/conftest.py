@@ -24,6 +24,7 @@ from app.models.common import (
     TextCompleteness,
 )
 from app.models.decision import Decision
+from app.models.user import AppUser, UserRole
 
 ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
 
@@ -51,17 +52,34 @@ def migrated(alembic_config: Config) -> None:
 async def kb_factory(
     database_url: str, migrated: None
 ) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
-    """Sessions for tests whose code commits: the KB tables are emptied before and after."""
+    """Sessions for tests whose code commits: the KB tables and the users are emptied before and
+    after."""
     engine = make_engine(database_url)
 
     async def clean() -> None:
         async with engine.begin() as connection:
-            await connection.execute(text("TRUNCATE source, ingest_job CASCADE"))
+            await connection.execute(text("TRUNCATE source, ingest_job, app_user CASCADE"))
 
     await clean()
     yield make_session_factory(engine)
     await clean()
     await engine.dispose()
+
+
+@pytest.fixture
+async def reviewer(kb_factory: async_sessionmaker[AsyncSession]) -> AppUser:
+    """A reviewer user (committed; removed with the rest by `kb_factory`). Its password hash is
+    a placeholder: tests that log in create their own users."""
+    async with kb_factory() as session:
+        user = AppUser(
+            email="reviewer@x.test",
+            display_name="Reviewer",
+            role=UserRole.reviewer,
+            password_hash="x",
+        )
+        session.add(user)
+        await session.commit()
+    return user
 
 
 @pytest.fixture

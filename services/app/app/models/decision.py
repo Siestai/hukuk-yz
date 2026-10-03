@@ -21,6 +21,8 @@ from app.models.common import (
     Verification,
 )
 
+LIVE_KEY_INDEX = "uq_decision_court_bam_region_chamber_esas_no_karar_no_live"
+
 
 class Decision(UuidPkMixin, ProvenanceMixin, Base):
     __tablename__ = "decision"
@@ -33,7 +35,7 @@ class Decision(UuidPkMixin, ProvenanceMixin, Base):
         # index over coalesce(chamber, '') would not be). esas_no / karar_no stay nullable and
         # NULL-distinct on purpose: ~4% of archive decisions lack them and must not collide.
         Index(
-            "uq_decision_court_bam_region_chamber_esas_no_karar_no_live",
+            LIVE_KEY_INDEX,
             "court",
             "bam_region",
             "chamber",
