@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
 import type { components } from "@/lib/api/schema";
-import { detailHref, type QueueParams } from "@/lib/queue-params";
+import { detailHref, PAGE_SIZE, type QueueParams } from "@/lib/queue-params";
 import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
@@ -76,7 +76,7 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {items.map((item) => {
+                {items.map((item, index) => {
                     const rest = item.reasons.slice(MAX_REASON_CHIPS);
                     return (
                         <TableRow key={item.extraction_id} className="relative">
@@ -93,7 +93,9 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
                                     <div className="min-w-0">
                                         <p className="line-clamp-2 font-medium text-ink">
                                             <Link
-                                                href={detailHref(item.extraction_id, params)}
+                                                href={detailHref(item.extraction_id, params, {
+                                                    pos: (params.page - 1) * PAGE_SIZE + index,
+                                                })}
                                                 title={item.title}
                                                 className="after:absolute after:inset-0 hover:underline focus-visible:underline"
                                             >

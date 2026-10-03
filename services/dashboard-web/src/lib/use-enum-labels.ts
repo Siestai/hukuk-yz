@@ -13,6 +13,8 @@ export function useEnumLabels() {
         court: (value: string) => label("court", value === "" ? "unknown" : value),
         courtLevel: (value: string) => label("courtLevel", value),
         outcome: (value: string) => label("outcome", value),
+        jurisdiction: (value: string) => label("jurisdiction", value),
+        textCompleteness: (value: string) => label("textCompleteness", value),
         sourceStatus: (value: string) => label("sourceStatus", value),
         reason: (value: string) => label("reason", value),
         isKnownReason: (value: string) => t.has(`enums.reason.${value}`),

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
     apiQuery,
     changeQueueParams,
+    detailHref,
     hasFilters,
+    parseNotice,
+    parsePosition,
     parseQueueParams,
     queueHref,
     serializeQueueParams,
@@ -153,5 +156,35 @@ describe("apiQuery", () => {
 
     it("maps the journal issue to its API name", () => {
         expect(apiQuery({ ...defaults, journalIssue: 8 }).journal_issue).toBe(8);
+    });
+});
+
+describe("detail and queue links", () => {
+    it("detailHref carries the queue state and the position", () => {
+        expect(detailHref("e1", { ...defaults, band: "low", page: 2 }, { pos: 51 })).toBe(
+            "/kararlar/e1?band=low&page=2&pos=51",
+        );
+        expect(detailHref("e1", defaults, { pos: 0, flash: "approved" })).toBe(
+            "/kararlar/e1?pos=0&flash=approved",
+        );
+    });
+
+    it("queueHref carries the notice", () => {
+        expect(queueHref(defaults, { flash: "rejected", done: true })).toBe(
+            "/?flash=rejected&done=1",
+        );
+    });
+
+    it("parses the position and the notice, ignoring anything malformed", () => {
+        expect(parsePosition({ pos: "0" })).toBe(0);
+        expect(parsePosition({ pos: "51" })).toBe(51);
+        expect(parsePosition({ pos: "-1" })).toBeUndefined();
+        expect(parsePosition({ pos: "x" })).toBeUndefined();
+        expect(parsePosition({ pos: "99999999" })).toBeUndefined();
+        expect(parseNotice({ flash: "edited", done: "1" })).toEqual({
+            flash: "edited",
+            done: true,
+        });
+        expect(parseNotice({ flash: "<b>" })).toEqual({ flash: undefined, done: false });
     });
 });

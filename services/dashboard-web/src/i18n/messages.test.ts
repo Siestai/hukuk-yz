@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../messages/tr.json";
-import { BANDS, COURTS, SORTS, UNKNOWN_COURT } from "../lib/queue-params";
+import { FIELD_ERRORS } from "../lib/decision-edits";
+import { BANDS, COURTS, FLASHES, SORTS, UNKNOWN_COURT } from "../lib/queue-params";
 import { reasonCodes, schemaEnum, schemaProperties, warningCodes } from "../test/reason-codes";
 
 const SRC = join(import.meta.dirname, "..");
@@ -58,6 +59,8 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.warning": warningCodes(),
     "enums.courtLevel": schemaEnum("DecisionEdits", "court_level"),
     "enums.outcome": schemaEnum("DecisionEdits", "outcome"),
+    "enums.jurisdiction": schemaEnum("DecisionEdits", "jurisdiction"),
+    "enums.textCompleteness": schemaEnum("DecisionEdits", "text_completeness"),
     "enums.sourceStatus": schemaEnum("ReviewDetail", "source_status"),
     // The fields a reviewer may correct, plus the read-only ones the detail screen shows.
     fields: [...schemaProperties("DecisionEdits"), "journal_issue"],
@@ -65,6 +68,9 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "review.detail.pdf": schemaEnum("ReviewDetail", "pdf").filter((v) => v !== "available"),
     "review.detail.history.decision": schemaEnum("ReviewOut", "decision"),
     "review.queue.sort": SORTS,
+    "review.queue.flash": FLASHES,
+    // "server" is read by key; the others are the client checks of the form.
+    "review.edit.errors": FIELD_ERRORS,
 };
 
 describe("messages/tr.json", () => {

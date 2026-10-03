@@ -9,11 +9,14 @@ export type DecisionFields = {
     chamber: string;
     sourceChamber: string;
     bamRegion: string;
+    decisionKind: string;
     esasNo: string;
     kararNo: string;
     decisionDate: string;
     relatedArticles: RelatedArticle[];
+    jurisdiction: string;
     outcome: string;
+    textCompleteness: string;
     keywords: string[];
     journalIssue: number | null;
     fullText: string;
@@ -45,11 +48,14 @@ export function readFields(fields: Record<string, unknown>): DecisionFields {
         chamber: text(fields.chamber),
         sourceChamber: text(fields.source_chamber),
         bamRegion: text(fields.bam_region),
+        decisionKind: text(fields.decision_kind),
         esasNo: text(fields.esas_no),
         kararNo: text(fields.karar_no),
         decisionDate: text(fields.decision_date),
         relatedArticles: related.map(article).filter((a) => a !== undefined),
+        jurisdiction: text(fields.jurisdiction),
         outcome: text(fields.outcome),
+        textCompleteness: text(fields.text_completeness),
         keywords: texts(fields.keywords),
         journalIssue: typeof fields.journal_issue === "number" ? fields.journal_issue : null,
         fullText: text(fields.full_text),

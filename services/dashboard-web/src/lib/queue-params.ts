@@ -85,15 +85,50 @@ export function serializeQueueParams(params: QueueParams): URLSearchParams {
     return query;
 }
 
-export function queueHref(params: QueueParams): string {
-    const query = serializeQueueParams(params).toString();
+/** What a review action leaves behind for the next screen to announce. */
+export const FLASHES = ["approved", "edited", "rejected"] as const;
+export type Flash = (typeof FLASHES)[number];
+export type Notice = { flash?: Flash; done?: boolean };
+
+const MAX_POSITION = 1_000_000;
+
+/** The absolute index of a record in the queue (filters and sort applied), carried by detail links. */
+export function parsePosition(raw: RawParams): number | undefined {
+    const value = pick(raw, "pos");
+    if (!value || !/^\d{1,9}$/.test(value)) return undefined;
+    const n = Number(value);
+    return n <= MAX_POSITION ? n : undefined;
+}
+
+export function parseNotice(raw: RawParams): Notice {
+    return { flash: oneOf(FLASHES, pick(raw, "flash")), done: pick(raw, "done") === "1" };
+}
+
+function withNotice(query: URLSearchParams, notice: Notice = {}): string {
+    if (notice.flash) query.set("flash", notice.flash);
+    if (notice.done) query.set("done", "1");
+    return query.toString();
+}
+
+export function queueHref(params: QueueParams, notice?: Notice): string {
+    const query = withNotice(serializeQueueParams(params), notice);
     return query ? `/?${query}` : "/";
 }
 
-/** The detail screen of an extraction; it carries the queue state so "back" and the next record keep the filters. */
-export function detailHref(extractionId: string, params: QueueParams): string {
-    const query = serializeQueueParams(params).toString();
-    return `/kararlar/${extractionId}${query ? `?${query}` : ""}`;
+/**
+ * The detail screen of an extraction; it carries the queue state so "back" and the next record
+ * keep the filters, and `pos` (the record's index in that queue) so the next record can be
+ * found even after this one has left the queue.
+ */
+export function detailHref(
+    extractionId: string,
+    params: QueueParams,
+    extra: { pos?: number; flash?: Flash } = {},
+): string {
+    const query = serializeQueueParams(params);
+    if (extra.pos !== undefined) query.set("pos", String(extra.pos));
+    const text = withNotice(query, { flash: extra.flash });
+    return `/kararlar/${extractionId}${text ? `?${text}` : ""}`;
 }
 
 /** Applies a change; any change that does not name a page goes back to page 1. */
