@@ -30,6 +30,8 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
+      - name: Install Tesseract (OCR integration tests)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-tur
       - run: make install
       - run: make lint typecheck test
       - name: Migrate (upgrade, downgrade, upgrade)

@@ -33,7 +33,7 @@ Tesseract 5.5.3, `tur` modeli, 300 dpi gri tonlama, `--psm 3`; kurulum conda-for
 
 - Stopword oranı (Görev 03'teki ölçü) okunan 45 dosyada **0.068-0.170**; Görev 03'ün `bad_ocr_layer` eşiği 0.03, `borderline` bandı 0.03-0.06. Hepsi eşiğin rahatça üstünde.
 - Elle kontrol (6 örnek): SGK genel yazıları ve Resmî Gazete tebliği neredeyse hatasız; antet/logo/imza bölgelerinde birkaç satır çöp karakter, WhatsApp fotoğraflarında ara ara harf hatası.
-- **Başarısız örnek:** `Görüş/KEP'ten Gönderilen Tebligatlara İPC Uygulanması Hakkında Görüş.pdf`: telefonla çekilmiş, düşük kontrastlı, hafif eğik sayfa. Varsayılan eşikleme (Otsu) metni siliyor; Tesseract "Too few characters" diyor. **Sauvola eşiklemesiyle (`-c thresholding_method=2`) ilk sayfa 3.393 karakter, temiz** (`thresholding_method=1` ile 5.059 karakter). Bu yüzden ikinci geçiş zorunlu.
+- **Başarısız örnek:** `Görüş/KEP'ten Gönderilen Tebligatlara İPC Uygulanması Hakkında Görüş.pdf`: telefonla çekilmiş, düşük kontrastlı, hafif eğik sayfa. Varsayılan eşikleme (Otsu) metni siliyor; Tesseract "Too few characters" diyor. Uyarlamalı eşikleme (`thresholding_method=1` ya da `2`) metni okuyor; bu yüzden ikinci geçiş zorunlu (hangi yöntemin işe yaradığı için aşağıdaki "Değişiklikler" bölümüne bakın).
 
 `.doc` probe'u (`olefile` + Word 97 piece table, saf Python):
 
@@ -61,7 +61,7 @@ Tesseract 5.5.3, `tur` modeli, 300 dpi gri tonlama, `--psm 3`; kurulum conda-for
 - PDF sayfaları **`pypdfium2` ile** 300 dpi gri tonlamaya render edilir (zaten bağımlılık; poppler gerekmez). Görüntüyü Tesseract'a vermek için dosya ya da stdin kullanılabilir. `Pillow` yalnızca workspace'te zaten varsa kullanılır; yoksa `pypdfium2`'nin kendi PNG/PPM çıktısı kullanılır, yeni bağımlılık eklenmez.
 - **Geçişler** (sayfa başına):
   1. `-l tur --psm 3`.
-  2. Sayfa metni zayıfsa (`< 50` karakter ya da sayfa stopword oranı `< 0.03`): `-c thresholding_method=2` (Sauvola) ile tekrar; daha iyi sonuç kalır.
+  2. Sayfa metni zayıfsa (`< 50` karakter ya da sayfa stopword oranı `< 0.03`): uyarlamalı eşikleme. Hem `-c thresholding_method=1` (Leptonica uyarlamalı Otsu) hem `-c thresholding_method=2` (Sauvola) denenir; en iyi sonuç (`_better`) kalır. Kazanan yöntem sayfa bazında `quality.ocr_threshold` altında kaydedilir; geçiş numaraları 1/2/3 olarak kalır.
   3. Hâlâ zayıfsa yön tespiti (`--psm 0`, OSD) yapılır; döndürme ≠ 0 ise döndürülmüş görüntüyle 1. geçiş tekrarlanır.
   Hangi geçişin kullanıldığı sayfa bazında kaydedilir.
 - OCR **yalnızca** `needs_ocr` durumuna düşen dosyalarda çalışır (`no_text_layer`, `bad_ocr_layer`, `partial_text_layer`, `image`). Metin katmanı sağlam PDF'lere dokunulmaz. `partial_text_layer`'da yalnızca metinsiz sayfalar OCR'lanır, diğer sayfaların metin katmanı korunur.
@@ -117,3 +117,15 @@ Tesseract 5.5.3, `tur` modeli, 300 dpi gri tonlama, `--psm 3`; kurulum conda-for
 
 1. ~~`ocr_low_quality` kalan dosya olursa ne yapılır?~~ **Karar (Orhan, 2026-10-02):** dosya `needs_ocr/ocr_low_quality` olarak kalır, elle yazılmaz ve atlanmaz; ortaklardan temiz kopyası istenir. Rapor bu listeyi ayrıca verir ki ortaklara gidecek istek doğrudan oradan çıksın.
 2. ~~Kişi verisi maskeleme ne zaman?~~ **Karar (Orhan, 2026-10-02):** bu görev metni olduğu gibi `data/extracted/` (gitignored) altına yazar; maskeleme (md. 31) Mevzuat'ı KB'ye yükleme görevinde yapılır. Rapor ve loglar metin içermez.
+
+## Değişiklikler (implementasyon)
+
+- **İkinci geçiş iki yöntemi dener.** Tam korpus koşusunda başarısız örnekte (KEP görüşü, telefon fotoğrafı) yalnızca Sauvola (`thresholding_method=2`) yetersiz kaldı; dosya 630 karakterlik anlamsız metinle `ok` çıktı. pdfium 300 dpi render, psm 3 ölçümü:
+  - sayfa 1: yöntem 0 → 0 karakter; yöntem 1 → 2.628 karakter / 301 kelime; yöntem 2 → 614 karakter / 70 kelime.
+  - sayfa 2: yöntem 0 → 0; yöntem 1 → 1.936 / 211; yöntem 2 → 14 / 1.
+  - sayfa 3: tüm yöntemlerde 0 (neredeyse boş imza sayfası).
+  Bu yüzden zayıf sayfada hem 1 hem 2 çalıştırılır, daha iyisi kalır. `Engine.recognize` artık `thresholding: int` alır (0 = varsayılan). Önbellek parmak izine denenen yöntemler girer; eski OCR önbelleği geçersiz olur.
+- Görüntü dosyalarına (fotoğraf/tarama) OSD döndürmesi uygulanmaz: görüntüyü döndürecek imaging kütüphanesi yok, yeni bağımlılık eklenmedi.
+- Sayfa zayıflığında stopword oranı yalnızca sayfa `>= quality.MIN_TOKENS` token içeriyorsa uygulanır (Görev 03 ile aynı koruma).
+- `.doc` metni `ccpText`'te kesilir (yalnızca gövde; dipnot ve üst/alt bilgi dışarıda).
+- Tablo satır sonu işaretleri sekme olarak kalır; PAPX olmadan hücre sonundan ayırt edilemez.

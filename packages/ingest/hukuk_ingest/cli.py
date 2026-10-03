@@ -79,14 +79,14 @@ def _run_parallel(
 
 
 def scan(
-    root: Path, out: Path, text_cache: Path, workers: int, force: bool
+    root: Path, out: Path, text_cache: Path, workers: int, force: bool, ocr: bool = True
 ) -> tuple[list[FileResult], dict[str, Any]]:
     start = time.perf_counter()
     cache = text_cache.resolve()
     files = sorted(
         p for p in root.rglob("*") if p.is_file() and not p.resolve().is_relative_to(cache)
     )
-    work = partial(process_file, root=root, cache_dir=text_cache, force=force)
+    work = partial(process_file, root=root, cache_dir=text_cache, force=force, ocr=ocr)
     results: list[FileResult] = []
     done = 0
 
@@ -124,6 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--text-cache", type=Path, default=Path("data/extracted"))
     p.add_argument("--workers", type=int, default=os.cpu_count() or 1)
     p.add_argument("--force", action="store_true", help="ignore cached extractions")
+    p.add_argument("--no-ocr", action="store_true", help="leave scans and images as needs_ocr")
     d = sub.add_parser(
         "decisions", help="parse the extracted decision texts of the journal archive"
     )
@@ -151,7 +152,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args.dir.is_dir():
         parser.error(f"not a directory: {args.dir}")
 
-    _, summary = scan(args.dir, args.out, args.text_cache, args.workers, args.force)
+    _, summary = scan(
+        args.dir, args.out, args.text_cache, args.workers, args.force, not args.no_ocr
+    )
     print(
         f"{summary['files']} files in {summary['total_seconds']} s, "
         f"{summary['cache_hits']} cache hits, {len(summary['errors'])} errors",

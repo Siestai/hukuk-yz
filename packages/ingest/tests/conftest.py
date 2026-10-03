@@ -1,11 +1,48 @@
 """Synthetic fixtures only: real corpus files are never copied into the repo."""
 
-import struct
+import os
+import shutil
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from docx import Document
+from word_doc import make_doc
+from word_doc import make_ole2 as ole2
+
+from hukuk_ingest import ocr
+
+# Captured at import, before the autouse fixture below hides Tesseract from every test.
+REAL_TESSERACT = shutil.which(os.environ.get("HUKUK_TESSERACT") or "tesseract")
+
+FIXTURES = Path(__file__).parent / "fixtures"
+GOOD = "İşçinin kıdem tazminatı için bir yıl çalışması gerekir ve bu süre ile ilgili madde " * 4
+WEAK = "xk"
+WEAKER_LONG = "xkq zzt brm plv wnd " * 15  # enough characters, no function words
+
+
+class FakeEngine:
+    """Returns scripted texts in call order and records how each call was made."""
+
+    extractor_version = "fake 1+tur-abc"
+    fingerprint = "fp1"
+
+    def __init__(self, texts: list[str], turn: int = 0) -> None:
+        self.texts = list(texts)
+        self.turn = turn
+        self.calls: list[tuple[int, list[bytes]]] = []  # (thresholding, PGM width and height)
+        self.osd_calls = 0
+
+    def recognize(self, image: bytes, *, thresholding: int) -> str:
+        dims = image.split(b"\n")[1].split() if image.startswith(b"P5") else []
+        self.calls.append((thresholding, dims))
+        return self.texts.pop(0)
+
+    def rotation(self, image: bytes) -> int:
+        self.osd_calls += 1
+        return self.turn
+
 
 # Latin-5 letters need explicit glyph names, so the fixture font carries a /Differences table.
 _DIFFS = {
@@ -59,28 +96,30 @@ def make_pdf(pages: list[str]) -> bytes:
     return bytes(out)
 
 
+@pytest.fixture(autouse=True)
+def no_tesseract(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Tests do not depend on a local Tesseract; see `real_tesseract` for the ones that do."""
+    monkeypatch.setenv("HUKUK_TESSERACT", "/nonexistent/tesseract")
+    ocr.default_engine.cache_clear()
+    yield
+    ocr.default_engine.cache_clear()
+
+
+@pytest.fixture
+def real_tesseract(monkeypatch: pytest.MonkeyPatch) -> ocr.Tesseract:
+    engine = None
+    if REAL_TESSERACT:
+        monkeypatch.setenv("HUKUK_TESSERACT", REAL_TESSERACT)
+        ocr.default_engine.cache_clear()
+        engine = ocr.default_engine()
+    if engine is None:
+        pytest.skip("tesseract with the tur model is not available")
+    return engine
+
+
 def make_ole2(*stream_names: str) -> bytes:
-    """Minimal OLE2 compound file (v3): one FAT sector, one directory sector, empty streams."""
-    assert len(stream_names) <= 3
-    free = struct.pack("<I", 0xFFFFFFFF)
-    header = bytearray(512)
-    header[0:8] = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
-    struct.pack_into("<HHHHH", header, 24, 0x3E, 3, 0xFFFE, 9, 6)
-    struct.pack_into("<III", header, 44, 1, 1, 0)  # FAT sectors, first dir sector, tx sig
-    struct.pack_into("<IIIII", header, 56, 4096, 0xFFFFFFFE, 0, 0xFFFFFFFE, 0)
-    header[76:80] = struct.pack("<I", 0)  # DIFAT[0] -> FAT is sector 0
-    header[80:512] = free * 108
-    fat = struct.pack("<II", 0xFFFFFFFD, 0xFFFFFFFE) + free * 126
-
-    def entry(name: str, kind: int) -> bytes:
-        raw = name.encode("utf-16-le")
-        body = bytearray(128)
-        body[: len(raw)] = raw
-        struct.pack_into("<HB", body, 64, len(raw) + 2, kind)
-        return bytes(body)
-
-    directory = entry("Root Entry", 5) + b"".join(entry(n, 2) for n in stream_names)
-    return bytes(header) + fat + directory.ljust(512, b"\x00")
+    """Minimal OLE2 compound file with empty streams of the given names."""
+    return ole2({name: b"" for name in stream_names})
 
 
 def make_zip(path: Path, members: dict[str, str | bytes]) -> Path:
@@ -114,7 +153,7 @@ def corpus(tmp_path: Path) -> Path:
     )
     make_zip(root / "sheet.xlsx", {"xl/workbook.xml": "<x/>"})
 
-    (root / "legacy.pdf").write_bytes(make_ole2("WordDocument", "1Table"))
+    (root / "legacy.pdf").write_bytes(make_doc([("Madde 1 - işçi ve işveren için\r", True)]))
     (root / "stub.pdf").write_bytes(b"<!doctype html>\n<html><body>index</body></html>")
     (root / "pic.jpg").write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 64)
     (root / "note.txt").write_text("düz metin ğ\n", encoding="utf-8")

@@ -89,3 +89,8 @@ def test_fingerprint_tracks_thresholds_and_stopwords(monkeypatch: pytest.MonkeyP
     assert quality.fingerprint() != before
     monkeypatch.undo()
     assert quality.fingerprint() == before
+
+
+def test_measure_persists_worst_page_stopword_ratio_under_its_task_03_key() -> None:
+    quality_dict = measure(PAGE_BREAK.join([GOOD, BAD]), 2).to_dict()
+    assert quality_dict["worst_page_stopword_ratio"] == 0.0

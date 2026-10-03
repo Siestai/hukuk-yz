@@ -16,10 +16,11 @@ from hukuk_ingest import quality
 from hukuk_ingest.clean import clean_text
 from hukuk_ingest.detect import DetectedType, detect
 from hukuk_ingest.extract import extract
-from hukuk_ingest.quality import judge, measure
+from hukuk_ingest.ocr import Engine, default_engine, ocr_image, ocr_pdf
+from hukuk_ingest.quality import PAGE_BREAK, judge, measure
 
 # Bump for pipeline.py logic changes the fingerprint below cannot see (e.g. cache layout).
-PIPELINE_VERSION = "1"
+PIPELINE_VERSION = "2"
 _LONE_SURROGATE_RE = re.compile("[\ud800-\udfff]")
 
 
@@ -27,10 +28,10 @@ _LONE_SURROGATE_RE = re.compile("[\ud800-\udfff]")
 def _code_fingerprint() -> str:
     """Source of every module that shapes the cached output, plus extractor library versions."""
     h = hashlib.sha256()
-    for name in ("clean", "detect", "extract", "quality"):
+    for name in ("clean", "detect", "extract", "legacy_doc", "ocr", "quality"):
         spec = importlib.util.find_spec(f"hukuk_ingest.{name}")
         h.update(Path(str(spec and spec.origin)).read_bytes())
-    h.update(f"{version('pypdfium2')}|{version('python-docx')}".encode())
+    h.update(f"{version('pypdfium2')}|{version('python-docx')}|{version('olefile')}".encode())
     return h.hexdigest()[:16]
 
 
@@ -105,8 +106,18 @@ def _write_atomic(target: Path, data: str) -> None:
         tmp.unlink(missing_ok=True)
 
 
-def _load_meta(base: Path) -> dict[str, Any] | None:
-    """The cached entry, or None when it is absent, stale, malformed or incomplete."""
+def _ocr_setup(ocr: bool) -> tuple[Engine | None, str]:
+    """The engine and the cache key of this OCR setup: its fingerprint, "off" or "unavailable"."""
+    engine = default_engine() if ocr else None
+    return engine, engine.fingerprint if engine else ("unavailable" if ocr else "off")
+
+
+def _load_meta(base: Path, ocr: bool) -> dict[str, Any] | None:
+    """The cached entry, or None when it is absent, stale, malformed or incomplete.
+
+    Entries that went through the OCR route are valid only for the OCR setup that produced them;
+    the rest do not depend on it, so the engine is resolved only when an entry needs the check.
+    """
     try:
         meta = json.loads(base.with_suffix(".meta.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -119,6 +130,8 @@ def _load_meta(base: Path) -> dict[str, Any] | None:
         return None
     if not isinstance(meta["warnings"], list):
         return None
+    if meta.get("ocr_key") is not None and meta["ocr_key"] != _ocr_setup(ocr)[1]:
+        return None
     if meta["text_ref"] and not (
         base.with_suffix(".raw.txt").is_file() and base.with_suffix(".clean.txt").is_file()
     ):
@@ -126,7 +139,9 @@ def _load_meta(base: Path) -> dict[str, Any] | None:
     return meta
 
 
-def process_file(path: Path, root: Path, cache_dir: Path, force: bool = False) -> FileResult:
+def process_file(
+    path: Path, root: Path, cache_dir: Path, force: bool = False, ocr: bool = True
+) -> FileResult:
     start = time.perf_counter()
     rel = path.relative_to(root).as_posix()
     result = FileResult(
@@ -145,14 +160,13 @@ def process_file(path: Path, root: Path, cache_dir: Path, force: bool = False) -
         result.detected_type = detection.type.value
         result.extension_mismatch = detection.extension_mismatch
         base = cache_base(cache_dir, result.sha256)
-
-        meta = None if force else _load_meta(base)
+        meta = None if force else _load_meta(base, ocr)
         if meta is not None:
             for key in _CACHED_FIELDS:
                 setattr(result, key, meta[key])
             result.cached = True
         else:
-            _extract_and_store(path, detection.type, base, result)
+            _extract_and_store(path, detection.type, base, result, ocr)
     except Exception as exc:  # one bad file must not stop the run
         result.status = "error"
         result.reason = "exception"
@@ -182,23 +196,72 @@ def error_result(path: Path, root: Path, reason: str, message: str) -> FileResul
     return result
 
 
-def _extract_and_store(path: Path, detected: DetectedType, base: Path, result: FileResult) -> None:
+def _score(
+    result: FileResult,
+    text: str,
+    pages: int | None,
+    *,
+    judged: bool,
+    ocr_passes: list[int | None] | None = None,
+) -> str:
+    """Sanitize `text`, record its quality and, for page-based text, route it to OCR if unfit."""
+    if _LONE_SURROGATE_RE.search(text):
+        text = _LONE_SURROGATE_RE.sub("\ufffd", text)
+        result.warnings.append("lone_surrogates")
+    q = measure(text, pages)
+    result.chars, result.quality = q.chars, q.to_dict()
+    if ocr_passes is not None:
+        result.quality["ocr_pass"] = ocr_passes
+    if judged:
+        verdict = judge(q)
+        if not verdict.ok:
+            result.status = "needs_ocr"
+            result.reason = "ocr_low_quality" if ocr_passes is not None else verdict.reason
+        result.warnings += verdict.warnings
+    return text
+
+
+def _run_ocr(
+    path: Path, detected: DetectedType, text: str | None, result: FileResult, engine: Engine
+) -> str:
+    """Replace a missing or unfit text layer by OCR text; a partial layer keeps its good pages."""
+    if detected is not DetectedType.PDF:
+        doc = ocr_image(engine, path)
+    else:
+        layer = text.split(PAGE_BREAK) if text and result.reason == "partial_text_layer" else None
+        doc = ocr_pdf(engine, path, layer)
+    result.status, result.reason, result.warnings = "ok", None, []
+    result.pages = len(doc.passes)
+    result.extractor, result.extractor_version = "tesseract", engine.extractor_version
+    scored = _score(result, doc.text, result.pages, judged=True, ocr_passes=doc.passes)
+    if result.quality is not None:
+        result.quality["ocr_threshold"] = doc.thresholds
+    result.warnings.append("ocr")
+    return scored
+
+
+def _extract_and_store(
+    path: Path,
+    detected: DetectedType,
+    base: Path,
+    result: FileResult,
+    ocr: bool,
+) -> None:
     ex = extract(path, detected)
     result.status, result.reason, result.pages = ex.status, ex.reason, ex.pages
     result.signed, result.extractor = ex.signed, ex.extractor
     result.extractor_version = ex.extractor_version
-    if ex.text is not None:
-        text = ex.text
-        if _LONE_SURROGATE_RE.search(text):
-            text = _LONE_SURROGATE_RE.sub("\ufffd", text)
-            result.warnings.append("lone_surrogates")
-        q = measure(text, ex.pages)
-        result.chars, result.quality = q.chars, q.to_dict()
-        if detected is DetectedType.PDF:
-            verdict = judge(q)
-            if not verdict.ok:
-                result.status, result.reason = "needs_ocr", verdict.reason
-            result.warnings += verdict.warnings
+    text = ex.text
+    if text is not None:
+        text = _score(result, text, ex.pages, judged=detected is DetectedType.PDF)
+    used_ocr_key = None
+    if result.status == "needs_ocr":
+        engine, used_ocr_key = _ocr_setup(ocr)
+        if engine is not None:
+            text = _run_ocr(path, detected, text, result, engine)
+        elif used_ocr_key == "unavailable":
+            result.warnings.append("ocr_unavailable")
+    if text is not None:
         # Text is kept even for needs_ocr: a broken layer is still useful for debugging.
         _write_atomic(base.with_suffix(".raw.txt"), text)
         _write_atomic(base.with_suffix(".clean.txt"), clean_text(text))
@@ -206,4 +269,5 @@ def _extract_and_store(path: Path, detected: DetectedType, base: Path, result: F
     if result.status != "error":
         meta = {k: getattr(result, k) for k in _CACHED_FIELDS}
         meta["pipeline_version"] = cache_key()
+        meta["ocr_key"] = used_ocr_key
         _write_atomic(base.with_suffix(".meta.json"), json.dumps(meta, ensure_ascii=False))

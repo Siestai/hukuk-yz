@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from conftest import GOOD, FakeEngine
 
-from hukuk_ingest import cli
+from hukuk_ingest import cli, pipeline
 from hukuk_ingest.cli import main, scan
 from hukuk_ingest.pipeline import FileResult, process_file
 
@@ -32,7 +33,7 @@ def test_scan_reports_type_status_and_reason_per_file(corpus: Path, tmp_path: Pa
         "a.docx": ("docx", "ok", None),
         "b.udf": ("udf", "ok", None),
         "sheet.xlsx": ("xlsx_xlsm", "skipped", "type_xlsx_xlsm"),
-        "legacy.pdf": ("doc", "unsupported", "legacy_doc"),
+        "legacy.pdf": ("doc", "ok", None),
         "stub.pdf": ("html", "rejected", "html_stub"),
         "pic.jpg": ("image", "needs_ocr", "image"),
         "note.txt": ("text", "ok", None),
@@ -69,6 +70,29 @@ def test_scan_second_run_uses_cache_and_force_bypasses(corpus: Path, tmp_path: P
     assert not any(r["cached"] for r in _run(corpus, tmp_path, "--force"))
 
 
+def test_scan_ocrs_scans_and_images_when_tesseract_is_available(
+    corpus: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pipeline, "default_engine", lambda: FakeEngine([GOOD] * 4))
+    rows = {r["path"]: r for r in _run(corpus, tmp_path, workers=1)}
+    assert (rows["scan.pdf"]["status"], rows["scan.pdf"]["extractor"]) == ("ok", "tesseract")
+    assert (rows["pic.jpg"]["status"], rows["pic.jpg"]["extractor"]) == ("ok", "tesseract")
+
+
+def test_scan_no_ocr_flag_leaves_scans_as_needs_ocr(
+    corpus: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    engine = FakeEngine([GOOD] * 4)
+    monkeypatch.setattr(pipeline, "default_engine", lambda: engine)
+    rows = {r["path"]: r for r in _run(corpus, tmp_path, "--no-ocr", workers=1)}
+    assert (rows["scan.pdf"]["status"], rows["scan.pdf"]["reason"]) == (
+        "needs_ocr",
+        "no_text_layer",
+    )
+    assert rows["pic.jpg"]["reason"] == "image"
+    assert not engine.calls
+
+
 def test_scan_exits_zero_without_errors(tmp_path: Path) -> None:
     root = tmp_path / "c"
     root.mkdir()
@@ -87,10 +111,12 @@ def test_scan_skips_text_cache_inside_scanned_dir(tmp_path: Path) -> None:
     assert [json.loads(r)["path"] for r in rows] == ["a.txt"]
 
 
-def _crash_on_marked_file(path: Path, root: Path, cache_dir: Path, force: bool) -> FileResult:
+def _crash_on_marked_file(
+    path: Path, root: Path, cache_dir: Path, force: bool, ocr: bool
+) -> FileResult:
     if path.name.startswith("crash"):
         os._exit(13)  # simulates a pdfium segfault / OOM kill
-    return process_file(path, root, cache_dir, force)
+    return process_file(path, root, cache_dir, force, ocr)
 
 
 def test_scan_worker_crash_is_pinned_on_its_file(

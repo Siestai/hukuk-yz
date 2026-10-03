@@ -66,7 +66,7 @@ def fingerprint() -> str:
     return hashlib.sha256(repr(parts).encode()).hexdigest()[:16]
 
 
-def _stopword_ratio(text: str) -> tuple[int, float | None]:
+def stopword_ratio(text: str) -> tuple[int, float | None]:
     tokens = [_fold(t) for t in _TOKEN_RE.findall(text)]
     if not tokens:
         return 0, None
@@ -95,7 +95,7 @@ class Quality:
 def measure(text: str, pages: int | None) -> Quality:
     visible = [c for c in text if not c.isspace()]
     n = len(visible)
-    n_tokens, ratio = _stopword_ratio(text)
+    n_tokens, ratio = stopword_ratio(text)
     empty_pages = 0
     interior_empty_pages = 0
     worst: float | None = None
@@ -107,7 +107,7 @@ def measure(text: str, pages: int | None) -> Quality:
                 empty_pages += 1
                 interior_empty_pages += i < last_text_page
                 continue
-            page_tokens, page_ratio = _stopword_ratio(page)
+            page_tokens, page_ratio = stopword_ratio(page)
             if page_ratio is not None and page_tokens >= MIN_TOKENS:
                 worst = page_ratio if worst is None else min(worst, page_ratio)
     foreign = len(_FOREIGN_SCRIPT_RE.findall(text))
