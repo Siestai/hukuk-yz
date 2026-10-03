@@ -4,7 +4,7 @@ import { Input } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useEffect, useEffectEvent, useState } from "react";
 
-import { useQueueNavigation } from "./use-queue-navigation";
+import { useQueueNavigation } from "./queue-navigation";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -14,37 +14,41 @@ export function SearchBox({ id }: { id: string }) {
     const { params, navigate } = useQueueNavigation();
     const urlValue = params.q ?? "";
     const [text, setText] = useState(urlValue);
-    // The last value this box wrote to the URL, and the last URL value seen: a URL change that
-    // is not our own (clear filters, back button) replaces the text.
-    const [sent, setSent] = useState(urlValue);
+    // Values this box wrote to the URL that the URL has not shown yet, oldest first, and the last
+    // URL value seen. A URL value we sent (or an older one of ours) never replaces the text; any
+    // other change (clear filters, back button) does.
+    const [sent, setSent] = useState<string[]>([]);
     const [seen, setSeen] = useState(urlValue);
     if (urlValue !== seen) {
         setSeen(urlValue);
-        if (urlValue !== sent) {
+        const at = sent.indexOf(urlValue);
+        if (at >= 0) {
+            setSent(sent.slice(at + 1));
+        } else {
             setText(urlValue);
-            setSent(urlValue);
+            setSent([]);
         }
     }
+    const latest = sent.at(-1) ?? urlValue;
 
-    const sendAfterPause = useEffectEvent((value: string) => {
-        setSent(value);
-        navigate({ q: value || undefined }, "replace");
-    });
+    function send(value: string, mode: "push" | "replace") {
+        if (value !== latest) setSent((values) => [...values, value]);
+        navigate({ q: value || undefined }, mode);
+    }
+    const sendAfterPause = useEffectEvent((value: string) => send(value, "replace"));
     useEffect(() => {
         const value = text.trim();
-        if (value === sent) return;
+        if (value === latest) return;
         const timer = setTimeout(() => sendAfterPause(value), SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
-    }, [text, sent]);
+    }, [text, latest]);
 
     return (
         <form
             role="search"
             onSubmit={(event) => {
                 event.preventDefault();
-                const value = text.trim();
-                setSent(value);
-                navigate({ q: value || undefined });
+                send(text.trim(), "push");
             }}
         >
             <Input

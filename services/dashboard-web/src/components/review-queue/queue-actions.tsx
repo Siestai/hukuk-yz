@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useId } from "react";
 
 import { SORTS, type Sort } from "@/lib/queue-params";
-import { useQueueNavigation } from "./use-queue-navigation";
+import { useQueueNavigation } from "./queue-navigation";
 
 export function QueueActions() {
     const t = useTranslations("review.queue");

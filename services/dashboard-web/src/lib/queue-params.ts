@@ -34,7 +34,7 @@ export type QueueChange = Partial<QueueParams>;
 type RawParams = URLSearchParams | Record<string, string | string[] | undefined>;
 
 const MAX_PAGE = 100_000;
-const MAX_JOURNAL_ISSUE = 10_000;
+export const MAX_JOURNAL_ISSUE = 10_000;
 const MAX_QUERY_LENGTH = 100;
 
 function pick(raw: RawParams, key: string): string | undefined {
@@ -52,6 +52,11 @@ function positiveInt(value: string | undefined, max: number): number | undefined
     return n >= 1 && n <= max ? n : undefined;
 }
 
+/** A journal issue typed by a person: digits only, within range. */
+export function parseJournalIssue(value: string): number | undefined {
+    return positiveInt(value.trim(), MAX_JOURNAL_ISSUE);
+}
+
 /** Reads the queue state from a URL; anything unknown or malformed is ignored. */
 export function parseQueueParams(raw: RawParams): QueueParams {
     const court = pick(raw, "court");
@@ -60,7 +65,7 @@ export function parseQueueParams(raw: RawParams): QueueParams {
         band: oneOf(BANDS, pick(raw, "band")),
         court: court === UNKNOWN_COURT ? court : oneOf(COURTS, court),
         reason: reason && /^[a-z0-9_]{1,64}$/.test(reason) ? reason : undefined,
-        journalIssue: positiveInt(pick(raw, "journal_issue"), MAX_JOURNAL_ISSUE),
+        journalIssue: parseJournalIssue(pick(raw, "journal_issue") ?? ""),
         q: pick(raw, "q")?.trim().slice(0, MAX_QUERY_LENGTH) || undefined,
         sort: oneOf(SORTS, pick(raw, "sort")) ?? "score_asc",
         page: positiveInt(pick(raw, "page"), MAX_PAGE) ?? 1,

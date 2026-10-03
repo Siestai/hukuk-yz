@@ -19,20 +19,20 @@ describe("QueuePagination", () => {
         expect(screen.getByText("6.301-6.317 / 6.317")).toBeInTheDocument();
     });
 
-    it("disables Previous on the first page and links Next", () => {
+    it("omits Previous on the first page and links Next", () => {
         renderWithIntl(<QueuePagination params={base} total={6317} />);
         expect(screen.queryByRole("link", { name: pagination.previous })).toBeNull();
-        expect(screen.getByText(pagination.previous)).toHaveAttribute("aria-disabled", "true");
+        expect(screen.queryByText(pagination.previous)).toBeNull();
         expect(screen.getByRole("link", { name: pagination.next })).toHaveAttribute(
             "href",
             "/?page=2",
         );
     });
 
-    it("disables Next on the last page", () => {
+    it("omits Next on the last page", () => {
         renderWithIntl(<QueuePagination params={{ ...base, page: 127 }} total={6317} />);
         expect(screen.queryByRole("link", { name: pagination.next })).toBeNull();
-        expect(screen.getByText(pagination.next)).toHaveAttribute("aria-disabled", "true");
+        expect(screen.queryByText(pagination.next)).toBeNull();
         expect(screen.getByRole("link", { name: pagination.previous })).toHaveAttribute(
             "href",
             "/?page=126",

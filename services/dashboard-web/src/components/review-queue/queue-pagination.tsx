@@ -16,11 +16,7 @@ export function QueuePagination({ params, total }: { params: QueueParams; total:
             <Link href={href(page)} className={cn(pageClass, "text-ink hover:bg-primary-soft")}>
                 {label}
             </Link>
-        ) : (
-            <span aria-disabled="true" className={cn(pageClass, "text-ink-3")}>
-                {label}
-            </span>
-        );
+        ) : null;
 
     return (
         <div className="flex items-center justify-between gap-4 text-sm text-ink-2">

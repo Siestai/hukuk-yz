@@ -16,6 +16,9 @@ const redirect = vi.hoisted(() =>
 );
 vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
 vi.mock("@/lib/api/review", () => ({ getReviewSummary: () => summaryGet() }));
+vi.mock("@/components/review-queue/queue-results", () => ({
+    QueueResults: () => <p>queue results</p>,
+}));
 vi.mock("next/navigation", () => ({
     redirect,
     useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -73,16 +76,33 @@ beforeEach(() => {
 });
 
 describe("QueuePage", () => {
-    it("shows the title, the pending total, the summary and the first page", async () => {
+    it("shows the title, the pending total, the summary and the results", async () => {
         get.mockResolvedValue(ok({ total: 310, items: [item] }));
         await renderPage({ band: "low" });
         expect(
             screen.getByRole("heading", { level: 1, name: messages.review.queue.title }),
         ).toBeInTheDocument();
         expect(screen.getByText("6.317 karar onay bekliyor")).toBeInTheDocument();
-        expect(screen.getByText("KIDEM TAZMİNATI")).toBeInTheDocument();
-        expect(screen.getByText("1-50 / 310")).toBeInTheDocument();
+        expect(screen.getByText("queue results")).toBeInTheDocument();
         expect(screen.getByText("12")).toBeInTheDocument();
+    });
+
+    it("links the summary to the filters it stands for", async () => {
+        get.mockResolvedValue(ok({ total: 310, items: [item] }));
+        await renderPage({ band: "low", sort: "score_desc" });
+        expect(screen.getByRole("link", { name: /Orta/ })).toHaveAttribute(
+            "href",
+            "/?band=medium&sort=score_desc",
+        );
+        expect(screen.getByRole("link", { name: /Düşük/ })).toHaveAttribute("aria-current", "true");
+    });
+
+    it("shows the translated message of a 4xx summary error instead of the results", async () => {
+        get.mockResolvedValue(ok({ total: 0, items: [] }));
+        summaryGet.mockResolvedValue(failed(422, "validation_error"));
+        await renderPage();
+        expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.validation_error);
+        expect(screen.queryByText("queue results")).toBeNull();
     });
 
     it("passes the URL state to the API as the query", async () => {
@@ -119,54 +139,11 @@ describe("QueuePage", () => {
         ).toBeDisabled();
     });
 
-    it("says nothing is pending when the queue is empty", async () => {
-        get.mockResolvedValue(ok({ total: 0, items: [] }));
-        await renderPage();
-        expect(screen.getByText(messages.review.queue.empty.none)).toBeInTheDocument();
-    });
-
-    it("says no record matches when filters leave nothing", async () => {
-        get.mockResolvedValue(ok({ total: 0, items: [] }));
-        await renderPage({ q: "zzz" });
-        expect(screen.getByText(messages.review.queue.empty.filtered)).toBeInTheDocument();
-    });
-
-    it("offers the first page when the page is past the last", async () => {
-        get.mockResolvedValue(ok({ total: 310, items: [] }));
-        await renderPage({ band: "low", page: "7" });
-        expect(screen.getByText(messages.review.queue.empty.pastEnd)).toBeInTheDocument();
-        expect(
-            screen.getByRole("link", { name: messages.review.queue.empty.firstPage }),
-        ).toHaveAttribute("href", "/?band=low");
-    });
-
-    it("shows the translated message of a 4xx error code inline", async () => {
-        get.mockResolvedValue(failed(422, "validation_error"));
-        await renderPage();
-        expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.validation_error);
-        expect(screen.queryByRole("table")).toBeNull();
-    });
-
-    it("shows the generic message for a 4xx without a known code", async () => {
-        get.mockResolvedValue(failed(404));
-        await renderPage();
-        expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.generic);
-    });
-
     it("goes to sign-in again when the session is gone", async () => {
-        get.mockResolvedValue(failed(401, "unauthorized"));
+        summaryGet.mockResolvedValue(failed(401, "unauthorized"));
         await expect(QueuePage({ searchParams: Promise.resolve({}) })).rejects.toThrow(
             "NEXT_REDIRECT /oturum-sonu",
         );
-    });
-
-    it.each([
-        ["answers 5xx", () => get.mockResolvedValue(failed(503))],
-        ["cannot be reached", () => get.mockRejectedValue(new TypeError("fetch failed"))],
-    ])("raises upstream_unavailable when the list %s", async (_name, arrange) => {
-        arrange();
-        const error = await QueuePage({ searchParams: Promise.resolve({}) }).catch((e: Error) => e);
-        expect(isUpstreamUnavailable(error as Error)).toBe(true);
     });
 
     it("raises upstream_unavailable when the summary answers 5xx", async () => {

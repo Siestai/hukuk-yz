@@ -1,27 +1,16 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { renderHook } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../messages/tr.json";
+import { readRepoFile, reasonCodes } from "@/test/reason-codes";
 import { COURTS } from "./queue-params";
 import { useEnumLabels } from "./use-enum-labels";
 
-const ROOT = join(import.meta.dirname, "../../../..");
-const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
-
-/** Keys of the `RULES` table of the confidence rules: every code a review can carry. */
-function reasonCodes(): string[] {
-    const source = read("services/app/app/loaders/confidence.py");
-    const table = /^RULES[^\n]*= \{\n([\s\S]*?)^\}/m.exec(source)?.[1] ?? "";
-    return [...table.matchAll(/^\s+"([a-z_]+)":/gm)].map((m) => String(m[1]));
-}
-
 function courtValues(): string[] {
     const block = /^class Court\(PgEnum\):\n([\s\S]*?)^\n/m.exec(
-        read("services/app/app/models/common.py"),
+        readRepoFile("services/app/app/models/common.py"),
     );
     return [...(block?.[1] ?? "").matchAll(/^\s+\w+ = "(\w+)"/gm)].map((m) => String(m[1]));
 }

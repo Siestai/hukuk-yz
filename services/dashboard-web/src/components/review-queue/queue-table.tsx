@@ -1,6 +1,7 @@
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@hukuk/ui";
 import { useFormatter, useTranslations } from "next-intl";
 
+import { formats } from "@/i18n/formats";
 import type { components } from "@/lib/api/schema";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
@@ -31,8 +32,11 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
     const format = useFormatter();
     const labels = useEnumLabels();
 
+    // A date-only ISO value is midnight UTC; formatting it in UTC keeps the calendar day.
     const date = (iso: string) =>
-        /^\d{4}-\d{2}-\d{2}$/.test(iso) ? format.dateTime(new Date(iso), "date") : iso || "-";
+        /^\d{4}-\d{2}-\d{2}$/.test(iso)
+            ? format.dateTime(new Date(iso), { ...formats.dateTime.date, timeZone: "UTC" })
+            : iso || "-";
     const numbers = (item: QueueItem) =>
         [
             item.esas_no && t("esas", { value: item.esas_no }),
@@ -41,13 +45,17 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
             .filter(Boolean)
             .join(" · ") || "-";
     const reasonLabel = (reason: string) => (
-        <Badge
-            key={reason}
-            variant="outline"
-            title={labels.isKnownReason(reason) ? undefined : t("unknownReason")}
-        >
-            {labels.reason(reason)}
-        </Badge>
+        <li key={reason}>
+            <Badge
+                variant="outline"
+                title={labels.isKnownReason(reason) ? undefined : t("unknownReason")}
+            >
+                {labels.reason(reason)}
+                {labels.isKnownReason(reason) ? null : (
+                    <span className="sr-only">{t("unknownReason")}</span>
+                )}
+            </Badge>
+        </li>
     );
 
     return (
@@ -72,14 +80,17 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
                                 <div className="flex items-center gap-2">
                                     <Badge variant={item.band}>{labels.band(item.band)}</Badge>
                                     <span className="font-mono text-xs text-ink-2">
-                                        {item.score}
+                                        {format.number(item.score, "score")}
                                     </span>
                                 </div>
                             </TableCell>
                             <TableCell className="max-w-96 py-2">
                                 <div className="flex items-start gap-2">
                                     <div className="min-w-0">
-                                        <p className="line-clamp-2 font-medium text-ink">
+                                        <p
+                                            title={item.title}
+                                            className="line-clamp-2 font-medium text-ink"
+                                        >
                                             {item.title}
                                         </p>
                                         {item.chamber ? (
@@ -104,17 +115,27 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
                                 {item.journal_issue ?? "-"}
                             </TableCell>
                             <TableCell>
-                                <div className="flex gap-1">
+                                <ul className="flex gap-1">
                                     {item.reasons.slice(0, MAX_REASON_CHIPS).map(reasonLabel)}
                                     {rest.length > 0 ? (
-                                        <Badge
-                                            variant="outline"
-                                            title={rest.map(labels.reason).join(", ")}
-                                        >
-                                            +{format.number(rest.length, "integer")}
-                                        </Badge>
+                                        <li>
+                                            <Badge
+                                                variant="outline"
+                                                aria-describedby={`${item.extraction_id}-more`}
+                                            >
+                                                +{format.number(rest.length, "integer")}
+                                            </Badge>
+                                            <ul
+                                                id={`${item.extraction_id}-more`}
+                                                className="sr-only"
+                                            >
+                                                {rest.map((reason) => (
+                                                    <li key={reason}>{labels.reason(reason)}</li>
+                                                ))}
+                                            </ul>
+                                        </li>
                                     ) : null}
-                                </div>
+                                </ul>
                             </TableCell>
                         </TableRow>
                     );

@@ -1,23 +1,16 @@
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import { renderWithIntl } from "@/test/intl";
+import { parseQueueParams } from "@/lib/queue-params";
 import { BandDistribution, bandSegments } from "./band-distribution";
-
-const nav = vi.hoisted(() => ({ search: "", push: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({
-    useRouter: () => nav,
-    useSearchParams: () => new URLSearchParams(nav.search),
-}));
 
 const counts = { high: 5906, medium: 101, low: 310 };
 
-beforeEach(() => {
-    nav.search = "";
-    nav.push.mockClear();
-});
+const view = (search = "") => (
+    <BandDistribution counts={counts} params={parseQueueParams(new URLSearchParams(search))} />
+);
 
 describe("bandSegments", () => {
     it("sizes the segments in proportion and lays them end to end", () => {
@@ -41,32 +34,32 @@ describe("bandSegments", () => {
 
 describe("BandDistribution", () => {
     it("describes the bar for assistive technology", () => {
-        renderWithIntl(<BandDistribution counts={counts} />);
+        renderWithIntl(view());
         expect(screen.getByRole("img")).toHaveAccessibleName(
             "Bekleyen kararların güven dağılımı: Yüksek 5.906, Orta 101, Düşük 310",
         );
     });
 
-    it("shows a legend button with the count of every band", () => {
-        renderWithIntl(<BandDistribution counts={counts} />);
-        expect(screen.getByRole("button", { name: /Yüksek/ })).toHaveTextContent("5.906");
-        expect(screen.getByRole("button", { name: /Orta/ })).toHaveTextContent("101");
-        expect(screen.getByRole("button", { name: /Düşük/ })).toHaveTextContent("310");
+    it("shows a legend link with the count of every band", () => {
+        renderWithIntl(view());
+        expect(screen.getByRole("link", { name: /Yüksek/ })).toHaveTextContent("5.906");
+        expect(screen.getByRole("link", { name: /Orta/ })).toHaveTextContent("101");
+        expect(screen.getByRole("link", { name: /Düşük/ })).toHaveTextContent("310");
     });
 
-    it("sets the band filter and goes back to page 1", async () => {
-        nav.search = "page=3";
-        renderWithIntl(<BandDistribution counts={counts} />);
-        await userEvent.setup().click(screen.getByRole("button", { name: /Düşük/ }));
-        expect(nav.push).toHaveBeenCalledWith("/?band=low");
+    it("links to the band filter on page 1, keeping the other state", () => {
+        renderWithIntl(view("page=3&sort=score_desc"));
+        expect(screen.getByRole("link", { name: /Düşük/ })).toHaveAttribute(
+            "href",
+            "/?band=low&sort=score_desc",
+        );
     });
 
-    it("toggles the filter off when its band is clicked again", async () => {
-        nav.search = "band=medium&sort=score_desc";
-        renderWithIntl(<BandDistribution counts={counts} />);
-        const button = screen.getByRole("button", { name: new RegExp(messages.enums.band.medium) });
-        expect(button).toHaveAttribute("aria-pressed", "true");
-        await userEvent.setup().click(button);
-        expect(nav.push).toHaveBeenCalledWith("/?sort=score_desc");
+    it("marks the active band and links it to its own removal", () => {
+        renderWithIntl(view("band=medium&sort=score_desc"));
+        const link = screen.getByRole("link", { name: new RegExp(messages.enums.band.medium) });
+        expect(link).toHaveAttribute("aria-current", "true");
+        expect(link).toHaveAttribute("href", "/?sort=score_desc");
+        expect(screen.getByRole("link", { name: /Düşük/ })).not.toHaveAttribute("aria-current");
     });
 });

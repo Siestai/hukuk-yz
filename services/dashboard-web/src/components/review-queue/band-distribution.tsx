@@ -1,11 +1,15 @@
-"use client";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
+import { Card, CardContent, CardHeader, CardTitle, cn } from "@hukuk/ui";
+import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
-import { BANDS, type Band } from "@/lib/queue-params";
+import {
+    BANDS,
+    changeQueueParams,
+    queueHref,
+    type Band,
+    type QueueParams,
+} from "@/lib/queue-params";
 import { useEnumLabels } from "@/lib/use-enum-labels";
-import { useQueueNavigation } from "./use-queue-navigation";
 
 const BAR_HEIGHT = 4;
 const segmentClass = { high: "fill-high", medium: "fill-medium", low: "fill-low" } as const;
@@ -26,11 +30,16 @@ export function bandSegments(counts: Record<Band, number>): BandSegment[] {
     });
 }
 
-export function BandDistribution({ counts }: { counts: Record<Band, number> }) {
+export function BandDistribution({
+    counts,
+    params,
+}: {
+    counts: Record<Band, number>;
+    params: QueueParams;
+}) {
     const t = useTranslations("review.queue.summary");
     const format = useFormatter();
     const labels = useEnumLabels();
-    const { params, navigate } = useQueueNavigation();
     const details = BANDS.map((band) =>
         t("bandCount", { band: labels.band(band), count: counts[band] }),
     ).join(", ");
@@ -60,25 +69,30 @@ export function BandDistribution({ counts }: { counts: Record<Band, number> }) {
                     ))}
                 </svg>
                 <div className="grid grid-cols-3 gap-2">
-                    {BANDS.map((band) => (
-                        <button
-                            key={band}
-                            type="button"
-                            aria-pressed={params.band === band}
-                            onClick={() =>
-                                navigate({ band: params.band === band ? undefined : band })
-                            }
-                            className="grid gap-1 rounded-md p-2 text-left hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:bg-primary-soft"
-                        >
-                            <span className="font-mono text-lg font-medium text-ink">
-                                {format.number(counts[band], "integer")}
-                            </span>
-                            <span className="flex items-center gap-2 text-xs text-ink-2">
-                                <span className={`size-2 rounded-sm ${swatchClass[band]}`} />
-                                {labels.band(band)}
-                            </span>
-                        </button>
-                    ))}
+                    {BANDS.map((band) => {
+                        const active = params.band === band;
+                        return (
+                            <Link
+                                key={band}
+                                href={queueHref(
+                                    changeQueueParams(params, { band: active ? undefined : band }),
+                                )}
+                                aria-current={active ? "true" : undefined}
+                                className={cn(
+                                    "grid gap-1 rounded-md p-2 text-left hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring",
+                                    active && "bg-primary-soft",
+                                )}
+                            >
+                                <span className="font-mono text-lg font-medium text-ink">
+                                    {format.number(counts[band], "integer")}
+                                </span>
+                                <span className="flex items-center gap-2 text-xs text-ink-2">
+                                    <span className={`size-2 rounded-sm ${swatchClass[band]}`} />
+                                    {labels.band(band)}
+                                </span>
+                            </Link>
+                        );
+                    })}
                 </div>
             </CardContent>
         </Card>
