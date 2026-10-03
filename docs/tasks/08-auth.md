@@ -1,6 +1,6 @@
 # Görev 08: Kullanıcı ve oturum (basit auth)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: onaylandı (iki rol ve 12 saat: Orhan, 2026-10-03). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/architecture.md` §2 (`app` auth'un sahibi), `docs/data-model.md` §3 (`review.reviewer_id`), §11 (org tablosu sonra), `docs/roadmap.md` Faz 1 hafta 3-4 ("auth (basit, org/kullanıcı)").
 
 ## Neden şimdi
