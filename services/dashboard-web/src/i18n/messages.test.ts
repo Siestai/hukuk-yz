@@ -14,9 +14,13 @@ function sourceFiles(dir: string): string[] {
     });
 }
 
-/** Keys passed to `t("...")`, prefixed with the file's `useTranslations`/`getTranslations` namespace. */
-function usedKeys(): Set<string> {
+/**
+ * Keys passed to `t("...")`, prefixed with the file's `useTranslations`/`getTranslations` namespace.
+ * A key built as t(`group.${value}`) uses every key below `group` (enum labels, sort options).
+ */
+function usedKeys(): { keys: Set<string>; groups: Set<string> } {
     const keys = new Set<string>();
+    const groups = new Set<string>();
     for (const file of sourceFiles(SRC)) {
         const code = readFileSync(file, "utf8");
         const namespaces = [
@@ -28,8 +32,11 @@ function usedKeys(): Set<string> {
         for (const [, key] of code.matchAll(/\bt\("([^"]+)"[,)]/g)) {
             keys.add(namespace ? `${namespace}.${key}` : String(key));
         }
+        for (const [, group] of code.matchAll(/\bt\(`([\w.]+?)\.?\$\{/g)) {
+            groups.add([namespace, group].filter(Boolean).join("."));
+        }
     }
-    return keys;
+    return { keys, groups };
 }
 
 function leafKeys(node: object, prefix = ""): string[] {
@@ -40,13 +47,15 @@ function leafKeys(node: object, prefix = ""): string[] {
 
 describe("messages/tr.json", () => {
     const defined = new Set(leafKeys(messages));
-    const used = usedKeys();
+    const { keys: used, groups } = usedKeys();
+    const isUsed = (key: string) =>
+        used.has(key) || [...groups].some((group) => key.startsWith(`${group}.`));
 
     it("defines every key used in src", () => {
         expect([...used].filter((key) => !defined.has(key))).toEqual([]);
     });
 
     it("has no unused keys", () => {
-        expect([...defined].filter((key) => !used.has(key))).toEqual([]);
+        expect([...defined].filter((key) => !isUsed(key))).toEqual([]);
     });
 });

@@ -4,6 +4,7 @@ export { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./com
 export { Input } from "./components/input";
 export { Label } from "./components/label";
 export { Logo } from "./components/logo";
+export { Select } from "./components/select";
 export { Skeleton } from "./components/skeleton";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/table";
 export { cn } from "./lib/utils";

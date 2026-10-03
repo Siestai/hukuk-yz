@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { SideNav } from "@/components/side-nav";
 import { UpstreamUnavailableError } from "@/lib/api/errors";
+import { getReviewSummary } from "@/lib/api/review";
 import { createServerApi } from "@/lib/api/server";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -18,7 +19,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     if (!me.data) throw new Error(`GET /auth/me failed with ${me.response.status}`);
 
     // The badge is a courtesy: no count is shown rather than failing the page.
-    const summary = await api.GET("/review/decisions/summary").catch(() => null);
+    const summary = await getReviewSummary().catch(() => null);
     const pending = summary?.data
         ? Object.values(summary.data.by_band).reduce((sum, n) => sum + n, 0)
         : null;
