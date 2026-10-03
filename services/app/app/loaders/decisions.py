@@ -1,7 +1,7 @@
 """Load the decision archive (task 04 `decisions.jsonl`) into the KB review queue (task 05).
 
     python -m app.loaders.decisions decisions.jsonl [--files files.jsonl] [--dry-run]
-        [--report DIR] [--approve-band BAND --reviewer USER_ID]
+        [--report DIR] [--approve-band BAND --reviewer-email EMAIL]
 
 Every decision file becomes `ingest_file` + `source` (status `analyzed`) + `extraction` with a
 confidence score, all under one `ingest_job`. No `decision` row is written unless
@@ -26,12 +26,11 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import insert, select, update
-from sqlalchemy.dialects.postgresql import distinct_on
-from sqlalchemy.exc import DBAPIError, IntegrityError, InterfaceError, OperationalError
+from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.auth import normalize_email
 from app.db import make_engine, make_session_factory
-from app.kb import publish_decision
 from app.loaders.confidence import confidence
 from app.loaders.normalize import normalize
 from app.loaders.report import LoadCounts, PreparedRecord, build_summary, write_report
@@ -43,17 +42,17 @@ from app.models.common import (
     IngestStatus,
     License,
     RecordStatus,
-    Review,
-    ReviewDecision,
     Source,
     SourceCategory,
     SourceRank,
 )
+from app.models.user import AppUser
+from app.review import PARSER_NAME, publish_batch, queue
 from app.settings import get_settings
 from hukuk_ingest.decisions.parse import DecisionRecord
 from hukuk_ingest.decisions.report import dup_kind
+from hukuk_models import Band, ReviewFilters
 
-PARSER_NAME = "decisions"
 BATCH = 500
 REQUIRED_KEYS = frozenset(f.name for f in fields(DecisionRecord))
 COURT_LABELS = {
@@ -350,54 +349,24 @@ class ApproveResult:
 
 
 async def approve_band(
-    factory: async_sessionmaker[AsyncSession], band: str, reviewer_id: uuid.UUID
+    factory: async_sessionmaker[AsyncSession], band: Band, reviewer_id: uuid.UUID
 ) -> ApproveResult:
-    """Approve and publish (kb.py) the newest decision extraction of every source that is still
-    `analyzed`, for the records of a band. A live-key collision is listed in `conflicts`
+    """Approve and publish (app.review) the newest decision extraction of every source that is
+    still `analyzed`, for the records of a band. A live-key collision is listed in `conflicts`
     (sha256 prefix); any other record `publish_decision` refuses is listed in `publish_failed`
     (sha256 prefix, reason). Each record has its own savepoint, so neither stops the run.
     Development and tests only: bulk approval belongs to the review screen."""
     result = ApproveResult()
     async with factory() as session:
-        newest = (
-            select(Extraction.id, IngestFile.sha256, Extraction.confidence)
-            .ext(distinct_on(Extraction.source_id))
-            .join(IngestFile, IngestFile.id == Extraction.file_id)
-            .join(Source, Source.id == Extraction.source_id)
-            .where(
-                Extraction.parser_name == PARSER_NAME,
-                Source.category == SourceCategory.decision,
-                Source.status == RecordStatus.analyzed,
-            )
-            .order_by(Extraction.source_id, Extraction.extracted_at.desc(), Extraction.id)
-            .subquery()
-        )
-        queue = (
-            await session.execute(
-                select(newest.c.id, newest.c.sha256)
-                .where(newest.c.confidence["band"].as_string() == band)
-                .order_by(newest.c.sha256)
-            )
-        ).all()
-        for extraction_id, sha in queue:
-            try:
-                async with session.begin_nested():
-                    review = Review(
-                        extraction_id=extraction_id,
-                        reviewer_id=reviewer_id,
-                        decision=ReviewDecision.approve,
-                    )
-                    session.add(review)
-                    await session.flush()
-                    await publish_decision(session, extraction_id, review.id)
-                result.published += 1
-            except IntegrityError:
-                result.conflicts.append(sha[:12])
-            except ValueError as exc:
-                result.publish_failed.append((sha[:12], str(exc)))
-            if (result.published + len(result.conflicts) + len(result.publish_failed)) % BATCH == 0:
-                await session.commit()
-        await session.commit()
+        queue_rows = (await session.execute(queue(band, ReviewFilters()))).all()
+        sha = {row.id: row.sha256[:12] for row in queue_rows}
+        ids = list(sha)
+        for start in range(0, len(ids), BATCH):
+            batch = await publish_batch(session, ids[start : start + BATCH], reviewer_id)
+            await session.commit()
+            result.published += batch.published
+            result.conflicts += [sha[i] for i in batch.conflicts]
+            result.publish_failed += [(sha[i], reason) for i, reason in batch.failed]
     return result
 
 
@@ -408,8 +377,18 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true", help="no database: only prepare and report")
     p.add_argument("--report", type=Path, help="directory for load-summary.md / .json")
     p.add_argument("--approve-band", choices=["high", "medium", "low"], help="dev/test only")
-    p.add_argument("--reviewer", type=uuid.UUID, help="reviewer user id for --approve-band")
+    p.add_argument("--reviewer-email", help="e-mail of an existing user, for --approve-band")
     return p
+
+
+async def _reviewer_id(factory: async_sessionmaker[AsyncSession], email: str) -> uuid.UUID:
+    async with factory() as session:
+        user_id = (
+            await session.execute(select(AppUser.id).where(AppUser.email == normalize_email(email)))
+        ).scalar_one_or_none()
+    if user_id is None:
+        raise SystemExit(f"no user with e-mail {email}")
+    return user_id
 
 
 async def _load_to_db(
@@ -418,12 +397,14 @@ async def _load_to_db(
     engine = make_engine(get_settings().database_url)
     factory = make_session_factory(engine)
     try:
+        if args.approve_band:  # fail before anything is written
+            reviewer_id = await _reviewer_id(factory, args.reviewer_email)
         job_id = await load(factory, prepared, counts)
         summary = build_summary(prepared, counts, time.perf_counter() - start, dry_run=False)
         if job_id:
             await finish_job(factory, job_id, summary)
         if args.approve_band:
-            approved = await approve_band(factory, args.approve_band, args.reviewer)
+            approved = await approve_band(factory, args.approve_band, reviewer_id)
             print(
                 f"published {approved.published}, conflicts {len(approved.conflicts)}, "
                 f"publish_failed {len(approved.publish_failed)}"
@@ -460,8 +441,8 @@ async def _run(args: argparse.Namespace) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
-    if args.approve_band and (args.dry_run or not args.reviewer):
-        parser.error("--approve-band needs --reviewer and cannot be combined with --dry-run")
+    if args.approve_band and (args.dry_run or not args.reviewer_email):
+        parser.error("--approve-band needs --reviewer-email and cannot be combined with --dry-run")
     return asyncio.run(_run(args))
 
 

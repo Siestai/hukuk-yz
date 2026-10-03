@@ -1,4 +1,3 @@
-import uuid
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -21,6 +20,7 @@ from app.models.common import (
     Verification,
 )
 from app.models.decision import Decision
+from app.models.user import AppUser
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
 
@@ -42,19 +42,24 @@ async def _extraction(session: AsyncSession, journal_page: int) -> Extraction:
 
 
 def _review(
-    extraction: Extraction, decision: ReviewDecision, edits: dict[str, Any] | None = None
+    extraction: Extraction,
+    reviewer: AppUser,
+    decision: ReviewDecision,
+    edits: dict[str, Any] | None = None,
 ) -> Review:
     return Review(
-        extraction_id=extraction.id, reviewer_id=uuid.uuid4(), decision=decision, edits=edits
+        extraction_id=extraction.id, reviewer_id=reviewer.id, decision=decision, edits=edits
     )
 
 
 async def test_publish_copies_fields_and_overlays_edits(
-    kb_loaded: async_sessionmaker[AsyncSession],
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     async with kb_loaded() as session:
         extraction = await _extraction(session, 10)
-        review = _review(extraction, ReviewDecision.edit, {"outcome": "onama", "chamber": "10. HD"})
+        review = _review(
+            extraction, reviewer, ReviewDecision.edit, {"outcome": "onama", "chamber": "10. HD"}
+        )
         session.add(review)
         await session.flush()
         decision_id = await publish_decision(session, extraction.id, review.id)
@@ -80,10 +85,12 @@ async def test_publish_copies_fields_and_overlays_edits(
         assert source.status is RecordStatus.approved
 
 
-async def test_empty_fields_become_null(kb_loaded: async_sessionmaker[AsyncSession]) -> None:
+async def test_empty_fields_become_null(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
     async with kb_loaded() as session:
         extraction = await _extraction(session, 18)  # no esas_no
-        review = _review(extraction, ReviewDecision.approve)
+        review = _review(extraction, reviewer, ReviewDecision.approve)
         session.add(review)
         await session.flush()
         decision_id = await publish_decision(session, extraction.id, review.id)
@@ -93,21 +100,23 @@ async def test_empty_fields_become_null(kb_loaded: async_sessionmaker[AsyncSessi
 
 
 async def test_a_rejected_review_does_not_publish(
-    kb_loaded: async_sessionmaker[AsyncSession],
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     async with kb_loaded() as session:
         extraction = await _extraction(session, 10)
-        review = _review(extraction, ReviewDecision.reject)
+        review = _review(extraction, reviewer, ReviewDecision.reject)
         session.add(review)
         await session.flush()
         with pytest.raises(ValueError, match="rejected"):
             await publish_decision(session, extraction.id, review.id)
 
 
-async def test_a_source_is_published_once(kb_loaded: async_sessionmaker[AsyncSession]) -> None:
+async def test_a_source_is_published_once(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
     async with kb_loaded() as session:
         extraction = await _extraction(session, 10)
-        review = _review(extraction, ReviewDecision.approve)
+        review = _review(extraction, reviewer, ReviewDecision.approve)
         session.add(review)
         await session.flush()
         await publish_decision(session, extraction.id, review.id)
@@ -116,11 +125,11 @@ async def test_a_source_is_published_once(kb_loaded: async_sessionmaker[AsyncSes
 
 
 async def test_a_review_of_another_extraction_is_refused(
-    kb_loaded: async_sessionmaker[AsyncSession],
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     async with kb_loaded() as session:
         extraction, other = await _extraction(session, 10), await _extraction(session, 12)
-        review = _review(other, ReviewDecision.approve)
+        review = _review(other, reviewer, ReviewDecision.approve)
         session.add(review)
         await session.flush()
         with pytest.raises(ValueError, match="does not belong"):
@@ -128,11 +137,11 @@ async def test_a_review_of_another_extraction_is_refused(
 
 
 async def test_a_decision_without_a_court_cannot_be_published(
-    kb_loaded: async_sessionmaker[AsyncSession],
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     async with kb_loaded() as session:
         extraction = await _extraction(session, 21)  # court is empty
-        review = _review(extraction, ReviewDecision.approve)
+        review = _review(extraction, reviewer, ReviewDecision.approve)
         session.add(review)
         await session.flush()
         with pytest.raises(ValueError, match="court"):
@@ -140,12 +149,12 @@ async def test_a_decision_without_a_court_cannot_be_published(
 
 
 async def test_a_live_key_collision_is_an_integrity_error(
-    kb_loaded: async_sessionmaker[AsyncSession],
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
     async with kb_loaded() as session:
         first, second = await _extraction(session, 13), await _extraction(session, 30)
         for extraction in (first, second):  # the same_text pair shares its key
-            review = _review(extraction, ReviewDecision.approve)
+            review = _review(extraction, reviewer, ReviewDecision.approve)
             session.add(review)
             await session.flush()
             if extraction is first:

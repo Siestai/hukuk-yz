@@ -10,6 +10,7 @@ from sqlalchemy import text
 from app.auth import router as auth_router
 from app.db import make_engine
 from app.logging_setup import configure_logging, request_id_var
+from app.review import router as review_router
 from app.settings import get_settings
 from hukuk_models import HealthResponse
 
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="hukuk-agent", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(review_router)
 
 
 @app.middleware("http")

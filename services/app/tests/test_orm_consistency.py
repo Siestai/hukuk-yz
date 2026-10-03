@@ -12,6 +12,7 @@ from app.models.user import USER_ROLE_TYPE, UserRole
 VERSIONS = Path(__file__).parents[1] / "alembic" / "versions"
 MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
 USERS_MIGRATION = VERSIONS / "0005_users_and_sessions.py"
+REVIEW_FK_MIGRATION = VERSIONS / "0006_review_reviewer_fk.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions).
 LATER_TABLES = {"decision_verification", "app_user", "user_session"}
 
@@ -49,6 +50,15 @@ def test_user_tables_are_in_the_users_migration() -> None:
     orm = {i.name for t in Base.metadata.tables.values() for i in t.indexes}
     assert "ix_user_session_user_id" in orm
     assert '"ix_user_session_user_id"' in migration
+
+
+def test_review_reviewer_fk_is_in_orm_and_migration() -> None:
+    name = "fk_review_reviewer_id_app_user"
+    review = Base.metadata.tables["review"]
+    assert name in {c.name for c in review.foreign_key_constraints}
+    migration = REVIEW_FK_MIGRATION.read_text()
+    assert name in migration
+    assert "NOT VALID" in migration
 
 
 def test_case_document_is_not_a_kb_table() -> None:

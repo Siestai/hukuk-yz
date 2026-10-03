@@ -341,7 +341,9 @@ class Review(UuidPkMixin, Base):
     __tablename__ = "review"
 
     extraction_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("extraction.id"), index=True)
-    reviewer_id: Mapped[uuid.UUID]
+    # The migration (0006) adds the FK NOT VALID: CLI reviews of task 05 may name a reviewer
+    # that is no user; every new row must name one.
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"))
     decision: Mapped[ReviewDecision] = mapped_column(ReviewDecision.pg_type("review_decision"))
     edits: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     note: Mapped[str | None]
