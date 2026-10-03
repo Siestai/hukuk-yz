@@ -1,55 +1,32 @@
 "use client";
 
-import { Button, Dialog, Label, Textarea } from "@hukuk/ui";
+import { Dialog } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useId, useState, type FormEvent } from "react";
+import type { RefObject } from "react";
 
+import { RejectForm } from "./reject-form";
 import { useReviewSession } from "./review-session";
 
+type Props = {
+    open: boolean;
+    onClose: () => void;
+    /** The button that opened it, which gets the focus back whichever way it was opened. */
+    returnFocusTo: RefObject<HTMLElement | null>;
+};
+
 /** Rejecting needs a reason: the note is required and the button stays off while it is blank. */
-export function RejectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function RejectDialog({ open, onClose, returnFocusTo }: Props) {
     const t = useTranslations("review.reject");
     const session = useReviewSession();
-    const [note, setNote] = useState("");
-    const [submitted, setSubmitted] = useState(false);
-    const noteId = useId();
-    const blank = note.trim() === "";
-
-    async function submit(event: FormEvent) {
-        event.preventDefault();
-        setSubmitted(true);
-        if (blank || session.busy) return;
-        if (!(await session.reject(note))) onClose();
-    }
-
     return (
-        <Dialog open={open} onClose={onClose} title={t("title")}>
-            <form onSubmit={submit} className="grid gap-4" noValidate>
-                <p className="text-sm text-ink-2">{t("intro")}</p>
-                <div className="grid gap-1">
-                    <Label htmlFor={noteId}>{t("note")}</Label>
-                    <Textarea
-                        id={noteId}
-                        value={note}
-                        onChange={(event) => setNote(event.target.value)}
-                        aria-invalid={submitted && blank}
-                        aria-describedby={submitted && blank ? `${noteId}-error` : undefined}
-                    />
-                    {submitted && blank ? (
-                        <p id={`${noteId}-error`} className="text-sm text-destructive">
-                            {t("required")}
-                        </p>
-                    ) : null}
-                </div>
-                <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onClose}>
-                        {t("cancel")}
-                    </Button>
-                    <Button type="submit" variant="destructive" disabled={blank || session.busy}>
-                        {t("submit")}
-                    </Button>
-                </div>
-            </form>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            title={t("title")}
+            dismissible={!session.busy}
+            returnFocusTo={returnFocusTo}
+        >
+            <RejectForm onClose={onClose} />
         </Dialog>
     );
 }

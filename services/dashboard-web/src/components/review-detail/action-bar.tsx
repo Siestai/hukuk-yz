@@ -2,7 +2,7 @@
 
 import { Button } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { SHORTCUT_KEYS, useReviewShortcuts, type Shortcut } from "@/lib/use-review-shortcuts";
 import { ActionFailure } from "./action-failure";
@@ -27,6 +27,15 @@ export function ActionBar() {
     const [rejecting, setRejecting] = useState(false);
     const { busy, mode } = session;
     const idle = !busy && mode === "view";
+    const editButton = useRef<HTMLButtonElement>(null);
+    const rejectButton = useRef<HTMLButtonElement>(null);
+    const wasEditing = useRef(false);
+
+    // The form of an edit is gone when it is cancelled: the focus goes back to the button that opened it.
+    useEffect(() => {
+        if (wasEditing.current && mode === "view") editButton.current?.focus();
+        wasEditing.current = mode === "edit";
+    }, [mode]);
 
     useReviewShortcuts(
         {
@@ -62,6 +71,7 @@ export function ActionBar() {
                     {label(t("approve"), "approve")} <Key shortcut="approve" />
                 </Button>
                 <Button
+                    ref={editButton}
                     variant="outline"
                     onClick={session.startEdit}
                     disabled={!idle}
@@ -70,6 +80,7 @@ export function ActionBar() {
                     {label(t("edit"), "edit")} <Key shortcut="edit" />
                 </Button>
                 <Button
+                    ref={rejectButton}
                     variant="destructive"
                     onClick={() => setRejecting(true)}
                     disabled={!idle}
@@ -87,7 +98,11 @@ export function ActionBar() {
                     </span>
                 </p>
             </div>
-            <RejectDialog open={rejecting} onClose={() => setRejecting(false)} />
+            <RejectDialog
+                open={rejecting}
+                onClose={() => setRejecting(false)}
+                returnFocusTo={rejectButton}
+            />
         </section>
     );
 }

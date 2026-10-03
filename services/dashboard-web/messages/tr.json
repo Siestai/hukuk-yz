@@ -155,7 +155,9 @@
       "refresh": "Sayfayı yenile",
       "decisionConflict": "Bu değerlerle bir karar zaten yayınlanmış. Çakışan karar:",
       "publishRefused": "Kayıt bu değerlerle yayınlanamadı. Alanları kontrol edin.",
-      "failureTitle": "İşlem yapılamadı"
+      "failureTitle": "İşlem yapılamadı",
+      "navigationFailed": "Sonraki ekrana geçilemedi. İşlem kaydedilmiş olabilir.",
+      "toQueue": "Kuyruğa dön"
     },
     "edit": {
       "review": "Değişiklikleri gözden geçir",

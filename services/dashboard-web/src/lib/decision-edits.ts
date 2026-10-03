@@ -87,6 +87,10 @@ export type BuiltEdits = {
     errors: Partial<Record<EditField, FieldError>>;
     /** Fields the reviewer emptied: nothing is sent for them, the form says so. */
     ignored: EditField[];
+    /** Keys of the article rows whose statute number is not a number. */
+    invalidRows: number[];
+    /** The key of the form row each entry of `edits.related_articles` came from, by index. */
+    entryRows: number[];
 };
 
 export const EDIT_FIELDS = [...SCALAR_FIELDS, "keywords", "related_articles"] as const;
@@ -97,6 +101,7 @@ export function scalarValue(fields: DecisionFields, name: ScalarField): string {
 
 const statuteText = (entry: RelatedArticle) =>
     entry.statute === null ? "" : String(entry.statute);
+const articlesText = (entry: RelatedArticle) => entry.articles.join(", ");
 
 export function initialValues(fields: DecisionFields): FormValues {
     const values = Object.fromEntries(
@@ -108,7 +113,7 @@ export function initialValues(fields: DecisionFields): FormValues {
         related_articles: fields.relatedArticles.map((source, key) => ({
             key,
             statute: statuteText(source),
-            articles: source.articles.join(", "),
+            articles: articlesText(source),
             source,
         })),
     };
@@ -145,10 +150,12 @@ export function buildEdits(fields: DecisionFields, values: FormValues): BuiltEdi
     const edits: Record<string, unknown> = {};
     const errors: BuiltEdits["errors"] = {};
     const ignored: EditField[] = [];
+    const invalidRows: number[] = [];
+    const entryRows: number[] = [];
 
     for (const name of SCALAR_FIELDS) {
         const value = values[name].trim();
-        if (value === scalarValue(fields, name)) continue;
+        if (value === scalarValue(fields, name).trim()) continue;
         if (value === "") {
             if (REQUIRED.includes(name)) errors[name] = "blank";
             else ignored.push(name);
@@ -160,7 +167,7 @@ export function buildEdits(fields: DecisionFields, values: FormValues): BuiltEdi
     }
 
     const keywords = list(values.keywords, /\r?\n/);
-    if (!same(keywords, fields.keywords)) {
+    if (!same(keywords, fields.keywords.map((word) => word.trim()).filter(Boolean))) {
         if (keywords.length === 0) ignored.push("keywords");
         else edits.keywords = keywords;
     }
@@ -168,22 +175,31 @@ export function buildEdits(fields: DecisionFields, values: FormValues): BuiltEdi
     const entries: RelatedArticle[] = [];
     for (const row of values.related_articles) {
         const statute = row.statute.trim();
-        const articles = list(row.articles, /,/);
         const { source } = row;
-        if (source && statute === statuteText(source) && same(articles, source.articles)) {
+        // Only a row whose inputs changed is parsed again: an article that itself contains a comma
+        // would not survive the split, so an untouched row goes back exactly as it was read.
+        const untouched =
+            source !== null &&
+            statute === statuteText(source).trim() &&
+            row.articles.trim() === articlesText(source).trim();
+        const articles = list(row.articles, /,/);
+        if (untouched) {
             entries.push(source);
+            entryRows.push(row.key);
         } else if (statute === "" && articles.length === 0) {
             continue; // a blank row is a removed row
         } else if (!/^(\d{1,6})?$/.test(statute)) {
             errors.related_articles = "invalid_statute";
+            invalidRows.push(row.key);
         } else {
-            const unchangedStatute = source !== null && statute === statuteText(source);
+            const unchangedStatute = source !== null && statute === statuteText(source).trim();
             entries.push({
                 statute: statute === "" ? null : Number(statute),
                 label: unchangedStatute ? source.label : "",
                 articles,
                 raw: source?.raw ?? "",
             });
+            entryRows.push(row.key);
         }
     }
     if (!same(entries.map(canonical), fields.relatedArticles.map(canonical))) {
@@ -191,5 +207,5 @@ export function buildEdits(fields: DecisionFields, values: FormValues): BuiltEdi
         else edits.related_articles = entries;
     }
 
-    return { edits: edits as DecisionEdits, errors, ignored };
+    return { edits: edits as DecisionEdits, errors, ignored, invalidRows, entryRows };
 }

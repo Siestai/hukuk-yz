@@ -51,8 +51,10 @@ async function recordAt(api: Api, queue: QueueParams, pos: number): Promise<stri
 }
 
 /**
- * The index of a record in its queue: the `pos` of the link that led here, or else its place in
- * the page window of the queue state. Null when it is not in the queue (any more).
+ * The index of a record in its queue. The `pos` of the link that led here is only a hint (anyone
+ * can edit a URL, and the queue moves): it counts when the record at that index is this one,
+ * otherwise the record is looked up in the page window of the queue state. Null when it is not
+ * in the queue (any more).
  */
 export async function locate(
     api: Api,
@@ -60,7 +62,7 @@ export async function locate(
     extractionId: string,
     pos: number | undefined,
 ): Promise<number | null> {
-    if (pos !== undefined) return pos;
+    if (pos !== undefined && (await recordAt(api, queue, pos)) === extractionId) return pos;
     const query = apiQuery(queue);
     const list = await unwrap(api.GET("/review/decisions", { params: { query } }));
     const index = list.items.findIndex((item) => item.extraction_id === extractionId);
@@ -68,23 +70,35 @@ export async function locate(
 }
 
 export type Neighbour = { id: string; pos: number };
+/** Where a move leads: to a record, past either end of the queue, or nowhere known. */
+export type Move = ({ kind: "record" } & Neighbour) | { kind: "edge" } | { kind: "unknown" };
 
-/**
- * The record `step` places after (or before) another in a queue state; null at either end.
- *
- * After an action the record has left the queue, so whatever now sits at its old position is the
- * next one: `step` 0 asks for exactly that. Without a `pos` the record is looked up in the page
- * window of the queue state, which only works while it is still in the queue (next/previous).
- */
+/** The record after (`1`) or before (`-1`) this one in a queue state; it must still be in the queue. */
 export async function neighbour(
     api: Api,
     queue: QueueParams,
     extractionId: string,
     pos: number | undefined,
-    step: -1 | 0 | 1,
-): Promise<Neighbour | null> {
+    step: -1 | 1,
+): Promise<Move> {
     const at = await locate(api, queue, extractionId, pos);
-    if (at === null) return null;
+    if (at === null) return { kind: "unknown" };
     const id = await recordAt(api, queue, at + step);
-    return id === null ? null : { id, pos: at + step };
+    return id === null ? { kind: "edge" } : { kind: "record", id, pos: at + step };
+}
+
+/**
+ * Where to go once the record at `at` has left the queue: whatever now sits at that index is the
+ * next one; past the end the queue starts over from its top; `null` means it is empty.
+ */
+export async function nextAfter(
+    api: Api,
+    queue: QueueParams,
+    at: number,
+): Promise<Neighbour | null> {
+    for (const pos of at === 0 ? [0] : [at, 0]) {
+        const id = await recordAt(api, queue, pos);
+        if (id !== null) return { id, pos };
+    }
+    return null;
 }

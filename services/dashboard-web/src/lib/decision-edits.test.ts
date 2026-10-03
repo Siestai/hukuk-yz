@@ -24,12 +24,60 @@ function edited(change: Partial<FormValues>) {
 
 describe("buildEdits", () => {
     it("sends nothing for an untouched form", () => {
-        expect(edited({})).toEqual({ edits: {}, errors: {}, ignored: [] });
+        expect(edited({})).toEqual({
+            edits: {},
+            errors: {},
+            ignored: [],
+            invalidRows: [],
+            entryRows: [0, 1],
+        });
     });
 
     it("sends only the fields that changed, trimmed", () => {
         const { edits } = edited({ karar_no: " 2021/999 ", outcome: "bozma" });
         expect(edits).toEqual({ karar_no: "2021/999", outcome: "bozma" });
+    });
+
+    it("compares the trimmed input with the trimmed stored value", () => {
+        const padded = readFields({
+            esas_no: " 2019/1234 ",
+            chamber: "9. HD ",
+            keywords: [" fesih ", "kıdem"],
+            related_articles: [{ statute: 4857, label: "", articles: [" 18 "], raw: "" }],
+        });
+        const values = {
+            ...initialValues(padded),
+            esas_no: "2019/1234",
+            chamber: " 9. HD",
+            keywords: "fesih\nkıdem",
+        };
+        values.related_articles = values.related_articles.map((row) => ({
+            ...row,
+            articles: "18",
+        }));
+        expect(buildEdits(padded, values).edits).toEqual({});
+    });
+
+    it("does not split a stored article that contains a comma while its row is untouched", () => {
+        const odd = readFields({
+            related_articles: [
+                { statute: 4857, label: "4857 SK", articles: ["18, ek 1"], raw: "4857/18, ek 1" },
+                { statute: 6331, label: "6331 SK", articles: ["4"], raw: "6331/4" },
+            ],
+        });
+        const values = initialValues(odd);
+        expect(buildEdits(odd, values).edits).toEqual({});
+        const changed = buildEdits(odd, {
+            ...values,
+            related_articles: [
+                values.related_articles[0]!,
+                { ...values.related_articles[1]!, articles: "4, 5" },
+            ],
+        });
+        expect(changed.edits.related_articles).toEqual([
+            odd.relatedArticles[0],
+            { statute: 6331, label: "6331 SK", articles: ["4", "5"], raw: "6331/4" },
+        ]);
     });
 
     it("compares keywords as arrays: one per line, trimmed, empty lines dropped", () => {
@@ -86,6 +134,21 @@ describe("buildEdits", () => {
             related_articles: "invalid_statute",
         });
         expect(edits).toEqual({});
+        expect(edited({ related_articles: [{ ...first!, statute: "48a7" }] }).invalidRows).toEqual([
+            first!.key,
+        ]);
+    });
+
+    it("names the form row each sent article came from, skipping blank rows", () => {
+        const [first, second] = initialValues(fields).related_articles;
+        const { entryRows } = edited({
+            related_articles: [
+                { key: 5, statute: "", articles: "", source: null },
+                second!,
+                { ...first!, articles: "18" },
+            ],
+        });
+        expect(entryRows).toEqual([second!.key, first!.key]);
     });
 });
 

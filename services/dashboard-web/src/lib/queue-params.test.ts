@@ -181,6 +181,9 @@ describe("detail and queue links", () => {
         expect(parsePosition({ pos: "-1" })).toBeUndefined();
         expect(parsePosition({ pos: "x" })).toBeUndefined();
         expect(parsePosition({ pos: "99999999" })).toBeUndefined();
+        expect(parsePosition({ pos: "007" })).toBeUndefined();
+        expect(parsePosition({ pos: "1.5" })).toBeUndefined();
+        expect(parsePosition({ pos: "" })).toBeUndefined();
         expect(parseNotice({ flash: "edited", done: "1" })).toEqual({
             flash: "edited",
             done: true,

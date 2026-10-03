@@ -90,12 +90,12 @@ export const FLASHES = ["approved", "edited", "rejected"] as const;
 export type Flash = (typeof FLASHES)[number];
 export type Notice = { flash?: Flash; done?: boolean };
 
-const MAX_POSITION = 1_000_000;
+const MAX_POSITION = MAX_PAGE * PAGE_SIZE;
 
 /** The absolute index of a record in the queue (filters and sort applied), carried by detail links. */
 export function parsePosition(raw: RawParams): number | undefined {
     const value = pick(raw, "pos");
-    if (!value || !/^\d{1,9}$/.test(value)) return undefined;
+    if (!value || !/^(0|[1-9]\d{0,8})$/.test(value)) return undefined;
     const n = Number(value);
     return n <= MAX_POSITION ? n : undefined;
 }

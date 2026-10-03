@@ -27,11 +27,11 @@ import {
 import type { DecisionFields } from "@/lib/decision-fields";
 import { useCommon } from "@/lib/use-common";
 import { useEnumLabels } from "@/lib/use-enum-labels";
-import { failedFields } from "./action-failure";
+import { failedArticleEntries, failedFields } from "./action-failure";
 import { CHOICES } from "./edit-choices";
 import { EditSummary } from "./edit-summary";
 import { FieldRow } from "./field-row";
-import { useReviewSession } from "./review-session";
+import { useReviewSession, type Failure } from "./review-session";
 
 const NUMBER_INPUTS: ScalarField[] = ["esas_no", "karar_no"];
 
@@ -47,15 +47,38 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
     const [confirming, setConfirming] = useState(false);
     const [note, setNote] = useState("");
     const [noChanges, setNoChanges] = useState(false);
-    const rejected = new Set<string>(failedFields(session.failure));
+    // Editing a field takes back the API's complaint about it; a new failure starts clean.
+    const [dismissed, setDismissed] = useState<{ failure: Failure | null; names: string[] }>({
+        failure: null,
+        names: [],
+    });
+    const dismissedNames = dismissed.failure === session.failure ? dismissed.names : [];
+    const rejected = new Set<string>(
+        failedFields(session.failure).filter((name) => !dismissedNames.includes(name)),
+    );
     const errors = built?.errors ?? {};
     const hint = (name: EditField) => built?.ignored.includes(name);
 
     const set = (change: Partial<FormValues>) => {
         setValues((current) => ({ ...current, ...change }));
+        setDismissed({
+            failure: session.failure,
+            names: [...dismissedNames, ...Object.keys(change)],
+        });
         setBuilt(null);
         setNoChanges(false);
     };
+
+    /** The article rows with a problem: a statute that is no number, or the entries the API refused. */
+    const named = failedArticleEntries(session.failure);
+    const rowsInvalid = new Set<number>(built?.invalidRows);
+    if (rejected.has("related_articles")) {
+        if (named.whole) values.related_articles.forEach((row) => rowsInvalid.add(row.key));
+        for (const entry of named.entries) {
+            const key = built?.entryRows[entry];
+            if (key !== undefined) rowsInvalid.add(key);
+        }
+    }
 
     /** The message under a field: what the client or the API found wrong, or why an empty value changes nothing. */
     function message(name: EditField): ReactNode {
@@ -133,12 +156,19 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
         if (changed && Object.keys(result.errors).length === 0) setConfirming(true);
     }
 
+    function closeConfirm() {
+        setConfirming(false);
+        setNote("");
+    }
+
     async function confirm() {
         if (!built || session.busy) return;
-        if (!(await session.submitEdit(built.edits, note))) setConfirming(false);
+        if (!(await session.submitEdit(built.edits, note))) closeConfirm();
     }
 
     const articleErrorId = `${prefix}-related_articles-message`;
+    const articleProps = (key: number) =>
+        rowsInvalid.has(key) ? { "aria-invalid": true, "aria-describedby": articleErrorId } : {};
     return (
         <Card>
             <CardHeader>
@@ -162,7 +192,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                             ] as const
                         ).map(row)}
                         <FieldRow label={field("related_articles")}>
-                            <ul className="grid gap-2" aria-describedby={articleErrorId}>
+                            <ul className="grid gap-2">
                                 {values.related_articles.map((entry, index) => (
                                     <li
                                         key={entry.key}
@@ -174,6 +204,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                                             </Label>
                                             <Input
                                                 id={`${prefix}-statute-${entry.key}`}
+                                                {...articleProps(entry.key)}
                                                 inputMode="numeric"
                                                 className="font-mono"
                                                 value={entry.statute}
@@ -198,6 +229,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                                             </Label>
                                             <Input
                                                 id={`${prefix}-articles-${entry.key}`}
+                                                {...articleProps(entry.key)}
                                                 className="font-mono"
                                                 value={entry.articles}
                                                 onChange={(e) =>
@@ -308,14 +340,20 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
             </CardContent>
             <Dialog
                 open={confirming}
-                onClose={() => setConfirming(false)}
+                onClose={closeConfirm}
                 title={t("review.edit.confirm.title")}
+                dismissible={!session.busy}
             >
                 {built ? (
                     <EditSummary fields={fields} edits={built.edits} note={note} onNote={setNote} />
                 ) : null}
                 <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={closeConfirm}
+                        disabled={session.busy}
+                    >
                         {t("review.edit.confirm.cancel")}
                     </Button>
                     <Button type="button" onClick={confirm} disabled={session.busy}>
