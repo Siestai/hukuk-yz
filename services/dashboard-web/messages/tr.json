@@ -35,8 +35,6 @@
         "score_asc": "En şüpheli önce",
         "score_desc": "En güvenli önce"
       },
-      "bulkApprove": "Toplu onayla",
-      "bulkApproveSoon": "Yakında: toplu onay sonraki sürümle gelecek.",
       "summary": {
         "bandTitle": "Güven dağılımı",
         "bandChart": "Bekleyen kararların güven dağılımı: {details}",
@@ -96,6 +94,55 @@
         "rejected": "Karar reddedildi."
       },
       "done": "Kuyruk bitti: onay bekleyen başka kayıt yok."
+    },
+    "bulk": {
+      "open": "Toplu onayla",
+      "bandOnly": "Toplu onay yalnız yüksek güven bandında.",
+      "title": "Yüksek güven bandını toplu onayla",
+      "count": "{total, number} karar",
+      "intro": "Bu filtrelerle eşleşen kararlar onaylanıp yayınlanacak.",
+      "none": "Bu filtrelerle onaylanacak kayıt yok.",
+      "filtersLabel": "Etkin filtreler",
+      "filters": {
+        "band": "Güven: {value}",
+        "court": "Mahkeme: {value}",
+        "reason": "Sebep: {value}",
+        "issue": "Dergi sayısı: {value, number}",
+        "q": "Arama: {value}"
+      },
+      "sampleTitle": "İlk {count, number} kayıt",
+      "esas": "E. {value}",
+      "karar": "K. {value}",
+      "unverified": "Kararlar Yargıtay kaynağıyla teyit edilmemiş olarak yayınlanır.",
+      "check": "Bu {count, number} kaydı kendi adımla onaylıyorum",
+      "start": "Onayı başlat",
+      "cancel": "Vazgeç",
+      "run": {
+        "label": "Toplu onay ilerlemesi",
+        "progress": "{done, number} / {total, number}",
+        "published": "Yayınlanan",
+        "conflicts": "Çakışan",
+        "failed": "Başarısız",
+        "count": "{count, number}",
+        "running": "Kayıtlar onaylanıyor.",
+        "stopping": "Durduruluyor: o anki çağrı bitince duracak.",
+        "stop": "Durdur"
+      },
+      "halted": {
+        "countChanged": "Kuyruk değişti: şimdi {total, number} kayıt var.",
+        "resume": "{total, number} kaydı onaylamaya devam et",
+        "retry": "Aynı çağrıyı yeniden dene",
+        "report": "Raporu göster"
+      },
+      "report": {
+        "stopped": "Durduruldu: {count, number} kayıt işlenmedi.",
+        "unprocessed": "{count, number} kayıt işlenmedi.",
+        "conflicts": "Çakışan kayıtlar",
+        "conflictsHint": "Kuyrukta kaldılar; tek tek inceleyin.",
+        "failures": "Başarısız kayıtlar",
+        "more": "ve {count, number} daha",
+        "close": "Kapat"
+      }
     },
     "detail": {
       "back": "Kuyruğa dön",
@@ -203,7 +250,9 @@
     "review_conflict": "Bu kaydı az önce başka biri işledi.",
     "decision_conflict": "Bu değerlerle bir karar zaten yayınlanmış.",
     "extraction_not_found": "Kayıt bulunamadı.",
-    "forbidden": "Bu işlem için yetkiniz yok."
+    "forbidden": "Bu işlem için yetkiniz yok.",
+    "bulk_count_changed": "Kuyruktaki kayıt sayısı değişti.",
+    "bulk_band_not_allowed": "Toplu onay yalnız yüksek güven bandında yapılır."
   },
   "enums": {
     "role": {
@@ -313,6 +362,16 @@
       "full": "Tam metin",
       "excerpt": "Alıntı",
       "summary_only": "Yalnız özet"
+    },
+    "bulkFailure": {
+      "source_not_in_review": "Kaynak artık incelemede değil",
+      "newer_extraction": "Kaynağın daha yeni bir çıkarımı var",
+      "no_source": "Çıkarımın kaynağı yok",
+      "no_decision_source": "Kaynak karar kategorisinde değil",
+      "source_not_analyzed": "Kaynak inceleme bekleyen durumda değil",
+      "court_required": "Mahkeme ve mahkeme düzeyi eksik",
+      "band_changed": "Kayıt artık yüksek bantta değil",
+      "constraint_violated": "Veritabanı kısıtı ihlal edildi"
     }
   },
   "errorPage": {

@@ -1,0 +1,51 @@
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+import messages from "../../../messages/tr.json";
+import type { QueueParams } from "@/lib/queue-params";
+import { renderWithIntl } from "@/test/intl";
+import { BulkApproveButton } from "./bulk-approve-button";
+import { QueueNavigationProvider } from "./queue-navigation";
+
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({
+    useRouter: () => nav,
+    useSearchParams: () => new URLSearchParams(),
+}));
+
+const { bulk } = messages.review;
+const queue = (band?: QueueParams["band"]): QueueParams => ({ band, sort: "score_asc", page: 1 });
+
+function setup(params: QueueParams, extra: { unavailable?: boolean } = {}) {
+    renderWithIntl(
+        <QueueNavigationProvider>
+            <BulkApproveButton params={params} total={12} sample={[]} {...extra} />
+        </QueueNavigationProvider>,
+    );
+}
+
+describe("BulkApproveButton", () => {
+    it("is enabled on the high band and opens the dialog with the count of the list", async () => {
+        setup(queue("high"));
+        await userEvent.click(screen.getByRole("button", { name: bulk.open }));
+        expect(screen.getByRole("dialog", { name: bulk.title })).toBeInTheDocument();
+        expect(screen.getByText("12 karar")).toBeInTheDocument();
+    });
+
+    it.each([undefined, "medium", "low"] as const)(
+        "stays disabled and says why when the band is %s",
+        (band) => {
+            setup(queue(band));
+            const button = screen.getByRole("button", { name: bulk.open });
+            expect(button).toBeDisabled();
+            expect(button).toHaveAccessibleDescription(bulk.bandOnly);
+            expect(button.parentElement).toHaveAttribute("title", bulk.bandOnly);
+        },
+    );
+
+    it("is shut while there is no list to confirm", () => {
+        setup(queue("high"), { unavailable: true });
+        expect(screen.getByRole("button", { name: bulk.open })).toBeDisabled();
+    });
+});

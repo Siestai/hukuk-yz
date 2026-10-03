@@ -1,16 +1,16 @@
 "use client";
 
-import { Button, Select } from "@hukuk/ui";
+import { Select } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useId } from "react";
+import type { ReactNode } from "react";
 
 import { SORTS, type Sort } from "@/lib/queue-params";
 import { useQueueNavigation } from "./queue-navigation";
 
-export function QueueActions() {
+/** The sort control, and the bulk approve button the page puts beside it. */
+export function QueueActions({ children }: { children?: ReactNode }) {
     const t = useTranslations("review.queue");
     const { params, navigate } = useQueueNavigation();
-    const hintId = useId();
 
     return (
         <div className="flex items-center gap-3">
@@ -26,14 +26,7 @@ export function QueueActions() {
                     </option>
                 ))}
             </Select>
-            <span title={t("bulkApproveSoon")}>
-                <Button disabled aria-describedby={hintId}>
-                    {t("bulkApprove")}
-                </Button>
-                <span id={hintId} className="sr-only">
-                    {t("bulkApproveSoon")}
-                </span>
-            </span>
+            {children}
         </div>
     );
 }

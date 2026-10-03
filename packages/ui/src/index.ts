@@ -5,6 +5,7 @@ export { Dialog, type DialogProps } from "./components/dialog";
 export { Input } from "./components/input";
 export { Label } from "./components/label";
 export { Logo } from "./components/logo";
+export { Progress } from "./components/progress";
 export { Select } from "./components/select";
 export { Textarea } from "./components/textarea";
 export { Skeleton } from "./components/skeleton";

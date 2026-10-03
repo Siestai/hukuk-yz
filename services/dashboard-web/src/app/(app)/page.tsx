@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { FlashStatus } from "@/components/flash-status";
 import { BandDistribution } from "@/components/review-queue/band-distribution";
+import { QueueBulkApprove } from "@/components/review-queue/queue-bulk-approve";
 import { QueueActions } from "@/components/review-queue/queue-actions";
 import { QueueError } from "@/components/review-queue/queue-error";
 import { QueueFilters } from "@/components/review-queue/queue-filters";
@@ -55,7 +56,11 @@ export default async function QueuePage({
                             {t("subtitle", { total: pending })}
                         </p>
                     </div>
-                    <QueueActions />
+                    <QueueActions>
+                        <Suspense fallback={<QueueBulkApprove params={params} />}>
+                            <QueueBulkApprove params={params} list={list} />
+                        </Suspense>
+                    </QueueActions>
                 </header>
                 {summary.data ? (
                     <div className="grid gap-4 lg:grid-cols-3">
