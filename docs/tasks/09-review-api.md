@@ -1,6 +1,6 @@
 # Görev 09: Karar inceleme ve onay API'si
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: onaylandı (ret notu zorunlu, toplu onay tavanı 100: Orhan, 2026-10-03). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/data-model.md` §3 (`extraction`, `review`), §4 (durum makinesi, toplu onay), §5.2 (`decision`); `docs/tasks/05-decision-load.md` (güven skoru, mükerrer gruplar, `publish_decision`); `docs/tasks/08-auth.md` (`current_user`, `require_role`); `docs/decisions.md` 2026-10-03 (reviewer da toplu onay yapabilir).
 Üstüne oturduğu iş: Görev 05 (6.317 karar `analyzed` + `extraction` + güven bandı), Görev 08 (kullanıcı ve oturum).
 
@@ -26,7 +26,7 @@ Dashboard'un ilk ekranı (Görev 10) için `app`'te HTTP API: onay bekleyen kara
    - `POST /review/decisions/bulk-approve` gövde `{band: "high", filters (listedekilerle aynı, band hariç), expected_count, limit?}`:
      - Yalnızca `band = high` kabul edilir; başka bant 422 (Görev 05: düşük/orta bant tek tek incelenir).
      - `expected_count`: ekranda görülen sayı. Sorgu anındaki eşleşen sayı farklıysa 409, hiçbir şey yazılmaz (kullanıcının görmediği kayıt onaylanmasın).
-     - Bir çağrıda en çok `limit` kayıt (varsayılan ve tavan 500); yanıtta `published`, `conflicts` (extraction id listesi), `failed` (id + sebep), `remaining`. Her kayıt kendi savepoint'inde (bugünkü `approve_band` davranışı); bir çakışma koşuyu durdurmaz.
+     - Bir çağrıda en çok `limit` kayıt (varsayılan ve tavan 100; Orhan, 2026-10-03); yanıtta `published`, `conflicts` (extraction id listesi), `failed` (id + sebep), `remaining`. Her kayıt kendi savepoint'inde (bugünkü `approve_band` davranışı); bir çakışma koşuyu durdurmaz.
 5. **`edits` doğrulaması:** Pydantic modeli; yalnızca şu alanlar düzenlenebilir: court, court_level, chamber, source_chamber, bam_region, decision_kind, esas_no, karar_no, decision_date (ISO), jurisdiction, related_articles, keywords, outcome, text_completeness. Enum alanları şema enum'larıyla, `outcome` Görev 05'teki ASCII listesiyle doğrulanır. `full_text` ve `editorial_summary` düzenlenemez. Bilinmeyen anahtar → 422.
 6. **`review.reviewer_id` → `app_user.id` FK** (Alembic 0006): `NOT VALID` olarak eklenir; yeni satırlar zorunlu olarak gerçek kullanıcıya bağlanır, Görev 05'te CLI ile yazılmış eski satırlar doğrulanmaz. `--approve-band` CLI'ı da artık var olan bir kullanıcı ister: `--reviewer` UUID yerine `--reviewer-email`; bulunamazsa hata. Alembic NOT VALID'i ifade edemiyorsa `op.execute` ile; `alembic check` temiz kalmalı.
 7. **Testler** (`test_review.py`; taşınan sorgu için `test_loaders_decisions.py` güncellenir): DB gerektirenler `DATABASE_URL` yoksa skip. En az:
@@ -56,10 +56,10 @@ Dashboard'un ilk ekranı (Görev 10) için `app`'te HTTP API: onay bekleyen kara
 - [ ] `approve_band` CLI'ı ve API toplu onayı aynı sorgu + yayın fonksiyonunu kullanır (kod okunarak teyit).
 - [ ] Liste endpoint'i 6.317 kayıtlık DB'de (Orhan'ın Mac'i) < 300 ms; ölçüm PR'da Orhan'dan ya da `EXPLAIN` çıktısıyla. Gerekirse indeks eklenir (Alembic 0006 içinde).
 
-## Açık sorular (Orhan)
+## Kararlar (Orhan, 2026-10-03)
 
-- Ret için not zorunlu olsun mu? Öneri: evet, kısa bir cümle bile yeter; parser hatalarını bulmamızı sağlar.
-- Toplu onay tavanı 500 kayıt/çağrı uygun mu? (Ekran gerekirse arka arkaya çağırır.)
+- Ret için not şimdilik zorunlu.
+- Toplu onay tavanı çağrı başına 100 kayıt; ekran gerekirse arka arkaya çağırır.
 
 ## Notlar Claude Code için
 
