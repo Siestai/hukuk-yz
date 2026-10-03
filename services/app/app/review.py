@@ -3,16 +3,24 @@ bulk approval of the high band. HTTP only: the queue query and the writes after 
 `app.kb`, shared with the `--approve-band` CLI of the loader.
 """
 
+import asyncio
+import hashlib
+import logging
+import os
+import stat
 import uuid
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import Select, and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.auth import Db, require_role
+from app.errors import ApiError
 from app.kb import (
     PARSER_NAME,
     StaleExtraction,
@@ -24,6 +32,7 @@ from app.kb import (
 from app.models.common import (
     Court,
     Extraction,
+    IngestFile,
     Review,
     ReviewDecision,
     Source,
@@ -31,6 +40,7 @@ from app.models.common import (
 )
 from app.models.decision import Decision
 from app.models.user import AppUser
+from app.settings import get_settings
 from hukuk_models import (
     Band,
     BulkApproveRequest,
@@ -38,6 +48,7 @@ from hukuk_models import (
     BulkFailure,
     Confidence,
     DuplicateOut,
+    ErrorCode,
     ReasonCount,
     ReviewActionRequest,
     ReviewActionResponse,
@@ -48,6 +59,8 @@ from hukuk_models import (
     ReviewOut,
     ReviewSummary,
 )
+
+logger = logging.getLogger("app")
 
 TOP_REASONS = 15
 
@@ -156,11 +169,14 @@ async def bulk_approve(body: BulkApproveRequest, user: Reviewer, db: Db) -> Bulk
     def pending(after: str | None) -> Select[Any]:
         return queue(body.band, body.filters, "sha256", after)
 
+    if body.band != "high":
+        raise ApiError(422, ErrorCode.bulk_band_not_allowed)
     total = await _count(db, pending(body.cursor))
     if total != body.expected_count:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Eşleşen kayıt sayısı değişti: {total} (beklenen {body.expected_count})",
+        raise ApiError(
+            409,
+            ErrorCode.bulk_count_changed,
+            {"total": total, "expected": body.expected_count},
         )
     rows = (await db.execute(pending(body.cursor).limit(body.limit))).all()
     result = await publish_batch(db, [row.id for row in rows], user.id, body.band)
@@ -250,6 +266,61 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
     )
 
 
+@router.get(
+    "/{extraction_id}/file",
+    response_class=FileResponse,
+    responses={
+        200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}}
+    },
+)
+async def get_file(extraction_id: uuid.UUID, db: Db) -> Response:
+    """The original PDF of a decision extraction, for the detail screen.
+
+    Copyright: the archive PDFs are pages of the journal Çalışma ve Toplum. They are served
+    only to a logged-in reviewer, for internal review, never publicly.
+
+    `ingest_file.path` is relative to `ARCHIVE_ROOT` (the loader stores the path under the Drive
+    copy, e.g. `Yargi_Kararlari_Arsivi/...`). The file is served only if it resolves inside the
+    root (no `..`, no symlink out), is within `ARCHIVE_MAX_FILE_BYTES` and its SHA-256 equals
+    `ingest_file.sha256`: no file rather than the wrong one. It is opened once, and the bytes
+    that were hashed are the bytes sent, so the file cannot change in between.
+    """
+    extraction, _ = await _decision_extraction(db, extraction_id)
+    ingest_file = await db.get(IngestFile, extraction.file_id)
+    assert ingest_file is not None  # extraction.file_id is a foreign key
+    if ingest_file.detected_type != "pdf":
+        raise ApiError(415, ErrorCode.file_not_previewable)
+    root = get_settings().archive_root
+    if root is None:
+        raise ApiError(404, ErrorCode.file_not_found)
+    try:
+        path = (root / ingest_file.path).resolve(strict=True)
+    except OSError:
+        raise ApiError(404, ErrorCode.file_not_found) from None
+    if not path.is_relative_to(root.resolve()) or not path.is_file():
+        raise ApiError(404, ErrorCode.file_not_found)
+    content = await asyncio.to_thread(
+        _read_archive_file, path, get_settings().archive_max_file_bytes
+    )
+    if content is None:
+        logger.warning(
+            "archive file unreadable or over the size cap (extraction %s)", extraction_id
+        )
+        raise ApiError(404, ErrorCode.file_not_found)
+    if hashlib.sha256(content).hexdigest() != ingest_file.sha256:
+        logger.warning("archive file does not match its sha256 (extraction %s)", extraction_id)
+        raise ApiError(404, ErrorCode.file_not_found)
+    return Response(
+        content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{ingest_file.sha256}.pdf"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @router.post("/{extraction_id}")
 async def act(
     extraction_id: uuid.UUID, body: ReviewActionRequest, user: Reviewer, db: Db
@@ -269,25 +340,36 @@ async def act(
             review_id, decision_id = await approve_extraction(
                 db, extraction_id, user.id, ReviewDecision(body.action), edits, body.note
             )
-    except StaleExtraction as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from None
+    except StaleExtraction:
+        raise ApiError(409, ErrorCode.review_conflict) from None
     except IntegrityError:  # a live-key collision; any other violation is a ValueError
         conflict = await _live_conflict(db, {**extraction.fields, **(edits or {})})
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Aynı künyeli canlı karar var",
-                "decision_id": str(conflict) if conflict else None,
-            },
+        raise ApiError(
+            409, ErrorCode.decision_conflict, {"decision_id": str(conflict) if conflict else None}
         ) from None
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from None
+    except ValueError:  # the publish refused the merged fields; which one is not a UI concern
+        raise ApiError(422, ErrorCode.validation_error, {"fields": []}) from None
     await db.commit()
     return ReviewActionResponse(
         review_id=review_id,
         decision_id=decision_id,
         source_status="rejected" if body.action == "reject" else "approved",
     )
+
+
+def _read_archive_file(path: Path, max_bytes: int) -> bytes | None:
+    """The bytes of a regular file of at most `max_bytes`, opened without following a symlink;
+    None when it is none of that."""
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        return None
+    with os.fdopen(fd, "rb") as f:
+        info = os.fstat(f.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes:
+            return None
+        content = f.read(max_bytes + 1)
+    return content if len(content) <= max_bytes else None
 
 
 async def _decision_extraction(
@@ -306,7 +388,7 @@ async def _decision_extraction(
         )
     ).one_or_none()
     if row is None:
-        raise HTTPException(status_code=404, detail="Extraction bulunamadı")
+        raise ApiError(404, ErrorCode.extraction_not_found)
     extraction, source = row
     return extraction, source
 

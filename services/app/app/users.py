@@ -5,6 +5,7 @@ or the environment.
     python -m app.users set-password --email E    (also revokes the open sessions)
     python -m app.users deactivate --email E
     python -m app.users list
+    python -m app.users prune-login-attempts      (deletes login attempts older than 30 days)
 """
 
 import argparse
@@ -12,17 +13,19 @@ import asyncio
 import getpass
 import sys
 from collections.abc import Awaitable, Callable, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import hash_password, normalize_email
 from app.db import make_engine, make_session_factory
-from app.models.user import AppUser, UserRole, UserSession
+from app.models.user import AppUser, LoginAttempt, UserRole, UserSession
 from app.settings import get_settings
+
+LOGIN_ATTEMPT_RETENTION = timedelta(days=30)
 
 
 def _ask_password() -> str:
@@ -92,6 +95,17 @@ async def _list(session: AsyncSession) -> None:
         print(f"{user.email}\t{user.display_name}\t{user.role.value}\t{state}")
 
 
+async def _prune_login_attempts(session: AsyncSession) -> None:
+    result = await session.execute(
+        delete(LoginAttempt)
+        .where(LoginAttempt.attempted_at < datetime.now(UTC) - LOGIN_ATTEMPT_RETENTION)
+        .returning(LoginAttempt.id)
+    )
+    deleted = len(result.all())
+    await session.commit()
+    print(f"Silinen giriş denemesi: {deleted}")
+
+
 async def _run(operation: Callable[[AsyncSession], Awaitable[None]]) -> None:
     engine = make_engine(get_settings().database_url)
     try:
@@ -111,6 +125,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     commands.add_parser("set-password").add_argument("--email", required=True)
     commands.add_parser("deactivate").add_argument("--email", required=True)
     commands.add_parser("list")
+    commands.add_parser("prune-login-attempts")
     args = parser.parse_args(argv)
     operation: Callable[[AsyncSession], Awaitable[None]]
     match args.command:
@@ -120,6 +135,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             operation = partial(_set_password, args=args, password_hash=_ask_password())
         case "deactivate":
             operation = partial(_deactivate, args=args)
+        case "prune-login-attempts":
+            operation = _prune_login_attempts
         case _:
             operation = _list
     asyncio.run(_run(operation))

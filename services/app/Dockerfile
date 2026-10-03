@@ -20,7 +20,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package hukuk-app
 
 FROM python:3.12-slim-bookworm
-ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
+# No proxy is trusted for X-Forwarded-For unless FORWARDED_ALLOW_IPS names it (login rate limit).
+ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH" FORWARDED_ALLOW_IPS=""
 RUN useradd --system --uid 10001 --no-create-home app
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
@@ -29,4 +30,4 @@ COPY services/app/alembic services/app/alembic
 WORKDIR /app/services/app
 USER app
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]

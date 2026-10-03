@@ -13,6 +13,7 @@ authenticated by Bearer are exempt: the browser never adds that header by itself
 
 import asyncio
 import hashlib
+import math
 import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -20,15 +21,16 @@ from typing import Annotated, Literal
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import make_session_factory
-from app.models.user import AppUser, UserRole, UserSession
-from app.settings import get_settings
-from hukuk_models import LoginRequest, UserOut
+from app.errors import ApiError
+from app.models.user import AppUser, LoginAttempt, UserRole, UserSession
+from app.settings import Settings, get_settings
+from hukuk_models import ErrorCode, LoginRequest, UserOut
 
 COOKIE_NAME = "hukuk_session"
 MIN_PASSWORD_LENGTH = 12
@@ -75,8 +77,8 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
 Db = Annotated[AsyncSession, Depends(get_db)]
 
 
-def _unauthorized() -> HTTPException:
-    return HTTPException(status_code=401, detail="Kimlik doğrulanamadı")
+def _unauthorized() -> ApiError:
+    return ApiError(401, ErrorCode.unauthorized)
 
 
 def _request_token(request: Request) -> str:
@@ -93,7 +95,7 @@ def _request_token(request: Request) -> str:
         raise _unauthorized()
     content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
     if request.method in UNSAFE_METHODS and content_type != "application/json":
-        raise HTTPException(status_code=415, detail="Content-Type must be application/json")
+        raise ApiError(415, ErrorCode.unsupported_media_type)
     return token
 
 
@@ -138,17 +140,70 @@ def require_role(role: Literal["admin", "reviewer"]) -> Callable[[AppUser], Awai
 
     async def check(user: CurrentUser) -> AppUser:
         if user.role not in (required, UserRole.admin):
-            raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz yok")
+            raise ApiError(403, ErrorCode.forbidden)
         return user
 
     return check
 
 
+async def login_retry_after(
+    db: AsyncSession, email: str, ip: str | None, now: datetime, settings: Settings
+) -> int | None:
+    """Seconds until a login may be tried again, or None when it may be tried now.
+
+    Blocked when, inside the window ending at `now`, the e-mail has `login_max_fails_per_email`
+    failed attempts or the IP has `login_max_fails_per_ip`. A success does not clear them: the
+    window just slides. The block lifts when the oldest failure that still counts leaves it.
+    """
+    window = timedelta(minutes=settings.login_window_minutes)
+    scopes: list[tuple[ColumnElement[bool], int]] = [
+        (LoginAttempt.email == email, settings.login_max_fails_per_email)
+    ]
+    if ip is not None:
+        scopes.append((LoginAttempt.ip == ip, settings.login_max_fails_per_ip))
+    waits: list[int] = []
+    for scope, limit in scopes:
+        newest_failures = (
+            (
+                await db.execute(
+                    select(LoginAttempt.attempted_at)
+                    .where(
+                        scope,
+                        LoginAttempt.succeeded.is_(False),
+                        LoginAttempt.attempted_at > now - window,
+                    )
+                    .order_by(LoginAttempt.attempted_at.desc())
+                    .limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if len(newest_failures) >= limit:
+            waits.append(max(1, math.ceil((newest_failures[-1] + window - now).total_seconds())))
+    return max(waits) if waits else None
+
+
 @router.post("/login")
-async def login(body: LoginRequest, response: Response, db: Db) -> LoginResponse:
-    user = (
-        await db.execute(select(AppUser).where(AppUser.email == normalize_email(body.email)))
-    ).scalar_one_or_none()
+async def login(body: LoginRequest, request: Request, response: Response, db: Db) -> LoginResponse:
+    settings = get_settings()
+    email = normalize_email(body.email)
+    ip = request.client.host if request.client else None
+    now = datetime.now(UTC)
+    # One login per e-mail at a time, from the count to the committed attempt row: concurrent
+    # wrong passwords cannot all pass the count. Released by the commit (or the rollback).
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(lower(:email)))"), {"email": email}
+    )
+    retry_after = await login_retry_after(db, email, ip, now, settings)
+    if retry_after is not None:
+        raise ApiError(
+            429,
+            ErrorCode.too_many_attempts,
+            {"retry_after": retry_after},
+            {"Retry-After": str(retry_after)},
+        )
+    user = (await db.execute(select(AppUser).where(AppUser.email == email))).scalar_one_or_none()
     try:
         await asyncio.to_thread(
             _hasher.verify, user.password_hash if user else _DUMMY_HASH, body.password
@@ -156,14 +211,15 @@ async def login(body: LoginRequest, response: Response, db: Db) -> LoginResponse
         password_ok = True
     except (VerificationError, InvalidHashError):
         password_ok = False
-    if user is None or not password_ok or not user.is_active:
+    succeeded = user is not None and password_ok and user.is_active
+    db.add(LoginAttempt(email=email, ip=ip, succeeded=succeeded, attempted_at=now))
+    if user is None or not succeeded:
+        await db.commit()
         raise _unauthorized()
 
-    now = datetime.now(UTC)
     if _hasher.check_needs_rehash(user.password_hash):
         user.password_hash = await asyncio.to_thread(_hasher.hash, body.password)
     user.last_login_at = now
-    settings = get_settings()
     token = secrets.token_urlsafe(32)
     db.add(
         UserSession(

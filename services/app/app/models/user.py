@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, text
+from sqlalchemy import ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.common import Base, PgEnum, UuidPkMixin
@@ -41,3 +41,21 @@ class UserSession(UuidPkMixin, Base):
     expires_at: Mapped[datetime]
     revoked_at: Mapped[datetime | None]
     last_seen_at: Mapped[datetime | None]
+
+
+class LoginAttempt(UuidPkMixin, Base):
+    """One call of `POST /auth/login` (task 10a); the rate limit counts the failed ones in a
+    window. A table, not a counter in memory, because several `app` replicas may run."""
+
+    __tablename__ = "login_attempt"
+    __table_args__ = (
+        Index("ix_login_attempt_email_attempted_at", "email", "attempted_at"),
+        Index("ix_login_attempt_ip_attempted_at", "ip", "attempted_at"),
+        Index("ix_login_attempt_attempted_at", "attempted_at"),
+    )
+
+    # As sent, normalized (app.auth.normalize_email); the user need not exist.
+    email: Mapped[str]
+    ip: Mapped[str | None]
+    succeeded: Mapped[bool]
+    attempted_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

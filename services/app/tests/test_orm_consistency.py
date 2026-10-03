@@ -13,8 +13,10 @@ VERSIONS = Path(__file__).parents[1] / "alembic" / "versions"
 MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
 USERS_MIGRATION = VERSIONS / "0005_users_and_sessions.py"
 REVIEW_FK_MIGRATION = VERSIONS / "0006_review_reviewer_fk.py"
-# Tables created by later migrations (0004: decision_verification; 0005: users and sessions).
-LATER_TABLES = {"decision_verification", "app_user", "user_session"}
+LOGIN_ATTEMPT_MIGRATION = VERSIONS / "0007_login_attempt.py"
+# Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
+# 0007: login_attempt).
+LATER_TABLES = {"decision_verification", "app_user", "user_session", "login_attempt"}
 
 
 def _load_migration(path: Path = MIGRATION) -> ModuleType:
@@ -50,6 +52,21 @@ def test_user_tables_are_in_the_users_migration() -> None:
     orm = {i.name for t in Base.metadata.tables.values() for i in t.indexes}
     assert "ix_user_session_user_id" in orm
     assert '"ix_user_session_user_id"' in migration
+
+
+def test_login_attempt_table_and_indexes_are_in_orm_and_migration() -> None:
+    migration = LOGIN_ATTEMPT_MIGRATION.read_text()
+    table = Base.metadata.tables["login_attempt"]
+    assert {c.name for c in table.columns} == {"id", "email", "ip", "succeeded", "attempted_at"}
+    assert '"login_attempt"' in migration
+    indexes = {i.name: [c.name for c in i.columns] for i in table.indexes}
+    assert indexes == {
+        "ix_login_attempt_email_attempted_at": ["email", "attempted_at"],
+        "ix_login_attempt_ip_attempted_at": ["ip", "attempted_at"],
+        "ix_login_attempt_attempted_at": ["attempted_at"],
+    }
+    for name in indexes:
+        assert f'"{name}"' in migration, name
 
 
 def test_review_reviewer_fk_is_in_orm_and_migration() -> None:

@@ -64,6 +64,34 @@ def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) ->
     assert expected <= _tables(database_url)
 
 
+def test_the_login_attempt_migration_downgrades_to_0006(
+    alembic_config: Config, database_url: str
+) -> None:
+    command.upgrade(alembic_config, "head")
+    assert "login_attempt" in _tables(database_url)
+    command.downgrade(alembic_config, "0006")
+    tables = _tables(database_url)
+    assert "login_attempt" not in tables
+    assert {"app_user", "user_session"} <= tables
+    command.upgrade(alembic_config, "head")
+    assert "login_attempt" in _tables(database_url)
+
+
+async def test_login_attempt_is_indexed_for_the_limit_lookups_and_the_prune(
+    conn: AsyncConnection,
+) -> None:
+    names = set(
+        await conn.scalars(
+            text("SELECT indexname FROM pg_indexes WHERE tablename = 'login_attempt'")
+        )
+    )
+    assert {
+        "ix_login_attempt_email_attempted_at",
+        "ix_login_attempt_ip_attempted_at",
+        "ix_login_attempt_attempted_at",
+    } <= names
+
+
 def test_alembic_check_has_no_drift(alembic_config: Config, migrated: None) -> None:
     command.check(alembic_config)  # raises CommandError when models and migration differ
 

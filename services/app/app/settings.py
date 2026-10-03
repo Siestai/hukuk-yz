@@ -9,9 +9,10 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
-    """Configuration read from environment variables only (no dotenv file)."""
+    """Configuration read from environment variables only (no dotenv file). An empty variable
+    counts as unset."""
 
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore", env_ignore_empty=True)
 
     database_url: str
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -19,6 +20,22 @@ class Settings(BaseSettings):
     session_ttl_hours: int = 12
     # False only for plain-http dev; the cookie is then sent without the Secure flag.
     cookie_secure: bool = True
+    # Login rate limit (task 10a): failed attempts inside the window that block further logins.
+    login_max_fails_per_email: int = 5
+    login_max_fails_per_ip: int = 20
+    login_window_minutes: int = 15
+    # Where `ingest_file.path` is relative to (the Drive copy, `data/drive`); the decision PDFs
+    # are served from here. Unset: the file endpoint answers 404.
+    archive_root: Path | None = None
+    # Largest decision PDF served; bigger files answer 404 (the file is read into memory).
+    archive_max_file_bytes: int = 50 * 1024 * 1024
+
+    @field_validator("archive_root")
+    @classmethod
+    def _absolute_archive_root(cls, value: Path | None) -> Path | None:
+        if value is not None and not value.is_absolute():
+            raise ValueError("ARCHIVE_ROOT must be an absolute path")
+        return value
 
 
 @lru_cache

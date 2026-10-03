@@ -53,6 +53,8 @@ Her kaynak türü kaydının üst kimliği.
 | `ingest_file` | id, job_id, path, sha256, mime, detected_type, size, error? |
 | `extraction` | id, file_id, source_id? (inceleme kuyruğu tipli kayıt oluşmadan kaynağı bulsun diye), parser_name, parser_version, extracted_at, fields jsonb, confidence jsonb, warnings jsonb, raw_text_ref |
 
+`ingest_file.path` arşiv köküne göre **göreli** tutulur (karar yükleyicisi `source_path`'i olduğu gibi yazar, örn. `Yargi_Kararlari_Arsivi/...`; kök Drive kopyası `data/drive`). `app` orijinal PDF'i `ARCHIVE_ROOT` + `path` ile sunar (Görev 10a).
+
 `extraction.fields` parser'ın çıkardığı ham alanlar; onaydan sonra tipli tabloya kopyalanır. Böylece parser değişince yeniden çıkarma eski onayı bozmaz.
 
 ### `review`
@@ -72,6 +74,17 @@ Her kaynak türü kaydının üst kimliği.
 | `user_session` | id, user_id → `app_user`, token_hash (SHA-256, benzersiz; ham token saklanmaz), created_at, expires_at, revoked_at?, last_seen_at? |
 
 `review.reviewer_id` → `app_user.id` FK'si Görev 09'da (Alembic 0006) `NOT VALID` eklendi: yeni review satırları gerçek bir kullanıcıya bağlanmak zorunda; Görev 05'te CLI ile yazılmış eski satırlar (kullanıcısız UUID) doğrulanmaz. `VALIDATE CONSTRAINT` bu satırlarda başarısız olur. Oturum süresi sabittir (`SESSION_TTL_HOURS`, varsayılan 12), kullanımla uzamaz.
+
+### `login_attempt` (Görev 10a)
+| tablo | alanlar |
+|---|---|
+| `login_attempt` | id, email (normalize; kullanıcı var olmayabilir), ip?, succeeded, attempted_at |
+
+`POST /auth/login` her çağrıda bir satır yazar; sınır son `LOGIN_WINDOW_MINUTES` içindeki başarısız satırları sayar (e-posta başına `LOGIN_MAX_FAILS_PER_EMAIL`, IP başına `LOGIN_MAX_FAILS_PER_IP`). İndeksler `(email, attempted_at)`, `(ip, attempted_at)` ve temizlik için `(attempted_at)`. 30 günden eski satırlar `python -m app.users prune-login-attempts` ile silinir. Kalıcı tablo, çünkü `app` birden çok kopya çalışabilir. Aynı e-posta için denemeler `pg_advisory_xact_lock(hashtext(lower(email)))` ile sıraya girer (sayımdan satırın commit'ine kadar), eşzamanlı yanlış parolalar sınırı aşamaz.
+
+Bilinen sınırlar:
+- IPv6 adresi tam adres olarak sayılır; aynı /64 içindeki adresler ayrı sayaç alır.
+- Yayın reddi (`ValueError`) `validation_error` ve boş `fields` döner; arayüz genel bir mesaj gösterir.
 
 ### `provenance` (her tipli kayıtta gömülü alanlar)
 `source_id, extraction_id, review_id, recorded_at, superseded_at, recorded_by`

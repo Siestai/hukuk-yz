@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -9,6 +10,8 @@ from sqlalchemy import text
 
 from app.auth import router as auth_router
 from app.db import make_engine
+from app.errors import ERROR_RESPONSES
+from app.errors import install as install_error_handlers
 from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.settings import get_settings
@@ -25,11 +28,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(settings.log_level)
     app.state.engine = make_engine(settings.database_url)
     logger.info("app started (env=%s)", settings.env)
+    # uvicorn reads this variable itself; here it is only checked.
+    if settings.env != "dev" and not os.environ.get("FORWARDED_ALLOW_IPS", "").strip():
+        logger.warning(
+            "FORWARDED_ALLOW_IPS is empty: the per-IP login limit sees only the proxy address"
+        )
     yield
     await app.state.engine.dispose()
 
 
-app = FastAPI(title="hukuk-agent", lifespan=lifespan)
+app = FastAPI(title="hukuk-agent", lifespan=lifespan, responses=ERROR_RESPONSES)
+install_error_handlers(app)
 app.include_router(auth_router)
 app.include_router(review_router)
 

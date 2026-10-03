@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from enum import StrEnum
 from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
@@ -16,9 +17,43 @@ class HealthResponse(BaseModel):
     status: str
 
 
+class ErrorCode(StrEnum):
+    """Every error the API returns, by a stable code; the UI translates it (docs/decisions.md,
+    2026-10-03). The values are the wire format: add, never rename."""
+
+    unauthorized = "unauthorized"
+    forbidden = "forbidden"
+    unsupported_media_type = "unsupported_media_type"
+    validation_error = "validation_error"  # params: fields
+    not_found = "not_found"
+    method_not_allowed = "method_not_allowed"
+    extraction_not_found = "extraction_not_found"
+    # the source is no longer pending, or the extraction is not the newest of its source
+    review_conflict = "review_conflict"
+    decision_conflict = "decision_conflict"  # params: decision_id
+    bulk_count_changed = "bulk_count_changed"  # params: total, expected
+    bulk_band_not_allowed = "bulk_band_not_allowed"
+    too_many_attempts = "too_many_attempts"  # params: retry_after (seconds)
+    file_not_found = "file_not_found"
+    file_not_previewable = "file_not_previewable"
+    http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
+    internal_error = "internal_error"
+
+
+class ErrorBody(BaseModel):
+    """`params` carries the values the translated message interpolates; no prose."""
+
+    code: ErrorCode
+    params: dict[str, Any] = {}
+
+
+class ErrorResponse(BaseModel):
+    error: ErrorBody
+
+
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=1024)
 
 
 class UserOut(BaseModel):
@@ -135,7 +170,8 @@ class ReviewActionResponse(BaseModel):
 
 
 class BulkApproveRequest(BaseModel):
-    band: Literal["high"]
+    # Only "high" is accepted; the endpoint answers any other band with `bulk_band_not_allowed`.
+    band: Band
     filters: ReviewFilters = ReviewFilters()
     expected_count: int = Field(ge=0)
     limit: int = Field(default=100, ge=1, le=100)
