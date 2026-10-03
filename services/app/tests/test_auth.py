@@ -16,7 +16,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from app import auth
+from app import auth, errors
 from app.auth import hash_password, login_retry_after, require_role
 from app.auth import router as auth_router
 from app.db import make_engine
@@ -54,6 +54,7 @@ async def admin_only_client(
     database_url: str, users_factory: SessionFactory
 ) -> AsyncIterator[httpx.AsyncClient]:
     guarded = FastAPI()
+    errors.install(guarded)
     guarded.include_router(auth_router)
 
     @guarded.get("/admin-only", dependencies=[Depends(require_role("admin"))])
