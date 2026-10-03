@@ -1,10 +1,12 @@
 export { Badge, badgeVariants } from "./components/badge";
 export { Button, buttonVariants } from "./components/button";
 export { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/card";
+export { Dialog, type DialogProps } from "./components/dialog";
 export { Input } from "./components/input";
 export { Label } from "./components/label";
 export { Logo } from "./components/logo";
 export { Select } from "./components/select";
+export { Textarea } from "./components/textarea";
 export { Skeleton } from "./components/skeleton";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/table";
 export { cn } from "./lib/utils";

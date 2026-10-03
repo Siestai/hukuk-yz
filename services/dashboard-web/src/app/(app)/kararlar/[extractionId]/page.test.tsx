@@ -20,7 +20,11 @@ const redirect = vi.hoisted(() =>
     }),
 );
 vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
-vi.mock("next/navigation", () => ({ notFound, redirect }));
+vi.mock("next/navigation", () => ({
+    notFound,
+    redirect,
+    useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
 
 const ok = (data: unknown) => ({ response: new Response(null, { status: 200 }), data });
 const failed = (status: number, code?: string) => ({

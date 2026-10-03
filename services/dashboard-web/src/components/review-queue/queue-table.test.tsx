@@ -103,12 +103,25 @@ describe("QueueTable", () => {
         );
         expect(screen.getByRole("link", { name: "KIDEM TAZMİNATI" })).toHaveAttribute(
             "href",
-            "/kararlar/e1?band=low&court=yargitay&sort=score_desc&page=3",
+            "/kararlar/e1?band=low&court=yargitay&sort=score_desc&page=3&pos=100",
         );
     });
 
     it("links without a query when the queue state is the default", () => {
-        expect(within(renderRow()).getByRole("link")).toHaveAttribute("href", "/kararlar/e1");
+        expect(within(renderRow()).getByRole("link")).toHaveAttribute("href", "/kararlar/e1?pos=0");
+    });
+
+    it("carries the absolute queue position of each row", () => {
+        renderWithIntl(
+            <QueueTable
+                items={[item, { ...item, extraction_id: "e2", title: "IKINCI" }]}
+                params={{ sort: "score_asc", page: 2 }}
+            />,
+        );
+        expect(screen.getByRole("link", { name: "IKINCI" })).toHaveAttribute(
+            "href",
+            "/kararlar/e2?page=2&pos=51",
+        );
     });
 
     it("does not shift a date-only value across a timezone", () => {

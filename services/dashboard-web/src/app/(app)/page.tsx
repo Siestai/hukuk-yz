@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
+import { FlashStatus } from "@/components/flash-status";
 import { BandDistribution } from "@/components/review-queue/band-distribution";
 import { QueueActions } from "@/components/review-queue/queue-actions";
 import { QueueError } from "@/components/review-queue/queue-error";
@@ -16,14 +17,15 @@ import { TotalsCard } from "@/components/review-queue/totals-card";
 import { getReviewSummary } from "@/lib/api/review";
 import { createServerApi } from "@/lib/api/server";
 import { settle } from "@/lib/api/settle";
-import { apiQuery, parseQueueParams, serializeQueueParams } from "@/lib/queue-params";
+import { apiQuery, parseNotice, parseQueueParams, serializeQueueParams } from "@/lib/queue-params";
 
 export default async function QueuePage({
     searchParams,
 }: {
     searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-    const params = parseQueueParams(await searchParams);
+    const search = await searchParams;
+    const params = parseQueueParams(search);
     const t = await getTranslations("review.queue");
     const api = await createServerApi();
     // The list streams into the Suspense boundary below; the summary is needed up front. If the
@@ -45,6 +47,7 @@ export default async function QueuePage({
     return (
         <QueueNavigationProvider>
             <main className="grid gap-6 p-8">
+                <FlashStatus notice={parseNotice(search)} atQueue />
                 <header className="flex items-end justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-semibold text-ink">{t("title")}</h1>

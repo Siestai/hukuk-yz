@@ -15,6 +15,14 @@ export function useErrorMessage() {
             }
             case "validation_error":
                 return t("validation_error");
+            case "review_conflict":
+                return t("review_conflict");
+            case "decision_conflict":
+                return t("decision_conflict");
+            case "extraction_not_found":
+                return t("extraction_not_found");
+            case "forbidden":
+                return t("forbidden");
             case "payload_too_large":
                 return t("payload_too_large");
             case "upstream_unavailable":
