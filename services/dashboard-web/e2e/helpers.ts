@@ -3,7 +3,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 /** Demo fixture facts (infra/demo): 6 high, 4 medium, 2 low pending records, all invented. */
 export const DEMO = { total: 12, high: 6, medium: 4, low: 2 } as const;
 
-const RESET_HINT = "Demo data is used up or missing: run `make db-reset demo-data`, then retry.";
+const RESET_HINT =
+    "Demo data is used up or missing: run `make e2e-reset`, then `make user`, then retry.";
 
 export function credentials(): { email: string; password: string } {
     const email = process.env.E2E_EMAIL;

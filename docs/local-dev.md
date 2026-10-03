@@ -53,6 +53,12 @@ Bu hedef sırayla şunları yapar (komutlar Makefile'da, elle de çalıştırıl
 3. Ana makinede: `uv run hukuk-ingest decisions parse --scan-report data/work/scan/files.jsonl --text-cache data/extracted --out data/work/decisions`.
 4. `app` konteynerinde yükler: `python -m app.loaders.decisions /work/decisions/decisions.jsonl --files /work/scan/files.jsonl`
    (`data/work` salt okunur bağlanır). Yükleyici tekrar çalıştırılabilir: olanı atlar.
+5. Tüm yığını (`dashboard-web`, `worker` dahil) ayağa kaldırır (`up -d --wait`).
+
+`data/drive/Yargi_Kararlari_Arsivi` yoksa hedef hata verip durur. Tarama, ayrıştırma ve
+yükleyici "bitti ama bazı kayıtlarda hata var" için çıkış kodu 1 döner; `make` bunu hata
+saymaz, özet ve rapor (`data/work/...`, yükleyici çıktısı) yazılır, oradan bak. Başka çıkış
+kodları hedefi düşürür.
 
 Tarama ve ayrıştırma ana makinede çalışır, çünkü `app` imajında Tesseract yok ve çıktıların
 `data/` altında kalması istenir; yükleme konteynerde çalışır, çünkü veritabanı oradadır.
@@ -63,7 +69,7 @@ Tarama ve ayrıştırma ana makinede çalışır, çünkü `app` imajında Tesse
 ekranı PDF'leri oradan okur. `make demo-data` bunu `../../infra/demo/archive`, `make load-archive`
 `../../data/drive` yapar ve `app`'i yeniden oluşturur. Yol `infra/compose/`'a göredir. Veritabanı
 tek: demo kayıtlarını silmek için `make db-reset` (tüm veriyi ve kullanıcıları siler, sonra
-`make user` ve istediğin yükleme yeniden).
+sonra `make user`; `make demo-data` / `make load-archive` yığının tamamını (dashboard-web, worker) yeniden ayağa kaldırır).
 
 ## Arayüz geliştirme (`make web-dev`)
 
@@ -84,14 +90,14 @@ Canlı yığına ve **demo veriye** karşı koşar (CI'da yok). Ayrıntı:
 [services/dashboard-web/e2e/README.md](../services/dashboard-web/e2e/README.md).
 
 ```bash
-make user email=e2e@example.test name='E2E' role=reviewer
-make db-reset demo-data   # taze demo verisi (kullanıcıyı silerse make user'ı yeniden çalıştır)
+make e2e-reset            # taze demo verisi (db-reset + demo-data; kullanıcılar da silinir)
+make user email=e2e@example.test name='E2E' role=reviewer   # sıfırlamadan SONRA
 cd services/dashboard-web && pnpm exec playwright install chromium   # bir kez
 E2E_EMAIL=e2e@example.test E2E_PASSWORD='...' make e2e
 ```
 
-Testler demo kayıtlarını **tüketir** (onaylar, reddeder): tekrar koşmadan önce `make db-reset demo-data`
-ve `make user`. Parola ortam değişkeninden gelir, repoya yazılmaz.
+Testler demo kayıtlarını **tüketir** (onaylar, reddeder): tekrar koşmadan önce sırayla `make e2e-reset`
+ve `make user` (`db-reset` kullanıcıları her zaman siler). Parola ortam değişkeninden gelir, repoya yazılmaz.
 
 **Video:** `E2E_VIDEO=1 make e2e` her test için video kaydeder; dosyalar
 `services/dashboard-web/e2e/.output/results/<test-adı>/video.webm` altına düşer (HTML rapor:
@@ -103,9 +109,9 @@ headless kabuğunda PDF görüntüleyici yoktur; bu testler PDF'in yanıtını a
 
 - **Giriş "başarılı" ama sayfa girişe dönüyor.** Tarayıcı `Secure` çerezi düz http'de atar.
   `.env` içinde `COOKIE_SECURE=false` olmalı (`make dev` kontrol eder), sonra
-  `docker compose --env-file .env -f infra/compose/docker-compose.yml up -d app`.
+  `docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.local.yml up -d app`.
   Üretimde `true` kalır.
-- **Port çakışması.** `Bind for 127.0.0.1:3000 failed`: `.env`'de `DASHBOARD_HOST_PORT=3010`
+- **Port çakışması.** Ana makine port eşlemeleri yalnız `infra/compose/docker-compose.local.yml`'dadır (Makefile ekler). `Bind for 127.0.0.1:3000 failed`: `.env`'de `DASHBOARD_HOST_PORT=3010`
   (postgres için `POSTGRES_HOST_PORT`). `app` 8000'i sabit kullanır; başka bir şey 8000'deyse onu durdur.
 - **"Çok fazla hatalı deneme."** Aynı e-posta için 15 dakikada 5 yanlış parola (aynı IP'den 20)
   giriş sınırına takılır; 15 dakika bekle ya da `make db-reset`.

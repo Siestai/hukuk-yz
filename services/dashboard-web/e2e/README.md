@@ -35,7 +35,8 @@ Mutating testler demo kayıtlarını onaylar veya reddeder; ikinci koşuda kayı
 "Demo data is used up" ipucuyla düşer. Başa dönmek için:
 
 ```bash
-make db-reset demo-data && make user email=e2e@example.test name='E2E' role=reviewer
+make e2e-reset        # db-reset + demo-data; siler, kullanıcılar da gider
+make user email=e2e@example.test name='E2E' role=reviewer   # sıra önemli: önce sıfırla, sonra kullanıcı
 ```
 
 Demo kayıtlarının içeriği ve bantları: [infra/demo/README.md](../../../infra/demo/README.md). Testler

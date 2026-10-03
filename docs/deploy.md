@@ -11,14 +11,20 @@ Dokploy'da tek compose uygulaması: `infra/compose/docker-compose.yml`
 
 - **Yalnız `dashboard-web` dışarı açılır**: Dokploy'un Domains sekmesinde
   `hukuk-dashboard.siestai.com` → servis `dashboard-web`, port `3000`, HTTPS açık (TLS'i
-  Traefik/Dokploy sonlandırır; sertifika Let's Encrypt).
-- `app` (8000) ve `postgres` (5432) yalnız compose iç ağında kalır: alan adı eklenmez. Dosyadaki
-  `127.0.0.1:` port eşlemeleri yerel kullanım içindir, sunucuda dışarı açma yolu değildir.
+  Traefik/Dokploy sonlandırır; sertifika Let's Encrypt). Domain ve Traefik etiketi Dokploy'da
+  `dashboard-web` servisinin 3000 portuna ayarlanır; compose dosyası dışarıya port yayınlamaz.
+- `app` (8000) ve `postgres` (5432) yalnız compose iç ağında kalır: alan adı eklenmez. Ana makine
+  port eşlemeleri (`127.0.0.1:...`) yalnız `docker-compose.local.yml`'dedir; Makefile yerelde onu
+  ekler, Dokploy yalnız `docker-compose.yml`'yi kullanır. (Dokploy'un kendi paneli ana makinenin
+  3000 portunu kullanır; bu yüzden tabandaki dosyada eşleme yoktur.)
 - Tarayıcı yalnız `dashboard-web` ile konuşur; `/api/*` isteklerini o `app`'e iletir.
 
 ## Ortam değişkenleri
 
-Dokploy'un Environment sekmesinde (`.env.example` her birini açıklar). Sır değerleri repoya yazılmaz.
+Dokploy'un **Environment sekmesinde** tanımlanır (`.env.example` her birini açıklar); Dokploy bunu
+compose'un yanına bir `.env` olarak yazar. Compose değerleri hem `${...}` yerine koymasıyla hem
+`env_file` ile okur; `env_file` isteğe bağlıdır (`required: false`, compose v2.24+), dosya yoksa
+hata vermez. Sır değerleri repoya yazılmaz.
 
 | Değişken | Üretim değeri |
 |---|---|
@@ -30,7 +36,7 @@ Dokploy'un Environment sekmesinde (`.env.example` her birini açıklar). Sır de
 | `FORWARDED_ALLOW_IPS` | **`dashboard-web`'in compose ağındaki adresi ya da ağın CIDR'ı** (`docker network inspect <proje>_default`); `*` değil. Boş kalırsa `app` istemci IP'sini hep `dashboard-web` adresi görür ve IP başına giriş sınırı herkes için tek sayaç olur |
 | `TRUSTED_PROXY_HOPS` | `1`: `dashboard-web`'in önünde yalnız Traefik var, istemci adresi `X-Forwarded-For`'un son girdisidir. Araya bir proxy daha (CDN) girerse artır |
 | `ARCHIVE_HOST_DIR` | Karar PDF'lerinin sunucudaki **mutlak** klasörü (aşağıda); compose bunu `app`'e salt okunur `/archive` olarak bağlar |
-| `DASHBOARD_HOST_PORT` | gerekmez (Traefik konteyner portuna ağdan ulaşır) |
+| `DASHBOARD_HOST_PORT`, `POSTGRES_HOST_PORT` | tanımlanmaz (yalnız yerel override dosyasında kullanılır; Traefik konteyner portuna ağdan ulaşır) |
 
 `APP_API_URL` ayarlanmaz: compose `dashboard-web` için `http://app:8000` koyar. `ARCHIVE_ROOT`
 da compose'dadır (`/archive`).
