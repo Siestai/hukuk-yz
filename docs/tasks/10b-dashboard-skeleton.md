@@ -19,6 +19,7 @@ Tasarım: `docs/design/dashboard-v0.md` (bağlayıcı: token değerleri, fontlar
 2. **i18n.** `next-intl`, varsayılan ve tek dil `tr`, Türkçe adreslerde dil öneki yok. `messages/tr.json` ekran bazlı anahtarlarla. Bileşenlerde kullanıcıya görünen sabit metin yok (eslint kuralı: `i18next/no-literal-string` veya eşdeğeri, JSX metni için). Enum etiketleri (`court`, `band`, güven sebebi kodları) `enums.*` anahtarlarından; API hata kodları `errors.*` anahtarlarından. Tarih ve sayı `Intl` + `tr-TR`.
 3. **API erişimi.**
    - Tarayıcı yalnız dashboard'la konuşur; dashboard `/api/*` isteklerini `APP_API_URL`'e iletir (Next rewrite veya route handler). `app` internete açılmaz. İletimde istemci IP'si `X-Forwarded-For` ile geçer (10a'daki rate limit için).
+   - BFF, `X-Forwarded-For` değerini güvenilen uç proxy'den aldığı istemci IP'sine ayarlar (gelen başlığı olduğu gibi aktarmaz); `app` tarafında `FORWARDED_ALLOW_IPS` yalnız dashboard-web ağını güvenir.
    - Tipler `app`'in OpenAPI şemasından üretilir (`openapi-typescript` + `openapi-fetch` veya eşdeğeri). Şema dosyası `app` içinden bir komutla çıkarılır (`python -m app.openapi > services/dashboard-web/openapi.json`); CI şemanın güncel olduğunu kontrol eder (yeniden üret, `git diff --exit-code`).
    - Veritabanı istemcisi, ORM, `DATABASE_URL` yok.
 4. **Ekranlar.**

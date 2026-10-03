@@ -63,6 +63,7 @@ def test_login_attempt_table_and_indexes_are_in_orm_and_migration() -> None:
     assert indexes == {
         "ix_login_attempt_email_attempted_at": ["email", "attempted_at"],
         "ix_login_attempt_ip_attempted_at": ["ip", "attempted_at"],
+        "ix_login_attempt_attempted_at": ["attempted_at"],
     }
     for name in indexes:
         assert f'"{name}"' in migration, name

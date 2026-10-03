@@ -6,12 +6,14 @@ bulk approval of the high band. HTTP only: the queue query and the writes after 
 import asyncio
 import hashlib
 import logging
+import os
+import stat
 import uuid
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import Select, and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,7 +63,6 @@ from hukuk_models import (
 logger = logging.getLogger("app")
 
 TOP_REASONS = 15
-HASH_CHUNK = 1 << 20
 
 ListSort = Literal["score_asc", "score_desc"]
 
@@ -272,7 +273,7 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
         200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}}
     },
 )
-async def get_file(extraction_id: uuid.UUID, db: Db) -> FileResponse:
+async def get_file(extraction_id: uuid.UUID, db: Db) -> Response:
     """The original PDF of a decision extraction, for the detail screen.
 
     Copyright: the archive PDFs are pages of the journal Çalışma ve Toplum. They are served
@@ -280,8 +281,9 @@ async def get_file(extraction_id: uuid.UUID, db: Db) -> FileResponse:
 
     `ingest_file.path` is relative to `ARCHIVE_ROOT` (the loader stores the path under the Drive
     copy, e.g. `Yargi_Kararlari_Arsivi/...`). The file is served only if it resolves inside the
-    root (no `..`, no symlink out) and its SHA-256 equals `ingest_file.sha256`: no file rather
-    than the wrong one.
+    root (no `..`, no symlink out), is within `ARCHIVE_MAX_FILE_BYTES` and its SHA-256 equals
+    `ingest_file.sha256`: no file rather than the wrong one. It is opened once, and the bytes
+    that were hashed are the bytes sent, so the file cannot change in between.
     """
     extraction, _ = await _decision_extraction(db, extraction_id)
     ingest_file = await db.get(IngestFile, extraction.file_id)
@@ -297,15 +299,25 @@ async def get_file(extraction_id: uuid.UUID, db: Db) -> FileResponse:
         raise ApiError(404, ErrorCode.file_not_found) from None
     if not path.is_relative_to(root.resolve()) or not path.is_file():
         raise ApiError(404, ErrorCode.file_not_found)
-    if await asyncio.to_thread(_sha256, path) != ingest_file.sha256:
+    content = await asyncio.to_thread(
+        _read_archive_file, path, get_settings().archive_max_file_bytes
+    )
+    if content is None:
+        logger.warning(
+            "archive file unreadable or over the size cap (extraction %s)", extraction_id
+        )
+        raise ApiError(404, ErrorCode.file_not_found)
+    if hashlib.sha256(content).hexdigest() != ingest_file.sha256:
         logger.warning("archive file does not match its sha256 (extraction %s)", extraction_id)
         raise ApiError(404, ErrorCode.file_not_found)
-    return FileResponse(
-        path,
+    return Response(
+        content,
         media_type="application/pdf",
-        filename=f"{ingest_file.sha256}.pdf",
-        content_disposition_type="inline",
-        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        headers={
+            "Content-Disposition": f'inline; filename="{ingest_file.sha256}.pdf"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
@@ -345,12 +357,19 @@ async def act(
     )
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as f:
-        while chunk := f.read(HASH_CHUNK):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _read_archive_file(path: Path, max_bytes: int) -> bytes | None:
+    """The bytes of a regular file of at most `max_bytes`, opened without following a symlink;
+    None when it is none of that."""
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        return None
+    with os.fdopen(fd, "rb") as f:
+        info = os.fstat(f.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes:
+            return None
+        content = f.read(max_bytes + 1)
+    return content if len(content) <= max_bytes else None
 
 
 async def _decision_extraction(

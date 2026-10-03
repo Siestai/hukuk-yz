@@ -51,6 +51,7 @@ class LoginAttempt(UuidPkMixin, Base):
     __table_args__ = (
         Index("ix_login_attempt_email_attempted_at", "email", "attempted_at"),
         Index("ix_login_attempt_ip_attempted_at", "ip", "attempted_at"),
+        Index("ix_login_attempt_attempted_at", "attempted_at"),
     )
 
     # As sent, normalized (app.auth.normalize_email); the user need not exist.

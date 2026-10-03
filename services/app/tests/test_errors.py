@@ -3,8 +3,10 @@
 from typing import Self
 
 import httpx
+import pytest
 from fastapi import FastAPI
 from pydantic import BaseModel, model_validator
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.errors import ApiError, install
 from app.main import app
@@ -36,12 +38,18 @@ def _probe() -> FastAPI:
     async def limited() -> None:
         raise ApiError(429, ErrorCode.too_many_attempts, {"retry_after": 7}, {"Retry-After": "7"})
 
+    @probe.get("/boom")
+    async def boom() -> None:
+        raise RuntimeError("secret detail")
+
     return probe
 
 
 async def _call(target: FastAPI, method: str, url: str, **kwargs: object) -> httpx.Response:
+    # The server-error handler answers 500 and the framework then re-raises: do not here.
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=target), base_url="http://test"
+        transport=httpx.ASGITransport(app=target, raise_app_exceptions=False),
+        base_url="http://test",
     ) as client:
         return await client.request(method, url, **kwargs)  # type: ignore[arg-type]
 
@@ -88,3 +96,48 @@ def test_openapi_carries_the_error_code_enum_and_body_schema() -> None:
     assert responses["429"]["content"]["application/json"]["schema"] == {
         "$ref": ref + "ErrorResponse"
     }
+
+
+async def test_a_405_keeps_the_allow_header() -> None:
+    response = await _call(app, "POST", "/healthz")
+    assert response.status_code == 405
+    assert "GET" in response.headers["allow"]
+
+
+async def test_an_unmapped_framework_status_gets_http_error() -> None:
+    probe = _probe()
+
+    @probe.get("/teapot")
+    async def teapot() -> None:
+        raise StarletteHTTPException(418)
+
+    response = await _call(probe, "GET", "/teapot")
+    assert (response.status_code, response.json()) == (
+        418,
+        {"error": {"code": "http_error", "params": {}}},
+    )
+
+
+async def test_an_unhandled_exception_is_a_500_internal_error_and_is_logged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("ERROR", logger="app"):
+        response = await _call(_probe(), "GET", "/boom")
+    assert (response.status_code, response.json()) == (
+        500,
+        {"error": {"code": "internal_error", "params": {}}},
+    )
+    assert "secret detail" not in response.text
+    assert "RuntimeError" in caplog.text
+
+
+async def test_malformed_json_names_no_field_and_no_offset() -> None:
+    response = await _call(
+        _probe(),
+        "POST",
+        "/payload",
+        content=b'{"name": ',
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 422
+    assert response.json() == {"error": {"code": "validation_error", "params": {"fields": []}}}

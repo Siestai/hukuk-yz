@@ -77,7 +77,9 @@ def test_the_login_attempt_migration_downgrades_to_0006(
     assert "login_attempt" in _tables(database_url)
 
 
-async def test_login_attempt_is_indexed_for_both_limit_lookups(conn: AsyncConnection) -> None:
+async def test_login_attempt_is_indexed_for_the_limit_lookups_and_the_prune(
+    conn: AsyncConnection,
+) -> None:
     names = set(
         await conn.scalars(
             text("SELECT indexname FROM pg_indexes WHERE tablename = 'login_attempt'")
@@ -86,6 +88,7 @@ async def test_login_attempt_is_indexed_for_both_limit_lookups(conn: AsyncConnec
     assert {
         "ix_login_attempt_email_attempted_at",
         "ix_login_attempt_ip_attempted_at",
+        "ix_login_attempt_attempted_at",
     } <= names
 
 

@@ -6,8 +6,8 @@ Create Date: 2026-10-03
 
 Hand-written. Adds `login_attempt`, the log the login rate limit counts failed attempts in. A
 table rather than an in-memory counter because several `app` replicas may run. Indexed by
-(email, attempted_at) and (ip, attempted_at), the two lookups of the limit. The downgrade drops
-the table.
+(email, attempted_at) and (ip, attempted_at), the two lookups of the limit, and by
+(attempted_at) for the prune of old rows. The downgrade drops the table.
 """
 
 import sqlalchemy as sa
@@ -39,6 +39,7 @@ def upgrade() -> None:
         "ix_login_attempt_email_attempted_at", "login_attempt", ["email", "attempted_at"]
     )
     op.create_index("ix_login_attempt_ip_attempted_at", "login_attempt", ["ip", "attempted_at"])
+    op.create_index("ix_login_attempt_attempted_at", "login_attempt", ["attempted_at"])
 
 
 def downgrade() -> None:

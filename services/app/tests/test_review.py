@@ -957,3 +957,33 @@ def test_the_edit_schema_mirrors_the_app_enums() -> None:
     assert _literal("text_completeness") == {c.value for c in TextCompleteness}
     assert _literal("outcome") == OUTCOMES
     assert set(get_args(SourceStatus)) == {s.value for s in RecordStatus}
+
+
+async def test_an_empty_archive_root_variable_starts_the_app_and_the_pdf_is_404(
+    client: httpx.AsyncClient,
+    me: Login,
+    archive: Archive,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "unused")
+    monkeypatch.setenv("ARCHIVE_ROOT", "")
+    monkeypatch.setattr("app.review.get_settings", Settings)
+    response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+
+
+async def test_a_file_over_the_size_cap_is_404_and_logged(
+    client: httpx.AsyncClient,
+    me: Login,
+    archive: Archive,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    capped = Settings(
+        database_url="unused", archive_root=archive.root, archive_max_file_bytes=len(PDF_BYTES) - 1
+    )
+    monkeypatch.setattr("app.review.get_settings", lambda: capped)
+    with caplog.at_level("WARNING", logger="app"):
+        response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+    assert "size cap" in caplog.text

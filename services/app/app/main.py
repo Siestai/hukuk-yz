@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -27,6 +28,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(settings.log_level)
     app.state.engine = make_engine(settings.database_url)
     logger.info("app started (env=%s)", settings.env)
+    # uvicorn reads this variable itself; here it is only checked.
+    if settings.env != "dev" and not os.environ.get("FORWARDED_ALLOW_IPS", "").strip():
+        logger.warning(
+            "FORWARDED_ALLOW_IPS is empty: the per-IP login limit sees only the proxy address"
+        )
     yield
     await app.state.engine.dispose()
 

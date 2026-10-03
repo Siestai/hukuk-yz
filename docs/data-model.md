@@ -80,7 +80,11 @@ Her kaynak türü kaydının üst kimliği.
 |---|---|
 | `login_attempt` | id, email (normalize; kullanıcı var olmayabilir), ip?, succeeded, attempted_at |
 
-`POST /auth/login` her çağrıda bir satır yazar; sınır son `LOGIN_WINDOW_MINUTES` içindeki başarısız satırları sayar (e-posta başına `LOGIN_MAX_FAILS_PER_EMAIL`, IP başına `LOGIN_MAX_FAILS_PER_IP`). İndeksler `(email, attempted_at)` ve `(ip, attempted_at)`. 30 günden eski satırlar `python -m app.users prune-login-attempts` ile silinir. Kalıcı tablo, çünkü `app` birden çok kopya çalışabilir.
+`POST /auth/login` her çağrıda bir satır yazar; sınır son `LOGIN_WINDOW_MINUTES` içindeki başarısız satırları sayar (e-posta başına `LOGIN_MAX_FAILS_PER_EMAIL`, IP başına `LOGIN_MAX_FAILS_PER_IP`). İndeksler `(email, attempted_at)`, `(ip, attempted_at)` ve temizlik için `(attempted_at)`. 30 günden eski satırlar `python -m app.users prune-login-attempts` ile silinir. Kalıcı tablo, çünkü `app` birden çok kopya çalışabilir. Aynı e-posta için denemeler `pg_advisory_xact_lock(hashtext(lower(email)))` ile sıraya girer (sayımdan satırın commit'ine kadar), eşzamanlı yanlış parolalar sınırı aşamaz.
+
+Bilinen sınırlar:
+- IPv6 adresi tam adres olarak sayılır; aynı /64 içindeki adresler ayrı sayaç alır.
+- Yayın reddi (`ValueError`) `validation_error` ve boş `fields` döner; arayüz genel bir mesaj gösterir.
 
 ### `provenance` (her tipli kayıtta gömülü alanlar)
 `source_id, extraction_id, review_id, recorded_at, superseded_at, recorded_by`

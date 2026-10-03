@@ -36,6 +36,8 @@ class ErrorCode(StrEnum):
     too_many_attempts = "too_many_attempts"  # params: retry_after (seconds)
     file_not_found = "file_not_found"
     file_not_previewable = "file_not_previewable"
+    http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
+    internal_error = "internal_error"
 
 
 class ErrorBody(BaseModel):
@@ -50,8 +52,8 @@ class ErrorResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=1024)
 
 
 class UserOut(BaseModel):

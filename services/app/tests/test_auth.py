@@ -1,5 +1,6 @@
 """Auth endpoints and dependencies (task 08). Skipped when DATABASE_URL is unset; CI sets it."""
 
+import asyncio
 import hashlib
 import uuid
 from collections.abc import AsyncIterator
@@ -11,8 +12,9 @@ import httpx
 import pytest
 from argon2 import PasswordHasher
 from fastapi import Depends, FastAPI
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app import auth
 from app.auth import hash_password, login_retry_after, require_role
@@ -470,3 +472,91 @@ async def test_successful_attempts_do_not_count_as_failures(
             users_factory, "orhan@x.test", now - timedelta(minutes=minutes), succeeded=True
         )
     assert await _retry_after(users_factory, "orhan@x.test", IP, now) is None
+
+
+async def _attempt_count(factory: SessionFactory) -> int:
+    async with factory() as session:
+        return (await session.execute(select(func.count()).select_from(LoginAttempt))).scalar_one()
+
+
+async def test_old_failures_do_not_block_a_login_through_the_endpoint(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory)
+    old = datetime.now(UTC) - timedelta(minutes=SETTINGS.login_window_minutes + 1)
+    for _ in range(5):
+        await _record(users_factory, "orhan@x.test", old)
+    assert (await _fail(client)).status_code == 401  # not 429: the five are outside the window
+    for _ in range(4):
+        await _fail(client)
+    assert (await _fail(client)).status_code == 429  # five recent ones now count
+
+
+async def test_concurrent_wrong_passwords_for_one_email_cannot_pass_the_limit(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory)
+    responses = await asyncio.gather(*(_fail(client) for _ in range(20)))
+    statuses = sorted(r.status_code for r in responses)
+    assert statuses == [401] * 5 + [429] * 15
+    assert await _attempt_count(users_factory) == 5
+
+
+async def test_over_long_login_input_is_a_422_and_writes_no_attempt(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    long_email = "a" * 250 + "@x.test"
+    for body in (
+        {"email": long_email, "password": "x"},
+        {"email": "orhan@x.test", "password": "x" * 1025},
+    ):
+        response = await client.post("/auth/login", json=body)
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "validation_error"
+    assert await _attempt_count(users_factory) == 0
+
+
+async def _behind_proxy(
+    database_url: str, trusted: str, peer: str, forwarded: list[str]
+) -> list[int]:
+    """Status of one wrong login per `forwarded` client, all arriving from the same `peer`."""
+    app.state.engine = make_engine(database_url)
+    try:
+        proxied = ProxyHeadersMiddleware(app, trusted_hosts=trusted)  # type: ignore[arg-type]
+        transport = httpx.ASGITransport(app=proxied, client=(peer, 5000))  # type: ignore[arg-type]
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+            statuses = []
+            for n, ip in enumerate(forwarded):
+                response = await client.post(
+                    "/auth/login",
+                    json={"email": f"nobody{n}@x.test", "password": "wrong password!!"},
+                    headers={"x-forwarded-for": ip},
+                )
+                statuses.append(response.status_code)
+            return statuses
+    finally:
+        await app.state.engine.dispose()
+
+
+async def test_the_ip_limit_keys_on_the_forwarded_client_when_the_peer_is_trusted(
+    database_url: str, users_factory: SessionFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tight = Settings(database_url="unused", login_max_fails_per_ip=2)
+    monkeypatch.setattr("app.auth.get_settings", lambda: tight)
+    # one browser fails twice and is blocked; another browser behind the same proxy is not
+    statuses = await _behind_proxy(
+        database_url, "10.0.0.5", "10.0.0.5", ["198.51.100.1"] * 3 + ["198.51.100.2"]
+    )
+    assert statuses == [401, 401, 429, 401]
+
+
+async def test_the_forwarded_address_is_ignored_when_the_peer_is_not_trusted(
+    database_url: str, users_factory: SessionFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tight = Settings(database_url="unused", login_max_fails_per_ip=2)
+    monkeypatch.setattr("app.auth.get_settings", lambda: tight)
+    # a client cannot dodge the limit by changing X-Forwarded-For: all share the peer address
+    statuses = await _behind_proxy(
+        database_url, "10.0.0.5", "203.0.113.9", ["198.51.100.1", "198.51.100.2", "198.51.100.3"]
+    )
+    assert statuses == [401, 401, 429]

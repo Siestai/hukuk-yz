@@ -9,9 +9,10 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
-    """Configuration read from environment variables only (no dotenv file)."""
+    """Configuration read from environment variables only (no dotenv file). An empty variable
+    counts as unset."""
 
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore", env_ignore_empty=True)
 
     database_url: str
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -26,6 +27,8 @@ class Settings(BaseSettings):
     # Where `ingest_file.path` is relative to (the Drive copy, `data/drive`); the decision PDFs
     # are served from here. Unset: the file endpoint answers 404.
     archive_root: Path | None = None
+    # Largest decision PDF served; bigger files answer 404 (the file is read into memory).
+    archive_max_file_bytes: int = 50 * 1024 * 1024
 
     @field_validator("archive_root")
     @classmethod

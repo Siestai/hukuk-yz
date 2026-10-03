@@ -23,7 +23,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import make_session_factory
@@ -190,6 +190,11 @@ async def login(body: LoginRequest, request: Request, response: Response, db: Db
     email = normalize_email(body.email)
     ip = request.client.host if request.client else None
     now = datetime.now(UTC)
+    # One login per e-mail at a time, from the count to the committed attempt row: concurrent
+    # wrong passwords cannot all pass the count. Released by the commit (or the rollback).
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(lower(:email)))"), {"email": email}
+    )
     retry_after = await login_retry_after(db, email, ip, now, settings)
     if retry_after is not None:
         raise ApiError(
