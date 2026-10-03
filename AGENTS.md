@@ -105,3 +105,8 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
 
 - **User-facing language:** Turkish. **Code and docs:** English or Turkish, kept consistent.
 - **Commits:** an approved task includes its branch and PR; merge is always Orhan's. Commit and PR titles in English, docs in Turkish. No secrets in the repo; secrets live under `data/` (gitignored).
+- **Project skills** (`.claude/skills/`), loaded when the work matches:
+  - `task-pr-hygiene`: task spec format, scope, test file layout, commits and PRs.
+  - `db-migration`: Alembic, enums, bitemporal tables, ORM consistency tests.
+  - `frontend-ui`: no DB in the UI (API only, generated types), design tokens, i18n (Turkish first).
+  - `connect-vps`: SSH to the server (Orhan's machine only).
