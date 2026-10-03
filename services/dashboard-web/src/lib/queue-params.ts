@@ -90,6 +90,12 @@ export function queueHref(params: QueueParams): string {
     return query ? `/?${query}` : "/";
 }
 
+/** The detail screen of an extraction; it carries the queue state so "back" and the next record keep the filters. */
+export function detailHref(extractionId: string, params: QueueParams): string {
+    const query = serializeQueueParams(params).toString();
+    return `/kararlar/${extractionId}${query ? `?${query}` : ""}`;
+}
+
 /** Applies a change; any change that does not name a page goes back to page 1. */
 export function changeQueueParams(params: QueueParams, change: QueueChange): QueueParams {
     return { ...params, ...change, page: change.page ?? 1 };

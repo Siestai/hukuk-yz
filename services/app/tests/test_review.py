@@ -343,6 +343,7 @@ async def test_the_detail_shows_fields_duplicates_and_reviews(
         "kopya",
         str(me.id),
     )
+    assert review["reviewer_name"] == "baran@x.test"
 
 
 async def test_an_unknown_extraction_is_404(
@@ -825,6 +826,34 @@ async def test_the_original_pdf_is_served_inline_with_safe_headers(
     assert response.headers["x-content-type-options"] == "nosniff"
 
 
+async def test_the_detail_says_whether_the_pdf_can_be_shown(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login, archive: Archive
+) -> None:
+    async def pdf() -> str:
+        response = await client.get(f"{BASE}/{archive.extraction_id}", headers=me.headers)
+        return str(response.json()["pdf"])
+
+    assert await pdf() == "available"
+    await _point_file(kb_factory, archive.extraction_id, "Yargi/missing.pdf", "0" * 64)
+    assert await pdf() == "missing"
+    await _point_file(kb_factory, archive.extraction_id, "../outside.pdf", "0" * 64)
+    assert await pdf() == "missing"
+    await _point_file(kb_factory, archive.extraction_id, "Yargi/Kisi Adi.pdf", "0" * 64, "docx")
+    assert await pdf() == "not_previewable"
+
+
+async def test_the_detail_pdf_is_missing_without_an_archive_root(
+    client: httpx.AsyncClient,
+    kb_factory: Factory,
+    me: Login,
+    archive: Archive,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.review.get_settings", lambda: Settings(database_url="unused"))
+    response = await client.get(f"{BASE}/{archive.extraction_id}", headers=me.headers)
+    assert response.json()["pdf"] == "missing"
+
+
 async def test_the_pdf_of_an_unknown_extraction_is_404(
     client: httpx.AsyncClient, me: Login, archive: Archive
 ) -> None:
@@ -909,6 +938,25 @@ async def test_a_review_needs_an_existing_reviewer(kb_factory: Factory, reviewer
             )
         )
         await session.commit()
+
+
+async def test_a_review_of_a_reviewer_without_a_user_row_still_shows_in_the_detail(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    # Reviews of the task-05 CLI may name a reviewer with no app_user row. The FK is NOT VALID
+    # but still checks new rows, so the insert skips FK triggers (session_replication_role
+    # needs the superuser of the test database).
+    (record,) = await _seed(kb_factory, {})
+    extraction_id = await _eid(kb_factory, record)
+    ghost = uuid.uuid4()
+    async with kb_factory() as session, session.begin():
+        await session.execute(text("SET LOCAL session_replication_role = replica"))
+        session.add(
+            Review(extraction_id=extraction_id, reviewer_id=ghost, decision=ReviewDecision.reject)
+        )
+    body = (await client.get(f"{BASE}/{extraction_id}", headers=me.headers)).json()
+    (review,) = body["reviews"]
+    assert (review["reviewer_id"], review["reviewer_name"]) == (str(ghost), None)
 
 
 # --- schemas ----------------------------------------------------------------------------------

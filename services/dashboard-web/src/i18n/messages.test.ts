@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import messages from "../../messages/tr.json";
 import { BANDS, COURTS, SORTS, UNKNOWN_COURT } from "../lib/queue-params";
-import { reasonCodes } from "../test/reason-codes";
+import { reasonCodes, schemaEnum, schemaProperties, warningCodes } from "../test/reason-codes";
 
 const SRC = join(import.meta.dirname, "..");
 
@@ -55,6 +55,15 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.band": BANDS,
     "enums.court": [...COURTS, UNKNOWN_COURT],
     "enums.reason": reasonCodes(),
+    "enums.warning": warningCodes(),
+    "enums.courtLevel": schemaEnum("DecisionEdits", "court_level"),
+    "enums.outcome": schemaEnum("DecisionEdits", "outcome"),
+    "enums.sourceStatus": schemaEnum("ReviewDetail", "source_status"),
+    // The fields a reviewer may correct, plus the read-only ones the detail screen shows.
+    fields: [...schemaProperties("DecisionEdits"), "journal_issue"],
+    // "available" shows the frame; the other two values are the empty-state texts.
+    "review.detail.pdf": schemaEnum("ReviewDetail", "pdf").filter((v) => v !== "available"),
+    "review.detail.history.decision": schemaEnum("ReviewOut", "decision"),
     "review.queue.sort": SORTS,
 };
 

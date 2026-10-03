@@ -653,6 +653,15 @@
             "title": "Fields",
             "type": "object"
           },
+          "pdf": {
+            "enum": [
+              "available",
+              "missing",
+              "not_previewable"
+            ],
+            "title": "Pdf",
+            "type": "string"
+          },
           "raw_text_ref": {
             "anyOf": [
               {
@@ -711,6 +720,7 @@
           "warnings",
           "confidence",
           "raw_text_ref",
+          "pdf",
           "duplicates",
           "reviews"
         ],
@@ -935,11 +945,23 @@
             "format": "uuid",
             "title": "Reviewer Id",
             "type": "string"
+          },
+          "reviewer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Name"
           }
         },
         "required": [
           "id",
           "reviewer_id",
+          "reviewer_name",
           "decision",
           "edits",
           "note",

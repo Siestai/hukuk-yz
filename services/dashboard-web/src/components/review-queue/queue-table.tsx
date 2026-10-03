@@ -1,14 +1,21 @@
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@hukuk/ui";
+import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
-import { formats } from "@/i18n/formats";
 import type { components } from "@/lib/api/schema";
+import { detailHref, type QueueParams } from "@/lib/queue-params";
+import { useCommon } from "@/lib/use-common";
+import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
 export type QueueItem = components["schemas"]["ReviewListItem"];
 
 const MAX_REASON_CHIPS = 2;
 
+// The title link stretches over its row (`after:absolute after:inset-0` on a `relative` row), so
+// the whole row is one click target while keyboard and screen readers still get a single link.
+// Tradeoff: text in the row cannot be selected with the mouse. Anything else interactive in a
+// cell (a tooltip, a future link or button) needs `relative z-10` to sit above the overlay.
 function DuplicateIcon({ label }: { label: string }) {
     return (
         <svg
@@ -18,7 +25,7 @@ function DuplicateIcon({ label }: { label: string }) {
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
-            className="size-4 shrink-0 text-medium"
+            className="relative z-10 size-4 shrink-0 text-medium"
         >
             <title>{label}</title>
             <rect x={9} y={9} width={11} height={11} rx={2} />
@@ -27,23 +34,20 @@ function DuplicateIcon({ label }: { label: string }) {
     );
 }
 
-export function QueueTable({ items }: { items: QueueItem[] }) {
+export function QueueTable({ items, params }: { items: QueueItem[]; params: QueueParams }) {
     const t = useTranslations("review.queue.table");
     const format = useFormatter();
     const labels = useEnumLabels();
 
-    // A date-only ISO value is midnight UTC; formatting it in UTC keeps the calendar day.
-    const date = (iso: string) =>
-        /^\d{4}-\d{2}-\d{2}$/.test(iso)
-            ? format.dateTime(new Date(iso), { ...formats.dateTime.date, timeZone: "UTC" })
-            : iso || "-";
+    const { date } = useDates();
+    const { empty, separator } = useCommon();
     const numbers = (item: QueueItem) =>
         [
             item.esas_no && t("esas", { value: item.esas_no }),
             item.karar_no && t("karar", { value: item.karar_no }),
         ]
             .filter(Boolean)
-            .join(" · ") || "-";
+            .join(separator) || empty;
     const reasonLabel = (reason: string) => (
         <li key={reason}>
             <Badge
@@ -75,7 +79,7 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
                 {items.map((item) => {
                     const rest = item.reasons.slice(MAX_REASON_CHIPS);
                     return (
-                        <TableRow key={item.extraction_id}>
+                        <TableRow key={item.extraction_id} className="relative">
                             <TableCell>
                                 <div className="flex items-center gap-2">
                                     <Badge variant={item.band}>{labels.band(item.band)}</Badge>
@@ -87,11 +91,14 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
                             <TableCell className="max-w-96 py-2">
                                 <div className="flex items-start gap-2">
                                     <div className="min-w-0">
-                                        <p
-                                            title={item.title}
-                                            className="line-clamp-2 font-medium text-ink"
-                                        >
-                                            {item.title}
+                                        <p className="line-clamp-2 font-medium text-ink">
+                                            <Link
+                                                href={detailHref(item.extraction_id, params)}
+                                                title={item.title}
+                                                className="after:absolute after:inset-0 hover:underline focus-visible:underline"
+                                            >
+                                                {item.title}
+                                            </Link>
                                         </p>
                                         {item.chamber ? (
                                             <p className="text-xs text-ink-3">{item.chamber}</p>
@@ -112,7 +119,7 @@ export function QueueTable({ items }: { items: QueueItem[] }) {
                                 {date(item.decision_date)}
                             </TableCell>
                             <TableCell className="font-mono text-xs">
-                                {item.journal_issue ?? "-"}
+                                {item.journal_issue ?? empty}
                             </TableCell>
                             <TableCell>
                                 <ul className="flex gap-1">

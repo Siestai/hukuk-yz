@@ -14,6 +14,10 @@
     "required": "E-posta ve parolayı girin.",
     "internalNotice": "İç kullanım. Erişim yalnızca davetli kullanıcılara açıktır."
   },
+  "common": {
+    "empty": "-",
+    "separator": " · "
+  },
   "nav": {
     "label": "Ana menü",
     "queue": "İnceleme kuyruğu",
@@ -86,6 +90,50 @@
       "error": {
         "title": "Kuyruk yüklenemedi"
       }
+    },
+    "detail": {
+      "back": "Kuyruğa dön",
+      "notQueued": "Bu kayıt artık kuyrukta değil ({status}). İnceleme işlemleri kullanılamaz.",
+      "fieldsTitle": "Çıkarılan alanlar",
+      "article": "{statute} s. Kanun m. {articles}",
+      "articleNoNumbers": "{statute} s. Kanun",
+      "confidenceTitle": "Güven",
+      "score": "Skor",
+      "band": "Bant",
+      "reasons": "Sebepler",
+      "noReasons": "Sebep yok.",
+      "warnings": "Parser uyarıları",
+      "noWarnings": "Uyarı yok.",
+      "unknownCode": "Bilinmeyen kod",
+      "unknownReviewer": "Bilinmeyen inceleyici",
+      "documentTabs": "Belge",
+      "tabPdf": "PDF",
+      "tabText": "Çıkarılmış metin",
+      "pdf": {
+        "title": "Kararın özgün PDF'i",
+        "missing": "Bu karar için PDF dosyası bulunamadı.",
+        "not_previewable": "Bu kaydın dosyası PDF değil, önizlenemiyor."
+      },
+      "text": {
+        "title": "Çıkarılmış karar metni",
+        "none": "Bu kayıtta karar metni yok.",
+        "editorialLabel": "Dergi özeti · editoryal içerik",
+        "editorialNote": "Çalışma ve Toplum dergisinin özetidir; resmî kaynak değildir."
+      },
+      "duplicates": {
+        "title": "Mükerrer kayıtlar",
+        "item": "Metin uzunluğu {length, number} karakter"
+      },
+      "history": {
+        "title": "Önceki incelemeler",
+        "none": "Henüz inceleme yok",
+        "edited": "Düzeltilen alanlar: {fields}",
+        "decision": {
+          "approve": "Onayladı",
+          "edit": "Düzelterek onayladı",
+          "reject": "Reddetti"
+        }
+      }
     }
   },
   "errors": {
@@ -144,6 +192,57 @@
       "multiple_esas_candidates": "Birden çok esas no adayı",
       "duplicate_excerpt": "Mükerrer, alıntı",
       "duplicate_same_text": "Mükerrer, metin aynı"
+    },
+    "courtLevel": {
+      "aym": "Anayasa Mahkemesi",
+      "ibk": "İçtihadı Birleştirme Kararı",
+      "hgk_iddk": "Hukuk Genel Kurulu / İdari Dava Daireleri Kurulu",
+      "daire": "Daire",
+      "bam_bim": "BAM / BİM",
+      "ilk_derece": "İlk derece",
+      "international": "Uluslararası"
+    },
+    "outcome": {
+      "bozma": "Bozma",
+      "onama": "Onama",
+      "duzelterek_onama": "Düzelterek onama",
+      "kabul": "Kabul",
+      "red": "Red",
+      "ihlal": "İhlal",
+      "ihlal_yok": "İhlal yok"
+    },
+    "sourceStatus": {
+      "draft": "Taslak",
+      "analyzed": "Onay bekliyor",
+      "approved": "Onaylandı",
+      "published": "Yayında",
+      "superseded": "Yeni sürümle değişti",
+      "withdrawn": "Geri çekildi",
+      "failed": "Başarısız",
+      "rejected": "Reddedildi"
+    },
+    "warning": {
+      "chamber_missing": "Daire okunamadı",
+      "karar_year_ne_date_year": "Karar yılı ile tarih yılı farklı",
+      "layout_unknown": "Bilinmeyen sayfa düzeni",
+      "body_not_found": "Karar metni bulunamadı",
+      "date_outside_issue_year": "Tarih dergi yılının dışında",
+      "statute_unmapped": "Kanun tanınmadı",
+      "statute_inferred_from_date": "Kanun tarihten çıkarıldı",
+      "esas_unparsed": "Esas no okunamadı",
+      "karar_unparsed": "Karar no okunamadı",
+      "invalid_date": "Geçersiz tarih",
+      "date_is_lower_court": "Tarih ilk derece kararına ait",
+      "body_start_approximate": "Metnin başlangıcı yaklaşık",
+      "multiple_esas_candidates": "Birden çok esas no adayı",
+      "closing_date_rejected": "Kapanıştaki tarih reddedildi",
+      "date_from_closing": "Tarih kapanıştan alındı",
+      "header_closing_date_mismatch": "Başlık ve kapanış tarihi farklı",
+      "outcome_unmapped": "Sonuç tanınmadı",
+      "court_missing": "Mahkeme okunamadı",
+      "court_unmapped": "Mahkeme tanınmadı",
+      "court_level_unmapped": "Mahkeme derecesi tanınmadı",
+      "duplicate_of": "Başka kaydın mükerreri"
     }
   },
   "errorPage": {
@@ -154,5 +253,22 @@
       "message": "Aradığınız sayfa yok ya da taşınmış olabilir.",
       "home": "Ana sayfaya dön"
     }
+  },
+  "fields": {
+    "court": "Mahkeme",
+    "court_level": "Mahkeme derecesi",
+    "chamber": "Daire",
+    "source_chamber": "Esasın geldiği daire",
+    "bam_region": "BAM bölgesi",
+    "decision_kind": "Karar türü",
+    "esas_no": "Esas no",
+    "karar_no": "Karar no",
+    "decision_date": "Karar tarihi",
+    "jurisdiction": "Yargı kolu",
+    "related_articles": "İlgili kanun ve maddeler",
+    "keywords": "Anahtar kelimeler",
+    "outcome": "Sonuç",
+    "text_completeness": "Metin kapsamı",
+    "journal_issue": "Dergi sayısı"
   }
 }

@@ -180,6 +180,98 @@ describe("api proxy", () => {
         expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
     });
 
+    it("lets only our own pages frame the original PDF and ignores the upstream CSP", async () => {
+        const id = "3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10";
+        fetchMock.mockImplementation(
+            async () =>
+                new Response("%PDF", {
+                    headers: {
+                        "content-type": "application/pdf",
+                        "content-disposition": 'inline; filename="k.pdf"',
+                        "content-security-policy": "frame-ancestors *",
+                        "x-frame-options": "ALLOWALL",
+                    },
+                }),
+        );
+        const pdf = await call(GET, `review/decisions/${id}/file`);
+        expect(pdf.headers.get("content-type")).toBe("application/pdf");
+        expect(pdf.headers.get("content-disposition")).toContain("inline");
+        expect(pdf.headers.get("content-security-policy")).toBe("frame-ancestors 'self'");
+        expect(pdf.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+        const other = await call(GET, `review/decisions/${id}`);
+        expect(other.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+        expect(other.headers.get("x-frame-options")).toBe("DENY");
+    });
+
+    describe("frame headers on its own error responses", () => {
+        const expectDenied = (response: Response) => {
+            expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+            expect(response.headers.get("x-frame-options")).toBe("DENY");
+        };
+        const id = "3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10";
+
+        it("404 not_found", async () => {
+            const response = await call(GET, "docs");
+            expect(response.status).toBe(404);
+            expectDenied(response);
+        });
+
+        it("413 payload_too_large, even on the path of the PDF", async () => {
+            const response = await call(POST, `review/decisions/${id}/file`, {
+                method: "POST",
+                body: "{}",
+                headers: { "content-length": String(1024 * 1024 + 1) },
+            });
+            expect(response.status).toBe(413);
+            // a POST is no PDF fetch, but the headers follow the path: same origin only
+            expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+            const other = await call(POST, "review/decisions/1", {
+                method: "POST",
+                body: "{}",
+                headers: { "content-length": String(1024 * 1024 + 1) },
+            });
+            expect(other.status).toBe(413);
+            expectDenied(other);
+        });
+
+        it("502 upstream_unavailable", async () => {
+            fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+            const response = await call(GET, "auth/me");
+            expect(response.status).toBe(502);
+            expectDenied(response);
+        });
+
+        it("504 upstream_unavailable", async () => {
+            vi.useFakeTimers();
+            try {
+                fetchMock.mockImplementation(
+                    (_url: string, init: RequestInit) =>
+                        new Promise((_resolve, reject) => {
+                            init.signal?.addEventListener("abort", () =>
+                                reject(new Error("aborted")),
+                            );
+                        }),
+                );
+                const pending = call(GET, "auth/me");
+                await vi.advanceTimersByTimeAsync(30_000);
+                const response = await pending;
+                expect(response.status).toBe(504);
+                expectDenied(response);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it("the error of the PDF itself may be framed by our pages", async () => {
+            fetchMock.mockResolvedValue(
+                new Response('{"error":{"code":"file_not_found"}}', { status: 404 }),
+            );
+            const response = await call(GET, `review/decisions/${id}/file`);
+            expect(response.status).toBe(404);
+            expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+        });
+    });
+
     it("maps a refused connection to 502 upstream_unavailable", async () => {
         fetchMock.mockRejectedValue(new TypeError("fetch failed"));
         const response = await call(GET, "auth/me");

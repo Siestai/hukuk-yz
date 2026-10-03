@@ -404,6 +404,11 @@ export interface components {
             fields: {
                 [key: string]: unknown;
             };
+            /**
+             * Pdf
+             * @enum {string}
+             */
+            pdf: "available" | "missing" | "not_previewable";
             /** Raw Text Ref */
             raw_text_ref: string | null;
             /** Reviews */
@@ -512,6 +517,8 @@ export interface components {
              * Format: uuid
              */
             reviewer_id: string;
+            /** Reviewer Name */
+            reviewer_name: string | null;
         };
         /** ReviewSummary */
         ReviewSummary: {
