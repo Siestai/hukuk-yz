@@ -39,6 +39,10 @@ export function postReview(api: Api, extractionId: string, body: ReviewAction) {
     );
 }
 
+export function postBulkApprove(api: Api, body: components["schemas"]["BulkApproveRequest"]) {
+    return unwrap(api.POST("/review/decisions/bulk-approve", { body }));
+}
+
 /** The record at an absolute index of the queue, or null past its end. */
 async function recordAt(api: Api, queue: QueueParams, pos: number): Promise<string | null> {
     if (pos < 0) return null;

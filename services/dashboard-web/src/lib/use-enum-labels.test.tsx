@@ -28,6 +28,14 @@ describe("enum labels", () => {
         expect(reasonCodes().length).toBeGreaterThan(20);
     });
 
+    it("keeps the constraint name of a bulk failure and shows unknown reasons as they came", () => {
+        const { result } = renderHook(() => useEnumLabels(), { wrapper });
+        expect(result.current.bulkFailure("database constraint violated: ix_x")).toBe(
+            `${messages.enums.bulkFailure.constraint_violated}: ix_x`,
+        );
+        expect(result.current.bulkFailure("a brand new reason")).toBe("a brand new reason");
+    });
+
     it("has a Turkish label for every reason code of confidence.py", () => {
         const labelled = Object.keys(messages.enums.reason);
         expect(reasonCodes().filter((code) => !labelled.includes(code))).toEqual([]);

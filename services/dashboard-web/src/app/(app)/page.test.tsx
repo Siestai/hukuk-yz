@@ -19,6 +19,11 @@ vi.mock("@/lib/api/review", () => ({ getReviewSummary: () => summaryGet() }));
 vi.mock("@/components/review-queue/queue-results", () => ({
     QueueResults: () => <p>queue results</p>,
 }));
+vi.mock("@/components/review-queue/queue-bulk-approve", () => ({
+    QueueBulkApprove: ({ params, list }: { params: { band?: string }; list?: unknown }) => (
+        <p>{`bulk approve ${params.band ?? "any"} ${list ? "with list" : "without list"}`}</p>
+    ),
+}));
 vi.mock("next/navigation", () => ({
     redirect,
     useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -131,12 +136,10 @@ describe("QueuePage", () => {
         });
     });
 
-    it("keeps the bulk approve button visible and disabled", async () => {
+    it("hands the bulk approve button the filters and the list on screen", async () => {
         get.mockResolvedValue(ok({ total: 1, items: [item] }));
-        await renderPage();
-        expect(
-            screen.getByRole("button", { name: messages.review.queue.bulkApprove }),
-        ).toBeDisabled();
+        await renderPage({ band: "high" });
+        expect(screen.getByText("bulk approve high with list")).toBeInTheDocument();
     });
 
     it("goes to sign-in again when the session is gone", async () => {

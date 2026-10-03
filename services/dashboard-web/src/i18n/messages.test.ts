@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../messages/tr.json";
+import { BULK_FAILURE_CODES } from "../lib/bulk-approve";
 import { FIELD_ERRORS } from "../lib/decision-edits";
 import { BANDS, COURTS, FLASHES, SORTS, UNKNOWN_COURT } from "../lib/queue-params";
 import { reasonCodes, schemaEnum, schemaProperties, warningCodes } from "../test/reason-codes";
@@ -61,12 +62,15 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.outcome": schemaEnum("DecisionEdits", "outcome"),
     "enums.jurisdiction": schemaEnum("DecisionEdits", "jurisdiction"),
     "enums.textCompleteness": schemaEnum("DecisionEdits", "text_completeness"),
+    "enums.bulkFailure": BULK_FAILURE_CODES,
     "enums.sourceStatus": schemaEnum("ReviewDetail", "source_status"),
     // The fields a reviewer may correct, plus the read-only ones the detail screen shows.
     fields: [...schemaProperties("DecisionEdits"), "journal_issue"],
     // "available" shows the frame; the other two values are the empty-state texts.
     "review.detail.pdf": schemaEnum("ReviewDetail", "pdf").filter((v) => v !== "available"),
     "review.detail.history.decision": schemaEnum("ReviewOut", "decision"),
+    "review.bulk.run": ["published", "conflicts", "failed"],
+    "review.bulk.report.heading": ["finished", "stopped", "failed"],
     "review.queue.sort": SORTS,
     "review.queue.flash": FLASHES,
     // "server" is read by key; the others are the client checks of the form.

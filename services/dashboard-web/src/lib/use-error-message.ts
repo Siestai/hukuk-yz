@@ -19,6 +19,12 @@ export function useErrorMessage() {
                 return t("review_conflict");
             case "decision_conflict":
                 return t("decision_conflict");
+            case "bulk_count_changed":
+                return t("bulk_count_changed");
+            case "bulk_no_progress":
+                return t("bulk_no_progress");
+            case "bulk_band_not_allowed":
+                return t("bulk_band_not_allowed");
             case "extraction_not_found":
                 return t("extraction_not_found");
             case "forbidden":
