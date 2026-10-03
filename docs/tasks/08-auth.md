@@ -33,7 +33,7 @@ Az sayıda iç kullanıcının (Faz 1: Orhan, Baran, İbrahim) e-posta + parola 
    - `create --email --name --role {admin,reviewer}`: parolayı `getpass` ile iki kez sorar (argüman veya env ile parola alınmaz).
    - `set-password --email`, `deactivate --email` (kullanıcının açık oturumlarını da iptal eder), `list`.
 8. **Ayarlar:** `Settings`'e `session_ttl_hours: int = 12`, `cookie_secure: bool = True`. `.env.example` güncellenir.
-9. **Testler** (modüle göre dosyalanır: `test_auth.py`, `test_users_cli.py`, şema için mevcut `test_schema.py` / `test_orm_consistency.py`): DB gerektirenler `DATABASE_URL` yoksa skip. En az:
+9. **Testler** (modüle göre dosyalanır: `test_auth.py`, `test_users.py`, şema için mevcut `test_schema.py` / `test_orm_consistency.py`): DB gerektirenler `DATABASE_URL` yoksa skip. En az:
    - Doğru giriş → cookie set, `/auth/me` cookie ile ve Bearer ile 200.
    - Yanlış parola, olmayan e-posta, pasif kullanıcı → hepsi aynı 401 gövdesi.
    - Süresi dolmuş ve iptal edilmiş oturum → 401. Logout sonrası aynı token → 401.

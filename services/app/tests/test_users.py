@@ -106,11 +106,7 @@ async def test_set_password_for_an_unknown_user_fails(
     assert "Kullanıcı yok" in str(await _run("set-password", "--email", "nobody@x.test"))
 
 
-async def test_deactivate_revokes_the_open_sessions(
-    users_factory: SessionFactory, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    await _create(monkeypatch)
-    await _create(monkeypatch, email="baran@x.test", role="reviewer")
+async def _open_a_session_per_user(users_factory: SessionFactory) -> None:
     async with users_factory() as session:
         for user in (await session.execute(select(AppUser))).scalars():
             session.add(
@@ -122,8 +118,9 @@ async def test_deactivate_revokes_the_open_sessions(
             )
         await session.commit()
 
-    await _run("deactivate", "--email", "orhan@x.test")
 
+async def _revocation_state(users_factory: SessionFactory) -> dict[str, tuple[bool, bool]]:
+    """email -> (is_active, session revoked)"""
     async with users_factory() as session:
         rows = (
             await session.execute(
@@ -132,8 +129,38 @@ async def test_deactivate_revokes_the_open_sessions(
                 )
             )
         ).all()
-    state = {email: (active, revoked is not None) for email, active, revoked in rows}
-    assert state == {"orhan@x.test": (False, True), "baran@x.test": (True, False)}
+    return {email: (active, revoked is not None) for email, active, revoked in rows}
+
+
+async def test_set_password_revokes_the_open_sessions_of_that_user_only(
+    users_factory: SessionFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _create(monkeypatch)
+    await _create(monkeypatch, email="baran@x.test", role="reviewer")
+    await _open_a_session_per_user(users_factory)
+
+    _typed(monkeypatch, PASSWORD, PASSWORD)
+    await _run("set-password", "--email", "orhan@x.test")
+
+    assert await _revocation_state(users_factory) == {
+        "orhan@x.test": (True, True),
+        "baran@x.test": (True, False),
+    }
+
+
+async def test_deactivate_revokes_the_open_sessions(
+    users_factory: SessionFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _create(monkeypatch)
+    await _create(monkeypatch, email="baran@x.test", role="reviewer")
+    await _open_a_session_per_user(users_factory)
+
+    await _run("deactivate", "--email", "orhan@x.test")
+
+    assert await _revocation_state(users_factory) == {
+        "orhan@x.test": (False, True),
+        "baran@x.test": (True, False),
+    }
 
 
 async def test_list_prints_every_user(

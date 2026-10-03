@@ -2,7 +2,7 @@
 or the environment.
 
     python -m app.users create --email E --name N --role {admin,reviewer}
-    python -m app.users set-password --email E
+    python -m app.users set-password --email E    (also revokes the open sessions)
     python -m app.users deactivate --email E
     python -m app.users list
 """
@@ -60,10 +60,20 @@ async def _create(session: AsyncSession, *, args: argparse.Namespace, password_h
     print(f"Oluşturuldu: {normalize_email(args.email)} ({args.role})")
 
 
+async def _revoke_sessions(session: AsyncSession, user: AppUser) -> None:
+    await session.execute(
+        update(UserSession)
+        .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(UTC))
+    )
+
+
 async def _set_password(
     session: AsyncSession, *, args: argparse.Namespace, password_hash: str
 ) -> None:
-    (await _find(session, args.email)).password_hash = password_hash
+    user = await _find(session, args.email)
+    user.password_hash = password_hash
+    await _revoke_sessions(session, user)
     await session.commit()
     print(f"Parola güncellendi: {normalize_email(args.email)}")
 
@@ -71,11 +81,7 @@ async def _set_password(
 async def _deactivate(session: AsyncSession, *, args: argparse.Namespace) -> None:
     user = await _find(session, args.email)
     user.is_active = False
-    await session.execute(
-        update(UserSession)
-        .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
-        .values(revoked_at=datetime.now(UTC))
-    )
+    await _revoke_sessions(session, user)
     await session.commit()
     print(f"Pasifleştirildi: {user.email}")
 

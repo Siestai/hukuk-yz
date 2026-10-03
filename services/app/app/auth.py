@@ -19,7 +19,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -33,6 +33,7 @@ from hukuk_models import LoginRequest, UserOut
 COOKIE_NAME = "hukuk_session"
 MIN_PASSWORD_LENGTH = 12
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+LAST_SEEN_INTERVAL = timedelta(minutes=5)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -79,7 +80,11 @@ def _unauthorized() -> HTTPException:
 
 
 def _request_token(request: Request) -> str:
-    """The session token of the request: Bearer first, else the cookie (CSRF-checked)."""
+    """The session token of the request: Bearer first, else the cookie (CSRF-checked).
+
+    When both are present, Bearer wins and the cookie is ignored: an invalid Bearer does not
+    fall back to the cookie, and the CSRF check applies only to the cookie path.
+    """
     scheme, _, bearer = request.headers.get("authorization", "").partition(" ")
     if scheme.lower() == "bearer" and bearer.strip():
         return bearer.strip()
@@ -111,8 +116,9 @@ async def current_session(
     if row is None:
         raise _unauthorized()
     user, session = row.tuple()
-    session.last_seen_at = now
-    await db.commit()
+    if session.last_seen_at is None or now - session.last_seen_at > LAST_SEEN_INTERVAL:
+        session.last_seen_at = now
+        await db.commit()
     return user, session
 
 
@@ -148,7 +154,7 @@ async def login(body: LoginRequest, response: Response, db: Db) -> LoginResponse
             _hasher.verify, user.password_hash if user else _DUMMY_HASH, body.password
         )
         password_ok = True
-    except VerifyMismatchError:
+    except (VerificationError, InvalidHashError):
         password_ok = False
     if user is None or not password_ok or not user.is_active:
         raise _unauthorized()

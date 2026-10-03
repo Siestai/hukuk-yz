@@ -13,6 +13,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app import auth
 from app.auth import hash_password, require_role
 from app.auth import router as auth_router
 from app.db import make_engine
@@ -272,3 +273,83 @@ async def test_login_upgrades_an_outdated_hash(
         stored = (await session.execute(select(AppUser.password_hash))).scalar_one()
     assert stored != weak
     assert not PasswordHasher().check_needs_rehash(stored)
+
+
+async def test_a_malformed_stored_hash_is_the_same_401_as_a_wrong_password(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory, password_hash="not an argon2 hash")
+    wrong = await client.post(
+        "/auth/login", json={"email": "nobody@x.test", "password": "wrong password!!"}
+    )
+    broken = await client.post("/auth/login", json={"email": "orhan@x.test", "password": PASSWORD})
+    assert broken.status_code == 401
+    assert broken.text == wrong.text
+    assert "set-cookie" not in broken.headers
+
+
+async def test_an_unknown_email_is_verified_against_the_dummy_hash(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    verified: list[str] = []
+    real_verify = auth._hasher.verify
+
+    def spy(hash_: str, password: str) -> bool:
+        verified.append(hash_)
+        return real_verify(hash_, password)
+
+    monkeypatch.setattr(auth._hasher, "verify", spy)
+    response = await client.post(
+        "/auth/login", json={"email": "nobody@x.test", "password": PASSWORD}
+    )
+    assert response.status_code == 401
+    assert verified == [auth._DUMMY_HASH]
+
+
+async def test_bearer_wins_over_the_cookie_without_fallback(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory)
+    token = await _login(client)  # the cookie jar now holds a valid session cookie
+
+    valid_bearer = await client.get("/auth/me", headers={"authorization": f"Bearer {token}"})
+    assert valid_bearer.status_code == 200
+
+    client.cookies.clear()
+    client.cookies.set("hukuk_session", "not a session", domain="test")
+    assert (
+        await client.get("/auth/me", headers={"authorization": f"Bearer {token}"})
+    ).status_code == 200
+
+    client.cookies.clear()
+    client.cookies.set("hukuk_session", token, domain="test")
+    invalid_bearer = await client.get("/auth/me", headers={"authorization": "Bearer nope"})
+    assert invalid_bearer.status_code == 401
+
+
+async def test_last_seen_is_written_only_when_older_than_the_interval(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory)
+    token = await _login(client)
+    headers = {"authorization": f"Bearer {token}"}
+
+    async def last_seen() -> datetime | None:
+        async with users_factory() as session:
+            return (await session.execute(select(UserSession.last_seen_at))).scalar_one()
+
+    assert await last_seen() is None
+    await client.get("/auth/me", headers=headers)
+    first = await last_seen()
+    assert first is not None
+    await client.get("/auth/me", headers=headers)
+    assert await last_seen() == first
+
+    stale = first - auth.LAST_SEEN_INTERVAL - timedelta(seconds=1)
+    async with users_factory() as session:
+        await session.execute(text("UPDATE user_session SET last_seen_at = :t"), {"t": stale})
+        await session.commit()
+    await client.get("/auth/me", headers=headers)
+    refreshed = await last_seen()
+    assert refreshed is not None
+    assert refreshed > stale
