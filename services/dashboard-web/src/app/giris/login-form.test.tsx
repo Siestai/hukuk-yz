@@ -48,28 +48,54 @@ describe("LoginForm", () => {
             "invalid credentials",
             answer(401, { error: { code: "unauthorized", params: {} } }),
             messages.errors.unauthorized,
+            true,
         ],
         [
             "validation_error",
             answer(422, { error: { code: "validation_error", params: { fields: ["email"] } } }),
             messages.errors.validation_error,
+            true,
+        ],
+        [
+            "too_many_attempts",
+            answer(429, { error: { code: "too_many_attempts", params: { retry_after: 60 } } }),
+            "Çok fazla hatalı deneme. 1 dakika sonra tekrar deneyin.",
+            false,
+        ],
+        [
+            "upstream_unavailable",
+            answer(502, { error: { code: "upstream_unavailable", params: {} } }),
+            messages.errors.upstream_unavailable,
+            false,
         ],
         [
             "an unknown code",
             answer(500, { error: { code: "internal_error", params: {} } }),
             messages.errors.generic,
+            false,
         ],
-        ["a body that is not an error", answer(502), messages.errors.generic],
-    ])("shows the message for %s", async (_name, result, text) => {
+        ["a body that is not an error", answer(502), messages.errors.generic, false],
+    ])("shows the message for %s", async (_name, result, text, fieldError) => {
         post.mockResolvedValue(result);
         await submit();
-        expect(await screen.findByRole("alert")).toHaveTextContent(text);
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(text);
         expect(replace).not.toHaveBeenCalled();
-        expect(screen.getByLabelText(messages.login.email)).toHaveFocus();
-        expect(screen.getByLabelText(messages.login.password)).toHaveAttribute(
-            "aria-invalid",
-            "true",
+        for (const label of [messages.login.email, messages.login.password]) {
+            const input = screen.getByLabelText(label);
+            expect(input).toHaveAttribute("aria-invalid", String(fieldError));
+            expect(input).toHaveAttribute("aria-describedby", alert.querySelector("p")?.id);
+        }
+        if (fieldError) expect(screen.getByLabelText(messages.login.email)).toHaveFocus();
+    });
+
+    it("does not point the inputs at an error that is not shown", () => {
+        render(
+            <NextIntlClientProvider locale="tr" messages={messages}>
+                <LoginForm next="/" />
+            </NextIntlClientProvider>,
         );
+        expect(screen.getByLabelText(messages.login.email)).not.toHaveAttribute("aria-describedby");
     });
 
     it.each([
@@ -88,16 +114,6 @@ describe("LoginForm", () => {
         await submit();
         expect(await screen.findByRole("alert")).toHaveTextContent(
             `Çok fazla hatalı deneme. ${minutes} sonra tekrar deneyin.`,
-        );
-    });
-
-    it("shows upstream_unavailable when the proxy reports it", async () => {
-        post.mockResolvedValue(
-            answer(502, { error: { code: "upstream_unavailable", params: {} } }),
-        );
-        await submit();
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-            messages.errors.upstream_unavailable,
         );
     });
 

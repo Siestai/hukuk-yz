@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { formats } from "../../i18n/formats";
 import messages from "../../../messages/tr.json";
+import { isUpstreamUnavailable } from "@/lib/api/errors";
 import AppLayout from "./layout";
 
 const get = vi.fn();
@@ -17,7 +18,12 @@ const redirect = vi.hoisted(() =>
 );
 vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
 vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ POST: post }) }));
-vi.mock("next/navigation", () => ({ redirect, useRouter: () => ({ replace }) }));
+const pathname = vi.hoisted(() => vi.fn(() => "/"));
+vi.mock("next/navigation", () => ({
+    redirect,
+    useRouter: () => ({ replace }),
+    usePathname: pathname,
+}));
 
 const user = {
     id: "1",
@@ -44,6 +50,7 @@ beforeEach(() => {
     post.mockReset();
     replace.mockReset();
     redirect.mockClear();
+    pathname.mockReturnValue("/");
 });
 
 describe("AppLayout", () => {
@@ -89,6 +96,39 @@ describe("AppLayout", () => {
     it("drops a stale session when the API answers 401", async () => {
         get.mockResolvedValue({ response: new Response(null, { status: 401 }) });
         await expect(AppLayout({ children: null })).rejects.toThrow("NEXT_REDIRECT /oturum-sonu");
+    });
+
+    it("raises upstream_unavailable when /auth/me cannot be fetched", async () => {
+        get.mockRejectedValue(new TypeError("fetch failed"));
+        const error = await AppLayout({ children: null }).catch((e: Error) => e);
+        expect(error).toBeInstanceOf(Error);
+        expect(isUpstreamUnavailable(error as Error)).toBe(true);
+    });
+
+    it("raises upstream_unavailable when /auth/me answers 500", async () => {
+        get.mockResolvedValue({ response: new Response(null, { status: 500 }) });
+        const error = await AppLayout({ children: null }).catch((e: Error) => e);
+        expect(isUpstreamUnavailable(error as Error)).toBe(true);
+        expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("raises a generic error for other failures", async () => {
+        get.mockResolvedValue({ response: new Response(null, { status: 403 }) });
+        const error = await AppLayout({ children: null }).catch((e: Error) => e);
+        expect(isUpstreamUnavailable(error as Error)).toBe(false);
+    });
+
+    it("marks the queue link as current only on its own path", async () => {
+        mockApi(() => ok({ by_band: {}, by_court: {}, top_reasons: [] }));
+        await renderLayout();
+        const queue = screen.getByRole("link", { name: new RegExp(messages.nav.queue) });
+        expect(queue).toHaveAttribute("aria-current", "page");
+        cleanup();
+        pathname.mockReturnValue("/baska");
+        await renderLayout();
+        expect(
+            screen.getByRole("link", { name: new RegExp(messages.nav.queue) }),
+        ).not.toHaveAttribute("aria-current");
     });
 
     it("logs out through the API and goes to /giris", async () => {

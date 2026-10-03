@@ -10,3 +10,16 @@ export function apiError(body: unknown): { code?: string; params: Record<string,
                 : {},
     };
 }
+
+/** `app` could not be reached or answered 5xx; the error boundary shows the `upstream_unavailable` message. */
+export class UpstreamUnavailableError extends Error {
+    constructor(detail: string) {
+        super(detail);
+        this.name = "UpstreamUnavailableError";
+    }
+}
+
+/** Server errors reach the client boundary as plain `Error`s in production, so the name is checked, not the class. */
+export function isUpstreamUnavailable(error: Error): boolean {
+    return error instanceof UpstreamUnavailableError || error.name === "UpstreamUnavailableError";
+}

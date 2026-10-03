@@ -39,7 +39,7 @@ describe("api proxy", () => {
                 "content-type": "application/json",
                 accept: "application/json",
                 cookie: "hukuk_session=abc",
-                "x-forwarded-for": "203.0.113.7, 10.0.0.1",
+                "x-forwarded-for": "6.6.6.6, 203.0.113.7",
                 "x-forwarded-proto": "https",
                 authorization: "Bearer nope",
             },
@@ -76,12 +76,73 @@ describe("api proxy", () => {
         },
     );
 
-    it("refuses path traversal", async () => {
-        const response = await GET(new NextRequest("http://dash.test/api/auth/x"), {
-            params: Promise.resolve({ path: ["auth", "..", "docs"] }),
+    it.each([
+        ["a dot-dot segment", ["review", "..", "x"]],
+        ["an encoded slash inside one segment", ["review%2F..%2Fx"]],
+        ["a decoded slash inside one segment", ["review/../x"]],
+    ])("refuses path traversal: %s", async (_name, path) => {
+        const response = await GET(new NextRequest("http://dash.test/api/review/x"), {
+            params: Promise.resolve({ path }),
         });
         expect(response.status).toBe(404);
         expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("aborts the upstream request when the client goes away", async () => {
+        fetchMock.mockResolvedValue(new Response("{}"));
+        const client = new AbortController();
+        await call(GET, "review/decisions/1/file", { signal: client.signal });
+        const { signal } = upstreamCall().init;
+        expect(signal?.aborted).toBe(false);
+        client.abort();
+        expect(signal?.aborted).toBe(true);
+    });
+
+    it("refuses a body that declares more than 1 MB", async () => {
+        const response = await call(POST, "review/decisions/1", {
+            method: "POST",
+            body: "{}",
+            headers: { "content-length": String(1024 * 1024 + 1) },
+        });
+        expect(response.status).toBe(413);
+        expect(await response.json()).toEqual({
+            error: { code: "payload_too_large", params: {} },
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("stops a streamed body that grows past 1 MB", async () => {
+        fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
+            await new Response(init.body).text();
+            return new Response(null, { status: 204 });
+        });
+        const chunk = new Uint8Array(600 * 1024);
+        const body = new ReadableStream<Uint8Array>({
+            start(controller) {
+                controller.enqueue(chunk);
+                controller.enqueue(chunk);
+                controller.close();
+            },
+        });
+        const response = await call(POST, "review/decisions/1", {
+            method: "POST",
+            body,
+            duplex: "half",
+        } as ConstructorParameters<typeof NextRequest>[1]);
+        expect(response.status).toBe(413);
+        expect((await response.json()).error.code).toBe("payload_too_large");
+    });
+
+    it("lets a body under the cap through", async () => {
+        fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
+            await new Response(init.body).text();
+            return new Response(null, { status: 204 });
+        });
+        const response = await call(POST, "review/decisions/1", {
+            method: "POST",
+            body: "x".repeat(1024),
+        });
+        expect(response.status).toBe(204);
     });
 
     it("passes status, set-cookie, retry-after and content headers, drops the rest", async () => {

@@ -11,6 +11,10 @@ import { useErrorMessage } from "@/lib/use-error-message";
 
 type Invalid = { email: boolean; password: boolean };
 
+const ERROR_ID = "login-error";
+// Only these say something is wrong with the input; a rate limit or an outage is not the fields' fault.
+const FIELD_ERRORS = ["unauthorized", "validation_error"];
+
 export function LoginForm({ next }: { next: string }) {
     const t = useTranslations("login");
     const errorMessage = useErrorMessage();
@@ -49,12 +53,13 @@ export function LoginForm({ next }: { next: string }) {
             }
             const { code, params } = apiError(body);
             const retryAfter = Number(response.headers.get("retry-after"));
+            const fieldError = code !== undefined && FIELD_ERRORS.includes(code);
             fail(
                 errorMessage(code, {
                     ...params,
                     ...(retryAfter > 0 ? { retry_after: retryAfter } : {}),
                 }),
-                { email: true, password: true },
+                { email: fieldError, password: fieldError },
             );
         } catch {
             fail(errorMessage("upstream_unavailable"), { email: false, password: false });
@@ -66,7 +71,9 @@ export function LoginForm({ next }: { next: string }) {
         <form onSubmit={onSubmit} noValidate className="grid gap-5" aria-busy={pending}>
             <div role="alert">
                 {error ? (
-                    <p className="rounded-md bg-low-soft px-3 py-2 text-sm text-low">{error}</p>
+                    <p id={ERROR_ID} className="rounded-md bg-low-soft px-3 py-2 text-sm text-low">
+                        {error}
+                    </p>
                 ) : null}
             </div>
             <div className="grid gap-2">
@@ -78,6 +85,7 @@ export function LoginForm({ next }: { next: string }) {
                     autoComplete="username"
                     ref={emailRef}
                     aria-invalid={invalid.email}
+                    aria-describedby={error ? ERROR_ID : undefined}
                 />
             </div>
             <div className="grid gap-2">
@@ -89,6 +97,7 @@ export function LoginForm({ next }: { next: string }) {
                     autoComplete="current-password"
                     ref={passwordRef}
                     aria-invalid={invalid.password}
+                    aria-describedby={error ? ERROR_ID : undefined}
                 />
             </div>
             <Button type="submit" size="lg" disabled={pending}>

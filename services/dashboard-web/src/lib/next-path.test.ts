@@ -19,6 +19,11 @@ describe("safeNextPath", () => {
         "/a\nb",
         "/giris",
         "/giris?next=/",
+        "/giris/",
+        "/giris?x",
+        "/girisx",
+        "/oturum-sonu",
+        "/oturum-sonu?x=1",
         "/api/auth/logout",
     ])("rejects %j", (path) => {
         expect(safeNextPath(path)).toBe("/");

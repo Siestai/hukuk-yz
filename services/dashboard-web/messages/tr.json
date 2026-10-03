@@ -32,12 +32,22 @@
     "too_many_attempts": "Çok fazla hatalı deneme. {minutes, plural, other {# dakika}} sonra tekrar deneyin.",
     "validation_error": "Girilen bilgiler geçersiz. Alanları kontrol edin.",
     "upstream_unavailable": "Sunucuya ulaşılamıyor. Biraz sonra tekrar deneyin.",
-    "generic": "Beklenmeyen bir hata oluştu. Daha sonra tekrar deneyin."
+    "generic": "Beklenmeyen bir hata oluştu. Daha sonra tekrar deneyin.",
+    "payload_too_large": "Gönderilen veri çok büyük."
   },
   "enums": {
     "role": {
       "admin": "Yönetici",
       "reviewer": "İnceleyici"
+    }
+  },
+  "errorPage": {
+    "title": "Bir sorun oluştu",
+    "retry": "Tekrar dene",
+    "notFound": {
+      "title": "Sayfa bulunamadı",
+      "message": "Aradığınız sayfa yok ya da taşınmış olabilir.",
+      "home": "Ana sayfaya dön"
     }
   }
 }

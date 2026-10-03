@@ -5,16 +5,20 @@ import { SESSION_COOKIE } from "./lib/upstream";
 
 // Pages only: static assets never reach this function. The API proxy has its own route handler.
 export const config = {
-    matcher: ["/((?!api/|_next/static|_next/image|favicon.ico).*)"],
+    matcher: [
+        {
+            source: "/((?!api/|_next/static|_next/image|favicon.ico).*)",
+            missing: [
+                { type: "header", key: "next-router-prefetch" },
+                { type: "header", key: "purpose", value: "prefetch" },
+            ],
+        },
+    ],
 };
 
 function redirect(request: NextRequest, location: string, csp: string): NextResponse {
-    // Next needs an absolute URL here; clone the request's so the public host is kept.
-    const url = request.nextUrl.clone();
-    const [pathname = "/", search = ""] = location.split("?");
-    url.pathname = pathname;
-    url.search = search ? `?${search}` : "";
-    const response = NextResponse.redirect(url);
+    // Next needs an absolute URL here; resolving against the request's keeps the public host.
+    const response = NextResponse.redirect(new URL(location, request.url));
     response.headers.set("Content-Security-Policy", csp);
     return response;
 }

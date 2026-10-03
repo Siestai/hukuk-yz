@@ -2,13 +2,19 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { SideNav } from "@/components/side-nav";
+import { UpstreamUnavailableError } from "@/lib/api/errors";
 import { createServerApi } from "@/lib/api/server";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
     const api = await createServerApi();
-    const me = await api.GET("/auth/me");
+    const me = await api.GET("/auth/me").catch((cause: unknown) => {
+        throw new UpstreamUnavailableError(`GET /auth/me failed: ${String(cause)}`);
+    });
     // The cookie exists but the API does not accept it: drop it and sign in again.
     if (me.response.status === 401) redirect("/oturum-sonu");
+    if (me.response.status >= 500) {
+        throw new UpstreamUnavailableError(`GET /auth/me answered ${me.response.status}`);
+    }
     if (!me.data) throw new Error(`GET /auth/me failed with ${me.response.status}`);
 
     // The badge is a courtesy: no count is shown rather than failing the page.

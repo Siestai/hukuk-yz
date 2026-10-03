@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
@@ -16,6 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
+    // Every page is rendered per request: a prerendered page (the 404) has no nonce for the CSP
+    // header from proxy.ts, so its scripts would be blocked under 'strict-dynamic'.
+    await connection();
     const locale = await getLocale();
     return (
         <html lang={locale} className={fontVariables}>

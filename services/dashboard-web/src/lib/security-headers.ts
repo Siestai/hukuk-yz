@@ -14,7 +14,7 @@ export function contentSecurityPolicy(nonce: string, isDev = dev()): string {
         "font-src 'self'",
         `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
         "frame-src 'self'",
-        "object-src 'self'",
+        "object-src 'none'",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",

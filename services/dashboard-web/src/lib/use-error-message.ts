@@ -15,6 +15,8 @@ export function useErrorMessage() {
             }
             case "validation_error":
                 return t("validation_error");
+            case "payload_too_large":
+                return t("payload_too_large");
             case "upstream_unavailable":
                 return t("upstream_unavailable");
             default:

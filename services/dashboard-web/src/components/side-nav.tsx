@@ -1,8 +1,8 @@
 import { Badge, Logo } from "@hukuk/ui";
-import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
 import { LogoutButton } from "./logout-button";
+import { NavLink } from "./nav-link";
 
 type SideNavProps = {
     user: { display_name: string; role: "admin" | "reviewer" };
@@ -31,14 +31,10 @@ export function SideNav({ user, pending }: SideNavProps) {
                 </div>
             </div>
             <nav aria-label={t("nav.label")} className="grid flex-1 content-start gap-1 px-3">
-                <Link
-                    href="/"
-                    aria-current="page"
-                    className="flex items-center justify-between rounded-md bg-primary-soft px-3 py-2 text-sm font-medium text-primary"
-                >
+                <NavLink href="/">
                     {t("nav.queue")}
                     {pending !== null ? <Badge>{format.number(pending, "integer")}</Badge> : null}
-                </Link>
+                </NavLink>
                 {comingLater.map(({ key, label }) => (
                     <span
                         key={key}
