@@ -166,6 +166,7 @@ Memory'nin bitemporal modeli case yaşadığı sürece geçerlidir; `forget` ve 
 | İsim/marka | aday listesi | ayrı doküman | toplantı |
 | Kaynak site listesi | ortaklardan | her site için crawler + değişiklik takibi | toplantı |
 | Üst mahkeme toplama kriterleri | Baran | konu, tarih aralığı, öncelik | toplantı |
+| Agent çerçevesi (Faz 2) | LangSmith Managed Deep Agents / açık LangGraph graph'ı / LangGraph + seçili düğümlerde `deepagents` (OSS) | Ana akış açık LangGraph graph'ı (md. 33 sıralı zincir, atıf kapısı, interrupt); serbest araştırma gereken düğümlerde (ör. benzer içtihat karşılaştırma) `deepagents`, kendimiz host ederiz. Managed Deep Agents değil: yalnızca ABD bölgesi ve beta (KVKK / EU şartı), deployment başına tek paylaşımlı memory (bizim memory servisi kiracı/kullanıcı/dosya kapsamlı), kimlik Supabase/LangSmith key'e bağlı. LangSmith tracing ayrı karar: EU/self-hosted ya da maskeleme. | Orhan: yön onaylandı (2026-10-03); ajan tasarımı Orhan'ın ayrıca onayından sonra başlar |
 
 ## 9. Diyagram
 
