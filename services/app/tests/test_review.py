@@ -2,9 +2,11 @@
 
 import asyncio
 import dataclasses
+import hashlib
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal, get_args, get_origin
 
 import httpx
@@ -33,6 +35,7 @@ from app.models.common import (
 )
 from app.models.decision import Decision
 from app.models.user import AppUser, UserRole
+from app.settings import Settings
 from hukuk_ingest.decisions.parse import DecisionRecord
 from hukuk_models import DecisionEdits, SourceStatus
 
@@ -346,9 +349,10 @@ async def test_an_unknown_extraction_is_404(
     client: httpx.AsyncClient, kb_factory: Factory, me: Login
 ) -> None:
     url = f"{BASE}/{uuid.uuid4()}"
-    assert (await client.get(url, headers=me.headers)).status_code == 404
+    got = await client.get(url, headers=me.headers)
+    assert (got.status_code, got.json()["error"]["code"]) == (404, "extraction_not_found")
     response = await client.post(url, json={"action": "approve"}, headers=me.headers)
-    assert response.status_code == 404
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "extraction_not_found")
 
 
 # --- approve, edit, reject --------------------------------------------------------------------
@@ -446,6 +450,7 @@ async def test_invalid_edits_are_422_and_write_nothing(
     extraction_id = await _eid(kb_factory, record)
     response = await client.post(f"{BASE}/{extraction_id}", json=body, headers=me.headers)
     assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
     assert (await _count(kb_factory, Review), await _count(kb_factory, Decision)) == (0, 0)
     assert await _status(kb_factory, extraction_id) is RecordStatus.analyzed
 
@@ -459,6 +464,7 @@ async def test_an_edit_that_cannot_be_published_is_422_and_writes_nothing(
         f"{BASE}/{extraction_id}", json={"action": "approve"}, headers=me.headers
     )
     assert response.status_code == 422
+    assert response.json() == {"error": {"code": "validation_error", "params": {"fields": []}}}
     assert (await _count(kb_factory, Review), await _count(kb_factory, Decision)) == (0, 0)
     response = await client.post(
         f"{BASE}/{extraction_id}",
@@ -478,6 +484,7 @@ async def test_reject_needs_a_note(
         f"{BASE}/{extraction_id}", json={"action": "reject", "note": note}, headers=me.headers
     )
     assert response.status_code == 422
+    assert response.json() == {"error": {"code": "validation_error", "params": {"fields": []}}}
     assert await _count(kb_factory, Review) == 0
     assert await _status(kb_factory, extraction_id) is RecordStatus.analyzed
 
@@ -518,7 +525,8 @@ async def test_a_second_action_on_the_same_record_is_409(
     url = f"{BASE}/{await _eid(kb_factory, record)}"
     assert (await client.post(url, json=first, headers=me.headers)).status_code == 200
     for again in ({"action": "approve"}, {"action": "reject", "note": "n"}):
-        assert (await client.post(url, json=again, headers=me.headers)).status_code == 409
+        response = await client.post(url, json=again, headers=me.headers)
+        assert (response.status_code, response.json()["error"]["code"]) == (409, "review_conflict")
     assert await _count(kb_factory, Review) == 1
 
 
@@ -529,7 +537,7 @@ async def test_an_action_on_an_older_extraction_is_409(
     await load(kb_factory, [dataclasses.replace(record, parser_version="6")], LoadCounts())
     old, new = await _eid(kb_factory, record), await _eid(kb_factory, record, "6")
     response = await client.post(f"{BASE}/{old}", json={"action": "approve"}, headers=me.headers)
-    assert response.status_code == 409
+    assert (response.status_code, response.json()["error"]["code"]) == (409, "review_conflict")
     assert await _count(kb_factory, Review) == 0
     assert await _status(kb_factory, old) is RecordStatus.analyzed
     response = await client.post(f"{BASE}/{new}", json={"action": "approve"}, headers=me.headers)
@@ -550,7 +558,9 @@ async def test_a_live_key_collision_is_409_with_the_conflicting_decision(
     assert won.status_code == 200
     lost = await client.post(f"{BASE}/{second}", json={"action": "approve"}, headers=me.headers)
     assert lost.status_code == 409
-    assert lost.json()["detail"]["decision_id"] == won.json()["decision_id"]
+    assert lost.json() == {
+        "error": {"code": "decision_conflict", "params": {"decision_id": won.json()["decision_id"]}}
+    }
     assert (await _count(kb_factory, Review), await _count(kb_factory, Decision)) == (1, 1)
     assert await _status(kb_factory, second) is RecordStatus.analyzed
 
@@ -571,6 +581,7 @@ async def test_bulk_approval_takes_the_high_band_only(
             f"{BASE}/bulk-approve", json={**_bulk(2), "band": band}, headers=me.headers
         )
         assert response.status_code == 422
+        assert response.json()["error"]["code"] == "bulk_band_not_allowed"
     assert await _count(kb_factory, Decision) == 0
 
 
@@ -581,6 +592,9 @@ async def test_bulk_approval_refuses_a_count_that_is_not_the_one_on_screen(
     for count in (1, 3):
         response = await client.post(f"{BASE}/bulk-approve", json=_bulk(count), headers=me.headers)
         assert response.status_code == 409
+        assert response.json() == {
+            "error": {"code": "bulk_count_changed", "params": {"total": 2, "expected": count}}
+        }
     assert (await _count(kb_factory, Review), await _count(kb_factory, Decision)) == (0, 0)
 
 
@@ -737,7 +751,9 @@ async def test_every_endpoint_needs_a_login(client: httpx.AsyncClient, kb_factor
         client.post(f"{BASE}/{some}", json={"action": "approve"}),
         client.post(f"{BASE}/bulk-approve", json=_bulk(0)),
     ]
-    assert [r.status_code for r in await asyncio.gather(*calls)] == [401] * 5
+    responses = await asyncio.gather(*calls)
+    assert [r.status_code for r in responses] == [401] * 5
+    assert {r.json()["error"]["code"] for r in responses} == {"unauthorized"}
 
 
 async def test_an_admin_passes_the_reviewer_check(
@@ -745,6 +761,129 @@ async def test_an_admin_passes_the_reviewer_check(
 ) -> None:
     admin = await _login_as(client, kb_factory, "orhan@x.test", UserRole.admin)
     assert (await client.get(BASE, headers=admin.headers)).status_code == 200
+
+
+# --- original PDF -----------------------------------------------------------------------------
+
+PDF_BYTES = b"%PDF-1.4 fixture"
+
+
+@dataclass
+class Archive:
+    root: Path
+    extraction_id: uuid.UUID
+    url: str
+
+
+@pytest.fixture
+async def archive(
+    client: httpx.AsyncClient,
+    kb_factory: Factory,
+    me: Login,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Archive:
+    """One decision whose `ingest_file` points at a real PDF under a temporary archive root."""
+    root = tmp_path / "drive"
+    (root / "Yargi").mkdir(parents=True)
+    (root / "Yargi" / "Kisi Adi.pdf").write_bytes(PDF_BYTES)
+    monkeypatch.setattr(
+        "app.review.get_settings", lambda: Settings(database_url="unused", archive_root=root)
+    )
+    (record,) = await _seed(kb_factory, {})
+    extraction_id = await _eid(kb_factory, record)
+    await _point_file(
+        kb_factory, extraction_id, "Yargi/Kisi Adi.pdf", hashlib.sha256(PDF_BYTES).hexdigest()
+    )
+    return Archive(root, extraction_id, f"{BASE}/{extraction_id}/file")
+
+
+async def _point_file(
+    factory: Factory, extraction_id: uuid.UUID, path: str, sha256: str, detected_type: str = "pdf"
+) -> None:
+    async with factory() as session:
+        await session.execute(
+            text(
+                "UPDATE ingest_file SET path = :path, sha256 = :sha, detected_type = :type "
+                "WHERE id = (SELECT file_id FROM extraction WHERE id = :id)"
+            ),
+            {"path": path, "sha": sha256, "type": detected_type, "id": extraction_id},
+        )
+        await session.commit()
+
+
+async def test_the_original_pdf_is_served_inline_with_safe_headers(
+    client: httpx.AsyncClient, me: Login, archive: Archive
+) -> None:
+    response = await client.get(archive.url, headers=me.headers)
+    assert response.status_code == 200
+    assert response.content == PDF_BYTES
+    sha = hashlib.sha256(PDF_BYTES).hexdigest()
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["content-disposition"] == f'inline; filename="{sha}.pdf"'
+    assert response.headers["cache-control"] == "private, no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_the_pdf_of_an_unknown_extraction_is_404(
+    client: httpx.AsyncClient, me: Login, archive: Archive
+) -> None:
+    response = await client.get(f"{BASE}/{uuid.uuid4()}/file", headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "extraction_not_found")
+
+
+async def test_a_path_that_leaves_the_archive_root_is_404(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login, archive: Archive
+) -> None:
+    outside = archive.root.parent / "outside.pdf"
+    outside.write_bytes(PDF_BYTES)
+    sha = hashlib.sha256(PDF_BYTES).hexdigest()
+    (archive.root / "link.pdf").symlink_to(outside)
+    for path in ("../outside.pdf", str(outside), "link.pdf", "Yargi/missing.pdf", "Yargi"):
+        await _point_file(kb_factory, archive.extraction_id, path, sha)
+        response = await client.get(archive.url, headers=me.headers)
+        assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+
+
+async def test_a_file_that_does_not_match_its_sha256_is_not_served(
+    client: httpx.AsyncClient,
+    kb_factory: Factory,
+    me: Login,
+    archive: Archive,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    await _point_file(kb_factory, archive.extraction_id, "Yargi/Kisi Adi.pdf", "0" * 64)
+    with caplog.at_level("WARNING", logger="app"):
+        response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+    assert "sha256" in caplog.text
+
+
+async def test_only_pdfs_are_previewable(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login, archive: Archive
+) -> None:
+    for detected_type in ("doc", "html"):
+        await _point_file(
+            kb_factory, archive.extraction_id, "Yargi/Kisi Adi.pdf", "0" * 64, detected_type
+        )
+        response = await client.get(archive.url, headers=me.headers)
+        assert (response.status_code, response.json()["error"]["code"]) == (
+            415,
+            "file_not_previewable",
+        )
+
+
+async def test_without_an_archive_root_the_pdf_is_404(
+    client: httpx.AsyncClient, me: Login, archive: Archive, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.review.get_settings", lambda: Settings(database_url="unused"))
+    response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+
+
+async def test_the_pdf_needs_a_login(client: httpx.AsyncClient, archive: Archive) -> None:
+    response = await client.get(archive.url)
+    assert (response.status_code, response.json()["error"]["code"]) == (401, "unauthorized")
 
 
 # --- review.reviewer_id -> app_user.id --------------------------------------------------------

@@ -9,6 +9,8 @@ from sqlalchemy import text
 
 from app.auth import router as auth_router
 from app.db import make_engine
+from app.errors import ERROR_RESPONSES
+from app.errors import install as install_error_handlers
 from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.settings import get_settings
@@ -29,7 +31,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await app.state.engine.dispose()
 
 
-app = FastAPI(title="hukuk-agent", lifespan=lifespan)
+app = FastAPI(title="hukuk-agent", lifespan=lifespan, responses=ERROR_RESPONSES)
+install_error_handlers(app)
 app.include_router(auth_router)
 app.include_router(review_router)
 

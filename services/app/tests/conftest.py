@@ -58,7 +58,9 @@ async def kb_factory(
 
     async def clean() -> None:
         async with engine.begin() as connection:
-            await connection.execute(text("TRUNCATE source, ingest_job, app_user CASCADE"))
+            await connection.execute(
+                text("TRUNCATE source, ingest_job, app_user, login_attempt CASCADE")
+            )
 
     await clean()
     yield make_session_factory(engine)
@@ -86,12 +88,13 @@ async def reviewer(kb_factory: async_sessionmaker[AsyncSession]) -> AppUser:
 async def users_factory(
     database_url: str, migrated: None
 ) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
-    """Sessions for the auth tests: app_user (and with it user_session) is emptied around them."""
+    """Sessions for the auth tests: app_user (and with it user_session) and login_attempt are
+    emptied around them."""
     engine = make_engine(database_url)
 
     async def clean() -> None:
         async with engine.begin() as connection:
-            await connection.execute(text("TRUNCATE app_user CASCADE"))
+            await connection.execute(text("TRUNCATE app_user, login_attempt CASCADE"))
 
     await clean()
     yield make_session_factory(engine)

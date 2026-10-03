@@ -19,6 +19,20 @@ class Settings(BaseSettings):
     session_ttl_hours: int = 12
     # False only for plain-http dev; the cookie is then sent without the Secure flag.
     cookie_secure: bool = True
+    # Login rate limit (task 10a): failed attempts inside the window that block further logins.
+    login_max_fails_per_email: int = 5
+    login_max_fails_per_ip: int = 20
+    login_window_minutes: int = 15
+    # Where `ingest_file.path` is relative to (the Drive copy, `data/drive`); the decision PDFs
+    # are served from here. Unset: the file endpoint answers 404.
+    archive_root: Path | None = None
+
+    @field_validator("archive_root")
+    @classmethod
+    def _absolute_archive_root(cls, value: Path | None) -> Path | None:
+        if value is not None and not value.is_absolute():
+            raise ValueError("ARCHIVE_ROOT must be an absolute path")
+        return value
 
 
 @lru_cache

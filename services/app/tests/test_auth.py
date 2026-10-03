@@ -15,11 +15,12 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app import auth
-from app.auth import hash_password, require_role
+from app.auth import hash_password, login_retry_after, require_role
 from app.auth import router as auth_router
 from app.db import make_engine
 from app.main import app
-from app.models.user import AppUser, UserRole, UserSession
+from app.models.user import AppUser, LoginAttempt, UserRole, UserSession
+from app.settings import Settings
 
 PASSWORD = "correct horse battery"
 SessionFactory = async_sessionmaker[AsyncSession]
@@ -136,7 +137,7 @@ async def test_wrong_password_unknown_email_and_inactive_user_get_the_same_401(
         await client.post("/auth/login", json={"email": e, "password": p}) for e, p in attempts
     ]
     assert {r.status_code for r in responses} == {401}
-    assert len({r.text for r in responses}) == 1
+    assert {r.text for r in responses} == {'{"error":{"code":"unauthorized","params":{}}}'}
     assert all("set-cookie" not in r.headers for r in responses)
 
 
@@ -355,3 +356,117 @@ async def test_last_seen_is_written_only_when_older_than_the_interval(
     refreshed = await last_seen()
     assert refreshed is not None
     assert refreshed > stale
+
+
+# --- login rate limit (task 10a) --------------------------------------------------------------
+
+IP = "203.0.113.7"
+SETTINGS = Settings(database_url="unused")
+
+
+async def _fail(client: httpx.AsyncClient, email: str = "orhan@x.test") -> httpx.Response:
+    return await client.post("/auth/login", json={"email": email, "password": "wrong password!!"})
+
+
+async def _record(
+    factory: SessionFactory,
+    email: str,
+    at: datetime,
+    ip: str | None = IP,
+    succeeded: bool = False,
+) -> None:
+    async with factory() as session:
+        session.add(LoginAttempt(email=email, ip=ip, succeeded=succeeded, attempted_at=at))
+        await session.commit()
+
+
+async def _retry_after(factory: SessionFactory, email: str, ip: str, now: datetime) -> int | None:
+    async with factory() as session:
+        return await login_retry_after(session, email, ip, now, SETTINGS)
+
+
+async def test_the_fifth_failure_blocks_the_email_with_retry_after(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory)
+    for _ in range(5):
+        assert (await _fail(client)).status_code == 401
+    blocked = await _fail(client)
+    assert blocked.status_code == 429
+    retry_after = blocked.json()["error"]["params"]["retry_after"]
+    assert blocked.json()["error"]["code"] == "too_many_attempts"
+    assert 890 <= retry_after <= 900
+    assert blocked.headers["retry-after"] == str(retry_after)
+    # the correct password gets no better at the limit
+    right = await client.post("/auth/login", json={"email": "orhan@x.test", "password": PASSWORD})
+    assert right.status_code == 429
+    assert "set-cookie" not in right.headers
+
+
+async def test_other_emails_from_one_ip_pass_until_the_ip_limit(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory)
+    for n in range(20):  # a different e-mail each time: none reaches 5, the IP reaches 20
+        assert (await _fail(client, f"nobody{n}@x.test")).status_code == 401
+    blocked = await _fail(client, "another@x.test")
+    assert blocked.status_code == 429
+    assert (
+        await client.post("/auth/login", json={"email": "orhan@x.test", "password": PASSWORD})
+    ).status_code == 429
+
+
+async def test_unknown_emails_count_like_known_ones(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    for _ in range(5):
+        await _fail(client, "nobody@x.test")
+    assert (await _fail(client, "Nobody@X.test")).status_code == 429
+
+
+async def test_a_success_does_not_reset_the_count(
+    client: httpx.AsyncClient, users_factory: SessionFactory
+) -> None:
+    await _add_user(users_factory)
+    for _ in range(4):
+        await _fail(client)
+    await _login(client)
+    assert (await _fail(client)).status_code == 401  # the 5th failure
+    assert (await _fail(client)).status_code == 429
+
+
+async def test_failures_outside_the_window_are_not_counted(
+    users_factory: SessionFactory,
+) -> None:
+    now = datetime(2026, 10, 3, 12, 0, tzinfo=UTC)
+    for minutes in (16, 20, 30, 60, 120):
+        await _record(users_factory, "orhan@x.test", now - timedelta(minutes=minutes))
+    assert await _retry_after(users_factory, "orhan@x.test", IP, now) is None
+    # four inside the window and one older: still under the limit
+    for minutes in (1, 2, 3, 4):
+        await _record(users_factory, "orhan@x.test", now - timedelta(minutes=minutes))
+    assert await _retry_after(users_factory, "orhan@x.test", IP, now) is None
+
+
+async def test_the_block_lifts_when_the_oldest_counted_failure_leaves_the_window(
+    users_factory: SessionFactory,
+) -> None:
+    now = datetime(2026, 10, 3, 12, 0, tzinfo=UTC)
+    for minutes in (14, 10, 8, 5, 1):
+        await _record(users_factory, "orhan@x.test", now - timedelta(minutes=minutes))
+    assert await _retry_after(users_factory, "orhan@x.test", IP, now) == 60
+    assert (
+        await _retry_after(users_factory, "orhan@x.test", IP, now + timedelta(seconds=61)) is None
+    )
+    assert await _retry_after(users_factory, "other@x.test", "198.51.100.1", now) is None
+
+
+async def test_successful_attempts_do_not_count_as_failures(
+    users_factory: SessionFactory,
+) -> None:
+    now = datetime(2026, 10, 3, 12, 0, tzinfo=UTC)
+    for minutes in range(1, 8):
+        await _record(
+            users_factory, "orhan@x.test", now - timedelta(minutes=minutes), succeeded=True
+        )
+    assert await _retry_after(users_factory, "orhan@x.test", IP, now) is None

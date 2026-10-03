@@ -9,11 +9,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from argon2 import PasswordHasher
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app import users
-from app.models.user import AppUser, UserRole, UserSession
+from app.models.user import AppUser, LoginAttempt, UserRole, UserSession
 
 PASSWORD = "correct horse battery"
 SessionFactory = async_sessionmaker[AsyncSession]
@@ -178,6 +178,24 @@ async def test_list_prints_every_user(
         "baran@x.test\tOrhan\treviewer\tpasif",
         "orhan@x.test\tOrhan\tadmin\taktif",
     ]
+
+
+async def test_prune_login_attempts_deletes_the_ones_older_than_30_days(
+    users_factory: SessionFactory, capsys: pytest.CaptureFixture[str]
+) -> None:
+    now = datetime.now(UTC)
+    async with users_factory() as session:
+        session.add_all(
+            LoginAttempt(email="a@x.test", ip="203.0.113.7", succeeded=False, attempted_at=at)
+            for at in (now - timedelta(days=31), now - timedelta(days=29), now)
+        )
+        await session.commit()
+    await _run("prune-login-attempts")
+    assert "Silinen giriş denemesi: 1" in capsys.readouterr().out
+    async with users_factory() as session:
+        assert (
+            await session.execute(select(func.count()).select_from(LoginAttempt))
+        ).scalar_one() == 2
 
 
 def test_the_password_is_not_an_argument() -> None:
