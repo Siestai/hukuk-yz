@@ -1,9 +1,13 @@
-# Run from the repo root via `make up` (passes --env-file .env).
+# Run from the repo root via `make up` (passes --env-file .env). Publishes no host ports: local
+# ports live in docker-compose.local.yml; in production Traefik reaches dashboard-web over the network.
 x-app: &app
   build:
     context: ../..
     dockerfile: services/app/Dockerfile
-  env_file: ../../.env
+  # Optional: Dokploy writes the Environment tab to a .env next to the compose (docs/deploy.md).
+  env_file:
+    - path: ../../.env
+      required: false
   environment:
     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
   restart: unless-stopped
@@ -20,8 +24,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -41,8 +43,12 @@ services:
 
   app:
     <<: *app
-    ports:
-      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Decision PDFs (GET /review/decisions/{id}/file): the Drive copy, mounted read-only below.
+      ARCHIVE_ROOT: /archive
+    volumes:
+      - ${ARCHIVE_HOST_DIR:-../../data/drive}:/archive:ro
     healthcheck:
       test:
         - CMD
@@ -52,6 +58,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Browser entry point: the only service that is exposed in production (docs/deploy.md). No
+  # database credentials: it talks to `app` over HTTP only.
+  dashboard-web:
+    build:
+      context: ../..
+      dockerfile: services/dashboard-web/Dockerfile
+    environment:
+      APP_API_URL: http://app:8000
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
 
   worker:
     <<: *app

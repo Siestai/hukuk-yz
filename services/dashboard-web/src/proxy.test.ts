@@ -2,7 +2,7 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
-import { proxy } from "./proxy";
+import { config, proxy } from "./proxy";
 
 const get = (path: string, cookie?: string) =>
     proxy(
@@ -53,5 +53,25 @@ describe("proxy", () => {
         expect(nonce).toBeTruthy();
         expect(a.headers.get("x-middleware-request-x-nonce")).toBe(nonce);
         expect(b.headers.get("content-security-policy")).not.toBe(csp);
+    });
+});
+
+describe("proxy matcher", () => {
+    // Next compiles `source` with path-to-regexp and anchors it, so a negative lookahead excludes
+    // exactly the listed paths. This mirrors that: the pattern in an anchored RegExp.
+    const source = (config.matcher[0] as { source: string }).source;
+    const matches = (path: string) => new RegExp(`^${source}$`).test(path);
+
+    it("skips /healthz but not /healthz/x or pages", () => {
+        expect(matches("/healthz")).toBe(false);
+        expect(matches("/healthz/x")).toBe(true);
+        expect(matches("/giris")).toBe(true);
+        expect(matches("/")).toBe(true);
+    });
+
+    it("skips the API proxy and static assets", () => {
+        expect(matches("/api/auth/me")).toBe(false);
+        expect(matches("/_next/static/a.css")).toBe(false);
+        expect(matches("/favicon.ico")).toBe(false);
     });
 });

@@ -61,6 +61,33 @@ jobs:
           size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
           echo "size=$size bytes"
           test "$size" -lt 300000000
+      - run: docker build -f services/dashboard-web/Dockerfile -t hukuk-dashboard-web:ci .
+      - name: dashboard-web runs as non-root
+        run: |
+          uid=$(docker run --rm hukuk-dashboard-web:ci id -u)
+          echo "uid=$uid"
+          test "$uid" != "0"
+      - name: dashboard-web image is under 400MB
+        run: |
+          size=$(docker image inspect hukuk-dashboard-web:ci --format '{{.Size}}')
+          echo "size=$size bytes"
+          test "$size" -lt 400000000
+      - name: dashboard-web starts and /healthz answers (no API needed)
+        run: |
+          docker run -d --name dashboard-web-ci -p 3000:3000 \
+            -e APP_API_URL=http://app.invalid:8000 hukuk-dashboard-web:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/healthz || true)
+            if [ "$code" = "200" ]; then echo "healthz: $code"; exit 0; fi
+            sleep 1
+          done
+          docker logs dashboard-web-ci
+          exit 1
+      - name: dashboard-web serves its static assets (standalone copy layout)
+        run: |
+          asset=$(curl -fsS http://localhost:3000/giris | grep -o '/_next/static/[^"]*\.css' | head -1)
+          test -n "$asset"
+          curl -fsS -o /dev/null "http://localhost:3000$asset"
 
   web:
     runs-on: ubuntu-latest

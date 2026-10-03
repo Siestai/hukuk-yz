@@ -13,3 +13,5 @@ node_modules
 .next
 **/.next
 coverage
+**/*.tsbuildinfo
+services/dashboard-web/e2e

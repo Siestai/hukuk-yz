@@ -1,0 +1,12 @@
+# Local-only host port mappings, added by the Makefile (COMPOSE). Never used on Dokploy: the base
+# file publishes nothing, Traefik routes to dashboard-web over the network (docs/deploy.md).
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+  app:
+    ports:
+      - "127.0.0.1:8000:8000"
+  dashboard-web:
+    ports:
+      - "127.0.0.1:${DASHBOARD_HOST_PORT:-3000}:3000"

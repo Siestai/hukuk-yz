@@ -12,4 +12,6 @@ Ayağa kaldırma (uv ve Docker gerekir):
 6. `make lint typecheck test` — Postgres testleri için `DATABASE_URL` tanımlayın, yoksa atlanır.
 7. `make down` — durdurur.
 
+Tüm yığını (dashboard dahil) yerelde denemek için: [docs/local-dev.md](docs/local-dev.md) (`make dev`, `make demo-data`). Yayın: [docs/deploy.md](docs/deploy.md).
+
 Frontend (Node 24 ve pnpm gerekir): `pnpm install`, sonra `pnpm lint typecheck test build format:check` ayrı ayrı; API değişince `pnpm openapi`.

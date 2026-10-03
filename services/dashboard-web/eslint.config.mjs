@@ -64,7 +64,13 @@ const inlineStyle = {
 const dbClients = ["prisma", "@prisma/client", "drizzle-orm", "pg", "postgres", "kysely"];
 
 export default defineConfig([
-    globalIgnores([".next/", "coverage/", "node_modules/", "src/lib/api/schema.d.ts"]),
+    globalIgnores([
+        ".next/",
+        "coverage/",
+        "e2e/.output/",
+        "node_modules/",
+        "src/lib/api/schema.d.ts",
+    ]),
     js.configs.recommended,
     ...nextVitals,
     ...nextTypescript,
@@ -93,7 +99,7 @@ export default defineConfig([
         },
     },
     {
-        files: ["**/*.test.{ts,tsx}", "**/test/**"],
+        files: ["**/*.test.{ts,tsx}", "**/test/**", "e2e/**"],
         rules: { "i18next/no-literal-string": "off", "no-restricted-syntax": "off" },
     },
 ]);
