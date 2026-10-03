@@ -5,6 +5,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 import httpx
 import pytest
@@ -292,13 +293,14 @@ async def test_an_unknown_email_is_verified_against_the_dummy_hash(
     client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     verified: list[str] = []
-    real_verify = auth._hasher.verify
 
-    def spy(hash_: str, password: str) -> bool:
-        verified.append(hash_)
-        return real_verify(hash_, password)
+    # PasswordHasher has __slots__, so the module's hasher is replaced by a spying subclass.
+    class SpyHasher(PasswordHasher):
+        def verify(self, hash: str | bytes, password: str | bytes) -> Literal[True]:
+            verified.append(str(hash))
+            return super().verify(hash, password)
 
-    monkeypatch.setattr(auth._hasher, "verify", spy)
+    monkeypatch.setattr(auth, "_hasher", SpyHasher())
     response = await client.post(
         "/auth/login", json={"email": "nobody@x.test", "password": PASSWORD}
     )
