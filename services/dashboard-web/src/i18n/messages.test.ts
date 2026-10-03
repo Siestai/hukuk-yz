@@ -25,7 +25,7 @@ function usedKeys(): Set<string> {
         if (namespaces.length === 0) continue;
         expect(namespaces, `${file}: use one translator namespace per file`).toHaveLength(1);
         const namespace = namespaces[0]?.[1];
-        for (const [, key] of code.matchAll(/\bt\("([^"]+)"\)/g)) {
+        for (const [, key] of code.matchAll(/\bt\("([^"]+)"[,)]/g)) {
             keys.add(namespace ? `${namespace}.${key}` : String(key));
         }
     }

@@ -5,3 +5,4 @@ openapi.json
 schema.d.ts
 next-env.d.ts
 pnpm-lock.yaml
+services/dashboard-web/content
