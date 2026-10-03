@@ -20,7 +20,7 @@ The frontend is a thin client of the `app` API. Bring these rules in from the fi
 - Color, typography, spacing, radius and shadow come **only** from design tokens: CSS variables, mapped into the Tailwind theme.
 - No hard-coded values in components: no hex/rgb colors, no arbitrary Tailwind values such as `bg-[#123456]` or `p-[13px]`.
 - Shared components and tokens live in `packages/ui`. If shadcn/ui is used, it reads the same tokens.
-- Brand is not decided yet. Start with a neutral theme; changing the palette must be a token edit, not a component edit.
+- Tokens and the working brand name (Libria) are in `docs/design/dashboard-v0.md`; they live in `packages/ui/src/styles.css`. Changing the palette or the brand must be a token edit, not a component edit.
 
 ## i18n (decided 2026-10-03)
 
@@ -38,3 +38,11 @@ The frontend is a thin client of the `app` API. Bring these rules in from the fi
 - TypeScript strict. ESLint and the type check must pass in CI, like ruff/mypy on the Python side.
 - Tests are named after the module they test (`queue-table.test.tsx`), never after the task or the review round.
 - Accessibility basics: real buttons and labels, keyboard reachable actions, visible focus.
+
+## Commands
+
+Run from the repo root (`pnpm` is pinned by `packageManager`; Node from `.nvmrc`):
+
+- `pnpm install --frozen-lockfile`
+- `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm format:check`
+- `pnpm openapi`: regenerate `services/dashboard-web/openapi.json` and `src/lib/api/schema.d.ts` after any API change (commit both; CI checks they are current).

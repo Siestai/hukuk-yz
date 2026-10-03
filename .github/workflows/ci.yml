@@ -61,3 +61,28 @@ jobs:
           size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
           echo "size=$size bytes"
           test "$size" -lt 300000000
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm format:check
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: make install
+      - name: OpenAPI schema and generated types are current
+        run: |
+          pnpm openapi
+          git diff --exit-code
