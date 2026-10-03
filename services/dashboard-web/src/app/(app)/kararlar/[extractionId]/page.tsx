@@ -60,6 +60,7 @@ export default async function DecisionPage({
                 </div>
                 <DocumentTabs
                     pdfSrc={`/api/review/decisions/${detail.extraction_id}/file`}
+                    pdf={detail.pdf}
                     text={
                         <TextPanel
                             fullText={fields.fullText}

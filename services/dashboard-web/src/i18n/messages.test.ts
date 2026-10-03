@@ -61,6 +61,8 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.sourceStatus": schemaEnum("ReviewDetail", "source_status"),
     // The fields a reviewer may correct, plus the read-only ones the detail screen shows.
     fields: [...schemaProperties("DecisionEdits"), "journal_issue"],
+    // "available" shows the frame; the other two values are the empty-state texts.
+    "review.detail.pdf": schemaEnum("ReviewDetail", "pdf").filter((v) => v !== "available"),
     "review.detail.history.decision": schemaEnum("ReviewOut", "decision"),
     "review.queue.sort": SORTS,
 };

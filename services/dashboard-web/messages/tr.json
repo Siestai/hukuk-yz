@@ -14,6 +14,10 @@
     "required": "E-posta ve parolayı girin.",
     "internalNotice": "İç kullanım. Erişim yalnızca davetli kullanıcılara açıktır."
   },
+  "common": {
+    "empty": "-",
+    "separator": " · "
+  },
   "nav": {
     "label": "Ana menü",
     "queue": "İnceleme kuyruğu",
@@ -101,16 +105,14 @@
       "warnings": "Parser uyarıları",
       "noWarnings": "Uyarı yok.",
       "unknownCode": "Bilinmeyen kod",
+      "unknownReviewer": "Bilinmeyen inceleyici",
       "documentTabs": "Belge",
       "tabPdf": "PDF",
       "tabText": "Çıkarılmış metin",
       "pdf": {
         "title": "Kararın özgün PDF'i",
-        "checking": "PDF denetleniyor",
-        "file_not_found": "Bu karar için PDF dosyası bulunamadı.",
-        "file_not_previewable": "Bu kaydın dosyası PDF değil, önizlenemiyor.",
-        "unavailable": "PDF şimdi yüklenemedi.",
-        "retry": "Tekrar dene"
+        "missing": "Bu karar için PDF dosyası bulunamadı.",
+        "not_previewable": "Bu kaydın dosyası PDF değil, önizlenemiyor."
       },
       "text": {
         "title": "Çıkarılmış karar metni",

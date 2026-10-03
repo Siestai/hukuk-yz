@@ -231,10 +231,12 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
             )
             for id_, conf, length in rows
         ]
+    ingest_file = await db.get(IngestFile, extraction.file_id)
+    assert ingest_file is not None  # extraction.file_id is a foreign key
     reviews = (
         await db.execute(
             select(Review, AppUser.display_name)
-            .join(AppUser, AppUser.id == Review.reviewer_id)
+            .outerjoin(AppUser, AppUser.id == Review.reviewer_id)
             .where(Review.extraction_id == extraction_id)
             .order_by(Review.reviewed_at, Review.id)
         )
@@ -248,6 +250,7 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
         warnings=extraction.warnings,
         confidence=Confidence(**extraction.confidence),
         raw_text_ref=extraction.raw_text_ref,
+        pdf=_pdf_availability(ingest_file),
         duplicates=duplicates,
         reviews=[
             ReviewOut(
@@ -288,14 +291,8 @@ async def get_file(extraction_id: uuid.UUID, db: Db) -> Response:
     assert ingest_file is not None  # extraction.file_id is a foreign key
     if ingest_file.detected_type != "pdf":
         raise ApiError(415, ErrorCode.file_not_previewable)
-    root = get_settings().archive_root
-    if root is None:
-        raise ApiError(404, ErrorCode.file_not_found)
-    try:
-        path = (root / ingest_file.path).resolve(strict=True)
-    except OSError:
-        raise ApiError(404, ErrorCode.file_not_found) from None
-    if not path.is_relative_to(root.resolve()) or not path.is_file():
+    path = _archive_path(ingest_file)
+    if path is None:
         raise ApiError(404, ErrorCode.file_not_found)
     content = await asyncio.to_thread(
         _read_archive_file, path, get_settings().archive_max_file_bytes
@@ -353,6 +350,31 @@ async def act(
         decision_id=decision_id,
         source_status="rejected" if body.action == "reject" else "approved",
     )
+
+
+def _archive_path(ingest_file: IngestFile) -> Path | None:
+    """The file of an ingest record if it is a regular file inside `ARCHIVE_ROOT`, else None.
+    Nothing is read."""
+    root = get_settings().archive_root
+    if root is None:
+        return None
+    try:
+        path = (root / ingest_file.path).resolve(strict=True)
+    except OSError:
+        return None
+    if not path.is_relative_to(root.resolve()) or not path.is_file():
+        return None
+    return path
+
+
+def _pdf_availability(
+    ingest_file: IngestFile,
+) -> Literal["available", "missing", "not_previewable"]:
+    """What the detail screen may show of the original, without reading or hashing it: the
+    file route still checks size and SHA-256, so a mismatch is only found when the PDF loads."""
+    if ingest_file.detected_type != "pdf":
+        return "not_previewable"
+    return "available" if _archive_path(ingest_file) else "missing"
 
 
 def _read_archive_file(path: Path, max_bytes: int) -> bytes | None:

@@ -244,7 +244,7 @@ class DuplicateOut(BaseModel):
 class ReviewOut(BaseModel):
     id: uuid.UUID
     reviewer_id: uuid.UUID
-    reviewer_name: str
+    reviewer_name: str | None  # None: the reviewer has no user row (reviews of the task-05 CLI)
     decision: Literal["approve", "edit", "reject"]
     edits: dict[str, Any] | None
     note: str | None
@@ -260,5 +260,6 @@ class ReviewDetail(BaseModel):
     warnings: list[str]
     confidence: Confidence
     raw_text_ref: str | None
+    pdf: Literal["available", "missing", "not_previewable"]
     duplicates: list[DuplicateOut]
     reviews: list[ReviewOut]

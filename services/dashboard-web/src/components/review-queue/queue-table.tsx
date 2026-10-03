@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "next-intl";
 
 import type { components } from "@/lib/api/schema";
 import { detailHref, type QueueParams } from "@/lib/queue-params";
+import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
@@ -11,6 +12,10 @@ export type QueueItem = components["schemas"]["ReviewListItem"];
 
 const MAX_REASON_CHIPS = 2;
 
+// The title link stretches over its row (`after:absolute after:inset-0` on a `relative` row), so
+// the whole row is one click target while keyboard and screen readers still get a single link.
+// Tradeoff: text in the row cannot be selected with the mouse. Anything else interactive in a
+// cell (a tooltip, a future link or button) needs `relative z-10` to sit above the overlay.
 function DuplicateIcon({ label }: { label: string }) {
     return (
         <svg
@@ -20,7 +25,7 @@ function DuplicateIcon({ label }: { label: string }) {
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
-            className="size-4 shrink-0 text-medium"
+            className="relative z-10 size-4 shrink-0 text-medium"
         >
             <title>{label}</title>
             <rect x={9} y={9} width={11} height={11} rx={2} />
@@ -35,13 +40,14 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
     const labels = useEnumLabels();
 
     const { date } = useDates();
+    const { empty, separator } = useCommon();
     const numbers = (item: QueueItem) =>
         [
             item.esas_no && t("esas", { value: item.esas_no }),
             item.karar_no && t("karar", { value: item.karar_no }),
         ]
             .filter(Boolean)
-            .join(" · ") || "-";
+            .join(separator) || empty;
     const reasonLabel = (reason: string) => (
         <li key={reason}>
             <Badge
@@ -113,7 +119,7 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
                                 {date(item.decision_date)}
                             </TableCell>
                             <TableCell className="font-mono text-xs">
-                                {item.journal_issue ?? "-"}
+                                {item.journal_issue ?? empty}
                             </TableCell>
                             <TableCell>
                                 <ul className="flex gap-1">

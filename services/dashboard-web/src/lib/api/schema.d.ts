@@ -257,9 +257,31 @@ export interface components {
             /** Chamber */
             chamber?: string | null;
             /** Court */
-            court?: ("aym" | "yargitay" | "danistay" | "bam" | "bim" | "ilk_derece" | "aihm" | "abad" | "foreign") | null;
+            court?:
+                | (
+                      | "aym"
+                      | "yargitay"
+                      | "danistay"
+                      | "bam"
+                      | "bim"
+                      | "ilk_derece"
+                      | "aihm"
+                      | "abad"
+                      | "foreign"
+                  )
+                | null;
             /** Court Level */
-            court_level?: ("aym" | "ibk" | "hgk_iddk" | "daire" | "bam_bim" | "ilk_derece" | "international") | null;
+            court_level?:
+                | (
+                      | "aym"
+                      | "ibk"
+                      | "hgk_iddk"
+                      | "daire"
+                      | "bam_bim"
+                      | "ilk_derece"
+                      | "international"
+                  )
+                | null;
             /** Decision Date */
             decision_date?: string | null;
             /** Decision Kind */
@@ -273,7 +295,9 @@ export interface components {
             /** Keywords */
             keywords?: string[] | null;
             /** Outcome */
-            outcome?: ("bozma" | "onama" | "duzelterek_onama" | "kabul" | "red" | "ihlal" | "ihlal_yok") | null;
+            outcome?:
+                | ("bozma" | "onama" | "duzelterek_onama" | "kabul" | "red" | "ihlal" | "ihlal_yok")
+                | null;
             /** Related Articles */
             related_articles?: components["schemas"]["RelatedArticle"][] | null;
             /** Source Chamber */
@@ -318,7 +342,23 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "http_error" | "internal_error";
+        ErrorCode:
+            | "unauthorized"
+            | "forbidden"
+            | "unsupported_media_type"
+            | "validation_error"
+            | "not_found"
+            | "method_not_allowed"
+            | "extraction_not_found"
+            | "review_conflict"
+            | "decision_conflict"
+            | "bulk_count_changed"
+            | "bulk_band_not_allowed"
+            | "too_many_attempts"
+            | "file_not_found"
+            | "file_not_previewable"
+            | "http_error"
+            | "internal_error";
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
@@ -388,7 +428,15 @@ export interface components {
              * Source Status
              * @enum {string}
              */
-            source_status: "draft" | "analyzed" | "approved" | "published" | "superseded" | "withdrawn" | "failed" | "rejected";
+            source_status:
+                | "draft"
+                | "analyzed"
+                | "approved"
+                | "published"
+                | "superseded"
+                | "withdrawn"
+                | "failed"
+                | "rejected";
         };
         /** ReviewDetail */
         ReviewDetail: {
@@ -404,6 +452,11 @@ export interface components {
             fields: {
                 [key: string]: unknown;
             };
+            /**
+             * Pdf
+             * @enum {string}
+             */
+            pdf: "available" | "missing" | "not_previewable";
             /** Raw Text Ref */
             raw_text_ref: string | null;
             /** Reviews */
@@ -417,7 +470,15 @@ export interface components {
              * Source Status
              * @enum {string}
              */
-            source_status: "draft" | "analyzed" | "approved" | "published" | "superseded" | "withdrawn" | "failed" | "rejected";
+            source_status:
+                | "draft"
+                | "analyzed"
+                | "approved"
+                | "published"
+                | "superseded"
+                | "withdrawn"
+                | "failed"
+                | "rejected";
             /** Title */
             title: string;
             /** Warnings */
@@ -513,7 +574,7 @@ export interface components {
              */
             reviewer_id: string;
             /** Reviewer Name */
-            reviewer_name: string;
+            reviewer_name: string | null;
         };
         /** ReviewSummary */
         ReviewSummary: {

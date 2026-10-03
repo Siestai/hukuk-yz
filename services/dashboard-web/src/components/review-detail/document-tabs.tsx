@@ -4,13 +4,21 @@ import { cn } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { type KeyboardEvent, type ReactNode, useId, useRef, useState } from "react";
 
-import { PdfPanel } from "./pdf-panel";
+import { PdfPanel, type PdfAvailability } from "./pdf-panel";
 
 const TABS = ["pdf", "text"] as const;
 type Tab = (typeof TABS)[number];
 
 /** PDF and extracted text side by side as tabs; the text arrives rendered by the server. */
-export function DocumentTabs({ pdfSrc, text }: { pdfSrc: string; text: ReactNode }) {
+export function DocumentTabs({
+    pdfSrc,
+    pdf,
+    text,
+}: {
+    pdfSrc: string;
+    pdf: PdfAvailability;
+    text: ReactNode;
+}) {
     const t = useTranslations("review.detail");
     const id = useId();
     const [active, setActive] = useState<Tab>("pdf");
@@ -69,9 +77,10 @@ export function DocumentTabs({ pdfSrc, text }: { pdfSrc: string; text: ReactNode
                     id={`${id}-panel-${tab}`}
                     role="tabpanel"
                     aria-labelledby={`${id}-tab-${tab}`}
+                    tabIndex={0}
                     hidden={active !== tab}
                 >
-                    {tab === "pdf" ? <PdfPanel src={pdfSrc} /> : text}
+                    {tab === "pdf" ? <PdfPanel src={pdfSrc} availability={pdf} /> : text}
                 </div>
             ))}
         </div>

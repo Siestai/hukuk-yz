@@ -1,18 +1,18 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import { renderWithIntl } from "@/test/intl";
 import { DocumentTabs } from "./document-tabs";
 
-beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, body: null }));
-});
-
 function setup() {
     renderWithIntl(
-        <DocumentTabs pdfSrc="/api/review/decisions/d1/file" text={<p>karar metni</p>} />,
+        <DocumentTabs
+            pdfSrc="/api/review/decisions/d1/file"
+            pdf="available"
+            text={<p>karar metni</p>}
+        />,
     );
     return {
         pdf: screen.getByRole("tab", { name: messages.review.detail.tabPdf }),
@@ -31,6 +31,7 @@ describe("DocumentTabs", () => {
         const panel = screen.getByRole("tabpanel");
         expect(panel).toHaveAttribute("aria-labelledby", pdf.id);
         expect(pdf).toHaveAttribute("aria-controls", panel.id);
+        expect(panel).toHaveAttribute("tabindex", "0");
     });
 
     it("switches panels on click", async () => {
@@ -60,6 +61,6 @@ describe("DocumentTabs", () => {
     it("keeps the PDF mounted while the text tab is shown", async () => {
         const { text } = setup();
         await userEvent.click(text);
-        expect(await screen.findByTitle(messages.review.detail.pdf.title)).toBeInTheDocument();
+        expect(screen.getByTitle(messages.review.detail.pdf.title)).toBeInTheDocument();
     });
 });

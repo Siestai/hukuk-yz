@@ -7,6 +7,7 @@ export type DecisionFields = {
     court: string;
     courtLevel: string;
     chamber: string;
+    sourceChamber: string;
     bamRegion: string;
     esasNo: string;
     kararNo: string;
@@ -42,6 +43,7 @@ export function readFields(fields: Record<string, unknown>): DecisionFields {
         court: text(fields.court),
         courtLevel: text(fields.court_level),
         chamber: text(fields.chamber),
+        sourceChamber: text(fields.source_chamber),
         bamRegion: text(fields.bam_region),
         esasNo: text(fields.esas_no),
         kararNo: text(fields.karar_no),
@@ -53,4 +55,10 @@ export function readFields(fields: Record<string, unknown>): DecisionFields {
         fullText: text(fields.full_text),
         editorialSummary: text(fields.editorial_summary),
     };
+}
+
+/** An HGK esas number carries the chamber it came from: "2019/1234" and chamber "9" read "2019/9-1234". */
+export function esasDisplay({ esasNo, sourceChamber }: DecisionFields): string {
+    const parts = /^(\d{4})\/(.+)$/.exec(esasNo);
+    return sourceChamber && parts ? `${parts[1]}/${sourceChamber}-${parts[2]}` : esasNo;
 }

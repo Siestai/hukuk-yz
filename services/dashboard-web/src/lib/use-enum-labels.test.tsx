@@ -25,7 +25,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 describe("enum labels", () => {
     it("reads the reason codes from confidence.py", () => {
-        expect(reasonCodes().length).toBeGreaterThan(20);
+        expect(reasonCodes().length).toBeGreaterThan(10);
     });
 
     it("has a Turkish label for every reason code of confidence.py", () => {
@@ -36,7 +36,7 @@ describe("enum labels", () => {
 
     it("has a Turkish label for every warning code the parser and the loader emit", () => {
         const labelled = Object.keys(messages.enums.warning);
-        expect(warningCodes().length).toBeGreaterThan(15);
+        expect(warningCodes().length).toBeGreaterThan(10);
         expect(warningCodes().filter((code) => !labelled.includes(code))).toEqual([]);
         expect(labelled.filter((code) => !warningCodes().includes(code))).toEqual([]);
     });

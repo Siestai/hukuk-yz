@@ -3,14 +3,14 @@ import { useFormatter, useTranslations } from "next-intl";
 
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
+import { UnknownCode } from "./unknown-code";
+
 type Props = { score: number; band: string; reasons: string[]; warnings: string[] };
 
 export function ConfidenceCard({ score, band, reasons, warnings }: Props) {
     const t = useTranslations("review.detail");
     const format = useFormatter();
     const labels = useEnumLabels();
-    const unknown = (known: boolean) =>
-        known ? null : <span className="sr-only">{t("unknownCode")}</span>;
     return (
         <Card>
             <CardHeader>
@@ -41,7 +41,7 @@ export function ConfidenceCard({ score, band, reasons, warnings }: Props) {
                                 <li key={reason}>
                                     <Badge variant="outline">
                                         {labels.reason(reason)}
-                                        {unknown(labels.isKnownReason(reason))}
+                                        <UnknownCode known={labels.isKnownReason(reason)} />
                                     </Badge>
                                 </li>
                             ))}
@@ -60,7 +60,7 @@ export function ConfidenceCard({ score, band, reasons, warnings }: Props) {
                                 <li key={warning}>
                                     <Badge variant="outline">
                                         {labels.warning(warning)}
-                                        {unknown(labels.isKnownWarning(warning))}
+                                        <UnknownCode known={labels.isKnownWarning(warning)} />
                                     </Badge>
                                 </li>
                             ))}

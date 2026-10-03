@@ -63,6 +63,29 @@ describe("FieldsCard", () => {
         ]);
     });
 
+    it("writes the chamber an HGK esas number came from as YYYY/D-N", () => {
+        renderWithIntl(
+            <FieldsCard
+                fields={readFields({ ...full, court_level: "hgk_iddk", source_chamber: "9" })}
+            />,
+        );
+        expect(within(row(messages.fields.esas_no)).getByText("2019/9-1234")).toBeInTheDocument();
+    });
+
+    it("lets long keywords and values wrap inside the card", () => {
+        const long = "x".repeat(300);
+        renderWithIntl(
+            <FieldsCard fields={readFields({ ...full, keywords: [long, long], chamber: long })} />,
+        );
+        const chips = within(row(messages.fields.keywords)).getAllByText(long);
+        expect(chips).toHaveLength(2); // duplicates render, keyed by position
+        for (const chip of chips) expect(chip).toHaveClass("wrap-anywhere", "max-w-full");
+        expect(row(messages.fields.chamber).querySelector("dd")).toHaveClass(
+            "min-w-0",
+            "wrap-anywhere",
+        );
+    });
+
     it("shows the BAM region when there is one", () => {
         renderWithIntl(<FieldsCard fields={readFields({ ...full, bam_region: "İstanbul" })} />);
         expect(within(row(messages.fields.bam_region)).getByText("İstanbul")).toBeInTheDocument();

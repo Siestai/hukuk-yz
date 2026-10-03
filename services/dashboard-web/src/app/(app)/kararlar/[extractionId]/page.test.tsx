@@ -21,7 +21,6 @@ const redirect = vi.hoisted(() =>
 );
 vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
 vi.mock("next/navigation", () => ({ notFound, redirect }));
-vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, body: null }));
 
 const ok = (data: unknown) => ({ response: new Response(null, { status: 200 }), data });
 const failed = (status: number, code?: string) => ({
@@ -51,6 +50,7 @@ const detail = {
     warnings: ["invalid_date"],
     confidence: { score: 40, band: "low", reasons: ["missing_karar_no"] },
     raw_text_ref: null,
+    pdf: "available",
     duplicates: [{ extraction_id: "d1", band: "low", score: 40, text_length: 900 }],
     reviews: [
         {
@@ -107,7 +107,7 @@ describe("DecisionPage", () => {
         expect(
             screen.getByRole("tab", { name: messages.review.detail.tabText }),
         ).toBeInTheDocument();
-        expect(await screen.findByTitle(messages.review.detail.pdf.title)).toHaveAttribute(
+        expect(screen.getByTitle(messages.review.detail.pdf.title)).toHaveAttribute(
             "src",
             `/api/review/decisions/${ID}/file`,
         );
@@ -152,6 +152,24 @@ describe("DecisionPage", () => {
     it("sends a lost session to the sign-out route", async () => {
         get.mockResolvedValue(failed(401, "unauthorized"));
         await expect(renderPage()).rejects.toThrow("NEXT_REDIRECT /oturum-sonu");
+    });
+
+    it("shows the empty state instead of a frame when the PDF is missing or not a PDF", async () => {
+        get.mockResolvedValue(ok({ ...detail, pdf: "missing" }));
+        await renderPage();
+        expect(screen.getByText(messages.review.detail.pdf.missing)).toBeInTheDocument();
+        expect(screen.queryByTitle(messages.review.detail.pdf.title)).toBeNull();
+    });
+
+    it("throws for an API error that is not a 404 of the record, for the error boundary", async () => {
+        get.mockResolvedValue(failed(500, "internal_error"));
+        const error = await renderPage().catch((e: Error) => e);
+        expect(error).toBeInstanceOf(Error);
+        expect(isUpstreamUnavailable(error as Error)).toBe(true);
+        expect(notFound).not.toHaveBeenCalled();
+        get.mockResolvedValue(failed(422, "validation_error"));
+        await expect(renderPage()).rejects.toThrow(/validation_error/);
+        expect(notFound).not.toHaveBeenCalled();
     });
 
     it("lets the error page handle a server failure and any other API error", async () => {

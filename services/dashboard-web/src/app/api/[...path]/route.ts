@@ -33,8 +33,19 @@ function capBody(body: ReadableStream<Uint8Array>, onExceeded: () => void) {
     );
 }
 
-function errorResponse(status: number, code: string): Response {
-    return Response.json({ error: { code, params: {} } }, { status });
+// Set here, never taken from upstream, on every response of the route, its own errors included.
+function withFrameHeaders(headers: Headers, pathname: string): Headers {
+    for (const [name, value] of Object.entries(apiFrameHeaders(pathname))) {
+        headers.set(name, value);
+    }
+    return headers;
+}
+
+function errorResponse(status: number, code: string, pathname: string): Response {
+    return Response.json(
+        { error: { code, params: {} } },
+        { status, headers: withFrameHeaders(new Headers(), pathname) },
+    );
 }
 
 async function forward(
@@ -42,12 +53,13 @@ async function forward(
     { params }: { params: Promise<{ path: string[] }> },
 ): Promise<Response> {
     const segments = (await params).path;
+    const { pathname } = request.nextUrl;
     const path = segments.join("/");
     if (
         !ALLOWED_PREFIXES.some((prefix) => path.startsWith(prefix)) ||
         segments.some((s) => s === "." || s === ".." || s.includes("/") || s.includes("\\"))
     ) {
-        return errorResponse(404, "not_found");
+        return errorResponse(404, "not_found", pathname);
     }
 
     const headers = upstreamHeaders(request.headers, request.nextUrl.protocol);
@@ -58,7 +70,7 @@ async function forward(
     const url = `${appApiUrl()}/${segments.map(encodeURIComponent).join("/")}${request.nextUrl.search}`;
     const hasBody = request.method !== "GET" && request.method !== "HEAD";
     if (hasBody && Number(request.headers.get("content-length")) > MAX_BODY_BYTES) {
-        return errorResponse(413, "payload_too_large");
+        return errorResponse(413, "payload_too_large", pathname);
     }
     let tooLarge = false;
     const body =
@@ -79,8 +91,12 @@ async function forward(
             signal: AbortSignal.any([request.signal, controller.signal]),
         });
     } catch {
-        if (tooLarge) return errorResponse(413, "payload_too_large");
-        return errorResponse(controller.signal.aborted ? 504 : 502, "upstream_unavailable");
+        if (tooLarge) return errorResponse(413, "payload_too_large", pathname);
+        return errorResponse(
+            controller.signal.aborted ? 504 : 502,
+            "upstream_unavailable",
+            pathname,
+        );
     } finally {
         clearTimeout(timer);
     }
@@ -90,10 +106,8 @@ async function forward(
         const value = upstream.headers.get(name);
         if (value) out.set(name, value);
     }
-    // Set here, never taken from upstream: the allowlist above drops any CSP or frame header of `app`.
-    for (const [name, value] of Object.entries(apiFrameHeaders(request.nextUrl.pathname))) {
-        out.set(name, value);
-    }
+    // The allowlist above drops any CSP or frame header of `app`.
+    withFrameHeaders(out, pathname);
     for (const cookie of upstream.headers.getSetCookie()) out.append("set-cookie", cookie);
     return new Response(upstream.body, { status: upstream.status, headers: out });
 }

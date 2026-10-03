@@ -38,6 +38,11 @@ describe("HistoryCard", () => {
         expect(screen.getByText("Tarih düzeltildi")).toBeInTheDocument();
     });
 
+    it("names a reviewer without a user account as unknown", () => {
+        renderWithIntl(<HistoryCard reviews={[{ ...review, reviewer_name: null }]} />);
+        expect(screen.getByText(messages.review.detail.unknownReviewer)).toBeInTheDocument();
+    });
+
     it("shows a rejection without edits", () => {
         renderWithIntl(
             <HistoryCard reviews={[{ ...review, decision: "reject", edits: null, note: null }]} />,

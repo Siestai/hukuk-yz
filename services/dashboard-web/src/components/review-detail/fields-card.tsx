@@ -2,23 +2,24 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
-import type { DecisionFields, RelatedArticle } from "@/lib/decision-fields";
+import { type DecisionFields, esasDisplay, type RelatedArticle } from "@/lib/decision-fields";
+import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
-const EMPTY = "-";
-
+/** Values are stored text of any length: they wrap inside the card instead of widening it. */
 function Row({ label, children }: { label: string; children: ReactNode }) {
     return (
         <div className="grid grid-cols-3 gap-2 border-b border-line-2 py-2 text-sm last:border-b-0">
-            <dt className="text-ink-3">{label}</dt>
-            <dd className="col-span-2 text-ink">{children}</dd>
+            <dt className="min-w-0 wrap-anywhere text-ink-3">{label}</dt>
+            <dd className="col-span-2 min-w-0 wrap-anywhere text-ink">{children}</dd>
         </div>
     );
 }
 
 function Mono({ value }: { value: string }) {
-    return value ? <span className="font-mono text-xs">{value}</span> : EMPTY;
+    const { empty } = useCommon();
+    return value ? <span className="font-mono text-xs">{value}</span> : empty;
 }
 
 /** "4857 s. Kanun m. 18, 17/3"; a statute the parser could not map shows the line it read. */
@@ -37,6 +38,7 @@ export function FieldsCard({ fields }: { fields: DecisionFields }) {
     const t = useTranslations();
     const labels = useEnumLabels();
     const { date } = useDates();
+    const { empty } = useCommon();
     const field = (name: string) => t(`fields.${name}`);
     return (
         <Card>
@@ -46,17 +48,17 @@ export function FieldsCard({ fields }: { fields: DecisionFields }) {
             <CardContent>
                 <dl>
                     <Row label={field("court")}>
-                        {fields.court ? labels.court(fields.court) : EMPTY}
+                        {fields.court ? labels.court(fields.court) : empty}
                     </Row>
                     <Row label={field("court_level")}>
-                        {fields.courtLevel ? labels.courtLevel(fields.courtLevel) : EMPTY}
+                        {fields.courtLevel ? labels.courtLevel(fields.courtLevel) : empty}
                     </Row>
-                    <Row label={field("chamber")}>{fields.chamber || EMPTY}</Row>
+                    <Row label={field("chamber")}>{fields.chamber || empty}</Row>
                     {fields.bamRegion ? (
                         <Row label={field("bam_region")}>{fields.bamRegion}</Row>
                     ) : null}
                     <Row label={field("esas_no")}>
-                        <Mono value={fields.esasNo} />
+                        <Mono value={esasDisplay(fields)} />
                     </Row>
                     <Row label={field("karar_no")}>
                         <Mono value={fields.kararNo} />
@@ -70,23 +72,28 @@ export function FieldsCard({ fields }: { fields: DecisionFields }) {
                                 ))}
                             </ul>
                         ) : (
-                            EMPTY
+                            empty
                         )}
                     </Row>
                     <Row label={field("outcome")}>
-                        {fields.outcome ? labels.outcome(fields.outcome) : EMPTY}
+                        {fields.outcome ? labels.outcome(fields.outcome) : empty}
                     </Row>
                     <Row label={field("keywords")}>
                         {fields.keywords.length > 0 ? (
-                            <ul className="flex flex-wrap gap-1">
-                                {fields.keywords.map((keyword) => (
-                                    <li key={keyword}>
-                                        <Badge variant="outline">{keyword}</Badge>
+                            <ul className="flex min-w-0 flex-wrap gap-1">
+                                {fields.keywords.map((keyword, i) => (
+                                    <li key={i} className="min-w-0 max-w-full">
+                                        <Badge
+                                            variant="outline"
+                                            className="max-w-full whitespace-normal wrap-anywhere"
+                                        >
+                                            {keyword}
+                                        </Badge>
                                     </li>
                                 ))}
                             </ul>
                         ) : (
-                            EMPTY
+                            empty
                         )}
                     </Row>
                     <Row label={field("journal_issue")}>

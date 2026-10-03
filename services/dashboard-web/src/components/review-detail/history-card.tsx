@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 
 import type { components } from "@/lib/api/schema";
+import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 
 type Review = components["schemas"]["ReviewOut"];
@@ -9,6 +10,7 @@ type Review = components["schemas"]["ReviewOut"];
 export function HistoryCard({ reviews }: { reviews: Review[] }) {
     const t = useTranslations();
     const { dateTime } = useDates();
+    const { separator } = useCommon();
     const fieldLabel = (name: string) => (t.has(`fields.${name}`) ? t(`fields.${name}`) : name);
     return (
         <Card>
@@ -23,8 +25,10 @@ export function HistoryCard({ reviews }: { reviews: Review[] }) {
                         {reviews.map((review) => (
                             <li key={review.id} className="grid gap-1 text-sm">
                                 <p className="text-ink">
-                                    <span className="font-medium">{review.reviewer_name}</span>
-                                    {" · "}
+                                    <span className="font-medium">
+                                        {review.reviewer_name ?? t("review.detail.unknownReviewer")}
+                                    </span>
+                                    {separator}
                                     {t(`review.detail.history.decision.${review.decision}`)}
                                 </p>
                                 <time dateTime={review.reviewed_at} className="text-xs text-ink-3">
