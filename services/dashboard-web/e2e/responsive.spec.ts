@@ -9,7 +9,8 @@ const PHONE = { width: 360, height: 740 };
 const TABLET = { width: 768, height: 1024 };
 
 const cards = (page: Page) =>
-    page.getByRole("list", { name: "Onay bekleyen kararlar" }).getByRole("listitem");
+    // Direct children only: each card holds its own list of reason chips.
+    page.getByRole("list", { name: "Onay bekleyen kararlar" }).locator(":scope > li");
 const pdfLink = (page: Page) => page.getByRole("link", { name: "PDF'i yeni sekmede aç" });
 const menuButton = (page: Page) => page.getByRole("button", { name: "Menü", exact: true });
 const pdfFrame = (page: Page) => page.getByTitle("Kararın özgün PDF'i");
