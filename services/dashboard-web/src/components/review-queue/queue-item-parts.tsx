@@ -11,7 +11,7 @@ import {
     type QueueItemFormat,
 } from "./queue-item-format";
 
-/** How many reasons a record shows by name; the rest is a count. */
+/** How many reasons a card shows by name; the rest is a count. The table shows fewer (`max`). */
 const MAX_REASON_CHIPS = 2;
 
 // The title link of a row or card stretches over it (`after:absolute after:inset-0` on a
@@ -76,21 +76,23 @@ function ReasonHelp({ text }: { text: string | undefined }) {
     return text ? <span className="sr-only">: {text}</span> : null;
 }
 
-/** At most two reasons by name and "+N"; the reasons behind the "+N" are read out by screen readers. */
+/** At most `max` (two) reasons by name and "+N"; the reasons behind the "+N" are read out by screen readers. */
 export function ReasonChips({
     item,
     format,
     wrap = false,
+    max = MAX_REASON_CHIPS,
 }: {
     item: QueueItem;
     format: QueueItemFormat;
     wrap?: boolean;
+    max?: number;
 }) {
     const moreId = useId();
-    const rest = item.reasons.slice(MAX_REASON_CHIPS);
+    const rest = item.reasons.slice(max);
     return (
         <ul className={cn("flex gap-1", wrap && "flex-wrap")}>
-            {item.reasons.slice(0, MAX_REASON_CHIPS).map((reason) => (
+            {item.reasons.slice(0, max).map((reason) => (
                 <li key={reason}>
                     <Badge
                         variant="outline"

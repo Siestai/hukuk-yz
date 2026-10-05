@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { openQueue, openRecord } from "./helpers";
+import { expectTableFits, openQueue, openRecord } from "./helpers";
 
 // CONSUMES demo records: Demo 11 (rejected) and Demo 06 (approved). It runs after actions.spec
 // and bulk.spec (file order), and also relies on them for the "edited" record (Demo 05) and the
@@ -110,5 +110,27 @@ test("the tabs count what the lists show", async ({ page }) => {
         await openQueue(page, `durum=${slug}`);
         await expect(rows(page, name)).toHaveCount(count);
         await openQueue(page);
+    }
+});
+
+test("every tab's table fits its container at 1280 and 1440 px, with the review in the Durum column", async ({
+    page,
+}) => {
+    for (const width of [1280, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const [query, name] of [
+            ["", "Onay bekleyen kararlar"],
+            ["durum=onaylanan", "Onaylanan kararlar"],
+            ["durum=reddedilen", "Reddedilen kararlar"],
+            ["durum=tumu", "Tüm kararlar"],
+        ] as const) {
+            await openQueue(page, query);
+            const table = page.getByRole("table", { name });
+            await expect(table).toBeVisible();
+            await expectTableFits(table);
+            // the review and the note are no columns of their own
+            await expect(table.getByRole("columnheader", { name: /^İnceleme/ })).toHaveCount(0);
+            await expect(table.getByRole("columnheader", { name: /^Ret notu/ })).toHaveCount(0);
+        }
     }
 });

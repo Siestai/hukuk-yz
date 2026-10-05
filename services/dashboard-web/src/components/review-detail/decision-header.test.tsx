@@ -32,10 +32,9 @@ describe("DecisionHeader", () => {
         );
     });
 
-    it("says that actions are unavailable when the record left the queue", () => {
+    it("leaves the explanation of a record that left the queue to the status strip", () => {
         renderWithIntl(<DecisionHeader {...base} sourceStatus="published" />);
-        expect(screen.getByRole("note")).toHaveTextContent(
-            "Bu kayıt artık kuyrukta değil (Yayında). İnceleme işlemleri kullanılamaz.",
-        );
+        expect(screen.getByText(messages.enums.sourceStatus.published)).toBeInTheDocument();
+        expect(screen.queryByRole("note")).toBeNull();
     });
 });

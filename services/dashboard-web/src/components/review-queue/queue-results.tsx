@@ -10,7 +10,7 @@ import { QueueTable } from "./queue-table";
 
 /**
  * The records with their pagination, or why there are none; waits for the list inside a Suspense
- * boundary. The table (`lg` and up) and the card list (below `lg`: two columns from `md`, one on a phone) are both rendered and CSS shows one:
+ * boundary. The table (`xl` and up: with the side column it needs that width for its columns) and the card list (below `xl`: two columns from `md`, one on a phone) are both rendered and CSS shows one:
  * the hidden one leaves the accessibility tree with `display: none`, and the page needs no
  * client-side media query, so the server HTML is right at every width.
  */
@@ -28,10 +28,10 @@ export async function QueueResults({
     }
     return (
         <>
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
                 <QueueTable items={result.data.items} params={params} />
             </div>
-            <div className="grid gap-3 lg:hidden">
+            <div className="grid gap-3 xl:hidden">
                 <CardsHelp />
                 <QueueCards items={result.data.items} params={params} />
             </div>

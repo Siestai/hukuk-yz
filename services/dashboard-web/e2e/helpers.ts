@@ -41,3 +41,15 @@ export async function openRecord(page: Page, q: string): Promise<void> {
     await page.waitForURL(/\/kararlar\/[0-9a-f-]{36}/);
     await expect(page.getByRole("region", { name: "İnceleme işlemleri" })).toBeVisible();
 }
+
+/**
+ * The table is no wider than its container: `Table` wraps it in an `overflow-x-auto` box, so a
+ * table that does not fit would scroll sideways inside it and hide its last columns.
+ */
+export async function expectTableFits(table: Locator): Promise<void> {
+    const { scrollWidth, clientWidth } = await table.evaluate((element) => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.parentElement?.clientWidth ?? 0,
+    }));
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+}

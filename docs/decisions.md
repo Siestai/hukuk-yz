@@ -3,6 +3,7 @@
 ## Kararlar
 
 ### 2026-10-01 (WP grubu, ilk gün)
+
 - **Hedef kitle önceliği** (İbrahim): 1) Mali müşavirler 2) İK uzmanları 3) Avukatlar 4) Kurumsal şirket İK personeli 5) Kariyer meslek mensupları (SGK müfettişi, iş müfettişi, SGK denetmeni). → İsim ve dil "hukuk" değil "iş + sosyal güvenlik + güven" ekseninde olmalı.
 - **Uzman döngüsü** (İbrahim): Themis emin olmadığı noktayı grupta dar bir soru olarak sorar, ortaklar kabataslak cevap verir, Themis kaynak atıflı metne çevirip "X teyidiyle" notuyla paylaşır. Kabul edildi.
 - **Kaynak sınırlama** (Baran): sistem tüm webde değil, ortakların belirlediği site listesinde arar. Liste ortaklardan gelecek.
@@ -10,6 +11,7 @@
 - **Hitap**: Baran "abi" istemiyor, "Baran".
 
 ### 2026-10-02
+
 - **Resmi kaynak teyidi** (İbrahim, WP grubu): Çalışma ve Toplum arşivi yalnızca ilk arama aracıdır. Bulunan her Yargıtay kararı karararama.yargitay.gov.tr'den esas/karar numarasıyla teyit edilir ve kullanıcıya gösterilen kaynak orasıdır. Teyit edilemeyen karar açıkça işaretlenir, sessizce geçilmez. Üründe karşılığı: `decision.verification` alanı (`data-model.md` §5.2); `unverified` kayıt atıf kapısından `verified` olarak geçemez.
 - **Pazar araştırması** (Themis, İbrahim'in isteğiyle): Türkiye'de iş hukuku + SGK odaklı, kaynak atıflı ve deterministik hesaplama yapan ürün yok. Avukat odaklı içtihat YZ'leri (emsal.ai, hukuk.chat, Kazancı AI, Jupytr, HukukOS) ve mali müşavir radarları (Müşavir AI, MALİİK) kesişmiyor. Farklılaşma: olay tarihindeki mevzuat, deterministik hesap, SGK genelge katmanı, mali müşavir persona'sı, uzman eskalasyonu. Rapor: `docs/market-research-2026-10-02.md`.
 - **Mimari ve veri modeli v0.1 onaylandı** (Orhan, PR #2, #3): 6 servis, bitemporal KB, atıf kapısında `not_found` her zaman düşer, KVKK için crypto-shredding, chunk indeksi.
@@ -21,6 +23,7 @@
 - **Kullanıcı ve oturum** (Orhan, 2026-10-03, Görev 08): Faz 1'de iki rol yeter, `admin` ve `reviewer`; oturum süresi 12 saat. Giriş denemesi sınırlama (rate limit) yok: dashboard internete açılmadan önce ayrı görev olarak eklenecek, o zamana kadar açık risk. Reviewer rolü de yüksek güven bandını toplu onaylayabilir (Orhan, 2026-10-03); Görev 09'da uygulanır. Ayrıntı: `docs/tasks/08-auth.md`.
 
 ### 2026-10-03
+
 - **Arayüz kuralları** (Orhan, Görev 10 öncesi): arayüz baştan i18n ile kurulur; varsayılan ve şimdilik tek dil Türkçe (`next-intl`, `messages/tr.json`, bileşende sabit metin yok). Hukuki içerik (karar metni, madde, özet) veri sayılır, çevrilmez. API kullanıcıya metin değil sabit hata kodu döner, metni arayüz çevirir. Arayüzde veritabanı yok: `dashboard-web` / `web` yalnızca `app` API'sini kullanır, `DATABASE_URL` almaz, tipler OpenAPI'den üretilir. Renk ve tipografi yalnızca design token'lardan. Ayrıntı: `.claude/skills/frontend-ui/SKILL.md`.
 - **Proje skill'leri** (Orhan): Claude Code için tekrar eden kurallar `.claude/skills/` altında, iş türüne göre yüklenir: `task-pr-hygiene`, `db-migration`, `frontend-ui`. `AGENTS.md` her işte geçerli kuralları tutar.
 - **Dashboard (Görev 10)** (Orhan): `dash-hukuk.siestai.com` (ilk taslakta `hukuk-dashboard.siestai.com`) altında internete açılır; bu yüzden giriş denemesi sınırı yayından önce eklenir (Görev 08'deki açık risk kapanır). Yalnız `dashboard-web` dışarı açılır, `app` iç ağda. Bileşenler shadcn/ui. Detay ekranında orijinal PDF de gösterilir (yalnız giriş yapmış reviewer'lara; dergi telifi). İş üçe bölünür: 10a API hazırlığı (hata kodları, giriş sınırı, PDF endpoint'i), 10b iskelet + giriş + kuyruk, 10c detay + onay/ret + toplu onay.
@@ -29,17 +32,21 @@
 - **Yerel yığın, imaj ve e2e** (Görev 10d, Orhan'ın Mac'inde çalıştırma isteği): tüm yığın `make dev` ile (compose: postgres, migrate, app, worker, dashboard-web); özel arşiv olmadan denemek için `infra/demo` altında sentetik, tamamen kurgusal 12 kayıtlık fixture (`make demo-data`). `dashboard-web` imajı node:24-slim, standalone çıktı, root olmayan kullanıcı, `/healthz` ile; `pnpm start` standalone için `scripts/start.mjs`. Playwright e2e (`pnpm e2e`) canlı yığına karşı elle koşulur, CI'da yok (CI'da yığın yok; CI yalnız imajı derler ve `/healthz`'i kontrol eder). Ayrıntı: `docs/local-dev.md`, `docs/deploy.md`.
 
 ### 2026-10-04 (ortaklar toplantısı)
+
 - **Hedef kitleye bilirkişiler eklendi** (Orhan, Baran, İbrahim). 1 Ekim'deki sıralamaya ek; öncelik sırası ayrıca konuşulacak.
 - **Yeni özellik isteği: durumlara göre değişen formüller.** Bazı durumlarda belirli formüller kullanılıyor, formüller belli aralıklarla değişiyor ve belli siteler değişiklikleri duyuruyor. Kapsam (hangi durumlar, kaynak siteler, değişikliğin takibi) Themis tarafından İbrahim'le netleştirilecek. Muhtemel karşılığı: hesap motorunda tarihe göre sürümlü parametreler.
 
 ### 2026-10-05
+
 - **Tüm UI projeleri responsive olacak, mobil dahil** (Orhan: "bütün UI projelerimiz responsive olmalı, mobil de düşünülmeli"). Mobil öncelikli yazılır; 360 px telefonda yatay kaydırma yok, dokunma hedefi en az 44 px, input yazısı en az 16 px. Kurallar `frontend-ui` skill'inin "Responsive" bölümünde, ekran kuralları `docs/design/dashboard-v0.md` "Mobil" bölümünde; dashboard için uygulama görev 10e (`docs/tasks/10e-responsive-dashboard.md`). 10b'de mobil kapsam dışıydı; bu karar onu geçersiz kılar.
 - **Dashboard alan adı ve CDN** (Orhan, 2026-10-05): adres `dash-hukuk.siestai.com`, Cloudflare proxy arkasında (SSL Full strict). Ayrı API alan adı (`api-dash-hukuk`) açılmaz: `app` iç ağda kalır, tarayıcı yalnız dashboard-web ile konuşur; dışarıdan bir istemci (ör. mobil uygulama) gerekirse o zaman açılır. Önde Cloudflare + Traefik olduğu için `TRUSTED_PROXY_HOPS=2` ve Traefik'e Cloudflare aralıkları güvenilir proxy olarak verilir (deploy.md).
 - **İlk yayın demo veriyle** (Orhan, 2026-10-05): dashboard önce 12 sentetik kararla yayına alınır (deploy hattını ve sunucu kurulumunu denemek için); gerçek 6.300 karar sonra yüklenir. Geçişte veritabanı sıfırlanır, demo onay/retleri atılır (deploy.md).
 - **Yayın sunucusu: Siestai Dokploy makinesi** (Orhan, 2026-10-05): hukuk-yz, Dokploy'un kendi makinesinde (console.siestai.com) Siestai uygulamalarının yanında, ayrı `hukuk-yz` projesi ve kendi Postgres'iyle çalışır; yalnız CPU/RAM/disk ortaktır. Gerekçe: verimlilik; `personal-orhanors` küçük (4 GB) ve Themis'i çalıştırıyor, orada derleme ikisini de sıkıştırır. Önceki karar ("çalışma altyapısı Siestai'den ayrı", AGENTS.md) bununla değişti. Gerçek veriye geçişte (telifli PDF'ler, ileride kişisel veri) ayrı sunucu ihtiyacı yeniden değerlendirilir.
 - **İnceleme kuyruğunda bilgi ipuçları ve karşılama kutusu** (Orhan, 2026-10-05, Görev 10f): dashboard kendini tanıtır; kuyruktaki her öğede küçük bir "i" ipucu, sebep rozetleri için açıklama, ilk açılışta kapatılabilir karşılama kutusu. Ortak `InfoTip` bileşeni `packages/ui`'da (yeni bağımlılık: `@radix-ui/react-popover`); tercih tarayıcıda (`localStorage`), sunucuda kullanıcı verisi yok. Metinler `messages/tr.json` → `review.queue.help.*` (25 sebep metni `confidence.py` ile tutarlı). Ayrıntı: `docs/tasks/10f-queue-help.md`, `docs/design/dashboard-v0.md` "Bilgi ipuçları".
 - **Kuyrukta tüm kararlar durumlarıyla görünür** (Orhan, 2026-10-05, Görev 10g: "Reddedilen kararları göremiyorum. Onlar da görünüyor olmalı." ve "Onaylanan ve bekleyen de dahil."): inceleme sayfasında Bekleyen / Onaylanan / Reddedilen / Tümü sekmeleri (`?durum=`); onaylanan ve reddedilenlerde inceleyen, tarih ve ret notu görünür. `GET /review/decisions` `status` parametresi alır; `summary`'deki onaylanan / reddedilen sayıları artık liste toplamlarıyla aynı tanımı (kaynak durumu) kullanır. Toplu onay yalnız Bekleyen sekmesindedir. Reddi geri alma ve onaylananı geri çekme kapsam dışı (ayrı karar). Ayrıntı: `docs/tasks/10g-all-statuses.md`.
+- **Kuyruk tablosu `xl`'den (1280 px) başlar; altında kart** (Themis ölçümü, 2026-10-05; Orhan'ın "yatay kaydırma olmasın, bilgi gizlenmesin" yönergesi): yan menüyle birlikte tablonun içerik alanı 1024 px'te 704, 1280 px'te 960 px; sekmelerdeki sütunlar sığmıyordu. Mahkeme, Karar sütununun alt satırına; İnceleme ve Ret notu, Durum sütununa (rozet, tarih · inceleyen, tek satır ret notu; tamamı `title`'da) taşındı; tabloda en fazla bir sebep + "+N". Detay sayfasındaki sarı "artık kuyrukta değil" notu durum şeridiyle birleşti. `frontend-ui` skill'indeki "tablo `lg`'den" kuralı `xl` oldu; tablet (`md`) 2 sütunlu kartlar aynen.
 
 ## Açık öneriler (karar bekliyor)
+
 - **2026-10-01, Baran (WP grubu):** Yüksek riskli / acil vakalarda (ör. SGK tespiti sonrası "ne yapalım") sistem otomatik cevap vermesin, uzman insana (Baran/İbrahim) eskalasyon yapsın. Bu eskalasyon ayrı paket veya kredi olarak ücretlendirilsin. Themis olumlu görüş bildirdi (hibrit model: makine + insan onayı). Tetikleme kullanıcı seçimi değil sistem tespiti olmalı: konu sınıfı + süre işliyor mu + belirsizlik düzeyi. Fiyatlandırma, SLA ve kapsam kararı Orhan + Baran + İbrahim'de.
 - **2026-10-01, İbrahim:** Marka/isim/tasarım. Şu an sıfır. Palet yönü: lacivert temelli (SGK/ÇSGB akrabalığı), kurumsal ama soru sormaya cesaretlendiren. Themis isim adayı listesi çıkaracak, Orhan'la gruba sunulacak.

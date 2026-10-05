@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { openQueue } from "./helpers";
+import { expectTableFits, openQueue } from "./helpers";
 
 // Read-only, project `chromium-mobile` (Pixel 7: touch, so `pointer: coarse`). The viewport is
-// set per block: 360x740 is the small phone, 768x1024 the tablet (`md`, below `lg`: cards in two columns, no table).
+// set per block: 360x740 is the small phone, 768x1024 the tablet (`md`, below `xl`: cards in two columns, no table).
 
 const PHONE = { width: 360, height: 740 };
 const TABLET = { width: 768, height: 1024 };
@@ -24,7 +24,7 @@ async function expectNoHorizontalScroll(page: Page) {
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 }
 
-/** Opens the first record of the queue from its card (the table only exists from `lg`). */
+/** Opens the first record of the queue from its card (the table only exists from `xl`). */
 async function openFirstRecord(page: Page) {
     await openQueue(page);
     await cards(page).first().click();
@@ -119,6 +119,35 @@ test.describe("tablet 768x1024", () => {
         expect(second?.x ?? 0).toBeGreaterThan(first?.x ?? 0);
     });
 });
+
+// The table needs the width of `xl` (1280): below it the cards show, so nothing scrolls inside a
+// table box. Reddedilen and Tümü hold records only after statuses.spec has run (it rejects and
+// approves some); on the untouched demo data they are empty, and statuses.spec repeats this check
+// on real rows.
+for (const width of [1024, 1280, 1440]) {
+    test.describe(`desktop ${width}`, () => {
+        test.use({ viewport: { width, height: 900 } });
+
+        for (const [tab, query] of [
+            ["Bekleyen", ""],
+            ["Reddedilen", "durum=reddedilen"],
+            ["Tümü", "durum=tumu"],
+        ] as const) {
+            test(`${tab}: the table fits its container, with no inner scroll`, async ({ page }) => {
+                await openQueue(page, query);
+                const table = page.getByRole("table");
+                if (width < 1280) {
+                    await expect(table).toHaveCount(0);
+                } else if ((await table.count()) > 0) {
+                    await expectTableFits(table);
+                } else {
+                    expect(tab).not.toBe("Bekleyen");
+                }
+                await expectNoHorizontalScroll(page);
+            });
+        }
+    });
+}
 
 test.describe("phone 360x740", () => {
     test.use({ viewport: PHONE });

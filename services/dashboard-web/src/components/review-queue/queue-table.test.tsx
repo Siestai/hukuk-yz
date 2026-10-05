@@ -37,9 +37,12 @@ describe("QueueTable", () => {
         expect(within(row).getByText(messages.enums.band.medium)).toBeInTheDocument();
         expect(within(row).getByText("75")).toBeInTheDocument();
         expect(within(row).getByText("KIDEM TAZMİNATI")).toBeInTheDocument();
-        expect(within(row).getByText("9. HD")).toBeInTheDocument();
-        expect(within(row).getByText(messages.enums.court.yargitay)).toBeInTheDocument();
-        expect(within(row).getByText("E. 2019/1234 · K. 2021/567")).toBeInTheDocument();
+        // court and chamber share the line under the title (no column of their own)
+        expect(
+            within(row).getByText(`${messages.enums.court.yargitay} · 9. HD`),
+        ).toBeInTheDocument();
+        expect(within(row).getByText("E. 2019/1234")).toBeInTheDocument();
+        expect(within(row).getByText("K. 2021/567")).toBeInTheDocument();
         expect(within(row).getByText("05.03.2021")).toBeInTheDocument();
         expect(within(row).getByText("61")).toBeInTheDocument();
         expect(
@@ -64,17 +67,22 @@ describe("QueueTable", () => {
 
     it("labels an unreadable court", () => {
         const row = renderRow({ court: "" });
-        expect(within(row).getByText(messages.enums.court.unknown)).toBeInTheDocument();
+        expect(
+            within(row).getByText(`${messages.enums.court.unknown} · 9. HD`),
+        ).toBeInTheDocument();
     });
 
-    it("shows at most two reasons and the rest as +N", () => {
+    it("shows at most one reason by name and the rest as +N", () => {
         const row = renderRow({
             reasons: ["missing_esas_no", "missing_karar_no", "duplicate_of", "body_not_found"],
         });
         expect(within(row).getByText(messages.enums.reason.missing_esas_no)).toBeInTheDocument();
-        expect(within(row).getByText(messages.enums.reason.missing_karar_no)).toBeInTheDocument();
-        const more = within(row).getByText("+2");
-        const rest = [messages.enums.reason.duplicate_of, messages.enums.reason.body_not_found];
+        const more = within(row).getByText("+3");
+        const rest = [
+            messages.enums.reason.missing_karar_no,
+            messages.enums.reason.duplicate_of,
+            messages.enums.reason.body_not_found,
+        ];
         expect(more).toHaveAccessibleDescription(rest.join(" "));
         expect(more).not.toHaveAttribute("title");
     });
@@ -85,9 +93,9 @@ describe("QueueTable", () => {
         });
         const lists = within(row).getAllByRole("list", { hidden: true });
         expect(lists).toHaveLength(2);
-        expect(lists[0]?.children).toHaveLength(3);
+        expect(lists[0]?.children).toHaveLength(2);
         expect(lists[1]).toHaveClass("sr-only");
-        expect(lists[1]?.children).toHaveLength(2);
+        expect(lists[1]?.children).toHaveLength(3);
     });
 
     it("keeps the whole title in the DOM and as a tooltip when it is clamped", () => {
@@ -132,8 +140,8 @@ describe("QueueTable", () => {
         ).toBeInTheDocument();
     });
 
-    it("shows no +N for two reasons or fewer", () => {
-        const row = renderRow({ reasons: ["missing_esas_no", "missing_karar_no"] });
+    it("shows no +N for a single reason", () => {
+        const row = renderRow({ reasons: ["missing_esas_no"] });
         expect(within(row).queryByText(/^\+/)).toBeNull();
     });
 
@@ -176,7 +184,6 @@ describe("QueueTable help", () => {
     it.each([
         table.confidence,
         table.decision,
-        table.court,
         table.numbers,
         table.date,
         table.issue,
@@ -233,18 +240,15 @@ describe("QueueTable help", () => {
 
         it("adds nothing to the queue", () => {
             renderRow();
-            expect(headers()).toHaveLength(7);
+            expect(headers()).toHaveLength(6);
         });
 
         it("approved: a status badge and the review", () => {
             const row = setup("approved", { ...reviewed, review_decision: "edit" });
-            expect(headers().slice(7)).toEqual([
-                expect.stringContaining(table.status),
-                expect.stringContaining(table.review),
-            ]);
+            expect(headers()).toHaveLength(7);
+            expect(headers().at(-1)).toContain(table.status);
             expect(within(row).getByText(table.statuses.edited)).toBeInTheDocument();
-            expect(within(row).getByText("Baran")).toBeInTheDocument();
-            expect(within(row).getByText(/04\.10\.2026/)).toBeInTheDocument();
+            expect(within(row).getByText(/04\.10\.2026.* · Baran/)).toBeInTheDocument();
             expect(screen.getByRole("table")).toHaveAccessibleName(table.labels.approved);
         });
 
@@ -253,17 +257,14 @@ describe("QueueTable help", () => {
             expect(within(row).getByText(table.statuses.approved)).toBeInTheDocument();
         });
 
-        it("rejected: the review and the note, no status column", () => {
+        it("rejected: the status, review and note share one Durum column", () => {
             const row = setup("rejected", rejected);
-            expect(headers().slice(7)).toEqual([
-                expect.stringContaining(table.review),
-                expect.stringContaining(table.note),
-            ]);
-            expect(within(row).getByText("İbrahim")).toBeInTheDocument();
-            expect(within(row).getByText(rejected.note as string)).toHaveAttribute(
-                "title",
-                rejected.note,
-            );
+            expect(headers()).toHaveLength(7);
+            const cell = within(row).getByText(table.statuses.rejected).closest("td")!;
+            expect(cell).toHaveTextContent("İbrahim");
+            const note = within(cell).getByText(`Ret notu: ${rejected.note}`);
+            expect(note).toHaveAttribute("title", rejected.note);
+            expect(note).toHaveClass("line-clamp-1");
         });
 
         it("all: a badge per row, with the review empty for a waiting record", () => {
@@ -276,24 +277,22 @@ describe("QueueTable help", () => {
                     params={{ status: "all", sort: "score_asc", page: 1 }}
                 />,
             );
-            expect(headers()).toHaveLength(10);
+            expect(headers()).toHaveLength(7);
             const [, waiting, gone] = screen.getAllByRole("row") as HTMLElement[];
             expect(within(waiting!).getByText(table.statuses.pending)).toBeInTheDocument();
-            expect(within(waiting!).queryByText("İbrahim")).toBeNull();
+            expect(within(waiting!).queryByText(/İbrahim/)).toBeNull();
             expect(within(gone!).getByText(table.statuses.rejected)).toBeInTheDocument();
-            expect(within(gone!).getByText("İbrahim")).toBeInTheDocument();
+            expect(within(gone!).getByText(/ · İbrahim/)).toBeInTheDocument();
         });
 
         it("shows a reviewer without a user row as unknown", () => {
             const row = setup("approved", { ...reviewed, reviewer_name: null });
-            expect(within(row).getByText(table.unknownReviewer)).toBeInTheDocument();
+            expect(within(row).getByText(new RegExp(table.unknownReviewer))).toBeInTheDocument();
         });
 
-        it("gives every extra column a tip", () => {
+        it("gives the Durum column a tip", () => {
             setup("all", rejected);
-            for (const topic of [table.status, table.review, table.note]) {
-                expect(infoTip(topic)).toBeInTheDocument();
-            }
+            expect(infoTip(table.status)).toBeInTheDocument();
         });
     });
 });

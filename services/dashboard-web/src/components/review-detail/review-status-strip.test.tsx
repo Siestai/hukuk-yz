@@ -50,6 +50,9 @@ describe("ReviewStatusStrip", () => {
         const region = screen.getByRole("region", { name: strip.label });
         expect(region).toHaveTextContent(/Reddedildi · 04\.10\.2026.* · İbrahim/);
         expect(region).toHaveTextContent(`${strip.note}: ${review.note}`);
+        // one block: the "no longer in the queue" sentence lives here, not in a second note
+        expect(region).toHaveTextContent(strip.unavailable);
+        expect(screen.queryByRole("note")).toBeNull();
         expect(screen.queryByRole("region", { name: messages.review.actions.label })).toBeNull();
         expect(screen.queryByRole("button", { name: /Onayla/ })).toBeNull();
     });
@@ -74,6 +77,13 @@ describe("ReviewStatusStrip", () => {
         const region = screen.getByRole("region", { name: strip.label });
         expect(region).toHaveTextContent(messages.review.detail.unknownReviewer);
         expect(region).not.toHaveTextContent("Baran");
+    });
+
+    it("shows the status and the sentence for a record that left the queue without a review", () => {
+        setup("published", []);
+        const region = screen.getByRole("region", { name: strip.label });
+        expect(region).toHaveTextContent(messages.enums.sourceStatus.published);
+        expect(region).toHaveTextContent(strip.unavailable);
     });
 
     it("is not shown for a record still waiting", () => {

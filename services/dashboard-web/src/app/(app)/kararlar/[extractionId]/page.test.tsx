@@ -131,10 +131,11 @@ describe("DecisionPage", () => {
         );
     });
 
-    it("notes that actions are unavailable once the record is not in the queue", async () => {
+    it("tells once, in the status strip, that actions are unavailable for a record that left the queue", async () => {
         get.mockResolvedValue(ok({ ...detail, source_status: "rejected" }));
         await renderPage();
-        expect(screen.getByRole("note")).toHaveTextContent(/kuyrukta değil \(Reddedildi\)/);
+        expect(screen.queryByRole("note")).toBeNull();
+        expect(screen.getAllByText(messages.review.detail.statusStrip.unavailable)).toHaveLength(1);
     });
 
     it("hides the duplicates card without duplicates", async () => {

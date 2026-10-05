@@ -13,6 +13,7 @@ type Props = {
     queue: QueueParams;
 };
 
+/** The record's title, band and status. Why a record has no actions is told by `ReviewStatusStrip`. */
 export function DecisionHeader({ title, band, score, sourceStatus, queue }: Props) {
     const t = useTranslations("review.detail");
     const format = useFormatter();
@@ -35,11 +36,6 @@ export function DecisionHeader({ title, band, score, sourceStatus, queue }: Prop
                 </span>
                 <Badge variant="outline">{labels.sourceStatus(sourceStatus)}</Badge>
             </div>
-            {sourceStatus === "analyzed" ? null : (
-                <p role="note" className="rounded-md bg-medium-soft p-3 text-sm text-medium">
-                    {t("notQueued", { status: labels.sourceStatus(sourceStatus) })}
-                </p>
-            )}
         </header>
     );
 }
