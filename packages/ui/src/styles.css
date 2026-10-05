@@ -153,3 +153,7 @@
 @utility w-inset {
     width: calc(100% - 2rem);
 }
+/* An InfoTip box never grows past the room the popover has left on the screen. */
+@utility max-w-available {
+    max-width: var(--radix-popover-content-available-width);
+}
