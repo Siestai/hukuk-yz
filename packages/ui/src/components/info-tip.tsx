@@ -34,6 +34,8 @@ const focusVisible = (element: HTMLElement) => {
  * the text out, and merely tabbing past does not. The box is rendered in place, not in a portal:
  * it is `position: fixed` and so is neither clipped by a scrolling table nor left behind the top
  * layer of a modal `<dialog>`.
+ * Because it is in place, it inherits the text styles of where it sits (a table header is
+ * `whitespace-nowrap`), so it resets wrapping itself.
  */
 function InfoTip({ label, children, className }: InfoTipProps) {
     // Three reasons to be open: pinned by a click or tap, the pointer over the button or the box
@@ -133,7 +135,7 @@ function InfoTip({ label, children, className }: InfoTipProps) {
                         }
                     }}
                     {...pointer}
-                    className="z-30 w-72 max-w-available rounded-md border border-border bg-popover p-3 text-left text-sm font-normal text-popover-foreground shadow-md"
+                    className="z-30 w-72 max-w-available whitespace-normal break-words rounded-md border border-border bg-popover p-3 text-left text-sm font-normal text-popover-foreground shadow-md"
                 >
                     {children}
                 </Popover.Content>
