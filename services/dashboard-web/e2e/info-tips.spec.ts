@@ -88,6 +88,12 @@ for (const [name, viewport] of [
                 expect(box).not.toBeNull();
                 expect(box!.x).toBeGreaterThanOrEqual(0);
                 expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+                // The text wraps inside the box (a nowrap table header must not leak into it).
+                const text = await tipBox(page).evaluate((el) => ({
+                    scrollWidth: el.scrollWidth,
+                    clientWidth: el.clientWidth,
+                }));
+                expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth);
                 const { scrollWidth, clientWidth } = await page.evaluate(() => ({
                     scrollWidth: document.documentElement.scrollWidth,
                     clientWidth: document.documentElement.clientWidth,
@@ -99,6 +105,26 @@ for (const [name, viewport] of [
         });
     });
 }
+
+test("a tip in a table header wraps its text inside the box", async ({ page, hasTouch }) => {
+    test.skip(hasTouch, "The queue table is a desktop view.");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openQueue(page);
+    const tips = page.locator("thead").getByRole("button", { name: /^Bilgi: / });
+    const count = await tips.count();
+    expect(count).toBeGreaterThan(3);
+    for (let index = 0; index < count; index++) {
+        await tips.nth(index).click();
+        await expect(tipBox(page)).toBeVisible();
+        const text = await tipBox(page).evaluate((el) => ({
+            scrollWidth: el.scrollWidth,
+            clientWidth: el.clientWidth,
+        }));
+        expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth);
+        await page.keyboard.press("Escape");
+        await expect(tipBox(page)).toHaveCount(0);
+    }
+});
 
 test("the tip button is a 44 px target on a touch screen", async ({ page, hasTouch }) => {
     test.skip(!hasTouch, "The 44 px target applies to coarse pointers (phone project).");
