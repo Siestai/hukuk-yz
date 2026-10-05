@@ -23,8 +23,10 @@ from app.auth import Db, require_role
 from app.errors import ApiError
 from app.kb import (
     PARSER_NAME,
+    STATUS_GROUPS,
     StaleExtraction,
     approve_extraction,
+    newest_extractions,
     publish_batch,
     queue,
     reject_extraction,
@@ -33,6 +35,7 @@ from app.models.common import (
     Court,
     Extraction,
     IngestFile,
+    RecordStatus,
     Review,
     ReviewDecision,
     Source,
@@ -49,6 +52,7 @@ from hukuk_models import (
     Confidence,
     DuplicateOut,
     ErrorCode,
+    ListStatus,
     ReasonCount,
     ReviewActionRequest,
     ReviewActionResponse,
@@ -64,7 +68,7 @@ logger = logging.getLogger("app")
 
 TOP_REASONS = 15
 
-ListSort = Literal["score_asc", "score_desc"]
+ListSort = Literal["score_asc", "score_desc", "reviewed_desc"]
 
 _reviewer = require_role("reviewer")
 Reviewer = Annotated[AppUser, Depends(_reviewer)]
@@ -76,9 +80,12 @@ async def _count(db: AsyncSession, stmt: Select[Any]) -> int:
 
 
 def _list_item(row: Any) -> ReviewListItem:
+    # The review columns exist only in the queries of reviewed tabs.
+    review_decision = getattr(row, "review_decision", None)
     return ReviewListItem(
         extraction_id=row.id,
         source_id=row.source_id,
+        source_status=row.status.value,
         title=row.title,
         court=row.court,
         chamber=row.chamber,
@@ -90,6 +97,10 @@ def _list_item(row: Any) -> ReviewListItem:
         score=row.score,
         reasons=row.confidence["reasons"],
         duplicate_group=row.duplicate_group,
+        reviewed_at=getattr(row, "reviewed_at", None),
+        reviewer_name=getattr(row, "reviewer_name", None),
+        review_decision=review_decision.value if review_decision else None,
+        note=row.note if review_decision is ReviewDecision.reject else None,
     )
 
 
@@ -101,12 +112,17 @@ async def list_decisions(
     reason: str | None = None,
     journal_issue: int | None = None,
     q: str | None = None,
-    sort: ListSort = "score_asc",
+    status: ListStatus = "pending",
+    sort: ListSort | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ReviewListResponse:
+    if sort == "reviewed_desc" and status == "pending":  # nothing was reviewed yet
+        raise ApiError(422, ErrorCode.validation_error, {"fields": ["sort"]})
+    if sort is None:
+        sort = "reviewed_desc" if status in ("approved", "rejected") else "score_asc"
     filters = ReviewFilters(court=court, reason=reason, journal_issue=journal_issue, q=q)
-    stmt = queue(band, filters, sort)
+    stmt = queue(band, filters, sort, status=status)
     rows = (
         await db.execute(
             stmt.add_columns(func.count().over().label("total")).limit(limit).offset(offset)
@@ -140,16 +156,9 @@ async def summary(db: Db) -> ReviewSummary:
             .limit(TOP_REASONS)
         )
     ).all()
-    counts = dict(
-        (
-            await db.execute(
-                select(Review.decision, func.count())
-                .join(Extraction, Extraction.id == Review.extraction_id)
-                .join(Source, Source.id == Extraction.source_id)
-                .where(Source.category == SourceCategory.decision)
-                .group_by(Review.decision)
-            )
-        ).all()
+    newest = newest_extractions()
+    counts: dict[RecordStatus, int] = dict(
+        (await db.execute(select(newest.c.status, func.count()).group_by(newest.c.status))).all()
     )
     return ReviewSummary(
         by_band={
@@ -159,8 +168,8 @@ async def summary(db: Db) -> ReviewSummary:
         },
         by_court=dict(by_court),
         top_reasons=[ReasonCount(reason=reason, count=count) for reason, count in reasons],
-        approved=counts.get(ReviewDecision.approve, 0) + counts.get(ReviewDecision.edit, 0),
-        rejected=counts.get(ReviewDecision.reject, 0),
+        approved=sum(counts.get(s, 0) for s in STATUS_GROUPS["approved"]),
+        rejected=sum(counts.get(s, 0) for s in STATUS_GROUPS["rejected"]),
     )
 
 

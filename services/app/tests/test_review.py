@@ -6,6 +6,7 @@ import hashlib
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, get_args, get_origin
 
@@ -241,6 +242,7 @@ async def test_the_list_pages_with_a_total_and_describes_each_item(
     assert item == {
         "extraction_id": str(await _eid(kb_factory, prepared[3])),
         "source_id": item["source_id"],
+        "source_status": "analyzed",
         "title": "Özel Dosya",
         "court": "yargitay",
         "chamber": "9. HD",
@@ -252,6 +254,10 @@ async def test_the_list_pages_with_a_total_and_describes_each_item(
         "score": 50,
         "reasons": ["date_from_closing", "body_start_approximate"],
         "duplicate_group": None,
+        "reviewed_at": None,
+        "reviewer_name": None,
+        "review_decision": None,
+        "note": None,
     }
     assert "full_text" not in item
 
@@ -288,6 +294,193 @@ async def test_the_summary_counts_the_queue_and_the_reviews(
     summary = (await client.get(f"{BASE}/summary", headers=me.headers)).json()
     assert summary["by_band"] == {"high": 1, "medium": 1, "low": 1}
     assert (summary["approved"], summary["rejected"]) == (1, 1)
+
+
+async def _review_all(client: httpx.AsyncClient, me: Login, ids: dict[int, uuid.UUID]) -> None:
+    """1 approved, 2 edited (approved), 3 rejected with a note, 4 and 5 left pending; the
+    reviews follow in the order of the keys."""
+    url = {n: f"{BASE}/{i}" for n, i in ids.items()}
+    for n, body in {
+        1: {"action": "approve"},
+        2: {"action": "edit", "edits": {"chamber": "22. HD"}},
+        3: {"action": "reject", "note": "kopya dosya"},
+    }.items():
+        assert (await client.post(url[n], json=body, headers=me.headers)).status_code == 200
+
+
+async def test_the_list_by_status_shows_each_tab_with_its_review(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, *SPREAD)
+    ids = dict(zip(range(1, 6), await _ids(kb_factory, prepared, 1, 2, 3, 4, 5), strict=True))
+    await _review_all(client, me, ids)
+
+    async def listed(**params: Any) -> dict[str, Any]:
+        response = await client.get(BASE, params=params, headers=me.headers)
+        assert response.status_code == 200
+        return response.json()
+
+    def order(body: dict[str, Any]) -> list[uuid.UUID]:
+        return [uuid.UUID(i["extraction_id"]) for i in body["items"]]
+
+    pending = await listed()
+    assert order(pending) == [ids[4], ids[5]]
+    assert order(await listed(status="pending")) == order(pending)
+    assert {i["source_status"] for i in pending["items"]} == {"analyzed"}
+    assert all(i["reviewed_at"] is None and i["note"] is None for i in pending["items"])
+
+    approved = await listed(status="approved")
+    assert approved["total"] == 2
+    assert order(approved) == [ids[2], ids[1]]  # the newest review first
+    first, second = approved["items"]
+    assert (first["review_decision"], second["review_decision"]) == ("edit", "approve")
+    assert {i["source_status"] for i in approved["items"]} == {"approved"}
+    assert {i["reviewer_name"] for i in approved["items"]} == {"baran@x.test"}
+    assert first["reviewed_at"] >= second["reviewed_at"]
+    assert first["note"] is None
+
+    (rejected,) = (await listed(status="rejected"))["items"]
+    assert rejected["extraction_id"] == str(ids[3])
+    assert (rejected["source_status"], rejected["review_decision"]) == ("rejected", "reject")
+    assert (rejected["note"], rejected["reviewer_name"]) == ("kopya dosya", "baran@x.test")
+
+    everything = await listed(status="all")
+    assert everything["total"] == 5
+    assert order(everything) == [ids[3], ids[4], ids[2], ids[1], ids[5]]  # score_asc
+    assert order(await listed(status="all", sort="score_desc")) == [
+        ids[1], ids[5], ids[2], ids[4], ids[3]
+    ]  # fmt: skip
+    # reviewed first (newest first); the pending ones, never reviewed, come last
+    assert order(await listed(status="all", sort="reviewed_desc")) == [
+        ids[3], ids[2], ids[1], ids[4], ids[5]
+    ]  # fmt: skip
+    statuses = {i["extraction_id"]: i["source_status"] for i in everything["items"]}
+    assert sorted(statuses.values()) == ["analyzed", "analyzed", "approved", "approved", "rejected"]
+
+
+async def test_the_list_by_status_combines_with_the_filters_and_pages(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, *SPREAD)
+    ids = dict(zip(range(1, 6), await _ids(kb_factory, prepared, 1, 2, 3, 4, 5), strict=True))
+    await _review_all(client, me, ids)
+
+    async def listed(**params: Any) -> list[uuid.UUID]:
+        response = await client.get(BASE, params=params, headers=me.headers)
+        assert response.status_code == 200
+        return [uuid.UUID(i["extraction_id"]) for i in response.json()["items"]]
+
+    assert await listed(status="approved", band="medium") == [ids[2]]
+    assert await listed(status="approved", band="low") == []
+    assert await listed(status="rejected", court="aym") == [ids[3]]
+    assert await listed(status="rejected", court="yargitay") == []
+    assert await listed(status="all", reason="date_from_closing") == [ids[4], ids[2]]
+    assert await listed(status="all", journal_issue=5) == [ids[2]]
+    assert await listed(status="approved", q="2019/1") == [ids[1]]
+    assert await listed(status="all", q="2019/3") == [ids[3]]
+
+    page = (
+        await client.get(
+            BASE, params={"status": "all", "limit": 2, "offset": 4}, headers=me.headers
+        )
+    ).json()
+    assert (page["total"], len(page["items"])) == (5, 1)
+    past = (
+        await client.get(
+            BASE, params={"status": "all", "limit": 2, "offset": 10}, headers=me.headers
+        )
+    ).json()
+    assert (past["total"], past["items"]) == (5, [])
+
+
+async def test_the_list_shows_the_last_review_of_a_source_with_several(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    extraction_id = await _eid(kb_factory, record)
+    other = await _login_as(client, kb_factory, "ibrahim@x.test", UserRole.reviewer)
+    (await client.post(f"{BASE}/{extraction_id}", json={"action": "approve"}, headers=me.headers))
+    async with kb_factory() as session:  # an older and a newer review, by a second reviewer
+        session.add_all(
+            Review(
+                extraction_id=extraction_id,
+                reviewer_id=reviewer,
+                decision=ReviewDecision.reject,
+                note=note,
+                reviewed_at=when,
+            )
+            for reviewer, note, when in [
+                (me.id, "eski", datetime(2000, 1, 1, tzinfo=UTC)),
+                (other.id, "yeni", datetime(2100, 1, 1, tzinfo=UTC)),
+            ]
+        )
+        await session.commit()
+
+    body = (await client.get(BASE, params={"status": "approved"}, headers=me.headers)).json()
+    (item,) = body["items"]  # one row per source, not per review
+    assert body["total"] == 1
+    assert (item["reviewer_name"], item["review_decision"], item["note"]) == (
+        "ibrahim@x.test",
+        "reject",
+        "yeni",
+    )
+    assert item["reviewed_at"].startswith("2100-01-01")
+
+
+async def test_a_note_is_shown_only_for_a_rejection(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {})
+    first, second = await _ids(kb_factory, prepared, 1, 2)
+    await client.post(
+        f"{BASE}/{first}", json={"action": "approve", "note": "iyi"}, headers=me.headers
+    )
+    await client.post(
+        f"{BASE}/{second}", json={"action": "reject", "note": "kötü"}, headers=me.headers
+    )
+    items = (await client.get(BASE, params={"status": "all"}, headers=me.headers)).json()["items"]
+    assert {i["review_decision"]: i["note"] for i in items} == {"approve": None, "reject": "kötü"}
+
+
+async def test_the_summary_counts_match_the_list_totals(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, *SPREAD)
+    ids = dict(zip(range(1, 6), await _ids(kb_factory, prepared, 1, 2, 3, 4, 5), strict=True))
+    await _review_all(client, me, ids)
+    summary = (await client.get(f"{BASE}/summary", headers=me.headers)).json()
+    totals = {
+        status: (await client.get(BASE, params={"status": status}, headers=me.headers)).json()[
+            "total"
+        ]
+        for status in ("pending", "approved", "rejected", "all")
+    }
+    assert (summary["approved"], summary["rejected"]) == (totals["approved"], totals["rejected"])
+    assert sum(summary["by_band"].values()) == totals["pending"]
+    assert totals == {"pending": 2, "approved": 2, "rejected": 1, "all": 5}
+
+
+async def test_sorting_by_review_needs_a_reviewed_status(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    await _seed(kb_factory, {})
+    for params in ({"sort": "reviewed_desc"}, {"status": "pending", "sort": "reviewed_desc"}):
+        response = await client.get(BASE, params=params, headers=me.headers)
+        assert response.status_code == 422
+        assert response.json()["error"] == {
+            "code": "validation_error",
+            "params": {"fields": ["sort"]},
+        }
+    assert (
+        await client.get(BASE, params={"status": "bogus"}, headers=me.headers)
+    ).status_code == 422
+
+
+async def test_the_status_tabs_need_a_login(client: httpx.AsyncClient, kb_factory: Factory) -> None:
+    responses = await asyncio.gather(
+        *(client.get(BASE, params={"status": s}) for s in ("approved", "rejected", "all"))
+    )
+    assert [r.status_code for r in responses] == [401] * 3
 
 
 # --- detail -----------------------------------------------------------------------------------

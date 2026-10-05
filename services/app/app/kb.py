@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
 
-from sqlalchemy import ColumnElement, Select, Subquery, or_, select
+from sqlalchemy import ColumnElement, Select, Subquery, nulls_last, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,10 +27,20 @@ from app.models.common import (
     Verification,
 )
 from app.models.decision import LIVE_KEY_INDEX, Decision
-from hukuk_models import Band, ReviewFilters
+from app.models.user import AppUser
+from hukuk_models import Band, ListStatus, ReviewFilters
 
 PARSER_NAME = "decisions"
-Sort = Literal["score_asc", "score_desc", "sha256"]
+Sort = Literal["score_asc", "score_desc", "reviewed_desc", "sha256"]
+
+# The source statuses of each list tab. A published decision was approved, so it stays under
+# "approved"; `summary` counts with the same sets.
+STATUS_GROUPS: dict[str, tuple[RecordStatus, ...]] = {
+    "pending": (RecordStatus.analyzed,),
+    "approved": (RecordStatus.approved, RecordStatus.published),
+    "rejected": (RecordStatus.rejected,),
+}
+STATUS_GROUPS["all"] = tuple(s for group in STATUS_GROUPS.values() for s in group)
 
 # `decision` columns copied as they are from fields + edits; '' becomes NULL.
 _NULLABLE_TEXT = ("esas_no", "karar_no", "outcome", "full_text", "editorial_summary")
@@ -132,18 +142,40 @@ def newest_extractions(source_id: uuid.UUID | None = None) -> Subquery:
     return stmt.subquery()
 
 
+def last_reviews() -> Subquery:
+    """The latest review of every reviewed source, with the reviewer's name: one `DISTINCT ON`
+    pass, joined once by the queue."""
+    stmt = (
+        select(
+            Extraction.source_id,
+            Review.reviewed_at,
+            Review.decision.label("review_decision"),
+            Review.note,
+            AppUser.display_name.label("reviewer_name"),
+        )
+        .ext(distinct_on(Extraction.source_id))
+        .join(Extraction, Extraction.id == Review.extraction_id)
+        .outerjoin(AppUser, AppUser.id == Review.reviewer_id)
+        .order_by(Extraction.source_id, Review.reviewed_at.desc(), Review.id.desc())
+    )
+    return stmt.subquery()
+
+
 def queue(
     band: Band | None,
     filters: ReviewFilters,
     sort: Sort = "score_asc",
     after: str | None = None,
+    status: ListStatus = "pending",
 ) -> Select[Any]:
-    """The review queue: newest extraction of every `analyzed` decision source, filtered and
-    ordered (most suspicious first by default, ties by sha256; `sha256` is the stable order of
-    bulk runs, of which `after` is the cursor: only records with a greater sha256)."""
+    """The review queue: newest extraction of every decision source in `status` (`pending` =
+    `analyzed`; the other tabs come with their last review), filtered and ordered (most
+    suspicious first by default, ties by sha256; `reviewed_desc` the newest review first,
+    never-reviewed last; `sha256` is the stable order of bulk runs, of which `after` is the
+    cursor: only records with a greater sha256)."""
     newest = newest_extractions()
     score = newest.c.confidence["score"].as_integer()
-    conditions: list[ColumnElement[bool]] = [newest.c.status == RecordStatus.analyzed]
+    conditions: list[ColumnElement[bool]] = [newest.c.status.in_(STATUS_GROUPS[status])]
     if band:
         conditions.append(newest.c.confidence["band"].as_string() == band)
     if filters.court is not None:
@@ -162,20 +194,30 @@ def queue(
         )
     if after is not None:
         conditions.append(newest.c.sha256 > after)
+    columns: list[Any] = [
+        *newest.c,
+        newest.c.confidence["band"].as_string().label("band"),
+        score.label("score"),
+    ]
+    source: Any = newest
+    reviewed = None
+    if status != "pending":
+        reviewed = last_reviews()
+        source = newest.outerjoin(reviewed, reviewed.c.source_id == newest.c.source_id)
+        columns += [
+            reviewed.c.reviewed_at,
+            reviewed.c.reviewer_name,
+            reviewed.c.review_decision,
+            reviewed.c.note,
+        ]
     order = {
         "score_asc": (score.asc(), newest.c.sha256),
         "score_desc": (score.desc(), newest.c.sha256),
         "sha256": (newest.c.sha256,),
-    }[sort]
-    return (
-        select(
-            *newest.c,
-            newest.c.confidence["band"].as_string().label("band"),
-            score.label("score"),
-        )
-        .where(*conditions)
-        .order_by(*order)
-    )
+    }
+    if reviewed is not None:
+        order["reviewed_desc"] = (nulls_last(reviewed.c.reviewed_at.desc()), newest.c.sha256)
+    return select(*columns).select_from(source).where(*conditions).order_by(*order[sort])
 
 
 class StaleExtraction(ValueError):
