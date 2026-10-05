@@ -5,13 +5,13 @@ import { detailHref, PAGE_SIZE, type QueueParams } from "@/lib/queue-params";
 import { useQueueItemFormat, type QueueItem } from "./queue-item-format";
 import { ConfidenceChip, DuplicateIcon, ReasonChips, stretchedLink } from "./queue-item-parts";
 
-/** The queue on a phone: the table's records as cards, one link each, fed by the same formatting. */
+/** The queue below `lg`: the table's records as cards, one link each, fed by the same formatting. */
 export function QueueCards({ items, params }: { items: QueueItem[]; params: QueueParams }) {
     const t = useTranslations("review.queue.table");
     const format = useQueueItemFormat();
 
     return (
-        <ul aria-label={t("label")} className="grid gap-3">
+        <ul aria-label={t("label")} className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {items.map((item, index) => (
                 <li
                     key={item.extraction_id}

@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { openQueue } from "./helpers";
 
 // Read-only, project `chromium-mobile` (Pixel 7: touch, so `pointer: coarse`). The viewport is
-// set per block: 360x740 is the small phone, 768x1024 the tablet breakpoint (`md`).
+// set per block: 360x740 is the small phone, 768x1024 the tablet (`md`, below `lg`: cards in two columns, no table).
 
 const PHONE = { width: 360, height: 740 };
 const TABLET = { width: 768, height: 1024 };
@@ -11,6 +11,7 @@ const TABLET = { width: 768, height: 1024 };
 const cards = (page: Page) =>
     page.getByRole("list", { name: "Onay bekleyen kararlar" }).getByRole("listitem");
 const pdfLink = (page: Page) => page.getByRole("link", { name: "PDF'i yeni sekmede aç" });
+const menuButton = (page: Page) => page.getByRole("button", { name: "Menü", exact: true });
 const pdfFrame = (page: Page) => page.getByTitle("Kararın özgün PDF'i");
 
 /** The page is no wider than the screen: nothing makes the document scroll sideways. */
@@ -22,11 +23,10 @@ async function expectNoHorizontalScroll(page: Page) {
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 }
 
-/** Opens a record from the queue: a card on a phone, a table row from `md` up. */
-async function openFirstRecord(page: Page, phone: boolean) {
+/** Opens the first record of the queue from its card (the table only exists from `lg`). */
+async function openFirstRecord(page: Page) {
     await openQueue(page);
-    if (phone) await cards(page).first().click();
-    else await page.getByRole("table").locator("tbody tr").first().getByRole("link").click();
+    await cards(page).first().click();
     await page.waitForURL(/\/kararlar\/[0-9a-f-]{36}/);
     await expect(page.getByRole("region", { name: "İnceleme işlemleri" })).toBeVisible();
 }
@@ -60,12 +60,12 @@ for (const [name, viewport, phone] of [
         });
 
         test("the detail screen does not scroll sideways", async ({ page }) => {
-            await openFirstRecord(page, phone);
+            await openFirstRecord(page);
             await expectNoHorizontalScroll(page);
         });
 
         test("the PDF is a link on a phone and a frame from md up", async ({ page }) => {
-            await openFirstRecord(page, phone);
+            await openFirstRecord(page);
             if (phone) {
                 await expect(pdfLink(page)).toBeVisible();
                 await expect(pdfLink(page)).toHaveAttribute("target", "_blank");
@@ -79,8 +79,48 @@ for (const [name, viewport, phone] of [
     });
 }
 
+test.describe("tablet 768x1024", () => {
+    test.use({ viewport: TABLET });
+
+    test("the queue shows cards in two columns, not the table", async ({ page }) => {
+        await openQueue(page);
+        await expect(page.getByRole("table")).toHaveCount(0);
+        const [first, second] = await Promise.all([
+            cards(page).nth(0).boundingBox(),
+            cards(page).nth(1).boundingBox(),
+        ]);
+        expect(second?.y).toBe(first?.y);
+        expect(second?.x ?? 0).toBeGreaterThan(first?.x ?? 0);
+    });
+});
+
 test.describe("phone 360x740", () => {
     test.use({ viewport: PHONE });
+
+    test("the file route is not requested while only the PDF link is shown", async ({ page }) => {
+        const urls: string[] = [];
+        page.on("request", (request) => urls.push(request.url()));
+        await openFirstRecord(page);
+        await expect(pdfLink(page)).toBeVisible();
+        await page.waitForLoadState("networkidle");
+        expect(urls.filter((url) => /\/decisions\/[^/]+\/file/.test(url))).toEqual([]);
+    });
+
+    test("the drawer closes when the screen grows to lg, and the side nav works", async ({
+        page,
+    }) => {
+        await openQueue(page);
+        await menuButton(page).click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        const link = page
+            .getByRole("complementary")
+            .getByRole("link", { name: /İnceleme kuyruğu/ });
+        await expect(link).toBeVisible();
+        await link.click();
+        await expect(page).toHaveURL(/\/$/);
+    });
 
     test("the queue shows cards, not the table, and a card opens the record", async ({ page }) => {
         await openQueue(page);
@@ -92,8 +132,8 @@ test.describe("phone 360x740", () => {
     });
 
     test("the menu drawer opens, takes the user to the queue and closes", async ({ page }) => {
-        await openFirstRecord(page, true);
-        const menu = page.getByRole("button", { name: "Menü" });
+        await openFirstRecord(page);
+        const menu = menuButton(page);
         await expect(menu).toHaveAttribute("aria-expanded", "false");
         await menu.click();
         const drawer = page.getByRole("dialog", { name: "Menü" });
@@ -109,7 +149,7 @@ test.describe("phone 360x740", () => {
 
     test("Escape closes the drawer and the focus returns to the menu button", async ({ page }) => {
         await openQueue(page);
-        const menu = page.getByRole("button", { name: "Menü" });
+        const menu = menuButton(page);
         await menu.click();
         await expect(page.getByRole("dialog", { name: "Menü" })).toBeVisible();
         await page.keyboard.press("Escape");
@@ -147,7 +187,7 @@ test.describe("phone 360x740", () => {
     test("the action bar is on screen, in one row, and covers no content at the end", async ({
         page,
     }) => {
-        await openFirstRecord(page, true);
+        await openFirstRecord(page);
         const bar = page.getByRole("region", { name: "İnceleme işlemleri" });
         await expect(bar).toBeInViewport();
         const buttons = await bar.getByRole("button").all();
@@ -158,7 +198,8 @@ test.describe("phone 360x740", () => {
         await expect(bar.locator("kbd").first()).toBeHidden();
 
         await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-        const last = bar.locator("xpath=preceding-sibling::*[1]");
+        // The last content of the page is the document panel (a single column on a phone).
+        const last = page.getByRole("tabpanel");
         const [lastBox, barBox] = await Promise.all([last.boundingBox(), bar.boundingBox()]);
         expect((lastBox?.y ?? 0) + (lastBox?.height ?? 0)).toBeLessThanOrEqual(barBox?.y ?? 0);
         await expectNoHorizontalScroll(page);
@@ -167,7 +208,7 @@ test.describe("phone 360x740", () => {
     test("the field labels are stacked over their values, not broken letter by letter", async ({
         page,
     }) => {
-        await openFirstRecord(page, true);
+        await openFirstRecord(page);
         const label = page.locator("dt").first();
         const value = page.locator("dd").first();
         const [labelBox, valueBox] = await Promise.all([label.boundingBox(), value.boundingBox()]);

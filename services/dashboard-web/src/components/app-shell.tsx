@@ -11,7 +11,7 @@ export function AppShell({ children, ...nav }: AppNavProps & { children: ReactNo
             <SideNav {...nav} />
             <div className="min-w-0 flex-1">
                 <MobileNav user={nav.user} pending={nav.pending} />
-                {children}
+                <div className="px-safe-0">{children}</div>
             </div>
         </div>
     );

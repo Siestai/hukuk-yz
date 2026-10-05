@@ -104,6 +104,10 @@
         color: var(--foreground);
         font-family: var(--font-sans);
     }
+    /* The page behind a modal dialog (drawer, confirmation) does not scroll. */
+    body:has(dialog[open]) {
+        overflow: hidden;
+    }
     /* No double-tap zoom delay on controls; pinch zoom stays on. */
     a,
     button,
@@ -115,9 +119,26 @@
 }
 
 /* Values the default theme has no name for; components use these, never an arbitrary value. */
-/* Bottom padding of a bar pinned to the screen edge: the usual gap plus the home-indicator inset. */
-@utility pb-safe-3 {
-    padding-bottom: calc(--spacing(3) + env(safe-area-inset-bottom));
+/*
+ * Padding of N spacing steps plus the device's safe-area inset on that side (notch, home indicator;
+ * `viewport-fit=cover` makes the page reach under them). `pb-safe-3` pads a bar pinned to the
+ * screen bottom, `px-safe-0` only keeps content out of the side insets.
+ */
+@utility pt-safe-* {
+    padding-top: calc(var(--spacing) * --value(integer) + env(safe-area-inset-top));
+}
+@utility pb-safe-* {
+    padding-bottom: calc(var(--spacing) * --value(integer) + env(safe-area-inset-bottom));
+}
+@utility pl-safe-* {
+    padding-left: calc(var(--spacing) * --value(integer) + env(safe-area-inset-left));
+}
+@utility pr-safe-* {
+    padding-right: calc(var(--spacing) * --value(integer) + env(safe-area-inset-right));
+}
+@utility px-safe-* {
+    padding-left: calc(var(--spacing) * --value(integer) + env(safe-area-inset-left));
+    padding-right: calc(var(--spacing) * --value(integer) + env(safe-area-inset-right));
 }
 /* Dynamic viewport units follow the mobile browser's collapsing toolbar; vh is the fallback. */
 @utility h-viewport {

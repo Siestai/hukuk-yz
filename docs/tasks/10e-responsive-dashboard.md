@@ -18,30 +18,30 @@ Skill'ler: `frontend-ui` (bağlayıcı; bu görevle duyarlı düzen kuralları e
 
 1. **Kırılım noktaları** (Tailwind varsayılanları, yeni değer yok): telefon `< md` (768), tablet `md`-`lg`, masaüstü `>= lg` (1024). Mobil öncelikli yazılır: temel sınıf telefon, `md:` / `lg:` genişler.
 2. **Uygulama kabuğu.**
-   - `lg` ve üstü: bugünkü yan menü aynen.
-   - `lg` altı: üstte yapışkan bir başlık çubuğu (logo + ad, bekleyen sayısı rozeti, menü düğmesi). Menü düğmesi, aynı içerikle (gezinme bağlantıları, kullanıcı, çıkış) soldan açılan bir çekmece açar. Çekmece erişilebilir: `packages/ui` içindeki `Dialog` temeli (native `<dialog>`, odak tuzağı, Escape, odak dönüşü) yeniden kullanılır ya da ona bir `side` varyantı eklenir; ayrı kütüphane eklenmez. Bağlantıya basınca çekmece kapanır. Menü düğmesinin erişilebilir adı ve `aria-expanded` değeri vardır.
-   - Yan menü ve çekmece aynı gezinme bileşenini paylaşır (kopya yok).
+    - `lg` ve üstü: bugünkü yan menü aynen.
+    - `lg` altı: üstte yapışkan bir başlık çubuğu (logo + ad, bekleyen sayısı rozeti, menü düğmesi). Menü düğmesi, aynı içerikle (gezinme bağlantıları, kullanıcı, çıkış) soldan açılan bir çekmece açar. Çekmece erişilebilir: `packages/ui` içindeki `Dialog` temeli (native `<dialog>`, odak tuzağı, Escape, odak dönüşü) yeniden kullanılır ya da ona bir `side` varyantı eklenir; ayrı kütüphane eklenmez. Bağlantıya basınca çekmece kapanır. Menü düğmesinin erişilebilir adı ve `aria-expanded` değeri vardır.
+    - Yan menü ve çekmece aynı gezinme bileşenini paylaşır (kopya yok).
 3. **Sayfa boşlukları.** `main` dolgusu telefonda `p-4`, `md:p-6`, `lg:p-8`. Yapışkan aksiyon çubuğunun negatif kenar boşlukları bu dolguyla birlikte değişir (bugünkü `-mx-8 -mb-8` sabit).
 4. **Kuyruk.**
-   - Başlık: başlık ve eylemler (sıralama + toplu onay) telefonda alt alta, eylemler tam genişlik.
-   - Özet kartları zaten `lg:grid-cols-3`; telefonda tek sütun, tablette uygun gördüğün 2 sütun.
-   - Filtreler: telefonda her alan tam genişlik (sabit `w-40` / `w-64` yalnız `md` ve üstünde). Telefonda filtreler varsayılan kapalı bir açılır bölümde ("Filtreler", etkin filtre sayısıyla); filtre etkinse açık başlar. Native `<details>/<summary>` yeterli.
-   - Liste: `md` altında tablo yerine kart listesi. Her kart tek bir bağlantı (bugünkü tablo satırı gibi tüm kart tıklanır): bant rozeti + skor, başlık (2 satır), mahkeme · daire, E/K, tarih, dergi sayısı, en fazla 2 sebep + "+N", mükerrer işareti. Tablo `md` ve üstünde aynen kalır; tablette tablo yatay kaydırılabilir kapsayıcı içinde (zaten `Table` sarmalayıcısı varsa onu kullan).
-   - İki görünüm aynı veri ve aynı yardımcılarla (etiket, tarih, E/K biçimi) üretilir; ortak parça çıkarılır, kopyalanmaz. Gizli görünüm `display: none` ile erişilebilirlik ağacından da çıkar.
-   - Sayfalama telefonda sığar (gerekirse yalnız önceki / sonraki + "x / y").
+    - Başlık: başlık ve eylemler (sıralama + toplu onay) telefonda alt alta, eylemler tam genişlik.
+    - Özet kartları zaten `lg:grid-cols-3`; telefonda tek sütun, tablette uygun gördüğün 2 sütun.
+    - Filtreler: telefonda her alan tam genişlik (sabit `w-40` / `w-64` yalnız `md` ve üstünde). Telefonda filtreler varsayılan kapalı bir açılır bölümde ("Filtreler", etkin filtre sayısıyla); filtre etkinse açık başlar. Native `<details>/<summary>` yeterli.
+    - Liste: `lg` altında tablo yerine kart listesi (`md`-`lg` arası 2 sütunlu ızgara, `md` altında tek sütun). Her kart tek bir bağlantı (bugünkü tablo satırı gibi tüm kart tıklanır): bant rozeti + skor, başlık (2 satır), mahkeme · daire, E/K, tarih, dergi sayısı, en fazla 2 sebep + "+N", mükerrer işareti. Tablo `lg` ve üstünde aynen kalır (768'de tablo dar kaldığı için tablette kart listesi kullanılır).
+    - İki görünüm aynı veri ve aynı yardımcılarla (etiket, tarih, E/K biçimi) üretilir; ortak parça çıkarılır, kopyalanmaz. Gizli görünüm `display: none` ile erişilebilirlik ağacından da çıkar.
+    - Sayfalama telefonda sığar (gerekirse yalnız önceki / sonraki + "x / y").
 5. **Karar detayı.**
-   - Başlık serif ve uzun: telefonda `text-xl`, `md:text-2xl`; rozetler kaydırmadan sarar.
-   - Alan satırları (`FieldRow`): telefonda etiket üstte, değer altta (tek sütun); `md` ve üstünde bugünkü 1/3 - 2/3 düzen.
-   - Aksiyon çubuğu: telefonda ekranın altında yapışkan, üç düğme eşit genişlikte tek satır (sığmıyorsa kısa etiketler yerine ikinci satır değil, eşit ızgara); `kbd` ipuçları ve kısayol açıklaması `md` altında gizli (kısayollar çalışmaya devam eder). Alt güvenli alan için `env(safe-area-inset-bottom)` kadar dolgu (token/`@utility` ile; bileşende keyfi değer yok). Çubuk son içeriği örtmez (sayfa altında yeterli boşluk).
-   - PDF: telefon tarayıcıları gömülü PDF'i çoğu zaman göstermez (iOS yalnız ilk sayfa). `md` altında iframe yerine "PDF'i yeni sekmede aç" bağlantısı (aynı `/api/.../file` adresi, `target="_blank" rel="noopener"`), `md` ve üstünde iframe; iframe yüksekliği `h-screen` yerine görünür alana göre makul (`dvh` tabanlı, token/`@utility`).
-   - Düzenleme formu (`fields-form`): alanlar telefonda tek sütun, tam genişlik.
+    - Başlık serif ve uzun: telefonda `text-xl`, `md:text-2xl`; rozetler kaydırmadan sarar.
+    - Alan satırları (`FieldRow`): telefonda etiket üstte, değer altta (tek sütun); `md` ve üstünde bugünkü 1/3 - 2/3 düzen.
+    - Aksiyon çubuğu: telefonda ekranın altında yapışkan, üç düğme eşit genişlikte tek satır (sığmıyorsa kısa etiketler yerine ikinci satır değil, eşit ızgara); `kbd` ipuçları ve kısayol açıklaması `md` altında gizli (kısayollar çalışmaya devam eder). Alt güvenli alan için `env(safe-area-inset-bottom)` kadar dolgu (token/`@utility` ile; bileşende keyfi değer yok). Çubuk son içeriği örtmez (sayfa altında yeterli boşluk).
+    - PDF: telefon tarayıcıları gömülü PDF'i çoğu zaman göstermez (iOS yalnız ilk sayfa). `md` altında iframe yerine "PDF'i yeni sekmede aç" bağlantısı (aynı `/api/.../file` adresi, `target="_blank" rel="noopener"`), `md` ve üstünde iframe; iframe yüksekliği `h-screen` yerine görünür alana göre makul (`dvh` tabanlı, token/`@utility`).
+    - Düzenleme formu (`fields-form`): alanlar telefonda tek sütun, tam genişlik.
 6. **Diyaloglar** (ret, toplu onay): telefonda ekran genişliğine yakın (yanlarda küçük boşluk), yükseklik `max-h` + iç kaydırma, düğmeler alt alta tam genişlik ya da sığıyorsa yan yana. `overscroll-behavior: contain`.
 7. **Giriş.** Zaten sol panel `lg` altında gizli; telefonda marka (logo + ad) formun üstünde görünür. Doğrulanır, gerekirse düzeltilir.
 8. **Dokunma ve form ergonomisi** (`packages/ui` bileşenlerinde, tek yerde):
-   - `pointer: coarse` cihazlarda (Tailwind `pointer-coarse:` varyantı) Button, Input, Select, Textarea, sekme ve gezinme bağlantılarının yüksekliği en az 44 px (`h-11`/`min-h-11`).
-   - Input/Select/Textarea yazı boyutu telefonda en az 16 px (`text-base md:text-sm`): iOS odaklanınca yakınlaştırmasın.
-   - Yakınlaştırma kapatılmaz (`maximum-scale` yok).
-   - `touch-action: manipulation` düğme ve bağlantılarda (temel stil katmanında).
+    - `pointer: coarse` cihazlarda (Tailwind `pointer-coarse:` varyantı) Button, Input, Select, Textarea, sekme ve gezinme bağlantılarının yüksekliği en az 44 px (`h-11`/`min-h-11`).
+    - Input/Select/Textarea yazı boyutu telefonda en az 16 px (`text-base md:text-sm`): iOS odaklanınca yakınlaştırmasın.
+    - Yakınlaştırma kapatılmaz (`maximum-scale` yok).
+    - `touch-action: manipulation` düğme ve bağlantılarda (temel stil katmanında).
 9. **Viewport.** Kök `layout.tsx`'te Next `viewport` export'u: `width=device-width, initial-scale=1, viewport-fit=cover`, `themeColor` token değeriyle eşleşen değer (token dosyasından okunamıyorsa tek sabit + yorum; renk tek yerde tanımlı kalsın).
 10. **Kurallar belgelenir.**
     - `.claude/skills/frontend-ui/SKILL.md`'ye "Responsive" bölümü: mobil öncelikli, kırılım noktaları, 360 px'te yatay kaydırma yok, dokunma hedefi 44 px, input 16 px, tablo → kart, yapışkan çubuk + güvenli alan, PDF mobilde bağlantı, her UI PR'ında 360 / 768 / 1440 ekran görüntüsü.

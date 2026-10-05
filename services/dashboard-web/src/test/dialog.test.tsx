@@ -133,6 +133,29 @@ describe("Dialog drawer variant", () => {
         expect(screen.getByText("open")).toHaveFocus();
     });
 
+    it("closes on a click on the backdrop, not on a click inside", async () => {
+        const onClose = vi.fn();
+        render(<Drawer onClose={onClose} />);
+        await userEvent.click(screen.getByText("open"));
+        await userEvent.click(screen.getByText("içerik"));
+        expect(onClose).not.toHaveBeenCalled();
+        // The backdrop is part of the dialog element: a click there targets the element itself.
+        await userEvent.click(screen.getByRole("dialog"));
+        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("ignores the backdrop while it is not dismissible", async () => {
+        const onClose = vi.fn();
+        render(
+            <Dialog open variant="drawer" dismissible={false} onClose={onClose} title="Menü">
+                x
+            </Dialog>,
+        );
+        await userEvent.click(screen.getByRole("dialog"));
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
     it("has a close button that asks to close", async () => {
         const onClose = vi.fn();
         render(<Drawer onClose={onClose} />);

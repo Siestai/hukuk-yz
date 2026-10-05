@@ -2,7 +2,7 @@
 
 import { Badge, Button, Dialog } from "@hukuk/ui";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { AppNav, type AppNavProps } from "./app-nav";
 import { Brand } from "./brand";
@@ -20,8 +20,19 @@ export function MobileNav(props: Omit<AppNavProps, "onNavigate">) {
     const drawerId = useId();
     const close = () => setOpen(false);
 
+    // The bar is hidden from `lg` up: a drawer still open when the screen grows would keep the
+    // page inert behind a modal nobody can see the reason for.
+    useEffect(() => {
+        const wide = window.matchMedia("(min-width: 1024px)");
+        const closeWhenWide = (event: MediaQueryListEvent) => {
+            if (event.matches) setOpen(false);
+        };
+        wide.addEventListener("change", closeWhenWide);
+        return () => wide.removeEventListener("change", closeWhenWide);
+    }, []);
+
     return (
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2 md:px-6 lg:hidden">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-surface pt-safe-2 pb-2 px-safe-4 md:px-safe-6 lg:hidden">
             <Brand compact />
             <div className="flex items-center gap-3">
                 {props.pending !== null ? (

@@ -239,6 +239,24 @@ describe("QueueFilters", () => {
             expect(toggle()).toHaveAttribute("aria-expanded", "true");
         });
 
+        it("opens when the number of active filters grows", () => {
+            setup();
+            const { rerender } = renderWithIntl(view());
+            expect(toggle()).toHaveAttribute("aria-expanded", "false");
+            nav.search = "reason=duplicate_of";
+            rerender(view());
+            expect(toggle()).toHaveAttribute("aria-expanded", "true");
+        });
+
+        it("stays as the user left it when the count does not grow", async () => {
+            const { user } = setup("band=low&q=x");
+            const { rerender } = renderWithIntl(view());
+            await user.click(toggle());
+            nav.search = "band=low";
+            rerender(view());
+            expect(toggle()).toHaveAttribute("aria-expanded", "false");
+        });
+
         it("is hidden from md up, where the fields are always shown", () => {
             setup();
             renderWithIntl(view());

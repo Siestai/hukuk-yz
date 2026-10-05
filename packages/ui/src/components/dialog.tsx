@@ -29,7 +29,7 @@ type DialogProps = Omit<ComponentProps<"dialog">, "open" | "onClose" | "onCancel
 
 const variantClass = {
     center: "m-auto w-inset max-w-lg max-h-inset rounded-md border",
-    drawer: "m-0 mr-auto h-viewport max-h-none w-72 max-w-full rounded-none border-y-0 border-l-0",
+    drawer: "m-0 mr-auto h-viewport max-h-none w-72 max-w-full rounded-none border-y-0 border-l-0 pt-safe-4 pb-safe-4 pl-safe-4 md:pt-safe-5 md:pb-safe-5 md:pl-safe-5",
 } as const;
 
 /**
@@ -75,6 +75,12 @@ function Dialog({
             onCancel={(event) => {
                 event.preventDefault();
                 if (dismissible) onClose();
+            }}
+            // A click on the backdrop lands on the dialog element itself, not on its content.
+            onClick={(event) => {
+                if (variant === "drawer" && dismissible && event.target === event.currentTarget) {
+                    onClose();
+                }
             }}
             className={cn(
                 "overflow-y-auto overscroll-contain border-border bg-surface p-4 text-ink backdrop:bg-ink/40 md:p-5",

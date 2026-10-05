@@ -58,7 +58,7 @@ export default defineConfig({
         {
             name: "chromium-mutating",
             testMatch: ["actions.spec.ts", "bulk.spec.ts"],
-            dependencies: ["chromium"],
+            dependencies: ["chromium", "chromium-mobile"],
             use: browser,
         },
     ],

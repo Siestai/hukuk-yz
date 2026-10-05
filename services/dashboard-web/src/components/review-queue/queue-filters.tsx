@@ -3,7 +3,7 @@
 import { Button, cn, Input, Label, Select } from "@hukuk/ui";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
     BANDS,
@@ -35,6 +35,12 @@ export function QueueFilters({ courts }: { courts: string[] }) {
     // On a phone the fields sit behind a toggle, open from the start when a filter is active.
     const [open, setOpen] = useState(() => hasFilters(params));
     const active = activeFilterCount(params);
+    // A filter applied from elsewhere (the top-reasons card) opens the body, so it is seen.
+    const previous = useRef(active);
+    useEffect(() => {
+        if (active > previous.current) setOpen(true);
+        previous.current = active;
+    }, [active]);
 
     // The API's empty court is `unknown` in the URL. A court chosen in the URL stays selectable;
     // a court this UI does not know is ignored.

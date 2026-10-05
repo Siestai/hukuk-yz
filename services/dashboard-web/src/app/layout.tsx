@@ -12,11 +12,11 @@ const fontVariables = [sansLatin, sansExt, monoLatin, monoExt, serifLatin, serif
     .map((font) => font.variable)
     .join(" ");
 
-// No maximum-scale: zooming stays possible. `cover` lets the page use the notch area, which the
-// sticky bars pad with env(safe-area-inset-*).
+// Next sets width=device-width and initial-scale=1 itself. No maximum-scale: zooming stays possible.
+// `cover` lets the page reach under the notch and the home indicator; the mobile top bar, the
+// drawer, the content column and the bottom action bar pad themselves with the safe-area insets
+// (`*-safe-*` utilities of packages/ui/src/styles.css).
 export const viewport: Viewport = {
-    width: "device-width",
-    initialScale: 1,
     viewportFit: "cover",
     themeColor: THEME_COLOR,
 };
@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     await connection();
     const locale = await getLocale();
     return (
-        <html lang={locale} className={fontVariables}>
+        <html lang={locale} className={`${fontVariables} max-lg:scroll-pt-16 max-lg:scroll-pb-56`}>
             <body>
                 <NextIntlClientProvider>{children}</NextIntlClientProvider>
             </body>
