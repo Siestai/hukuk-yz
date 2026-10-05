@@ -60,6 +60,16 @@ da compose'dadır (`/archive`).
 
 ## İlk kurulum
 
+**İlk yayın demo veriyle yapılır** (Orhan, 2026-10-05), gerçek arşiv sonra yüklenir:
+
+- Demo: `ARCHIVE_HOST_DIR`, Dokploy'un repoyu klonladığı klasördeki `infra/demo/archive`'ın
+  mutlak yoludur. 3. ve 4. adımlar yerine yükleme `app` konteynerinde, `infra/demo` `/demo` olarak
+  bağlanarak çalışır: `python -m app.loaders.decisions /demo/decisions.jsonl --files /demo/files.jsonl`
+  (12 sentetik karar, [infra/demo/README.md](../infra/demo/README.md)).
+- Gerçek veriye geçiş: demo kayıtları gerçek kayıtlarla karışmasın diye önce veritabanı sıfırlanır
+  (`alembic downgrade base` + `upgrade head`; kullanıcılar da silinir, 2. adım tekrarlanır), sonra
+  3. ve 4. adımlar. Demo süresince yapılan onay/retler atılır; bunlar sentetik kayıtlar üzerinedir.
+
 1. **Uygulamayı ayağa kaldır** (Dokploy'da Deploy). `migrate` servisi `alembic upgrade head`'i
    `app`'ten önce çalıştırır; sonradan elle: `docker compose ... run --rm app alembic upgrade head`.
 2. **Kullanıcıları aç** (parola terminalde sorulur, argümanla verilmez): `app` konteynerinde
