@@ -67,7 +67,7 @@ da compose'dadır (`/archive`).
   bağlanarak çalışır: `python -m app.loaders.decisions /demo/decisions.jsonl --files /demo/files.jsonl`
   (12 sentetik karar, [infra/demo/README.md](../infra/demo/README.md)).
 - Gerçek veriye geçiş: demo kayıtları gerçek kayıtlarla karışmasın diye önce veritabanı sıfırlanır
-  (`alembic downgrade base` + `upgrade head`; kullanıcılar da silinir, 2. adım tekrarlanır), sonra
+  (yereldeki `make db-reset` gibi: postgres volume silinir, `migrate` yeniden çalışır; kullanıcılar da silinir, 2. adım tekrarlanır), sonra
   3. ve 4. adımlar. Demo süresince yapılan onay/retler atılır; bunlar sentetik kayıtlar üzerinedir.
 
 1. **Uygulamayı ayağa kaldır** (Dokploy'da Deploy). `migrate` servisi `alembic upgrade head`'i
