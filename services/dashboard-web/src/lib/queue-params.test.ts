@@ -11,6 +11,8 @@ import {
     parseQueueParams,
     queueHref,
     serializeQueueParams,
+    sortsFor,
+    tabParams,
     type QueueParams,
 } from "./queue-params";
 
@@ -210,5 +212,81 @@ describe("detail and queue links", () => {
             done: true,
         });
         expect(parseNotice({ flash: "<b>" })).toEqual({ flash: undefined, done: false });
+    });
+});
+
+describe("the status tabs", () => {
+    it("reads durum and keeps the queue as the default", () => {
+        expect(parseQueueParams(new URLSearchParams("")).status).toBeUndefined();
+        expect(parseQueueParams(new URLSearchParams("durum=onaylanan")).status).toBe("approved");
+        expect(parseQueueParams(new URLSearchParams("durum=reddedilen")).status).toBe("rejected");
+        expect(parseQueueParams(new URLSearchParams("durum=tumu")).status).toBe("all");
+        expect(parseQueueParams(new URLSearchParams("durum=bekleyen")).status).toBeUndefined();
+        expect(parseQueueParams(new URLSearchParams("durum=bogus")).status).toBeUndefined();
+    });
+
+    it("sorts the reviewed tabs by review and the others by score", () => {
+        expect(parseQueueParams(new URLSearchParams("durum=onaylanan")).sort).toBe("reviewed_desc");
+        expect(parseQueueParams(new URLSearchParams("durum=reddedilen")).sort).toBe(
+            "reviewed_desc",
+        );
+        expect(parseQueueParams(new URLSearchParams("durum=tumu")).sort).toBe("score_asc");
+        expect(parseQueueParams(new URLSearchParams("")).sort).toBe("score_asc");
+    });
+
+    it("ignores a sort the tab does not offer", () => {
+        expect(parseQueueParams(new URLSearchParams("sort=reviewed_desc")).sort).toBe("score_asc");
+        expect(sortsFor("pending")).not.toContain("reviewed_desc");
+        expect(sortsFor("all")).toContain("reviewed_desc");
+        expect(parseQueueParams(new URLSearchParams("durum=tumu&sort=reviewed_desc")).sort).toBe(
+            "reviewed_desc",
+        );
+        expect(parseQueueParams(new URLSearchParams("durum=onaylanan&sort=score_desc")).sort).toBe(
+            "score_desc",
+        );
+    });
+
+    it("leaves out the status and the sort of the tab, and round-trips the rest", () => {
+        const rejected: QueueParams = { status: "rejected", sort: "reviewed_desc", page: 1 };
+        expect(serializeQueueParams(rejected).toString()).toBe("durum=reddedilen");
+        expect(queueHref({ status: "all", sort: "score_asc", page: 1 })).toBe("/?durum=tumu");
+        expect(queueHref({ status: "all", sort: "reviewed_desc", page: 2 })).toBe(
+            "/?durum=tumu&sort=reviewed_desc&page=2",
+        );
+        const params: QueueParams = {
+            status: "approved",
+            band: "low",
+            sort: "score_desc",
+            page: 3,
+        };
+        expect(parseQueueParams(serializeQueueParams(params))).toEqual(params);
+    });
+
+    it("builds the state of a tab: filters stay, sort and page start over", () => {
+        const current: QueueParams = { status: "all", band: "low", sort: "score_desc", page: 4 };
+        expect(tabParams(current, "rejected")).toEqual({
+            status: "rejected",
+            band: "low",
+            sort: "reviewed_desc",
+            page: 1,
+        });
+        const queue = tabParams(current, "pending");
+        expect(queue.status).toBeUndefined();
+        expect(queueHref(queue)).toBe("/?band=low");
+    });
+
+    it("sends the tab to the API only when it is not the queue", () => {
+        expect(apiQuery({ sort: "score_asc", page: 1 }).status).toBeUndefined();
+        expect(apiQuery({ status: "all", sort: "reviewed_desc", page: 2 })).toMatchObject({
+            status: "all",
+            sort: "reviewed_desc",
+            offset: 50,
+        });
+    });
+
+    it("carries the tab in the detail link, so back and J / K stay in it", () => {
+        expect(detailHref("e1", { status: "rejected", sort: "reviewed_desc", page: 1 })).toBe(
+            "/kararlar/e1?durum=reddedilen",
+        );
     });
 });

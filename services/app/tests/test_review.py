@@ -318,7 +318,8 @@ async def test_the_list_by_status_shows_each_tab_with_its_review(
     async def listed(**params: Any) -> dict[str, Any]:
         response = await client.get(BASE, params=params, headers=me.headers)
         assert response.status_code == 200
-        return response.json()
+        body: dict[str, Any] = response.json()
+        return body
 
     def order(body: dict[str, Any]) -> list[uuid.UUID]:
         return [uuid.UUID(i["extraction_id"]) for i in body["items"]]

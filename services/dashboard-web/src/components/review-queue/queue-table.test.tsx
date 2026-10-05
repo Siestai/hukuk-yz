@@ -9,6 +9,7 @@ import { QueueTable, type QueueItem } from "./queue-table";
 
 const item: QueueItem = {
     extraction_id: "e1",
+    source_status: "analyzed",
     source_id: "s1",
     title: "KIDEM TAZMİNATI",
     court: "yargitay",
@@ -201,5 +202,98 @@ describe("QueueTable help", () => {
         const badge = within(row).getByText(messages.enums.reason.date_from_closing);
         expect(badge).toHaveTextContent(help.reason.date_from_closing);
         expect(within(row).queryByRole("button")).toBeNull();
+    });
+
+    describe("the review columns of the status tabs", () => {
+        const { table } = messages.review.queue;
+        const reviewed: Partial<QueueItem> = {
+            source_status: "approved",
+            reviewed_at: "2026-10-04T09:30:00Z",
+            reviewer_name: "Baran",
+            review_decision: "approve",
+        };
+        const rejected: Partial<QueueItem> = {
+            source_status: "rejected",
+            reviewed_at: "2026-10-04T09:30:00Z",
+            reviewer_name: "İbrahim",
+            review_decision: "reject",
+            note: "Kopya kayıt, aynı karar başka sayıda var.",
+        };
+        const headers = () => screen.getAllByRole("columnheader").map((h) => h.textContent);
+
+        function setup(status: QueueParams["status"], overrides: Partial<QueueItem>) {
+            renderWithIntl(
+                <QueueTable
+                    items={[{ ...item, ...overrides }]}
+                    params={{ status, sort: "reviewed_desc", page: 1 }}
+                />,
+            );
+            return screen.getAllByRole("row")[1] as HTMLElement;
+        }
+
+        it("adds nothing to the queue", () => {
+            renderRow();
+            expect(headers()).toHaveLength(7);
+        });
+
+        it("approved: a status badge and the review", () => {
+            const row = setup("approved", { ...reviewed, review_decision: "edit" });
+            expect(headers().slice(7)).toEqual([
+                expect.stringContaining(table.status),
+                expect.stringContaining(table.review),
+            ]);
+            expect(within(row).getByText(table.statuses.edited)).toBeInTheDocument();
+            expect(within(row).getByText("Baran")).toBeInTheDocument();
+            expect(within(row).getByText(/04\.10\.2026/)).toBeInTheDocument();
+            expect(screen.getByRole("table")).toHaveAccessibleName(table.labels.approved);
+        });
+
+        it("approved without corrections says plainly approved", () => {
+            const row = setup("approved", reviewed);
+            expect(within(row).getByText(table.statuses.approved)).toBeInTheDocument();
+        });
+
+        it("rejected: the review and the note, no status column", () => {
+            const row = setup("rejected", rejected);
+            expect(headers().slice(7)).toEqual([
+                expect.stringContaining(table.review),
+                expect.stringContaining(table.note),
+            ]);
+            expect(within(row).getByText("İbrahim")).toBeInTheDocument();
+            expect(within(row).getByText(rejected.note as string)).toHaveAttribute(
+                "title",
+                rejected.note,
+            );
+        });
+
+        it("all: a badge per row, with the review empty for a waiting record", () => {
+            renderWithIntl(
+                <QueueTable
+                    items={[
+                        { ...item, extraction_id: "w" },
+                        { ...item, ...rejected, extraction_id: "r" },
+                    ]}
+                    params={{ status: "all", sort: "score_asc", page: 1 }}
+                />,
+            );
+            expect(headers()).toHaveLength(10);
+            const [, waiting, gone] = screen.getAllByRole("row") as HTMLElement[];
+            expect(within(waiting!).getByText(table.statuses.pending)).toBeInTheDocument();
+            expect(within(waiting!).queryByText("İbrahim")).toBeNull();
+            expect(within(gone!).getByText(table.statuses.rejected)).toBeInTheDocument();
+            expect(within(gone!).getByText("İbrahim")).toBeInTheDocument();
+        });
+
+        it("shows a reviewer without a user row as unknown", () => {
+            const row = setup("approved", { ...reviewed, reviewer_name: null });
+            expect(within(row).getByText(table.unknownReviewer)).toBeInTheDocument();
+        });
+
+        it("gives every extra column a tip", () => {
+            setup("all", rejected);
+            for (const topic of [table.status, table.review, table.note]) {
+                expect(infoTip(topic)).toBeInTheDocument();
+            }
+        });
     });
 });

@@ -33,4 +33,28 @@ describe("QueueEmpty", () => {
             "/?band=low",
         );
     });
+
+    it.each([
+        ["approved", empty.byStatus.approved],
+        ["rejected", empty.byStatus.rejected],
+        ["all", empty.byStatus.all],
+    ] as const)("says what is missing in the %s tab", (status, text) => {
+        renderWithIntl(
+            <QueueEmpty params={{ status, sort: "score_asc", page: 1 }} pastEnd={false} />,
+        );
+        expect(screen.getByText(text)).toBeInTheDocument();
+    });
+
+    it("keeps the tab when the filters are cleared", () => {
+        renderWithIntl(
+            <QueueEmpty
+                params={{ status: "rejected", band: "low", sort: "reviewed_desc", page: 1 }}
+                pastEnd={false}
+            />,
+        );
+        expect(screen.getByRole("link", { name: filters.clear })).toHaveAttribute(
+            "href",
+            "/?durum=reddedilen",
+        );
+    });
 });

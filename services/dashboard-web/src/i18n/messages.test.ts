@@ -6,7 +6,7 @@ import messages from "../../messages/tr.json";
 import { BULK_FAILURE_CODES } from "../lib/bulk-approve";
 import { HELP_TOPICS } from "../lib/help-topics";
 import { FIELD_ERRORS } from "../lib/decision-edits";
-import { BANDS, COURTS, FLASHES, SORTS, UNKNOWN_COURT } from "../lib/queue-params";
+import { BANDS, COURTS, FLASHES, SORTS, STATUSES, UNKNOWN_COURT } from "../lib/queue-params";
 import {
     readRepoFile,
     reasonCodes,
@@ -86,6 +86,13 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "review.bulk.report.heading": ["finished", "stopped", "failed"],
     "review.queue.help": [...HELP_TOPICS, ...reasonCodes().map((code) => `reason.${code}`)],
     "review.queue.sort": SORTS,
+    "review.queue.tabs": STATUSES,
+    "review.queue.titles": STATUSES.filter((status) => status !== "pending"),
+    "review.queue.subtitles": STATUSES.filter((status) => status !== "pending"),
+    "review.queue.empty.byStatus": STATUSES.filter((status) => status !== "pending"),
+    "review.queue.table.labels": STATUSES.filter((status) => status !== "pending"),
+    "review.queue.table.statuses": ["pending", "approved", "edited", "rejected"],
+    "review.detail.statusStrip": ["approved", "edited", "rejected"],
     "review.queue.flash": FLASHES,
     // "server" is read by key; the others are the client checks of the form.
     "review.edit.errors": FIELD_ERRORS,

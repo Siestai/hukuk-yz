@@ -65,6 +65,31 @@ for (const [name, viewport, phone] of [
             await expectNoHorizontalScroll(page);
         });
 
+        test("the status tabs fit the screen and lead to their lists", async ({ page }) => {
+            await openQueue(page);
+            const tabs = page.getByRole("navigation", { name: "Karar durumu" });
+            for (const link of await tabs.getByRole("link").all()) {
+                const box = await link.boundingBox();
+                expect(box?.x).toBeGreaterThanOrEqual(0);
+                expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+                if (phone) expect(box?.height).toBeGreaterThanOrEqual(44);
+            }
+            await expectNoHorizontalScroll(page);
+            for (const [tab, slug, heading] of [
+                ["Reddedilen", "reddedilen", "Reddedilen kararlar"],
+                ["Tümü", "tumu", "Tüm kararlar"],
+                ["Onaylanan", "onaylanan", "Onaylanan kararlar"],
+            ] as const) {
+                await tabs.getByRole("link", { name: new RegExp(`^${tab}`) }).click();
+                await page.waitForURL(new RegExp(`durum=${slug}`));
+                await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
+                await expect(tabs.locator('a[aria-current="page"]')).toContainText(tab);
+                // the bulk approve button belongs to the queue only
+                await expect(page.getByRole("button", { name: "Toplu onayla" })).toHaveCount(0);
+                await expectNoHorizontalScroll(page);
+            }
+        });
+
         test("the PDF is a link on a phone and a frame from md up", async ({ page }) => {
             await openFirstRecord(page);
             if (phone) {

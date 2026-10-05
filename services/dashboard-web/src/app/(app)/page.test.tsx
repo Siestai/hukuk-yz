@@ -90,7 +90,8 @@ describe("QueuePage", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("6.317 karar onay bekliyor")).toBeInTheDocument();
         expect(screen.getByText("queue results")).toBeInTheDocument();
-        expect(screen.getByText("12")).toBeInTheDocument();
+        // the approved count is in the "Onaylanan" tab and in the results card
+        expect(screen.getAllByText("12")).toHaveLength(2);
     });
 
     it("links the summary to the filters it stands for", async () => {
@@ -141,6 +142,44 @@ describe("QueuePage", () => {
         get.mockResolvedValue(ok({ total: 1, items: [item] }));
         await renderPage({ band: "high" });
         expect(screen.getByText("bulk approve high with list")).toBeInTheDocument();
+    });
+
+    it("shows the status tabs with the counts of the summary", async () => {
+        get.mockResolvedValue(ok({ total: 1, items: [item] }));
+        await renderPage();
+        const nav = screen.getByRole("navigation", { name: messages.review.queue.tabs.label });
+        expect(nav).toHaveTextContent(`${messages.review.queue.tabs.pending}6.317`);
+        expect(nav).toHaveTextContent(`${messages.review.queue.tabs.approved}12`);
+        expect(nav).toHaveTextContent(`${messages.review.queue.tabs.rejected}3`);
+        expect(nav).toHaveTextContent(`${messages.review.queue.tabs.all}6.332`);
+    });
+
+    it.each([
+        ["onaylanan", "approved", "12 karar onaylandı", "Onaylanan kararlar"],
+        ["reddedilen", "rejected", "3 karar reddedildi", "Reddedilen kararlar"],
+        ["tumu", "all", "6.332 karar: 6.317 bekliyor, 12 onaylandı, 3 reddedildi", "Tüm kararlar"],
+    ])(
+        "the %s tab has its own heading and subtitle, no bulk approve and no summary cards",
+        async (slug, status, subtitle, title) => {
+            get.mockResolvedValue(ok({ total: 1, items: [item] }));
+            await renderPage({ durum: slug });
+            expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
+            expect(screen.getByText(subtitle)).toBeInTheDocument();
+            expect(screen.queryByText(/bulk approve/)).toBeNull();
+            expect(screen.queryByText(messages.review.queue.summary.bandTitle)).toBeNull();
+            expect(screen.queryByText(messages.review.queue.summary.totalsTitle)).toBeNull();
+            expect(get).toHaveBeenCalledWith("/review/decisions", {
+                params: { query: expect.objectContaining({ status }) },
+            });
+        },
+    );
+
+    it("asks the API for the newest review first in the reviewed tabs", async () => {
+        get.mockResolvedValue(ok({ total: 0, items: [] }));
+        await renderPage({ durum: "reddedilen" });
+        expect(get).toHaveBeenCalledWith("/review/decisions", {
+            params: { query: expect.objectContaining({ sort: "reviewed_desc" }) },
+        });
     });
 
     it("goes to sign-in again when the session is gone", async () => {
