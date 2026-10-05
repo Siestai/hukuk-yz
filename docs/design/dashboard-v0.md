@@ -33,6 +33,7 @@ Yazı: IBM Plex Sans (arayüz), IBM Plex Mono (esas/karar no, tarih, sayılar; h
 
 ## Ekran kuralları
 
+- Durum sekmeleri (10g): kuyruğun üstünde Bekleyen / Onaylanan / Reddedilen / Tümü, sayılarıyla; bağlantı tabanlı gezinme (`nav`, `aria-current="page"`), seçim `?durum=onaylanan|reddedilen|tumu`. Onaylanan / Reddedilen / Tümü'nde durum rozeti, İnceleme (tarih, inceleyen) ve Ret notu sütunları, en yeni inceleme önce; toplu onay ve özet kartları yalnız Bekleyen'de. Her sekme, sütun ve başlık bir bilgi ipucu taşır. Detayda durum şeridi; geri bağlantısı ve J/K gelinen sekmede kalır.
 - Kuyruk: üstte bant dağılımı (yatay çubuk + üç sayı, tıklayınca filtre) ve en sık 5 sebep; altında filtreler ve tablo. Varsayılan sıralama en şüpheli önce. Sebepler okunur etiketle (`enums.reason.*`), en fazla 2 + "+N".
 - "Toplu onayla" düğmesi her zaman görünür, yalnız yüksek bant filtresinde etkin.
 - Detay: sol alanlar + sabit aksiyon çubuğu (Reddet, Düzelt, Onayla; kısayollar A/E/R, J/K sonraki/önceki), sağ PDF / çıkarılan metin sekmeleri. Şüpheli alan "Kontrol et" işaretli; üstte sebebin açıklaması. Dergi özeti "Editoryal içerik, resmî kaynak değil" etiketli kesik çerçevede.
