@@ -2,6 +2,7 @@ import type { components } from "@/lib/api/schema";
 import type { Settled } from "@/lib/api/settle";
 import type { QueueParams } from "@/lib/queue-params";
 import { QueueCards } from "./queue-cards";
+import { CardsHelp } from "./queue-item-parts";
 import { QueueEmpty } from "./queue-empty";
 import { QueueError } from "./queue-error";
 import { QueuePagination } from "./queue-pagination";
@@ -30,7 +31,8 @@ export async function QueueResults({
             <div className="hidden lg:block">
                 <QueueTable items={result.data.items} params={params} />
             </div>
-            <div className="lg:hidden">
+            <div className="grid gap-3 lg:hidden">
+                <CardsHelp />
                 <QueueCards items={result.data.items} params={params} />
             </div>
             <QueuePagination params={params} total={result.data.total} />

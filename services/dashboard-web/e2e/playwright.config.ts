@@ -44,13 +44,13 @@ export default defineConfig({
         // Read-only specs first, on the untouched demo data...
         {
             name: "chromium",
-            testMatch: ["login.spec.ts", "queue.spec.ts", "detail.spec.ts"],
+            testMatch: ["login.spec.ts", "queue.spec.ts", "detail.spec.ts", "info-tips.spec.ts"],
             use: browser,
         },
         // ...the responsive checks (also read-only), at phone and tablet sizes...
         {
             name: "chromium-mobile",
-            testMatch: ["responsive.spec.ts"],
+            testMatch: ["responsive.spec.ts", "info-tips.spec.ts"],
             dependencies: ["chromium"],
             use: phone,
         },

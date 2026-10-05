@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import { MAX_JOURNAL_ISSUE } from "@/lib/queue-params";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { QueueFilters } from "./queue-filters";
 import { QueueNavigationProvider } from "./queue-navigation";
 
@@ -270,5 +270,41 @@ describe("QueueFilters", () => {
             expect(field).toHaveClass("md:w-40");
             expect(field).not.toHaveClass("w-40");
         });
+    });
+});
+
+describe("QueueFilters help", () => {
+    it.each([filters.band, filters.court, filters.reason, filters.journalIssue, filters.search])(
+        "has a tip beside the %s label",
+        (label) => {
+            setup();
+            renderWithIntl(view());
+            expect(infoTip(label)).toBeInTheDocument();
+        },
+    );
+
+    it("keeps the tip out of the label, so the field keeps its name", () => {
+        setup();
+        renderWithIntl(view());
+        expect(screen.getByLabelText(filters.band)).toHaveRole("combobox");
+    });
+
+    it("explains the chosen reason instead of reasons in general", async () => {
+        setup("reason=date_from_closing");
+        renderWithIntl(view());
+        await userEvent.click(infoTip(messages.enums.reason.date_from_closing));
+        expect(openTipText()).toHaveTextContent(
+            messages.review.queue.help.reason.date_from_closing,
+        );
+    });
+
+    it("has a tip on the clear link only while a filter is set", () => {
+        setup();
+        const { unmount } = renderWithIntl(view());
+        expect(screen.queryByRole("button", { name: /Temizleme/ })).toBeNull();
+        unmount();
+        setup("band=low");
+        renderWithIntl(view());
+        expect(infoTip(filters.clearTopic)).toBeInTheDocument();
     });
 });

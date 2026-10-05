@@ -4,6 +4,7 @@ import { Button } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
 
+import { HelpTip } from "@/components/help-tip";
 import type { QueueParams } from "@/lib/queue-params";
 import { BulkApproveDialog } from "./bulk-approve-dialog";
 import type { BulkSample } from "./bulk-confirm-step";
@@ -32,21 +33,27 @@ export function BulkApproveButton({ params, total, sample, unavailable = false }
 
     return (
         <>
-            <span title={allowed ? undefined : t("bandOnly")} className="grid md:block">
-                <Button
-                    ref={button}
-                    disabled={!allowed || unavailable || isPending}
-                    aria-describedby={allowed ? undefined : hintId}
-                    onClick={() => setOpen(true)}
+            <div className="flex items-center gap-2">
+                <span
+                    title={allowed ? undefined : t("bandOnly")}
+                    className="grid flex-1 md:block md:flex-none"
                 >
-                    {t("open")}
-                </Button>
-                {allowed ? null : (
-                    <span id={hintId} className="sr-only">
-                        {t("bandOnly")}
-                    </span>
-                )}
-            </span>
+                    <Button
+                        ref={button}
+                        disabled={!allowed || unavailable || isPending}
+                        aria-describedby={allowed ? undefined : hintId}
+                        onClick={() => setOpen(true)}
+                    >
+                        {t("open")}
+                    </Button>
+                    {allowed ? null : (
+                        <span id={hintId} className="sr-only">
+                            {t("bandOnly")}
+                        </span>
+                    )}
+                </span>
+                <HelpTip name="bulk" topic={t("open")} />
+            </div>
             {open ? (
                 <BulkApproveDialog
                     onClose={() => setOpen(false)}

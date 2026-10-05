@@ -4,9 +4,16 @@ import { describe, expect, it } from "vitest";
 
 import messages from "../../messages/tr.json";
 import { BULK_FAILURE_CODES } from "../lib/bulk-approve";
+import { HELP_TOPICS } from "../lib/help-topics";
 import { FIELD_ERRORS } from "../lib/decision-edits";
 import { BANDS, COURTS, FLASHES, SORTS, UNKNOWN_COURT } from "../lib/queue-params";
-import { reasonCodes, schemaEnum, schemaProperties, warningCodes } from "../test/reason-codes";
+import {
+    readRepoFile,
+    reasonCodes,
+    schemaEnum,
+    schemaProperties,
+    warningCodes,
+} from "../test/reason-codes";
 
 const SRC = join(import.meta.dirname, "..");
 
@@ -46,6 +53,12 @@ function leafKeys(node: object, prefix = ""): string[] {
     );
 }
 
+function leafTexts(node: object): string[] {
+    return Object.values(node).flatMap((value) =>
+        typeof value === "object" ? leafTexts(value) : [String(value)],
+    );
+}
+
 function roles(): string[] {
     const schema = readFileSync(join(SRC, "lib/api/schema.d.ts"), "utf8");
     const union = /^\s+role: ((?:"\w+"(?: \| )?)+);/m.exec(schema)?.[1] ?? "";
@@ -71,6 +84,7 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "review.detail.history.decision": schemaEnum("ReviewOut", "decision"),
     "review.bulk.run": ["published", "conflicts", "failed"],
     "review.bulk.report.heading": ["finished", "stopped", "failed"],
+    "review.queue.help": [...HELP_TOPICS, ...reasonCodes().map((code) => `reason.${code}`)],
     "review.queue.sort": SORTS,
     "review.queue.flash": FLASHES,
     // "server" is read by key; the others are the client checks of the form.
@@ -104,6 +118,25 @@ describe("messages/tr.json", () => {
             expect(keys.sort()).toEqual([...values].sort());
         },
     );
+
+    it("keeps help and welcome texts short and free of the long dash", () => {
+        const texts = [
+            ...leafTexts(messages.review.queue.help),
+            ...leafTexts(messages.review.queue.welcome),
+        ];
+        for (const text of texts) {
+            expect(text).not.toContain("\u2014");
+            expect(text.length, text).toBeLessThanOrEqual(480);
+        }
+    });
+
+    it("states the penalties and bands of the confidence rules in the band tip", () => {
+        const source = readRepoFile("services/app/app/loaders/confidence.py");
+        const low = /^LOW_PENALTY = (\d+)/m.exec(source)?.[1];
+        const medium = /^MEDIUM_PENALTY = (\d+)/m.exec(source)?.[1];
+        expect(messages.review.queue.help.band).toContain(`Düşük bantlı sebep ${low},`);
+        expect(messages.review.queue.help.band).toContain(`Orta bantlı sebep ${medium})`);
+    });
 
     it("enums.role has exactly the roles of the API (read in side-nav by key)", () => {
         expect(Object.keys(messages.enums.role).sort()).toEqual(roles().sort());

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { FlashStatus } from "@/components/flash-status";
+import { HelpTip } from "@/components/help-tip";
 import { BandDistribution } from "@/components/review-queue/band-distribution";
 import { QueueBulkApprove } from "@/components/review-queue/queue-bulk-approve";
 import { QueueActions } from "@/components/review-queue/queue-actions";
@@ -13,6 +14,8 @@ import {
 } from "@/components/review-queue/queue-navigation";
 import { QueueResults } from "@/components/review-queue/queue-results";
 import { QueueSkeleton } from "@/components/review-queue/queue-skeleton";
+import { WelcomeCard } from "@/components/review-queue/queue-welcome-card";
+import { WelcomeToggle } from "@/components/review-queue/queue-welcome-toggle";
 import { TopReasons } from "@/components/review-queue/top-reasons";
 import { TotalsCard } from "@/components/review-queue/totals-card";
 import { getReviewSummary } from "@/lib/api/review";
@@ -49,12 +52,20 @@ export default async function QueuePage({
         <QueueNavigationProvider>
             <main className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:p-8">
                 <FlashStatus notice={parseNotice(search)} atQueue />
+                <WelcomeCard />
                 <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold text-ink">{t("title")}</h1>
-                        <p className="mt-1 text-sm text-ink-2">
-                            {t("subtitle", { total: pending })}
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-xl font-semibold text-ink">{t("title")}</h1>
+                            <HelpTip name="title" topic={t("title")} />
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <p className="text-sm text-ink-2">
+                                {t("subtitle", { total: pending })}
+                            </p>
+                            <HelpTip name="subtitle" topic={t("subtitle", { total: pending })} />
+                            <WelcomeToggle />
+                        </div>
                     </div>
                     <QueueActions>
                         <Suspense fallback={<QueueBulkApprove params={params} />}>

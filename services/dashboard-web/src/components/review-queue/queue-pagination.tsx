@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@hukuk/ui";
+import { HelpTip } from "@/components/help-tip";
 import { pageItems } from "@/lib/pagination";
 import { PAGE_SIZE, queueHref, type QueueParams } from "@/lib/queue-params";
 
@@ -26,13 +27,16 @@ export function QueuePagination({ params, total }: { params: QueueParams; total:
     return (
         <div className="flex flex-col gap-2 text-sm text-ink-2 md:flex-row md:items-center md:justify-between md:gap-4">
             <div className="flex items-center justify-between gap-4">
-                <p className="font-mono text-xs">
-                    {t("range", {
-                        from: (params.page - 1) * PAGE_SIZE + 1,
-                        to: Math.min(params.page * PAGE_SIZE, total),
-                        total,
-                    })}
-                </p>
+                <div className="flex items-center gap-2">
+                    <p className="font-mono text-xs">
+                        {t("range", {
+                            from: (params.page - 1) * PAGE_SIZE + 1,
+                            to: Math.min(params.page * PAGE_SIZE, total),
+                            total,
+                        })}
+                    </p>
+                    <HelpTip name="pagination" topic={t("label")} />
+                </div>
                 <p className="font-mono text-xs md:hidden">
                     {t("pageOf", { page: params.page, count: pageCount })}
                 </p>

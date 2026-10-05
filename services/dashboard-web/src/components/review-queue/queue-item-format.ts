@@ -26,6 +26,7 @@ export function useQueueItemFormat() {
         band: labels.band,
         court: labels.court,
         reason: labels.reason,
+        reasonHelp: labels.reasonHelp,
         isKnownReason: labels.isKnownReason,
         score: (item: QueueItem) => format.number(item.score, "score"),
         count: (value: number) => format.number(value, "integer"),

@@ -3,6 +3,7 @@ export { Button, buttonVariants } from "./components/button";
 export { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/card";
 export { Dialog, type DialogProps } from "./components/dialog";
 export { DialogActions } from "./components/dialog-actions";
+export { InfoTip, type InfoTipProps } from "./components/info-tip";
 export { Input } from "./components/input";
 export { Label } from "./components/label";
 export { Logo } from "./components/logo";

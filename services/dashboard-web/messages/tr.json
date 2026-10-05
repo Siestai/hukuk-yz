@@ -61,7 +61,8 @@
         "searchPlaceholder": "Ara",
         "clear": "Filtreleri temizle",
         "toggle": "Filtreler",
-        "toggleActive": "Filtreler ({count, number})"
+        "toggleActive": "Filtreler ({count, number})",
+        "clearTopic": "Temizleme"
       },
       "table": {
         "label": "Onay bekleyen kararlar",
@@ -76,7 +77,8 @@
         "karar": "K. {value}",
         "duplicate": "Mükerrer kayıt grubunda",
         "unknownReason": "Bilinmeyen sebep",
-        "issueValue": "Sayı {value}"
+        "issueValue": "Sayı {value}",
+        "cardsTopic": "Bu kartta neler var?"
       },
       "empty": {
         "none": "Onay bekleyen karar yok.",
@@ -100,7 +102,75 @@
         "edited": "Karar düzeltilerek onaylandı.",
         "rejected": "Karar reddedildi."
       },
-      "done": "Kuyruk bitti: onay bekleyen başka kayıt yok."
+      "done": "Kuyruk bitti: onay bekleyen başka kayıt yok.",
+      "welcome": {
+        "title": "{brand} nedir?",
+        "intro": "{brand}, iş ve sosyal güvenlik hukuku için bir yapay zekâ asistanıdır. Asistanın kaynağı, Çalışma ve Toplum dergisi arşivindeki yaklaşık 6.300 karardır.",
+        "what": "Bir program bu kararları okudu ve her birinin künyesini çıkardı: mahkeme, daire, esas no, karar no, tarih, ilgili kanun ve özet. Program hata yapabilir. Bu panelde siz bilgileri özgün PDF ile karşılaştırır, kaydı onaylar, düzeltir ya da reddedersiniz.",
+        "stepsTitle": "Nasıl çalışılır?",
+        "stepOpen": "Listeden bir karar açın.",
+        "stepCompare": "Alanları özgün PDF ile karşılaştırın.",
+        "stepDecide": "Onaylayın, düzeltin ya da reddedin.",
+        "approved": "Yalnız onaylanan kayıtlar asistanın atıf yapabileceği kaynak olur. Yargıtay sitesinden resmî teyit ayrı bir adımdır.",
+        "bulk": "Toplu onay yalnız Yüksek güven bandındaki kayıtlar için vardır. Diğerleri tek tek incelenir.",
+        "dismiss": "Anladım",
+        "toggle": "Bu ekran nedir?"
+      },
+      "help": {
+        "label": "Bilgi: {topic}",
+        "title": "{brand}, iş ve sosyal güvenlik hukuku için bir yapay zekâ asistanıdır. Çalışma ve Toplum dergisi arşivindeki yaklaşık 6.300 karar bir program tarafından okundu ve her kararın künyesi çıkarıldı: mahkeme, daire, esas no, karar no, tarih, kanun ve özet. Burada bir insan bu bilgileri özgün PDF ile karşılaştırır ve kaydı onaylar, düzeltir ya da reddeder. Yalnız onaylanan kayıtlar asistanın atıf yapabileceği kaynak olur. Yargıtay sitesinden resmî teyit ayrı bir adımdır.",
+        "subtitle": "Henüz onaylanmamış ya da reddedilmemiş kayıtların sayısı. Siz onayladıkça ya da reddettikçe azalır.",
+        "bulk": "Aynı anda çok kaydı onaylar. Yalnız Yüksek güven bandı seçiliyken çalışır ve her kayıt kendi adınıza, tek tek kaydedilir. Onaylamadan önce ne kadar kayıt olduğunu görürsünüz.",
+        "sort": "Listenin sırası. \"En şüpheli önce\" puanı düşük, yani programın en az emin olduğu kayıtları başa alır. \"En güvenli önce\" tersini yapar.",
+        "band": "Güven bandı, programın bir kaydı ne kadar güvenle okuduğunu gösterir. Her kaydın 0-100 arası bir puanı vardır. Puan 100'den başlar; her sebep puan düşürür (Düşük bantlı sebep 60, Orta bantlı sebep 25). Bant en kötü sebebe göre belirlenir: Düşük bantlı sebep varsa Düşük, yoksa Orta bantlı sebep varsa Orta, hiç sebep yoksa Yüksek. Bir banda tıklayınca liste o banda göre süzülür.",
+        "topReasons": "Kayıtların en çok hangi sebeplerle işaretlendiği. Bir sebebe tıklayınca liste o sebebe göre süzülür. Sebep, kaydın neden dikkatle bakılması gerektiğini söyler.",
+        "totals": "Şimdiye kadar onaylanan ve reddedilen kayıt sayısı. Bekleyenler bu sayılara dahil değildir.",
+        "filterBand": "Listeyi güven bandına göre daraltır. Toplu onay için Yüksek seçilmelidir.",
+        "filterCourt": "Listeyi kararı veren mahkemeye göre daraltır. Yalnız bekleyen kayıtlarda bulunan mahkemeler listelenir.",
+        "filterReason": "Listeyi bir sebebe göre daraltır. Bir sebep seçince o sebebin ne anlama geldiği burada görünür.",
+        "filterIssue": "Listeyi Çalışma ve Toplum dergisinin sayı numarasına göre daraltır. Karar, o sayıda yayımlanmıştır.",
+        "filterSearch": "Esas numarasında, karar numarasında ya da karar başlığında arar. Örnek: 2019/1234.",
+        "filterClear": "Seçili bütün filtreleri kaldırır. Sıralama değişmez.",
+        "colConfidence": "Programın bu kaydı ne kadar güvenle okuduğu: bant (Yüksek, Orta, Düşük) ve 0-100 arası puan. Puan düşükse kayıt daha dikkatli kontrol edilmelidir.",
+        "colDecision": "Kararın başlığı ve dairesi. Başlığa tıklayınca kayıt açılır. Mükerrer işareti, aynı kararın başka bir kayıtta da bulunduğunu gösterir.",
+        "colCourt": "Kararı veren mahkeme, programın PDF'ten okuduğu hâliyle.",
+        "colNumbers": "Kararın künyesindeki iki numara: E. dosyanın esas numarası, K. mahkemenin karar numarası. Resmî kaynakta karar bu iki numarayla aranır.",
+        "colDate": "Karar tarihi, PDF'ten okunduğu hâliyle.",
+        "colIssue": "Kararın yayımlandığı Çalışma ve Toplum dergisi sayısı.",
+        "colReasons": "Kaydın neden işaretlendiği. En fazla iki sebep adıyla görünür, kalanı \"+sayı\" olarak. Hepsini kayıt açılınca görürsünüz.",
+        "cards": "Her kart bir karardır. Üstte güven bandı ve puan, altında karar başlığı, mahkeme ve daire, esas / karar numarası ve tarih, dergi sayısı, işaretlenme sebepleri. Mükerrer işareti, aynı kararın başka bir kayıtta da bulunduğunu gösterir. Karta dokununca kayıt açılır.",
+        "pagination": "Liste sayfalara bölünmüştür. Soldaki sayılar bu sayfadaki kayıtların sırasını ve toplamı gösterir.",
+        "navPending": "Onay bekleyen karar sayısı, yani inceleme kuyruğundaki kayıtlar.",
+        "navSources": "Bu bölüm henüz hazır değil. Hazır olunca kaynakları burada göreceksiniz.",
+        "navKnowledgeBase": "Bu bölüm henüz hazır değil. Onaylanan kayıtlar hazır olunca burada bilgi tabanı olarak görünecek.",
+        "reason": {
+          "missing_court": "Kararı veren mahkeme okunamadı. Mahkemesi belli olmayan karar resmî kaynakla eşleştirilemez. PDF'in başındaki mahkeme adına bakın.",
+          "missing_esas_no": "Esas numarası okunamadı. Numarasız karar resmî kaynakta aranamaz. PDF'in başındaki E. numarasına bakın. Yabancı mahkeme ve AYM bireysel başvuru kararlarında numara olmayabilir; bu kayıtlar yine de Düşük bantta kalır ve toplu onaya girmez.",
+          "missing_karar_no": "Karar numarası okunamadı. Numarasız karar resmî kaynakta aranamaz. PDF'in başındaki K. numarasına bakın. Yabancı mahkeme ve AYM bireysel başvuru kararlarında numara olmayabilir; bu kayıtlar yine de Düşük bantta kalır ve toplu onaya girmez.",
+          "missing_decision_date": "Karar tarihi okunamadı. Tarihsiz karar resmî kaynakla eşleştirilemez. PDF'teki karar tarihine bakın.",
+          "missing_chamber": "Daire okunamadı. Daireleri olan mahkemelerde daire, kararın kimliğinin bir parçasıdır. PDF'in başındaki daire adına bakın.",
+          "court_unmapped": "Okunan mahkeme adı, sistemin bildiği mahkemelerden hiçbiriyle eşleşmedi. Kayıt bu hâliyle yayınlanamaz. Mahkeme adını PDF ile karşılaştırın.",
+          "court_level_unmapped": "Mahkemenin derecesi (daire, Genel Kurul, BAM gibi) belirlenemedi. Dereceyi bilmeyen sistem kaydı yayınlayamaz. Mahkeme adını PDF ile karşılaştırın.",
+          "court_level_missing": "Mahkemenin derecesi kayıtta yok. Dereceyi bilmeyen sistem kaydı yayınlayamaz. Mahkeme adını PDF ile karşılaştırın.",
+          "layout_unknown": "PDF'in sayfa düzeni programın tanıdığı düzenlerden biri değil. Bu yüzden okunan alanlar güvenilir olmayabilir. Her alanı PDF ile tek tek karşılaştırın.",
+          "body_not_found": "Karar metni PDF'te bulunamadı. Atıf yapılacak bir metin yoksa kayıt kullanılamaz. PDF'te karar metni olup olmadığına bakın.",
+          "text_summary_only": "Kayıtta kararın kendisi değil, yalnız derginin özeti var. Özet editoryal içeriktir ve atıf için yeterli değildir. PDF'te tam metin olup olmadığına bakın.",
+          "duplicate_different_text": "Aynı karar birden çok dosyada var ve metinleri birbirinden farklı. Hangi dosyanın doğru olduğuna siz karar vermelisiniz. Detay ekranındaki Mükerrer kayıtlar bölümüne bakın.",
+          "duplicate_date_mismatch": "Aynı karar birden çok dosyada var ve tarihleri birbirini tutmuyor. PDF'lerdeki tarihe bakıp doğru dosyayı siz seçmelisiniz.",
+          "duplicate_of": "Aynı metnin daha uzun bir kopyası başka bir kayıtta var; bu kayıt fazlalık. Hangi kaydın tutulacağına siz karar vermelisiniz.",
+          "header_closing_date_mismatch": "Karar tarihi başlıkta ve metnin sonunda farklı yazılmış. İkisini PDF'te karşılaştırıp doğru olanı seçin.",
+          "karar_year_ne_date_year": "Karar numarasındaki yıl ile karar tarihinin yılı farklı. Bu bir okuma hatasından kaynaklanabilir. İkisini PDF ile karşılaştırın.",
+          "date_is_lower_court": "Okunan tarih, bu mahkemenin değil ilk derece mahkemesinin kararına ait olabilir. PDF'te bu mahkemenin karar tarihini bulup karşılaştırın.",
+          "date_from_closing": "Tarih kararın başından değil, son kısmından (kapanış) okundu. PDF'teki karar tarihiyle karşılaştırın.",
+          "body_start_approximate": "Karar metninin nerede başladığı tahminle belirlendi. Çıkarılmış metin sekmesinde başlangıcın doğru olup olmadığına bakın.",
+          "statute_inferred_from_date": "İlgili kanun kararda yazılı olmadığı için karar tarihine bakılarak tahmin edildi. PDF'teki kanun ve madde bilgisiyle karşılaştırın.",
+          "statute_unmapped": "Kararda geçen bir kanun, sistemin bildiği kanunlarla eşleşmedi. Kanun adını ve numarasını PDF ile karşılaştırın.",
+          "date_outside_issue_year": "Karar tarihi, derginin ait olduğu sayının yılına uymuyor. Tarihi PDF ile karşılaştırın.",
+          "multiple_esas_candidates": "Metinde esas numarasına benzeyen birden çok değer var ve program birini seçti. Seçilenin doğru olup olmadığını PDF'te kontrol edin.",
+          "duplicate_excerpt": "Aynı karar başka bir kayıtta da var ve bu kayıt yalnız bir alıntı. Hangi kaydın tutulacağına bakın.",
+          "duplicate_same_text": "Aynı karar başka bir kayıtta aynı metinle var. Hangi kaydın tutulacağına Mükerrer kayıtlar bölümünden bakın."
+        }
+      }
     },
     "bulk": {
       "open": "Toplu onayla",

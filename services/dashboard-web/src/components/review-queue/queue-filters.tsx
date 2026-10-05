@@ -16,6 +16,7 @@ import {
     UNKNOWN_COURT,
     type Band,
 } from "@/lib/queue-params";
+import { HelpTip } from "@/components/help-tip";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 import { SearchBox } from "./search-box";
 import { useQueueNavigation } from "./queue-navigation";
@@ -87,7 +88,10 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                 className={cn("gap-4 md:flex md:flex-wrap md:items-end", open ? "grid" : "hidden")}
             >
                 <div className="grid gap-1.5 md:w-40">
-                    <Label htmlFor={ids.band}>{t("band")}</Label>
+                    <div className="flex items-center gap-1.5">
+                        <Label htmlFor={ids.band}>{t("band")}</Label>
+                        <HelpTip name="filterBand" topic={t("band")} />
+                    </div>
                     <Select
                         id={ids.band}
                         value={params.band ?? ""}
@@ -104,7 +108,10 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                     </Select>
                 </div>
                 <div className="grid gap-1.5 md:w-48">
-                    <Label htmlFor={ids.court}>{t("court")}</Label>
+                    <div className="flex items-center gap-1.5">
+                        <Label htmlFor={ids.court}>{t("court")}</Label>
+                        <HelpTip name="filterCourt" topic={t("court")} />
+                    </div>
                     <Select
                         id={ids.court}
                         value={params.court ?? ""}
@@ -119,7 +126,13 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                     </Select>
                 </div>
                 <div className="grid gap-1.5 md:w-64">
-                    <Label htmlFor={ids.reason}>{t("reason")}</Label>
+                    <div className="flex items-center gap-1.5">
+                        <Label htmlFor={ids.reason}>{t("reason")}</Label>
+                        <HelpTip
+                            name={params.reason ? `reason.${params.reason}` : "filterReason"}
+                            topic={params.reason ? labels.reason(params.reason) : t("reason")}
+                        />
+                    </div>
                     <Select
                         id={ids.reason}
                         value={params.reason ?? ""}
@@ -134,7 +147,10 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                     </Select>
                 </div>
                 <div className="grid gap-1.5 md:w-32">
-                    <Label htmlFor={ids.issue}>{t("journalIssue")}</Label>
+                    <div className="flex items-center gap-1.5">
+                        <Label htmlFor={ids.issue}>{t("journalIssue")}</Label>
+                        <HelpTip name="filterIssue" topic={t("journalIssue")} />
+                    </div>
                     <Input
                         key={params.journalIssue ?? ""}
                         id={ids.issue}
@@ -153,16 +169,22 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                     />
                 </div>
                 <div className="grid gap-1.5 md:min-w-56 md:flex-1">
-                    <Label htmlFor={ids.q}>{t("search")}</Label>
+                    <div className="flex items-center gap-1.5">
+                        <Label htmlFor={ids.q}>{t("search")}</Label>
+                        <HelpTip name="filterSearch" topic={t("search")} />
+                    </div>
                     <SearchBox id={ids.q} />
                 </div>
                 {hasFilters(params) ? (
-                    <Link
-                        href={queueHref({ sort: params.sort, page: 1 })}
-                        className="inline-flex items-center py-2 text-sm font-medium text-primary underline pointer-coarse:min-h-11"
-                    >
-                        {t("clear")}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href={queueHref({ sort: params.sort, page: 1 })}
+                            className="inline-flex items-center py-2 text-sm font-medium text-primary underline pointer-coarse:min-h-11"
+                        >
+                            {t("clear")}
+                        </Link>
+                        <HelpTip name="filterClear" topic={t("clearTopic")} />
+                    </div>
                 ) : null}
             </div>
         </section>

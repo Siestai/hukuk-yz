@@ -1,9 +1,10 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import type { QueueParams } from "@/lib/queue-params";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { QueueTable, type QueueItem } from "./queue-table";
 
 const item: QueueItem = {
@@ -162,5 +163,43 @@ describe("QueueTable", () => {
         );
         expect(screen.getAllByRole("row")).toHaveLength(4);
         expect(screen.getAllByRole("link")).toHaveLength(3);
+    });
+});
+
+describe("QueueTable help", () => {
+    const { table, help } = {
+        table: messages.review.queue.table,
+        help: messages.review.queue.help,
+    };
+
+    it.each([
+        table.confidence,
+        table.decision,
+        table.court,
+        table.numbers,
+        table.date,
+        table.issue,
+        table.reasons,
+    ])("has a tip in the %s column header", (label) => {
+        renderRow();
+        const header = screen.getByRole("columnheader", { name: new RegExp(`^${label}`) });
+        expect(within(header).getByRole("button", { name: `Bilgi: ${label}` })).toBeInTheDocument();
+    });
+
+    it("explains the two numbers, in the column that shows them", async () => {
+        renderRow();
+        await userEvent.click(infoTip(table.numbers));
+        expect(openTipText()).toHaveTextContent(help.colNumbers);
+    });
+
+    it("explains the duplicate marker in the decision column tip", () => {
+        expect(help.colDecision).toContain("Mükerrer");
+    });
+
+    it("describes a known reason for screen readers, without a tip in the row", () => {
+        const row = renderRow({ reasons: ["date_from_closing"] });
+        const badge = within(row).getByText(messages.enums.reason.date_from_closing);
+        expect(badge).toHaveTextContent(help.reason.date_from_closing);
+        expect(within(row).queryByRole("button")).toBeNull();
     });
 });
