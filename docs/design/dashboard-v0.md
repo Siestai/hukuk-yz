@@ -49,7 +49,12 @@ Kırılımlar Tailwind varsayılanı: telefon `< md` (768), tablet `md`-`lg`, ma
 - Giriş: sol panel `lg` altında yok, logo ve ad formun üstünde.
 - Dokunma: `pointer: coarse` cihazlarda düğme, input, select, sekme ve gezinme en az 44 px; input yazısı telefonda 16 px; yakınlaştırma kapatılmaz.
 
-## Giriş ekranı alıntısı
+## Bilgi ipuçları (2026-10-05, görev 10f)
+
+- `InfoTip` (`packages/ui`): küçük "i" düğmesi, adı "Bilgi: <konu>". Fare üstüne gelince ve klavye odağında açılır; dokunma ya da tıklama sabitler (telefonda hover yok), Escape, dışarı basma ya da ikinci tıklama kapatır; odak düğmede kalır. Ekran okuyucu için görünür kutu `aria-hidden`, metin düğmenin yanındaki `role="status"` bölgesine yalnız düğmeye basılınca yazılır (toggletip). Kutu `w-72`, ekran kenarından 8 px içeride kalır; dokunmatikte düğme 44 px, görünen ikon küçük.
+- Metinler `review.queue.help.*`: sade Türkçe, 1-4 kısa cümle. Sebep açıklamaları `review.queue.help.reason.<kod>`; satırdaki rozetlerde ikon yok (satır tıklanır), açıklama ekran okuyucu için görünmez metin; görünür hâli "Sebep" filtresinde ve "En sık sebepler" kartında.
+- Karşılama kutusu (`WelcomeCard`): "Anladım" ile kapanır, tercih `localStorage`'da; sunucu HTML'inde yok (kapatmış biri hiç görmez), ilk kez gelen kişi hidrasyondan hemen sonra görür. "Bu ekran nedir?" düğmesi geri açar.
+
 
 - Sol panelde her sayfa yüklemesinde rastgele bir ünlü söz ve sahibi gösterilir (Orhan, 2026-10-03).
 - Liste: `docs/design/login-quotes.tr.json`, 100 söz (`text`, `author`). Kaynak tartışmalı atıflar elendi; Türkçe atasözleri "Atasözü" olarak.
