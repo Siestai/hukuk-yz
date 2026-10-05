@@ -32,6 +32,9 @@
 - **Hedef kitleye bilirkişiler eklendi** (Orhan, Baran, İbrahim). 1 Ekim'deki sıralamaya ek; öncelik sırası ayrıca konuşulacak.
 - **Yeni özellik isteği: durumlara göre değişen formüller.** Bazı durumlarda belirli formüller kullanılıyor, formüller belli aralıklarla değişiyor ve belli siteler değişiklikleri duyuruyor. Kapsam (hangi durumlar, kaynak siteler, değişikliğin takibi) Themis tarafından İbrahim'le netleştirilecek. Muhtemel karşılığı: hesap motorunda tarihe göre sürümlü parametreler.
 
+### 2026-10-05
+- **Tüm UI projeleri responsive olacak, mobil dahil** (Orhan: "bütün UI projelerimiz responsive olmalı, mobil de düşünülmeli"). Mobil öncelikli yazılır; 360 px telefonda yatay kaydırma yok, dokunma hedefi en az 44 px, input yazısı en az 16 px. Kurallar `frontend-ui` skill'inin "Responsive" bölümünde, ekran kuralları `docs/design/dashboard-v0.md` "Mobil" bölümünde; dashboard için uygulama görev 10e (`docs/tasks/10e-responsive-dashboard.md`). 10b'de mobil kapsam dışıydı; bu karar onu geçersiz kılar.
+
 ## Açık öneriler (karar bekliyor)
 - **2026-10-01, Baran (WP grubu):** Yüksek riskli / acil vakalarda (ör. SGK tespiti sonrası "ne yapalım") sistem otomatik cevap vermesin, uzman insana (Baran/İbrahim) eskalasyon yapsın. Bu eskalasyon ayrı paket veya kredi olarak ücretlendirilsin. Themis olumlu görüş bildirdi (hibrit model: makine + insan onayı). Tetikleme kullanıcı seçimi değil sistem tespiti olmalı: konu sınıfı + süre işliyor mu + belirsizlik düzeyi. Fiyatlandırma, SLA ve kapsam kararı Orhan + Baran + İbrahim'de.
 - **2026-10-01, İbrahim:** Marka/isim/tasarım. Şu an sıfır. Palet yönü: lacivert temelli (SGK/ÇSGB akrabalığı), kurumsal ama soru sormaya cesaretlendiren. Themis isim adayı listesi çıkaracak, Orhan'la gruba sunulacak.
