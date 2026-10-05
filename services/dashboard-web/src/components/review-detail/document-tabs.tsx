@@ -61,7 +61,7 @@ export function DocumentTabs({
                         onClick={() => setActive(tab)}
                         onKeyDown={(event) => onKeyDown(event, tab)}
                         className={cn(
-                            "-mb-px border-b-2 px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
+                            "-mb-px border-b-2 px-4 py-2 text-sm font-medium pointer-coarse:min-h-11 focus-visible:outline-2 focus-visible:outline-ring",
                             active === tab
                                 ? "border-primary text-primary"
                                 : "border-transparent text-ink-2",

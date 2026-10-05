@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button } from "@hukuk/ui";
+import { Badge, Button, DialogActions } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -66,8 +66,11 @@ export function BulkConfirmStep({ params, total, sample, onStart, onCancel }: Pr
                     </h3>
                     <ul className="grid gap-1 text-sm">
                         {sample.map((item) => (
-                            <li key={item.id} className="flex justify-between gap-4">
-                                <span className="text-ink">{item.title}</span>
+                            <li
+                                key={item.id}
+                                className="flex flex-col gap-0.5 md:flex-row md:justify-between md:gap-4"
+                            >
+                                <span className="min-w-0 wrap-anywhere text-ink">{item.title}</span>
                                 <span className="shrink-0 text-ink-2">{numbers(item)}</span>
                             </li>
                         ))}
@@ -80,14 +83,14 @@ export function BulkConfirmStep({ params, total, sample, onStart, onCancel }: Pr
                     <BulkConfirmCheck count={total} checked={checked} onChange={setChecked} />
                 </>
             ) : null}
-            <div className="flex justify-end gap-2">
+            <DialogActions>
                 <Button type="button" variant="outline" onClick={onCancel}>
                     {t("cancel")}
                 </Button>
                 <Button type="button" onClick={onStart} disabled={total === 0 || !checked}>
                     {t("start")}
                 </Button>
-            </div>
+            </DialogActions>
         </div>
     );
 }

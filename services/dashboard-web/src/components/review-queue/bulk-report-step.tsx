@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@hukuk/ui";
+import { Button, DialogActions } from "@hukuk/ui";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
@@ -26,8 +26,11 @@ function RecordLink({
     children?: ReactNode;
 }) {
     return (
-        <li className="flex justify-between gap-4">
-            <Link href={detailHref(id, params)} className="font-mono text-primary underline">
+        <li className="flex flex-wrap justify-between gap-x-4 gap-y-1">
+            <Link
+                href={detailHref(id, params)}
+                className="font-mono wrap-anywhere text-primary underline"
+            >
                 {id}
             </Link>
             {children}
@@ -104,11 +107,11 @@ export function BulkReportStep({ state, end, params, onClose }: Props) {
                     </ul>
                 </section>
             ) : null}
-            <div className="flex justify-end">
+            <DialogActions>
                 <Button type="button" onClick={onClose}>
                     {t("close")}
                 </Button>
-            </div>
+            </DialogActions>
         </div>
     );
 }

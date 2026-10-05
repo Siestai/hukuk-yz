@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@hukuk/ui";
+import { Button, DialogActions } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 
 import type { BulkState } from "@/lib/bulk-approve";
@@ -25,11 +25,11 @@ export function BulkRunStep({
             <p role="status" className="text-sm text-ink-2">
                 {stopping ? t("stopping") : t("running")}
             </p>
-            <div className="flex justify-end">
+            <DialogActions>
                 <Button type="button" variant="outline" onClick={onStop} disabled={stopping}>
                     {t("stop")}
                 </Button>
-            </div>
+            </DialogActions>
         </div>
     );
 }

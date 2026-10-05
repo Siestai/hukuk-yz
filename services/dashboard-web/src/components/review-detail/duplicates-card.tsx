@@ -31,7 +31,7 @@ export function DuplicatesCard({ duplicates, queue }: Props) {
                             </span>
                             <Link
                                 href={detailHref(duplicate.extraction_id, queue)}
-                                className="text-primary hover:underline"
+                                className="inline-flex items-center text-primary hover:underline pointer-coarse:min-h-11"
                             >
                                 {t("item", { length: duplicate.text_length })}
                             </Link>

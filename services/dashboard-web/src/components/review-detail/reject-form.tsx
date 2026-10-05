@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Label, Textarea } from "@hukuk/ui";
+import { Button, DialogActions, Label, Textarea } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useId, useState, type FormEvent } from "react";
 
@@ -40,14 +40,14 @@ export function RejectForm({ onClose }: { onClose: () => void }) {
                     </p>
                 ) : null}
             </div>
-            <div className="flex justify-end gap-2">
+            <DialogActions>
                 <Button type="button" variant="outline" onClick={onClose} disabled={session.busy}>
                     {t("cancel")}
                 </Button>
                 <Button type="submit" variant="destructive" disabled={blank || session.busy}>
                     {t("submit")}
                 </Button>
-            </div>
+            </DialogActions>
         </form>
     );
 }

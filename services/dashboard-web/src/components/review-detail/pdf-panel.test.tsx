@@ -22,4 +22,21 @@ describe("PdfPanel", () => {
         expect(screen.getByRole("status")).toHaveTextContent(text);
         expect(screen.queryByTitle(messages.review.detail.pdf.title)).toBeNull();
     });
+
+    it("offers the file in a new tab on a phone, where the frame is hidden and not loaded", () => {
+        renderWithIntl(<PdfPanel src={SRC} availability="available" />);
+        const link = screen.getByRole("link", { name: messages.review.detail.pdf.open });
+        expect(link).toHaveAttribute("href", SRC);
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener");
+        expect(link.closest("a")).toHaveClass("md:hidden");
+        const frame = screen.getByTitle(messages.review.detail.pdf.title);
+        expect(frame).toHaveClass("hidden", "md:block");
+        expect(frame).toHaveAttribute("loading", "lazy");
+    });
+
+    it("has no link when there is no file", () => {
+        renderWithIntl(<PdfPanel src={SRC} availability="missing" />);
+        expect(screen.queryByRole("link")).toBeNull();
+    });
 });

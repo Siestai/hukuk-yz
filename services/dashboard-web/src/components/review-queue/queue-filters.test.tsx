@@ -212,4 +212,63 @@ describe("QueueFilters", () => {
             );
         });
     });
+
+    describe("phone toggle", () => {
+        const toggle = () => screen.getByRole("button", { name: new RegExp(filters.toggle) });
+
+        it("is closed without filters and opens and closes the fields", async () => {
+            const { user } = setup();
+            renderWithIntl(view());
+            expect(toggle()).toHaveTextContent(filters.toggle);
+            expect(toggle()).toHaveAttribute("aria-expanded", "false");
+            const body = document.getElementById(toggle().getAttribute("aria-controls") ?? "");
+            expect(body).toContainElement(screen.getByLabelText(filters.band));
+            expect(body).toHaveClass("hidden", "md:flex");
+            await user.click(toggle());
+            expect(toggle()).toHaveAttribute("aria-expanded", "true");
+            expect(body).toHaveClass("grid");
+            expect(body).not.toHaveClass("hidden");
+            await user.click(toggle());
+            expect(body).toHaveClass("hidden");
+        });
+
+        it("starts open and counts the active filters when a filter is set", () => {
+            setup("band=low&q=x");
+            renderWithIntl(view());
+            expect(toggle()).toHaveTextContent("Filtreler (2)");
+            expect(toggle()).toHaveAttribute("aria-expanded", "true");
+        });
+
+        it("opens when the number of active filters grows", () => {
+            setup();
+            const { rerender } = renderWithIntl(view());
+            expect(toggle()).toHaveAttribute("aria-expanded", "false");
+            nav.search = "reason=duplicate_of";
+            rerender(view());
+            expect(toggle()).toHaveAttribute("aria-expanded", "true");
+        });
+
+        it("stays as the user left it when the count does not grow", async () => {
+            const { user } = setup("band=low&q=x");
+            const { rerender } = renderWithIntl(view());
+            await user.click(toggle());
+            nav.search = "band=low";
+            rerender(view());
+            expect(toggle()).toHaveAttribute("aria-expanded", "false");
+        });
+
+        it("is hidden from md up, where the fields are always shown", () => {
+            setup();
+            renderWithIntl(view());
+            expect(toggle()).toHaveClass("md:hidden");
+        });
+
+        it("gives the fields the full width on a phone and fixed widths from md up", () => {
+            setup();
+            renderWithIntl(view());
+            const field = screen.getByLabelText(filters.band).parentElement;
+            expect(field).toHaveClass("md:w-40");
+            expect(field).not.toHaveClass("w-40");
+        });
+    });
 });

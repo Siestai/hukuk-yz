@@ -47,9 +47,9 @@ export default async function QueuePage({
 
     return (
         <QueueNavigationProvider>
-            <main className="grid gap-6 p-8">
+            <main className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:p-8">
                 <FlashStatus notice={parseNotice(search)} atQueue />
-                <header className="flex items-end justify-between gap-4">
+                <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                     <div>
                         <h1 className="text-xl font-semibold text-ink">{t("title")}</h1>
                         <p className="mt-1 text-sm text-ink-2">
@@ -63,7 +63,7 @@ export default async function QueuePage({
                     </QueueActions>
                 </header>
                 {summary.data ? (
-                    <div className="grid gap-4 lg:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <BandDistribution counts={counts} params={params} />
                         <TopReasons reasons={summary.data.top_reasons} params={params} />
                         <TotalsCard

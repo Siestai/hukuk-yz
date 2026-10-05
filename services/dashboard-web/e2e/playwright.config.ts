@@ -16,6 +16,14 @@ const browser = {
     storageState: STORAGE_STATE,
 };
 
+// A phone: Chromium with touch and mobile emulation, so `pointer: coarse` matches. WebKit is not
+// installed on the server; Safari is checked by hand.
+const phone = {
+    ...devices["Pixel 7"],
+    channel: process.env.E2E_CHANNEL || undefined,
+    storageState: STORAGE_STATE,
+};
+
 export default defineConfig({
     testDir: ".",
     outputDir: ".output/results",
@@ -39,11 +47,18 @@ export default defineConfig({
             testMatch: ["login.spec.ts", "queue.spec.ts", "detail.spec.ts"],
             use: browser,
         },
+        // ...the responsive checks (also read-only), at phone and tablet sizes...
+        {
+            name: "chromium-mobile",
+            testMatch: ["responsive.spec.ts"],
+            dependencies: ["chromium"],
+            use: phone,
+        },
         // ...then the ones that approve and reject demo records (they consume them).
         {
             name: "chromium-mutating",
             testMatch: ["actions.spec.ts", "bulk.spec.ts"],
-            dependencies: ["chromium"],
+            dependencies: ["chromium", "chromium-mobile"],
             use: browser,
         },
     ],

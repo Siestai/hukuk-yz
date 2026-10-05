@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { cn } from "../lib/utils";
+import { Button } from "./button";
 
 type DialogProps = Omit<ComponentProps<"dialog">, "open" | "onClose" | "onCancel" | "title"> & {
     open: boolean;
@@ -20,7 +21,16 @@ type DialogProps = Omit<ComponentProps<"dialog">, "open" | "onClose" | "onCancel
     dismissible?: boolean;
     /** Where the focus goes on close; by default the element that had it when the dialog opened. */
     returnFocusTo?: RefObject<HTMLElement | null>;
+    /** `drawer` slides in from the left edge at full height (the mobile navigation). */
+    variant?: "center" | "drawer";
+    /** The accessible name of a close button beside the title; without it there is no button. */
+    closeLabel?: string;
 };
+
+const variantClass = {
+    center: "m-auto w-inset max-w-lg max-h-inset rounded-md border",
+    drawer: "m-0 mr-auto h-viewport max-h-none w-72 max-w-full rounded-none border-y-0 border-l-0 pt-safe-4 pb-safe-4 pl-safe-4 md:pt-safe-5 md:pb-safe-5 md:pl-safe-5",
+} as const;
 
 /**
  * Native modal `<dialog>`: `showModal` makes the rest of the page inert, which traps focus.
@@ -35,6 +45,8 @@ function Dialog({
     title,
     dismissible = true,
     returnFocusTo,
+    variant = "center",
+    closeLabel,
     children,
     className,
     ...props
@@ -64,17 +76,39 @@ function Dialog({
                 event.preventDefault();
                 if (dismissible) onClose();
             }}
+            // A click on the backdrop lands on the dialog element itself, not on its content.
+            onClick={(event) => {
+                if (variant === "drawer" && dismissible && event.target === event.currentTarget) {
+                    onClose();
+                }
+            }}
             className={cn(
-                "m-auto w-full max-w-lg rounded-md border border-border bg-surface p-5 text-ink backdrop:bg-ink/40",
+                "overflow-y-auto overscroll-contain border-border bg-surface p-4 text-ink backdrop:bg-ink/40 md:p-5",
+                variantClass[variant],
                 className,
             )}
             {...props}
         >
             {open ? (
-                <div className="grid gap-4">
-                    <h2 id={titleId} className="font-semibold text-ink">
-                        {title}
-                    </h2>
+                <div
+                    className={cn("grid gap-4", variant === "drawer" && "min-h-full content-start")}
+                >
+                    <div className="flex items-center justify-between gap-2">
+                        <h2 id={titleId} className="font-semibold text-ink">
+                            {title}
+                        </h2>
+                        {closeLabel && dismissible ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={closeLabel}
+                                onClick={onClose}
+                            >
+                                <span aria-hidden="true">×</span>
+                            </Button>
+                        ) : null}
+                    </div>
                     {children}
                 </div>
             ) : null}

@@ -49,7 +49,7 @@ export default async function DecisionPage({
             pos={parsePosition(search)}
             canAct={detail.source_status === "analyzed"}
         >
-            <main className="grid gap-6 p-8">
+            <main className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:p-8">
                 <FlashStatus notice={parseNotice(search)} atQueue={false} />
                 <DecisionHeader
                     title={detail.title}
@@ -58,8 +58,8 @@ export default async function DecisionPage({
                     sourceStatus={detail.source_status}
                     queue={queue}
                 />
-                <div className="grid items-start gap-6 lg:grid-cols-2">
-                    <div className="grid gap-4">
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4">
                         <FieldsPanel fields={fields} />
                         <ConfidenceCard
                             score={detail.confidence.score}

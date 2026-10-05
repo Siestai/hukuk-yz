@@ -19,10 +19,13 @@ export function DecisionHeader({ title, band, score, sourceStatus, queue }: Prop
     const labels = useEnumLabels();
     return (
         <header className="grid gap-3">
-            <Link href={queueHref(queue)} className="w-fit text-sm text-primary hover:underline">
+            <Link
+                href={queueHref(queue)}
+                className="inline-flex w-fit items-center text-sm text-primary hover:underline pointer-coarse:min-h-11"
+            >
                 {t("back")}
             </Link>
-            <h1 className="font-serif text-2xl text-ink">{title}</h1>
+            <h1 className="font-serif text-xl wrap-anywhere text-ink md:text-2xl">{title}</h1>
             <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={band === "high" || band === "medium" ? band : "low"}>
                     {labels.band(band)}

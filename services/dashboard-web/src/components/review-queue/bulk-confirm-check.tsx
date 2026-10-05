@@ -17,13 +17,13 @@ export function BulkConfirmCheck({
     const t = useTranslations("review.bulk");
     const id = useId();
     return (
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
             <input
                 id={id}
                 type="checkbox"
                 checked={checked}
                 onChange={(event) => onChange(event.target.checked)}
-                className="mt-0.5 size-4 accent-primary"
+                className="mt-0.5 size-4 shrink-0 accent-primary pointer-coarse:size-6"
             />
             <Label htmlFor={id}>{t("check", { count })}</Label>
         </div>

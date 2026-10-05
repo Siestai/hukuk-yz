@@ -32,7 +32,7 @@ export function BulkApproveButton({ params, total, sample, unavailable = false }
 
     return (
         <>
-            <span title={allowed ? undefined : t("bandOnly")}>
+            <span title={allowed ? undefined : t("bandOnly")} className="grid md:block">
                 <Button
                     ref={button}
                     disabled={!allowed || unavailable || isPending}
