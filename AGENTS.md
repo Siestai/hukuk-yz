@@ -84,7 +84,7 @@ An AI legal research and reasoning assistant for Turkish labour and social secur
 ## Infra
 
 - Server details live outside the repo in `~/Desktop/SERVERS.md` (Orhan's machine). Never put IPs of new hosts, phone numbers, tokens or allowlists here: the repo is public.
-- Target deployment: `personal-orhanors`, a Dokploy remote server managed from https://console.siestai.com. Runtime infra stays separate from Siestai apps even though the repo lives in the Siestai org.
+- Target deployment (changed 2026-10-05, see `docs/decisions.md`): the Dokploy host itself (https://console.siestai.com), next to the Siestai apps, as its own Dokploy project `hukuk-yz` with its own Postgres. It shares CPU, RAM and disk with them, nothing else. Dashboard: `dash-hukuk.siestai.com` behind Cloudflare (`docs/deploy.md`). `personal-orhanors` (also a Dokploy server) runs only Themis.
 - **Themis (Hermes Agent, Nous Research)** runs on the same server:
   - Plain `docker compose` in `/opt/hermes-hukuk`, container `hermes-hukuk`, `gateway run`. No published ports, no Docker socket, `no-new-privileges`, 1.5 GB RAM / 1.5 CPU limit.
   - State in `/opt/hermes-hukuk/data` → `/opt/data` in the container.
