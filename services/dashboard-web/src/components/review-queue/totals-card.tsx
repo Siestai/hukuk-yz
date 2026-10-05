@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
+import { HelpTip } from "@/components/help-tip";
 import { useFormatter, useTranslations } from "next-intl";
 
 export function TotalsCard({ approved, rejected }: { approved: number; rejected: number }) {
@@ -7,7 +8,10 @@ export function TotalsCard({ approved, rejected }: { approved: number; rejected:
     return (
         <Card>
             <CardHeader>
-                <CardTitle>{t("totalsTitle")}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    {t("totalsTitle")}
+                    <HelpTip name="totals" topic={t("totalsTitle")} />
+                </CardTitle>
             </CardHeader>
             <CardContent>
                 <dl className="grid gap-2 text-sm">

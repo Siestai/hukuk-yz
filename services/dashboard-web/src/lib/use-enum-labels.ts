@@ -25,6 +25,11 @@ export function useEnumLabels() {
             return code ? `${label("bulkFailure", code)}${bulkFailureDetail(value)}` : value;
         },
         isKnownReason: (value: string) => t.has(`enums.reason.${value}`),
+        // What a reason means and what to check; undefined for a code without a text.
+        reasonHelp: (value: string) =>
+            t.has(`review.queue.help.reason.${value}`)
+                ? t(`review.queue.help.reason.${value}`)
+                : undefined,
         warning: (value: string) => {
             const detail = value.slice(warningCode(value).length);
             return `${label("warning", warningCode(value))}${detail}`;

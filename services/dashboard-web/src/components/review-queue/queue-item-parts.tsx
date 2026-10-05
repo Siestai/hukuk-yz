@@ -1,5 +1,8 @@
 import { Badge, cn } from "@hukuk/ui";
+import { useTranslations } from "next-intl";
 import { useId } from "react";
+
+import { HelpTip } from "@/components/help-tip";
 
 import { type QueueItem, type QueueItemFormat } from "./queue-item-format";
 
@@ -11,6 +14,17 @@ const MAX_REASON_CHIPS = 2;
 // still get a single link. Tradeoff: text in it cannot be selected with the mouse. Anything else
 // interactive inside (a tooltip, a future link or button) needs `relative z-10` to sit above it.
 export const stretchedLink = "after:absolute after:inset-0 hover:underline focus-visible:underline";
+
+/** The one tip of the card list: the cards have no column headers, so it says what a card holds. */
+export function CardsHelp() {
+    const t = useTranslations("review.queue.table");
+    return (
+        <div className="flex items-center gap-2 text-sm text-ink-2">
+            {t("cardsTopic")}
+            <HelpTip name="cards" topic={t("cardsTopic")} />
+        </div>
+    );
+}
 
 export function DuplicateIcon({ label }: { label: string }) {
     return (
@@ -40,6 +54,11 @@ export function ConfidenceChip({ item, format }: { item: QueueItem; format: Queu
     );
 }
 
+/** What a reason means, for screen readers; sighted users get it from the reason filter and the top reasons card. */
+function ReasonHelp({ text }: { text: string | undefined }) {
+    return text ? <span className="sr-only">: {text}</span> : null;
+}
+
 /** At most two reasons by name and "+N"; the reasons behind the "+N" are read out by screen readers. */
 export function ReasonChips({
     item,
@@ -64,6 +83,7 @@ export function ReasonChips({
                         {format.isKnownReason(reason) ? null : (
                             <span className="sr-only">{format.unknownReasonLabel}</span>
                         )}
+                        <ReasonHelp text={format.reasonHelp(reason)} />
                     </Badge>
                 </li>
             ))}

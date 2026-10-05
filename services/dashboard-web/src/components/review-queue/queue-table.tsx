@@ -2,6 +2,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
 import { detailHref, PAGE_SIZE, type QueueParams } from "@/lib/queue-params";
 import { useQueueItemFormat, type QueueItem } from "./queue-item-format";
 import { ConfidenceChip, DuplicateIcon, ReasonChips, stretchedLink } from "./queue-item-parts";
@@ -11,18 +12,28 @@ export type { QueueItem } from "./queue-item-format";
 export function QueueTable({ items, params }: { items: QueueItem[]; params: QueueParams }) {
     const t = useTranslations("review.queue.table");
     const format = useQueueItemFormat();
+    const columns = [
+        { label: t("confidence"), help: "colConfidence" },
+        { label: t("decision"), help: "colDecision" },
+        { label: t("court"), help: "colCourt" },
+        { label: t("numbers"), help: "colNumbers" },
+        { label: t("date"), help: "colDate" },
+        { label: t("issue"), help: "colIssue" },
+        { label: t("reasons"), help: "colReasons" },
+    ] as const;
 
     return (
         <Table aria-label={t("label")}>
             <TableHeader>
                 <TableRow className="hover:bg-surface-2">
-                    <TableHead>{t("confidence")}</TableHead>
-                    <TableHead>{t("decision")}</TableHead>
-                    <TableHead>{t("court")}</TableHead>
-                    <TableHead>{t("numbers")}</TableHead>
-                    <TableHead>{t("date")}</TableHead>
-                    <TableHead>{t("issue")}</TableHead>
-                    <TableHead>{t("reasons")}</TableHead>
+                    {columns.map(({ label, help }) => (
+                        <TableHead key={help}>
+                            <span className="inline-flex items-center gap-1.5">
+                                {label}
+                                <HelpTip name={help} topic={label} />
+                            </span>
+                        </TableHead>
+                    ))}
                 </TableRow>
             </TableHeader>
             <TableBody>

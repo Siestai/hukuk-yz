@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, cn } from "@hukuk/ui";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
 import { changeQueueParams, queueHref, type QueueParams } from "@/lib/queue-params";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
@@ -21,7 +22,10 @@ export function TopReasons({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>{t("topReasons")}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    {t("topReasons")}
+                    <HelpTip name="topReasons" topic={t("topReasons")} />
+                </CardTitle>
             </CardHeader>
             <CardContent>
                 {reasons.length === 0 ? (
@@ -31,7 +35,7 @@ export function TopReasons({
                         {reasons.slice(0, SHOWN).map(({ reason, count }) => {
                             const active = params.reason === reason;
                             return (
-                                <li key={reason}>
+                                <li key={reason} className="flex items-center gap-2">
                                     <Link
                                         href={queueHref(
                                             changeQueueParams(params, {
@@ -40,7 +44,7 @@ export function TopReasons({
                                         )}
                                         aria-current={active ? "true" : undefined}
                                         className={cn(
-                                            "flex w-full items-center justify-between gap-3 rounded-md px-2 py-1 pointer-coarse:min-h-11 text-left text-sm text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring",
+                                            "flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-2 py-1 pointer-coarse:min-h-11 text-left text-sm text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring",
                                             active && "bg-primary-soft",
                                         )}
                                     >
@@ -49,6 +53,10 @@ export function TopReasons({
                                             {format.number(count, "integer")}
                                         </span>
                                     </Link>
+                                    <HelpTip
+                                        name={`reason.${reason}`}
+                                        topic={labels.reason(reason)}
+                                    />
                                 </li>
                             );
                         })}

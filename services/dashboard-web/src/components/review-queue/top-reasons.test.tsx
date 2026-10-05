@@ -1,8 +1,9 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { parseQueueParams } from "@/lib/queue-params";
 import { TopReasons } from "./top-reasons";
 
@@ -40,5 +41,31 @@ describe("TopReasons", () => {
     it("says so when there are no reasons", () => {
         renderWithIntl(view([]));
         expect(screen.getByText(messages.review.queue.summary.noReasons)).toBeInTheDocument();
+    });
+});
+
+describe("TopReasons help", () => {
+    it("has a tip on the title and one on every reason it shows", () => {
+        renderWithIntl(view());
+        expect(infoTip(messages.review.queue.summary.topReasons)).toBeInTheDocument();
+        for (const { reason } of reasons.slice(0, 5)) {
+            expect(
+                infoTip(messages.enums.reason[reason as keyof typeof messages.enums.reason]),
+            ).toBeInTheDocument();
+        }
+        expect(screen.getAllByRole("button")).toHaveLength(6);
+    });
+
+    it("says what the reason means and what to check", async () => {
+        renderWithIntl(view());
+        await userEvent.click(infoTip(messages.enums.reason.missing_esas_no));
+        expect(openTipText()).toHaveTextContent(messages.review.queue.help.reason.missing_esas_no);
+    });
+
+    it("keeps the tip out of the reason link", () => {
+        renderWithIntl(view());
+        for (const link of screen.getAllByRole("link")) {
+            expect(within(link).queryByRole("button")).toBeNull();
+        }
     });
 });

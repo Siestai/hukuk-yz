@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, renderWithIntl } from "@/test/intl";
 import { QueuePagination } from "./queue-pagination";
 
 const { pagination } = messages.review.queue;
@@ -70,5 +70,12 @@ describe("QueuePagination", () => {
             "md:inline-flex",
         );
         expect(screen.getByRole("link", { name: pagination.next })).not.toHaveClass("hidden");
+    });
+});
+
+describe("QueuePagination help", () => {
+    it("has a tip for the page range", () => {
+        renderWithIntl(<QueuePagination params={base} total={6317} />);
+        expect(infoTip(pagination.label)).toBeInTheDocument();
     });
 });

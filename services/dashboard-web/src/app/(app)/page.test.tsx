@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formats } from "../../i18n/formats";
 import messages from "../../../messages/tr.json";
 import { isUpstreamUnavailable } from "@/lib/api/errors";
+import { infoTip } from "@/test/intl";
 import QueuePage from "./page";
 
 const get = vi.fn();
@@ -154,5 +155,21 @@ describe("QueuePage", () => {
         summaryGet.mockResolvedValue(failed(500));
         const error = await QueuePage({ searchParams: Promise.resolve({}) }).catch((e: Error) => e);
         expect(isUpstreamUnavailable(error as Error)).toBe(true);
+    });
+});
+
+describe("QueuePage help", () => {
+    it("has tips on the title and the pending count, and the welcome card above them", async () => {
+        get.mockResolvedValue(ok({ total: 310, items: [item] }));
+        await renderPage();
+        const { title, subtitle, welcome } = messages.review.queue;
+        expect(infoTip(title)).toBeInTheDocument();
+        expect(infoTip(subtitle.replace("{total, number}", "6.317"))).toBeInTheDocument();
+        expect(
+            screen.getByRole("region", {
+                name: welcome.title.replace("{brand}", messages.brand.name),
+            }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: welcome.toggle })).toBeInTheDocument();
     });
 });

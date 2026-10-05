@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import type { QueueParams } from "@/lib/queue-params";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, renderWithIntl } from "@/test/intl";
 import { BulkApproveButton } from "./bulk-approve-button";
 import { QueueNavigationProvider } from "./queue-navigation";
 
@@ -47,5 +47,13 @@ describe("BulkApproveButton", () => {
     it("is shut while there is no list to confirm", () => {
         setup(queue("high"), { unavailable: true });
         expect(screen.getByRole("button", { name: bulk.open })).toBeDisabled();
+    });
+});
+
+describe("BulkApproveButton help", () => {
+    it("has a tip beside the button, also while the button is disabled", () => {
+        setup(queue());
+        expect(screen.getByRole("button", { name: bulk.open })).toBeDisabled();
+        expect(infoTip(bulk.open)).toBeEnabled();
     });
 });

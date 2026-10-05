@@ -2,7 +2,8 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
-import { renderWithIntl } from "@/test/intl";
+import userEvent from "@testing-library/user-event";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { parseQueueParams } from "@/lib/queue-params";
 import { BandDistribution, bandSegments } from "./band-distribution";
 
@@ -61,5 +62,14 @@ describe("BandDistribution", () => {
         expect(link).toHaveAttribute("aria-current", "true");
         expect(link).toHaveAttribute("href", "/?sort=score_desc");
         expect(screen.getByRole("link", { name: /Düşük/ })).not.toHaveAttribute("aria-current");
+    });
+});
+
+describe("BandDistribution help", () => {
+    it("explains the band and the score in a tip on the title", async () => {
+        renderWithIntl(view());
+        const tip = infoTip(messages.review.queue.summary.bandTitle);
+        await userEvent.click(tip);
+        expect(openTipText()).toHaveTextContent(messages.review.queue.help.band);
     });
 });

@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, cn } from "@hukuk/ui";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
 import {
     BANDS,
     changeQueueParams,
@@ -47,7 +48,10 @@ export function BandDistribution({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>{t("bandTitle")}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    {t("bandTitle")}
+                    <HelpTip name="band" topic={t("bandTitle")} />
+                </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
                 <svg

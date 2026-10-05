@@ -114,3 +114,11 @@ describe("QueueCards", () => {
         expect(within(renderCard()).queryByRole("img")).toBeNull();
     });
 });
+
+describe("QueueCards help", () => {
+    it("describes a known reason for screen readers", () => {
+        const card = renderCard({ reasons: ["date_from_closing"] });
+        expect(card).toHaveTextContent(messages.review.queue.help.reason.date_from_closing);
+        expect(within(card).queryByRole("button")).toBeNull();
+    });
+});

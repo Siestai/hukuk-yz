@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/tr.json";
 import { isUpstreamUnavailable } from "@/lib/api/errors";
 import { settle } from "@/lib/api/settle";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, renderWithIntl } from "@/test/intl";
 import { QueueResults } from "./queue-results";
 
 const redirect = vi.hoisted(() =>
@@ -88,5 +88,12 @@ describe("QueueResults", () => {
             (e: Error) => e,
         );
         expect(isUpstreamUnavailable(error as Error)).toBe(true);
+    });
+});
+
+describe("QueueResults help", () => {
+    it("has the one card list tip next to the cards", async () => {
+        await renderResults(base, { total: 1, items: [item] });
+        expect(infoTip(messages.review.queue.table.cardsTopic)).toBeInTheDocument();
     });
 });

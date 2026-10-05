@@ -33,3 +33,39 @@ describe("AppShell", () => {
         expect(screen.getByText("içerik")).toBeInTheDocument();
     });
 });
+
+describe("AppShell help", () => {
+    it("has tips on the pending count and on the sections that are not ready", () => {
+        renderWithIntl(
+            <AppShell user={user} pending={3}>
+                <p>içerik</p>
+            </AppShell>,
+        );
+        const side = within(screen.getByRole("complementary"));
+        for (const topic of [
+            messages.nav.pending,
+            messages.nav.sources,
+            messages.nav.knowledgeBase,
+        ]) {
+            expect(
+                side.getByRole("button", {
+                    name: messages.review.queue.help.label.replace("{topic}", topic),
+                }),
+            ).toBeInTheDocument();
+        }
+    });
+
+    it("keeps the tips out of the navigation link", () => {
+        renderWithIntl(
+            <AppShell user={user} pending={3}>
+                <p>içerik</p>
+            </AppShell>,
+        );
+        const side = within(screen.getByRole("complementary"));
+        expect(
+            within(side.getByRole("link", { name: new RegExp(messages.nav.queue) })).queryByRole(
+                "button",
+            ),
+        ).toBeNull();
+    });
+});

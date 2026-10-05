@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { AppNav, type AppNavProps } from "./app-nav";
+import { HelpTip } from "./help-tip";
 import { Brand } from "./brand";
 
 /**
@@ -36,10 +37,13 @@ export function MobileNav(props: Omit<AppNavProps, "onNavigate">) {
             <Brand compact />
             <div className="flex items-center gap-3">
                 {props.pending !== null ? (
-                    <Badge>
-                        <span className="sr-only">{t("pending")}</span>
-                        {format.number(props.pending, "integer")}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                        <Badge>
+                            <span className="sr-only">{t("pending")}</span>
+                            {format.number(props.pending, "integer")}
+                        </Badge>
+                        <HelpTip name="navPending" topic={t("pending")} />
+                    </div>
                 ) : null}
                 <Button
                     ref={button}

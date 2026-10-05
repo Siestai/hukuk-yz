@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../messages/tr.json";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, renderWithIntl } from "@/test/intl";
 import { MobileNav } from "./mobile-nav";
 
 const pathname = vi.hoisted(() => vi.fn(() => "/"));
@@ -126,5 +126,17 @@ describe("MobileNav", () => {
             unmount();
             expect(query.listeners.size).toBe(0);
         });
+    });
+});
+
+describe("MobileNav help", () => {
+    it("has a tip on the pending count, and none without a count", () => {
+        setup();
+        expect(infoTip(messages.nav.pending)).toBeInTheDocument();
+    });
+
+    it("has no tip without a count", () => {
+        setup(null);
+        expect(screen.queryByRole("button", { name: /Bilgi/ })).toBeNull();
     });
 });
