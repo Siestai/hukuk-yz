@@ -19,9 +19,18 @@ export function credentials(): { email: string; password: string } {
 export const queueRows = (page: Page): Locator =>
     page.getByRole("table", { name: "Onay bekleyen kararlar" }).locator("tbody tr");
 
+/** The h1 of each queue tab (`?durum=`); the pending tab keeps the page name. */
+const TAB_HEADINGS: Record<string, string> = {
+    onaylanan: "Onaylanan kararlar",
+    reddedilen: "Reddedilen kararlar",
+    tumu: "Tüm kararlar",
+};
+
 export async function openQueue(page: Page, query = ""): Promise<void> {
     await page.goto(query ? `/?${query}` : "/");
-    await expect(page.getByRole("heading", { name: "İnceleme kuyruğu", level: 1 })).toBeVisible();
+    const tab = new URLSearchParams(query).get("durum") ?? "";
+    const heading = TAB_HEADINGS[tab] ?? "İnceleme kuyruğu";
+    await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
 }
 
 /** The number in "N karar onay bekliyor". */
@@ -40,6 +49,16 @@ export async function openRecord(page: Page, q: string): Promise<void> {
     await queueRows(page).first().getByRole("link").click();
     await page.waitForURL(/\/kararlar\/[0-9a-f-]{36}/);
     await expect(page.getByRole("region", { name: "İnceleme işlemleri" })).toBeVisible();
+    await waitForShortcuts(page);
+}
+
+/**
+ * The server HTML shows the action bar before React has attached the keyboard shortcuts, so a key
+ * pressed right after the bar appears can be lost. Wait until the page's scripts have loaded and
+ * gone quiet before pressing A / E / R / J / K.
+ */
+export async function waitForShortcuts(page: Page): Promise<void> {
+    await page.waitForLoadState("networkidle");
 }
 
 /**

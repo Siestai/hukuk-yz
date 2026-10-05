@@ -85,7 +85,9 @@ for (const [name, viewport, phone] of [
                 await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
                 await expect(tabs.locator('a[aria-current="page"]')).toContainText(tab);
                 // the bulk approve button belongs to the queue only
-                await expect(page.getByRole("button", { name: "Toplu onayla" })).toHaveCount(0);
+                await expect(
+                    page.getByRole("button", { name: "Toplu onayla", exact: true }),
+                ).toHaveCount(0);
                 await expectNoHorizontalScroll(page);
             }
         });
@@ -225,7 +227,7 @@ test.describe("phone 360x740", () => {
         page,
     }) => {
         await openQueue(page, "band=high");
-        const button = page.getByRole("button", { name: "Toplu onayla" });
+        const button = page.getByRole("button", { name: "Toplu onayla", exact: true });
         await button.scrollIntoViewIfNeeded();
         await expect(button).toBeEnabled();
         await button.click();

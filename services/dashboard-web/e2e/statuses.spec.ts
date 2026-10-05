@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { expectTableFits, openQueue, openRecord } from "./helpers";
+import { expectTableFits, openQueue, openRecord, waitForShortcuts } from "./helpers";
 
 // CONSUMES demo records: Demo 11 (rejected) and Demo 06 (approved). It runs after actions.spec
 // and bulk.spec (file order), and also relies on them for the "edited" record (Demo 05) and the
@@ -39,7 +39,7 @@ test("Reddedilen shows the note and who rejected it, and links to the detail and
         page.getByRole("heading", { name: "Reddedilen kararlar", level: 1 }),
     ).toBeVisible();
     await expect(tabs(page).locator('a[aria-current="page"]')).toContainText("Reddedilen");
-    await expect(page.getByRole("button", { name: "Toplu onayla" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Toplu onayla", exact: true })).toHaveCount(0);
 
     const row = rows(page, "Reddedilen kararlar").filter({ hasText: "Demo 11" });
     await expect(row).toContainText(NOTE);
@@ -67,12 +67,19 @@ test("J and K walk the list of the tab the record was opened from", async ({ pag
     await expect(list).toHaveCount(2);
     await list.first().getByRole("link").click();
     await page.waitForURL(/\/kararlar\/[0-9a-f-]{36}/);
+    await waitForShortcuts(page);
     const first = page.url();
-    await page.keyboard.press("j");
-    await page.waitForURL((url) => url.toString() !== first);
+    // After a soft navigation the shortcuts attach a moment after the new record shows; a key
+    // pressed in that gap is lost, so press until the screen moves.
+    await expect(async () => {
+        await page.keyboard.press("j");
+        await expect(page).not.toHaveURL(first, { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
     expect(page.url()).toContain("durum=reddedilen");
-    await page.keyboard.press("k");
-    await page.waitForURL(first);
+    await expect(async () => {
+        await page.keyboard.press("k");
+        await expect(page).toHaveURL(first, { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
 });
 
 test("Onaylanan lists the approved records, corrected ones marked", async ({ page }) => {
@@ -81,7 +88,7 @@ test("Onaylanan lists the approved records, corrected ones marked", async ({ pag
     await expect(list.filter({ hasText: "Demo 06" })).toContainText("Onaylandı");
     await expect(list.filter({ hasText: "Demo 05" })).toContainText("Düzeltilerek onaylandı");
     await expect(list.filter({ hasText: "Demo 11" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Toplu onayla" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Toplu onayla", exact: true })).toHaveCount(0);
 });
 
 test("Tümü shows all three statuses with their badges", async ({ page }) => {

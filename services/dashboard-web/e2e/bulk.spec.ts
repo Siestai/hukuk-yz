@@ -12,7 +12,7 @@ test("bulk approve needs the high band; with it, the narrowed list is approved a
 }) => {
     await openQueue(page, `q=${encodeURIComponent(SEARCH)}`);
     const before = await pendingTotal(page);
-    const open = page.getByRole("button", { name: "Toplu onayla" });
+    const open = page.getByRole("button", { name: "Toplu onayla", exact: true });
     await expect(open).toBeDisabled();
 
     await page.getByLabel("Güven", { exact: true }).selectOption("high");
