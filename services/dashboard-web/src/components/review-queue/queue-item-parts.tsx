@@ -4,9 +4,14 @@ import { useId } from "react";
 
 import { HelpTip } from "@/components/help-tip";
 
-import { type QueueItem, type QueueItemFormat } from "./queue-item-format";
+import {
+    itemStatus,
+    type ItemStatus,
+    type QueueItem,
+    type QueueItemFormat,
+} from "./queue-item-format";
 
-/** How many reasons a record shows by name; the rest is a count. */
+/** How many reasons a card shows by name; the rest is a count. The table shows fewer (`max`). */
 const MAX_REASON_CHIPS = 2;
 
 // The title link of a row or card stretches over it (`after:absolute after:inset-0` on a
@@ -44,6 +49,18 @@ export function DuplicateIcon({ label }: { label: string }) {
     );
 }
 
+const STATUS_VARIANT = {
+    pending: "outline",
+    approved: "high",
+    edited: "medium",
+    rejected: "low",
+} as const satisfies Record<ItemStatus, "outline" | "high" | "medium" | "low">;
+
+/** The status of a record as a badge; the "Durum" column tip (or the cards tip) explains them. */
+export function StatusBadge({ item, format }: { item: QueueItem; format: QueueItemFormat }) {
+    return <Badge variant={STATUS_VARIANT[itemStatus(item)]}>{format.status(item)}</Badge>;
+}
+
 /** The band badge with its score. */
 export function ConfidenceChip({ item, format }: { item: QueueItem; format: QueueItemFormat }) {
     return (
@@ -59,21 +76,23 @@ function ReasonHelp({ text }: { text: string | undefined }) {
     return text ? <span className="sr-only">: {text}</span> : null;
 }
 
-/** At most two reasons by name and "+N"; the reasons behind the "+N" are read out by screen readers. */
+/** At most `max` (two) reasons by name and "+N"; the reasons behind the "+N" are read out by screen readers. */
 export function ReasonChips({
     item,
     format,
     wrap = false,
+    max = MAX_REASON_CHIPS,
 }: {
     item: QueueItem;
     format: QueueItemFormat;
     wrap?: boolean;
+    max?: number;
 }) {
     const moreId = useId();
-    const rest = item.reasons.slice(MAX_REASON_CHIPS);
+    const rest = item.reasons.slice(max);
     return (
         <ul className={cn("flex gap-1", wrap && "flex-wrap")}>
-            {item.reasons.slice(0, MAX_REASON_CHIPS).map((reason) => (
+            {item.reasons.slice(0, max).map((reason) => (
                 <li key={reason}>
                     <Badge
                         variant="outline"

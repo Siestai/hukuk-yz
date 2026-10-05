@@ -779,6 +779,7 @@
         "type": "object"
       },
       "ReviewListItem": {
+        "description": "A queue row. `source_status` is the status of the decision's source. The last-review\nfields are None for a decision still waiting; `note` is the reason of a rejection and None\nfor any other review.",
         "properties": {
           "band": {
             "enum": [
@@ -837,12 +838,62 @@
             "title": "Karar No",
             "type": "string"
           },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "reasons": {
             "items": {
               "type": "string"
             },
             "title": "Reasons",
             "type": "array"
+          },
+          "review_decision": {
+            "anyOf": [
+              {
+                "enum": [
+                  "approve",
+                  "edit",
+                  "reject"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Decision"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Name"
           },
           "score": {
             "title": "Score",
@@ -853,6 +904,20 @@
             "title": "Source Id",
             "type": "string"
           },
+          "source_status": {
+            "enum": [
+              "draft",
+              "analyzed",
+              "approved",
+              "published",
+              "superseded",
+              "withdrawn",
+              "failed",
+              "rejected"
+            ],
+            "title": "Source Status",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -861,6 +926,7 @@
         "required": [
           "extraction_id",
           "source_id",
+          "source_status",
           "title",
           "court",
           "chamber",
@@ -1703,16 +1769,39 @@
           },
           {
             "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "default": "score_asc",
-              "enum": [
-                "score_asc",
-                "score_desc"
+              "anyOf": [
+                {
+                  "enum": [
+                    "score_asc",
+                    "score_desc",
+                    "reviewed_desc"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ],
-              "title": "Sort",
-              "type": "string"
+              "title": "Sort"
             }
           },
           {

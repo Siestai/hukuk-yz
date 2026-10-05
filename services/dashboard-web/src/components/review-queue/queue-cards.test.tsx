@@ -9,6 +9,7 @@ import type { QueueItem } from "./queue-item-format";
 
 const item: QueueItem = {
     extraction_id: "e1",
+    source_status: "analyzed",
     source_id: "s1",
     title: "KIDEM TAZMİNATI",
     court: "yargitay",
@@ -120,5 +121,56 @@ describe("QueueCards help", () => {
         const card = renderCard({ reasons: ["date_from_closing"] });
         expect(card).toHaveTextContent(messages.review.queue.help.reason.date_from_closing);
         expect(within(card).queryByRole("button")).toBeNull();
+    });
+
+    describe("the review lines of the status tabs", () => {
+        const { table } = messages.review.queue;
+        const rejected: Partial<QueueItem> = {
+            source_status: "rejected",
+            reviewed_at: "2026-10-04T09:30:00Z",
+            reviewer_name: "İbrahim",
+            review_decision: "reject",
+            note: "Kopya kayıt.",
+        };
+        const tab = (status: QueueParams["status"]): QueueParams => ({
+            status,
+            sort: "reviewed_desc",
+            page: 1,
+        });
+
+        it("adds nothing to the queue", () => {
+            const card = renderCard();
+            expect(within(card).queryByText(table.statuses.pending)).toBeNull();
+            expect(within(card).queryByText(/İnceleme:/)).toBeNull();
+        });
+
+        it("shows the badge, the review and the note of a rejection", () => {
+            const card = renderCard(rejected, tab("all"));
+            expect(within(card).getByText(table.statuses.rejected)).toBeInTheDocument();
+            expect(within(card).getByText(/İnceleme: 04\.10\.2026.*İbrahim/)).toBeInTheDocument();
+            expect(within(card).getByText("Ret notu: Kopya kayıt.")).toBeInTheDocument();
+            expect(screen.getByRole("list", { name: table.labels.all })).toBeInTheDocument();
+        });
+
+        it("tells an approval with corrections from a plain one", () => {
+            const edited = { source_status: "approved", review_decision: "edit" } as const;
+            const card = renderCard({ ...rejected, ...edited, note: null }, tab("approved"));
+            expect(within(card).getByText(table.statuses.edited)).toBeInTheDocument();
+            expect(within(card).queryByText(/Ret notu/)).toBeNull();
+        });
+
+        it("shows a waiting record in the all tab with a badge and no review", () => {
+            const card = renderCard({}, tab("all"));
+            expect(within(card).getByText(table.statuses.pending)).toBeInTheDocument();
+            expect(within(card).queryByText(/İnceleme:/)).toBeNull();
+        });
+
+        it("keeps the tab in the link to the detail", () => {
+            const card = renderCard(rejected, tab("rejected"));
+            expect(within(card).getByRole("link")).toHaveAttribute(
+                "href",
+                "/kararlar/e1?durum=reddedilen&pos=0",
+            );
+        });
     });
 });

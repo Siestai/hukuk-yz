@@ -194,9 +194,18 @@ class BulkApproveResponse(BaseModel):
     next_cursor: str | None  # None when nothing remains
 
 
+ListStatus = Literal["pending", "approved", "rejected", "all"]
+ReviewDecisionName = Literal["approve", "edit", "reject"]
+
+
 class ReviewListItem(BaseModel):
+    """A queue row. `source_status` is the status of the decision's source. The last-review
+    fields are None for a decision still waiting; `note` is the reason of a rejection and None
+    for any other review."""
+
     extraction_id: uuid.UUID
     source_id: uuid.UUID
+    source_status: SourceStatus
     title: str
     court: str
     chamber: str
@@ -208,6 +217,10 @@ class ReviewListItem(BaseModel):
     score: int
     reasons: list[str]
     duplicate_group: dict[str, Any] | None
+    reviewed_at: datetime | None = None
+    reviewer_name: str | None = None  # None too when the reviewer has no user row
+    review_decision: ReviewDecisionName | None = None
+    note: str | None = None
 
 
 class ReviewListResponse(BaseModel):
@@ -245,7 +258,7 @@ class ReviewOut(BaseModel):
     id: uuid.UUID
     reviewer_id: uuid.UUID
     reviewer_name: str | None  # None: the reviewer has no user row (reviews of the task-05 CLI)
-    decision: Literal["approve", "edit", "reject"]
+    decision: ReviewDecisionName
     edits: dict[str, Any] | None
     note: str | None
     reviewed_at: datetime

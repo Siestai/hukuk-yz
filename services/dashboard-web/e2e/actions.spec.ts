@@ -69,7 +69,8 @@ test("A approves the record and the queue shows the end state", async ({ page })
 test("the results card counts what was approved and rejected", async ({ page }) => {
     await openQueue(page);
     const count = (label: string) =>
-        page.getByText(label, { exact: true }).locator("xpath=following-sibling::dd");
+        // The label is a link to its tab inside the <dt>; the count is the next <dd>.
+        page.getByRole("term").filter({ hasText: label }).locator("xpath=following-sibling::dd[1]");
     await expect(count("Onaylanan")).toHaveText("2");
     await expect(count("Reddedilen")).toHaveText("1");
     await expect(queueRows(page)).toHaveCount(9);

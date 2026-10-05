@@ -57,7 +57,7 @@ export default defineConfig({
         // ...then the ones that approve and reject demo records (they consume them).
         {
             name: "chromium-mutating",
-            testMatch: ["actions.spec.ts", "bulk.spec.ts"],
+            testMatch: ["actions.spec.ts", "bulk.spec.ts", "statuses.spec.ts"],
             dependencies: ["chromium", "chromium-mobile"],
             use: browser,
         },

@@ -442,7 +442,12 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
-        /** ReviewListItem */
+        /**
+         * ReviewListItem
+         * @description A queue row. `source_status` is the status of the decision's source. The last-review
+         *     fields are None for a decision still waiting; `note` is the reason of a rejection and None
+         *     for any other review.
+         */
         ReviewListItem: {
             /**
              * Band
@@ -470,8 +475,16 @@ export interface components {
             journal_issue: number | null;
             /** Karar No */
             karar_no: string;
+            /** Note */
+            note?: string | null;
             /** Reasons */
             reasons: string[];
+            /** Review Decision */
+            review_decision?: ("approve" | "edit" | "reject") | null;
+            /** Reviewed At */
+            reviewed_at?: string | null;
+            /** Reviewer Name */
+            reviewer_name?: string | null;
             /** Score */
             score: number;
             /**
@@ -479,6 +492,11 @@ export interface components {
              * Format: uuid
              */
             source_id: string;
+            /**
+             * Source Status
+             * @enum {string}
+             */
+            source_status: "draft" | "analyzed" | "approved" | "published" | "superseded" | "withdrawn" | "failed" | "rejected";
             /** Title */
             title: string;
         };
@@ -1078,7 +1096,8 @@ export interface operations {
                 reason?: string | null;
                 journal_issue?: number | null;
                 q?: string | null;
-                sort?: "score_asc" | "score_desc";
+                status?: "pending" | "approved" | "rejected" | "all";
+                sort?: ("score_asc" | "score_desc" | "reviewed_desc") | null;
                 limit?: number;
                 offset?: number;
             };

@@ -8,6 +8,7 @@ import { DocumentTabs } from "@/components/review-detail/document-tabs";
 import { DuplicatesCard } from "@/components/review-detail/duplicates-card";
 import { FieldsPanel } from "@/components/review-detail/fields-panel";
 import { HistoryCard } from "@/components/review-detail/history-card";
+import { ReviewStatusStrip } from "@/components/review-detail/review-status-strip";
 import { ReviewProvider } from "@/components/review-detail/review-session";
 import { TextPanel } from "@/components/review-detail/text-panel";
 import { createServerApi } from "@/lib/api/server";
@@ -58,6 +59,7 @@ export default async function DecisionPage({
                     sourceStatus={detail.source_status}
                     queue={queue}
                 />
+                <ReviewStatusStrip sourceStatus={detail.source_status} reviews={detail.reviews} />
                 <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
                     <div className="grid grid-cols-1 gap-4">
                         <FieldsPanel fields={fields} />
