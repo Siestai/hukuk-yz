@@ -104,4 +104,31 @@
         color: var(--foreground);
         font-family: var(--font-sans);
     }
+    /* No double-tap zoom delay on controls; pinch zoom stays on. */
+    a,
+    button,
+    summary,
+    [role="button"],
+    [role="tab"] {
+        touch-action: manipulation;
+    }
+}
+
+/* Values the default theme has no name for; components use these, never an arbitrary value. */
+/* Bottom padding of a bar pinned to the screen edge: the usual gap plus the home-indicator inset. */
+@utility pb-safe-3 {
+    padding-bottom: calc(--spacing(3) + env(safe-area-inset-bottom));
+}
+/* Dynamic viewport units follow the mobile browser's collapsing toolbar; vh is the fallback. */
+@utility h-viewport {
+    height: 100vh;
+    height: 100dvh;
+}
+@utility max-h-inset {
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+}
+/* Modal width: the screen less a small gap on each side. */
+@utility w-inset {
+    width: calc(100% - 2rem);
 }
