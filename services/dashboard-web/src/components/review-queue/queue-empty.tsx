@@ -2,13 +2,14 @@ import { Card, CardContent } from "@hukuk/ui";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
-import { hasFilters, queueHref, type QueueParams } from "@/lib/queue-params";
+import { hasFilters, queueHref, statusOf, type QueueParams } from "@/lib/queue-params";
 
 /** Nothing to show: the queue is empty, the filters match nothing, or the page is past the last. */
 export function QueueEmpty({ params, pastEnd }: { params: QueueParams; pastEnd: boolean }) {
     const t = useTranslations("review.queue");
     const firstPage = queueHref({ ...params, page: 1 });
-    const cleared = queueHref({ sort: params.sort, page: 1 });
+    const cleared = queueHref({ status: params.status, sort: params.sort, page: 1 });
+    const status = statusOf(params);
     const linkClass =
         "inline-flex items-center text-sm font-medium text-primary underline pointer-coarse:min-h-11";
 
@@ -30,7 +31,9 @@ export function QueueEmpty({ params, pastEnd }: { params: QueueParams; pastEnd: 
                         </Link>
                     </>
                 ) : (
-                    <p className="text-ink">{t("empty.none")}</p>
+                    <p className="text-ink">
+                        {status === "pending" ? t("empty.none") : t(`empty.byStatus.${status}`)}
+                    </p>
                 )}
             </CardContent>
         </Card>

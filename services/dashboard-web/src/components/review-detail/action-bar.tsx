@@ -45,11 +45,11 @@ export function ActionBar() {
         {
             approve: () => void session.approve(),
             edit: session.startEdit,
-            reject: () => setRejecting(true),
+            reject: () => session.canAct && setRejecting(true),
             next: () => void session.move("next"),
             previous: () => void session.move("previous"),
         },
-        session.canAct && idle && !rejecting,
+        idle && !rejecting,
     );
 
     if (!session.canAct) return null;

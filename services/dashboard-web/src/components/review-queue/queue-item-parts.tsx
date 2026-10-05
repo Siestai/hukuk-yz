@@ -4,7 +4,12 @@ import { useId } from "react";
 
 import { HelpTip } from "@/components/help-tip";
 
-import { type QueueItem, type QueueItemFormat } from "./queue-item-format";
+import {
+    itemStatus,
+    type ItemStatus,
+    type QueueItem,
+    type QueueItemFormat,
+} from "./queue-item-format";
 
 /** How many reasons a record shows by name; the rest is a count. */
 const MAX_REASON_CHIPS = 2;
@@ -42,6 +47,18 @@ export function DuplicateIcon({ label }: { label: string }) {
             <path d="M5 15V6a2 2 0 0 1 2-2h9" />
         </svg>
     );
+}
+
+const STATUS_VARIANT = {
+    pending: "outline",
+    approved: "high",
+    edited: "medium",
+    rejected: "low",
+} as const satisfies Record<ItemStatus, "outline" | "high" | "medium" | "low">;
+
+/** The status of a record as a badge; the "Durum" column tip (or the cards tip) explains them. */
+export function StatusBadge({ item, format }: { item: QueueItem; format: QueueItemFormat }) {
+    return <Badge variant={STATUS_VARIANT[itemStatus(item)]}>{format.status(item)}</Badge>;
 }
 
 /** The band badge with its score. */

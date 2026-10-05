@@ -3,16 +3,25 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { HelpTip } from "@/components/help-tip";
-import { detailHref, PAGE_SIZE, type QueueParams } from "@/lib/queue-params";
-import { useQueueItemFormat, type QueueItem } from "./queue-item-format";
-import { ConfidenceChip, DuplicateIcon, ReasonChips, stretchedLink } from "./queue-item-parts";
+import type { HelpName } from "@/lib/help-topics";
+import { detailHref, PAGE_SIZE, statusOf, type QueueParams } from "@/lib/queue-params";
+import { EXTRAS, useQueueItemFormat, type QueueItem } from "./queue-item-format";
+import {
+    ConfidenceChip,
+    DuplicateIcon,
+    ReasonChips,
+    StatusBadge,
+    stretchedLink,
+} from "./queue-item-parts";
 
 export type { QueueItem } from "./queue-item-format";
 
 export function QueueTable({ items, params }: { items: QueueItem[]; params: QueueParams }) {
     const t = useTranslations("review.queue.table");
     const format = useQueueItemFormat();
-    const columns = [
+    const status = statusOf(params);
+    const extras = EXTRAS[status];
+    const columns: { label: string; help: HelpName }[] = [
         { label: t("confidence"), help: "colConfidence" },
         { label: t("decision"), help: "colDecision" },
         { label: t("court"), help: "colCourt" },
@@ -20,10 +29,13 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
         { label: t("date"), help: "colDate" },
         { label: t("issue"), help: "colIssue" },
         { label: t("reasons"), help: "colReasons" },
-    ] as const;
+        ...(extras.includes("status") ? [{ label: t("status"), help: "colStatus" as const }] : []),
+        ...(extras.includes("review") ? [{ label: t("review"), help: "colReview" as const }] : []),
+        ...(extras.includes("note") ? [{ label: t("note"), help: "colNote" as const }] : []),
+    ];
 
     return (
-        <Table aria-label={t("label")}>
+        <Table aria-label={status === "pending" ? t("label") : t(`labels.${status}`)}>
             <TableHeader>
                 <TableRow className="hover:bg-surface-2">
                     {columns.map(({ label, help }) => (
@@ -78,6 +90,29 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
                         <TableCell>
                             <ReasonChips item={item} format={format} />
                         </TableCell>
+                        {extras.includes("status") ? (
+                            <TableCell>
+                                <StatusBadge item={item} format={format} />
+                            </TableCell>
+                        ) : null}
+                        {extras.includes("review") ? (
+                            <TableCell className="text-xs">
+                                <p className="whitespace-nowrap text-ink-2">
+                                    {format.reviewedAt(item)}
+                                </p>
+                                <p className="text-ink-3">{format.reviewer(item)}</p>
+                            </TableCell>
+                        ) : null}
+                        {extras.includes("note") ? (
+                            <TableCell className="max-w-64 text-xs text-ink-2">
+                                <p
+                                    className="line-clamp-2 wrap-anywhere"
+                                    title={item.note ?? undefined}
+                                >
+                                    {format.note(item)}
+                                </p>
+                            </TableCell>
+                        ) : null}
                     </TableRow>
                 ))}
             </TableBody>

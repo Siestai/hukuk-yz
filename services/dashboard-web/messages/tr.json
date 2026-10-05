@@ -36,7 +36,8 @@
       "sort": {
         "label": "Sıralama",
         "score_asc": "En şüpheli önce",
-        "score_desc": "En güvenli önce"
+        "score_desc": "En güvenli önce",
+        "reviewed_desc": "En yeni inceleme önce"
       },
       "summary": {
         "bandTitle": "Güven dağılımı",
@@ -78,13 +79,35 @@
         "duplicate": "Mükerrer kayıt grubunda",
         "unknownReason": "Bilinmeyen sebep",
         "issueValue": "Sayı {value}",
-        "cardsTopic": "Bu kartta neler var?"
+        "cardsTopic": "Bu kartta neler var?",
+        "labels": {
+          "approved": "Onaylanan kararlar",
+          "rejected": "Reddedilen kararlar",
+          "all": "Tüm kararlar"
+        },
+        "status": "Durum",
+        "review": "İnceleme",
+        "note": "Ret notu",
+        "unknownReviewer": "Bilinmeyen inceleyici",
+        "reviewedOn": "İnceleme: {date}",
+        "noteValue": "Ret notu: {note}",
+        "statuses": {
+          "pending": "Bekliyor",
+          "approved": "Onaylandı",
+          "edited": "Düzeltilerek onaylandı",
+          "rejected": "Reddedildi"
+        }
       },
       "empty": {
         "none": "Onay bekleyen karar yok.",
         "filtered": "Bu filtrelerle kayıt yok",
         "pastEnd": "Bu sayfada kayıt yok",
-        "firstPage": "İlk sayfaya dön"
+        "firstPage": "İlk sayfaya dön",
+        "byStatus": {
+          "approved": "Onaylanan karar yok.",
+          "rejected": "Reddedilen karar yok.",
+          "all": "Henüz karar yok."
+        }
       },
       "pagination": {
         "label": "Sayfalar",
@@ -121,10 +144,10 @@
         "title": "{brand}, iş ve sosyal güvenlik hukuku için bir yapay zekâ asistanıdır. Çalışma ve Toplum dergisi arşivindeki yaklaşık 6.300 karar bir program tarafından okundu ve her kararın künyesi çıkarıldı: mahkeme, daire, esas no, karar no, tarih, kanun ve özet. Burada bir insan bu bilgileri özgün PDF ile karşılaştırır ve kaydı onaylar, düzeltir ya da reddeder. Yalnız onaylanan kayıtlar asistanın atıf yapabileceği kaynak olur. Yargıtay sitesinden resmî teyit ayrı bir adımdır.",
         "subtitle": "Henüz onaylanmamış ya da reddedilmemiş kayıtların sayısı. Siz onayladıkça ya da reddettikçe azalır.",
         "bulk": "Aynı anda çok kaydı onaylar. Yalnız Yüksek güven bandı seçiliyken çalışır ve her kayıt kendi adınıza, tek tek kaydedilir. Onaylamadan önce ne kadar kayıt olduğunu görürsünüz.",
-        "sort": "Listenin sırası. \"En şüpheli önce\" puanı düşük, yani programın en az emin olduğu kayıtları başa alır. \"En güvenli önce\" tersini yapar.",
+        "sort": "Listenin sırası. \"En şüpheli önce\" puanı düşük, yani programın en az emin olduğu kayıtları başa alır. \"En güvenli önce\" tersini yapar. \"En yeni inceleme önce\" yalnız incelenmiş kararların olduğu sekmelerde vardır.",
         "band": "Güven bandı, programın bir kaydı ne kadar güvenle okuduğunu gösterir. Her kaydın 0-100 arası bir puanı vardır. Puan 100'den başlar; her sebep puan düşürür (Düşük bantlı sebep 60, Orta bantlı sebep 25). Bant en kötü sebebe göre belirlenir: Düşük bantlı sebep varsa Düşük, yoksa Orta bantlı sebep varsa Orta, hiç sebep yoksa Yüksek. Bir banda tıklayınca liste o banda göre süzülür.",
         "topReasons": "Kayıtların en çok hangi sebeplerle işaretlendiği. Bir sebebe tıklayınca liste o sebebe göre süzülür. Sebep, kaydın neden dikkatle bakılması gerektiğini söyler.",
-        "totals": "Şimdiye kadar onaylanan ve reddedilen kayıt sayısı. Bekleyenler bu sayılara dahil değildir.",
+        "totals": "Şimdiye kadar onaylanan ve reddedilen kayıt sayısı. Bekleyenler bu sayılara dahil değildir. Sayıya dokununca ilgili sekme açılır.",
         "filterBand": "Listeyi güven bandına göre daraltır. Toplu onay için Yüksek seçilmelidir.",
         "filterCourt": "Listeyi kararı veren mahkemeye göre daraltır. Yalnız bekleyen kayıtlarda bulunan mahkemeler listelenir.",
         "filterReason": "Listeyi bir sebebe göre daraltır. Bir sebep seçince o sebebin ne anlama geldiği burada görünür.",
@@ -138,7 +161,7 @@
         "colDate": "Karar tarihi, PDF'ten okunduğu hâliyle.",
         "colIssue": "Kararın yayımlandığı Çalışma ve Toplum dergisi sayısı.",
         "colReasons": "Kaydın neden işaretlendiği. En fazla iki sebep adıyla görünür, kalanı \"+sayı\" olarak. Hepsini kayıt açılınca görürsünüz.",
-        "cards": "Her kart bir karardır. Üstte güven bandı ve puan, altında karar başlığı, mahkeme ve daire, esas / karar numarası ve tarih, dergi sayısı, işaretlenme sebepleri. Mükerrer işareti, aynı kararın başka bir kayıtta da bulunduğunu gösterir. Karta dokununca kayıt açılır.",
+        "cards": "Her kart bir karardır. Üstte güven bandı ve puan, altında karar başlığı, mahkeme ve daire, esas / karar numarası ve tarih, dergi sayısı, işaretlenme sebepleri. Mükerrer işareti, aynı kararın başka bir kayıtta da bulunduğunu gösterir. Karta dokununca kayıt açılır. İncelenmiş kararlarda ayrıca durum, inceleme tarihi ve inceleyen, reddedilende ret notu görünür.",
         "pagination": "Liste sayfalara bölünmüştür. Soldaki sayılar bu sayfadaki kayıtların sırasını ve toplamı gösterir.",
         "navPending": "Onay bekleyen karar sayısı, yani inceleme kuyruğundaki kayıtlar.",
         "navSources": "Bu bölüm henüz hazır değil. Hazır olunca kaynakları burada göreceksiniz.",
@@ -169,7 +192,35 @@
           "multiple_esas_candidates": "Metinde esas numarasına benzeyen birden çok değer var ve program birini seçti. Seçilenin doğru olup olmadığını PDF'te kontrol edin.",
           "duplicate_excerpt": "Aynı karar başka bir kayıtta da var ve bu kayıt yalnız bir alıntı. Hangi kaydın tutulacağına bakın.",
           "duplicate_same_text": "Aynı karar başka bir kayıtta aynı metinle var. Hangi kaydın tutulacağına Mükerrer kayıtlar bölümünden bakın."
-        }
+        },
+        "titleApproved": "Bir inceleyicinin onayladığı ya da düzelterek onayladığı kararlar. Bunlar asistanın atıf yapabileceği kaynaklardır. Resmî teyit Yargıtay sitesinden ayrıca yapılır.",
+        "titleRejected": "Bir inceleyicinin reddettiği kararlar. Her birinin yanında reddeden kişi, tarih ve ret notu görünür. Reddedilen kayıt asistanın kaynağı olmaz.",
+        "titleAll": "Bekleyen, onaylanan ve reddedilen tüm kararlar bir arada. Her satırın durumu rozetle gösterilir.",
+        "subtitleOther": "Bu sekmedeki kayıtların sayısı. Üstteki filtreler listeyi daraltır, ama bu sayı bütün sekmeyi gösterir.",
+        "tabPending": "İnceleme sırasında bekleyen kararlar. Onaylamak, düzeltmek ya da reddetmek için buradan başlayın.",
+        "tabApproved": "Onaylanan kararlar, düzeltilerek onaylananlar dahil. En yeni inceleme en üsttedir.",
+        "tabRejected": "Reddedilen kararlar, ret notuyla birlikte. Bu kayıtlar asistanın kaynağı olmaz.",
+        "tabAll": "Üç durumdaki bütün kararlar. Hangisinin hangi durumda olduğunu rozet gösterir.",
+        "colStatus": "Kararın şu anki durumu: Bekliyor, Onaylandı, Düzeltilerek onaylandı ya da Reddedildi. Düzeltilerek onaylandı, inceleyicinin bazı alanları değiştirdiği anlamına gelir.",
+        "colReview": "Kararı kimin ve ne zaman incelediği. Bekleyen kararlarda bu alan boştur.",
+        "colNote": "Reddeden kişinin yazdığı sebep. Uzunsa kısaltılır, tamamını kayıt açınca görürsünüz."
+      },
+      "titles": {
+        "approved": "Onaylanan kararlar",
+        "rejected": "Reddedilen kararlar",
+        "all": "Tüm kararlar"
+      },
+      "subtitles": {
+        "approved": "{total, number} karar onaylandı",
+        "rejected": "{total, number} karar reddedildi",
+        "all": "{total, number} karar: {pending, number} bekliyor, {approved, number} onaylandı, {rejected, number} reddedildi"
+      },
+      "tabs": {
+        "label": "Karar durumu",
+        "pending": "Bekleyen",
+        "approved": "Onaylanan",
+        "rejected": "Reddedilen",
+        "all": "Tümü"
       }
     },
     "bulk": {
@@ -274,6 +325,13 @@
           "edit": "Düzelterek onayladı",
           "reject": "Reddetti"
         }
+      },
+      "statusStrip": {
+        "label": "İnceleme sonucu",
+        "approved": "Onaylandı",
+        "edited": "Düzeltilerek onaylandı",
+        "rejected": "Reddedildi",
+        "note": "Ret notu"
       }
     },
     "actions": {

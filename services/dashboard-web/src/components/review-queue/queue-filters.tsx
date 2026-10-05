@@ -178,7 +178,7 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                 {hasFilters(params) ? (
                     <div className="flex items-center gap-2">
                         <Link
-                            href={queueHref({ sort: params.sort, page: 1 })}
+                            href={queueHref({ status: params.status, sort: params.sort, page: 1 })}
                             className="inline-flex items-center py-2 text-sm font-medium text-primary underline pointer-coarse:min-h-11"
                         >
                             {t("clear")}
