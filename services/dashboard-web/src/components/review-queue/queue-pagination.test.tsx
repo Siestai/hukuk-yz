@@ -61,4 +61,14 @@ describe("QueuePagination", () => {
         );
         expect(screen.getByRole("link", { name: "Sayfa 49" })).not.toHaveAttribute("aria-current");
     });
+
+    it("shows the page of the page count for a phone and hides the page numbers there", () => {
+        renderWithIntl(<QueuePagination params={{ ...base, page: 50 }} total={6317} />);
+        expect(screen.getByText("50 / 127")).toHaveClass("md:hidden");
+        expect(screen.getByRole("link", { name: "Sayfa 49" })).toHaveClass(
+            "hidden",
+            "md:inline-flex",
+        );
+        expect(screen.getByRole("link", { name: pagination.next })).not.toHaveClass("hidden");
+    });
 });

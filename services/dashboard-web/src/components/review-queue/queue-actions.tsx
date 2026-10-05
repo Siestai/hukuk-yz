@@ -13,10 +13,10 @@ export function QueueActions({ children }: { children?: ReactNode }) {
     const { params, navigate } = useQueueNavigation();
 
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <Select
                 aria-label={t("sort.label")}
-                className="w-48"
+                className="md:w-48"
                 value={params.sort}
                 onChange={(event) => navigate({ sort: event.target.value as Sort })}
             >

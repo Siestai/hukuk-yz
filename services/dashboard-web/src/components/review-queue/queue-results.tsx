@@ -1,12 +1,18 @@
 import type { components } from "@/lib/api/schema";
 import type { Settled } from "@/lib/api/settle";
 import type { QueueParams } from "@/lib/queue-params";
+import { QueueCards } from "./queue-cards";
 import { QueueEmpty } from "./queue-empty";
 import { QueueError } from "./queue-error";
 import { QueuePagination } from "./queue-pagination";
 import { QueueTable } from "./queue-table";
 
-/** The table with its pagination, or why there is none; waits for the list inside a Suspense boundary. */
+/**
+ * The records with their pagination, or why there are none; waits for the list inside a Suspense
+ * boundary. The table (`md` and up) and the card list (phones) are both rendered and CSS shows one:
+ * the hidden one leaves the accessibility tree with `display: none`, and the page needs no
+ * client-side media query, so the server HTML is right at every width.
+ */
 export async function QueueResults({
     params,
     list,
@@ -21,7 +27,12 @@ export async function QueueResults({
     }
     return (
         <>
-            <QueueTable items={result.data.items} params={params} />
+            <div className="hidden md:block">
+                <QueueTable items={result.data.items} params={params} />
+            </div>
+            <div className="md:hidden">
+                <QueueCards items={result.data.items} params={params} />
+            </div>
             <QueuePagination params={params} total={result.data.total} />
         </>
     );

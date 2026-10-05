@@ -40,7 +40,7 @@ export function TopReasons({
                                         )}
                                         aria-current={active ? "true" : undefined}
                                         className={cn(
-                                            "flex w-full items-center justify-between gap-3 rounded-md px-2 py-1 text-left text-sm text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring",
+                                            "flex w-full items-center justify-between gap-3 rounded-md px-2 py-1 pointer-coarse:min-h-11 text-left text-sm text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring",
                                             active && "bg-primary-soft",
                                         )}
                                     >

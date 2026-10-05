@@ -24,7 +24,10 @@
     "sources": "Kaynaklar",
     "knowledgeBase": "Bilgi tabanı",
     "comingSoon": "Yakında",
-    "logout": "Çıkış yap"
+    "logout": "Çıkış yap",
+    "menu": "Menü",
+    "closeMenu": "Menüyü kapat",
+    "pending": "Onay bekleyen"
   },
   "review": {
     "queue": {
@@ -56,7 +59,9 @@
         "journalIssue": "Dergi sayısı",
         "search": "Esas / karar no veya başlık",
         "searchPlaceholder": "Ara",
-        "clear": "Filtreleri temizle"
+        "clear": "Filtreleri temizle",
+        "toggle": "Filtreler",
+        "toggleActive": "Filtreler ({count, number})"
       },
       "table": {
         "label": "Onay bekleyen kararlar",
@@ -70,7 +75,8 @@
         "esas": "E. {value}",
         "karar": "K. {value}",
         "duplicate": "Mükerrer kayıt grubunda",
-        "unknownReason": "Bilinmeyen sebep"
+        "unknownReason": "Bilinmeyen sebep",
+        "issueValue": "Sayı {value}"
       },
       "empty": {
         "none": "Onay bekleyen karar yok.",
@@ -83,7 +89,8 @@
         "range": "{from, number}-{to, number} / {total, number}",
         "previous": "Önceki",
         "next": "Sonraki",
-        "page": "Sayfa {page, number}"
+        "page": "Sayfa {page, number}",
+        "pageOf": "{page, number} / {count, number}"
       },
       "error": {
         "title": "Kuyruk yüklenemedi"
@@ -175,7 +182,8 @@
       "pdf": {
         "title": "Kararın özgün PDF'i",
         "missing": "Bu karar için PDF dosyası bulunamadı.",
-        "not_previewable": "Bu kaydın dosyası PDF değil, önizlenemiyor."
+        "not_previewable": "Bu kaydın dosyası PDF değil, önizlenemiyor.",
+        "open": "PDF'i yeni sekmede aç"
       },
       "text": {
         "title": "Çıkarılmış karar metni",

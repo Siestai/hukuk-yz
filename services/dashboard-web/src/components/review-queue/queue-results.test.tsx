@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
@@ -41,7 +41,7 @@ async function renderResults(params: Parameters<typeof QueueResults>[0]["params"
 describe("QueueResults", () => {
     it("shows the table and the pagination", async () => {
         await renderResults(base, { total: 310, items: [item] });
-        expect(screen.getByText("KIDEM TAZMİNATI")).toBeInTheDocument();
+        expect(within(screen.getByRole("table")).getByText("KIDEM TAZMİNATI")).toBeInTheDocument();
         expect(screen.getByText("1-50 / 310")).toBeInTheDocument();
     });
 

@@ -7,6 +7,7 @@ import {
     CardHeader,
     CardTitle,
     Dialog,
+    DialogActions,
     Input,
     Label,
     Select,
@@ -196,7 +197,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                                 {values.related_articles.map((entry, index) => (
                                     <li
                                         key={entry.key}
-                                        className="grid grid-cols-4 items-end gap-2"
+                                        className="grid items-end gap-2 md:grid-cols-4"
                                     >
                                         <div className="grid gap-1">
                                             <Label htmlFor={`${prefix}-statute-${entry.key}`}>
@@ -223,7 +224,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                                                 }
                                             />
                                         </div>
-                                        <div className="col-span-2 grid gap-1">
+                                        <div className="grid gap-1 md:col-span-2">
                                             <Label htmlFor={`${prefix}-articles-${entry.key}`}>
                                                 {t("review.edit.articles")}
                                             </Label>
@@ -323,7 +324,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                             {t("review.edit.noChanges")}
                         </p>
                     ) : null}
-                    <div className="flex justify-end gap-2">
+                    <DialogActions>
                         <Button
                             type="button"
                             variant="outline"
@@ -335,7 +336,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                         <Button type="submit" disabled={session.busy}>
                             {t("review.edit.review")}
                         </Button>
-                    </div>
+                    </DialogActions>
                 </form>
             </CardContent>
             <Dialog
@@ -347,7 +348,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                 {built ? (
                     <EditSummary fields={fields} edits={built.edits} note={note} onNote={setNote} />
                 ) : null}
-                <div className="flex justify-end gap-2">
+                <DialogActions>
                     <Button
                         type="button"
                         variant="outline"
@@ -361,7 +362,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                             ? t("review.actions.pending")
                             : t("review.edit.confirm.submit")}
                     </Button>
-                </div>
+                </DialogActions>
             </Dialog>
         </Card>
     );

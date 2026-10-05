@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@hukuk/ui";
+import { Button, DialogActions } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -49,7 +49,7 @@ export function BulkHaltedStep({ state, end, onRetry, onResume, onReport }: Prop
                     <p className="text-sm text-ink-2">{t("mayHaveApplied")}</p>
                 </>
             )}
-            <div className="flex justify-end gap-2">
+            <DialogActions>
                 <Button type="button" variant="outline" onClick={onReport}>
                     {t("report")}
                 </Button>
@@ -66,7 +66,7 @@ export function BulkHaltedStep({ state, end, onRetry, onResume, onReport }: Prop
                         {t("retry")}
                     </Button>
                 )}
-            </div>
+            </DialogActions>
         </div>
     );
 }

@@ -70,7 +70,10 @@ export function ActionFailure({ failure }: { failure: Failure }) {
             ) : failure.code === "navigation_failed" ? (
                 <>
                     <p>{t("navigationFailed")}</p>
-                    <Link href={queueHref} className="w-fit font-medium underline">
+                    <Link
+                        href={queueHref}
+                        className="inline-flex w-fit items-center font-medium underline pointer-coarse:min-h-11"
+                    >
                         {t("toQueue")}
                     </Link>
                 </>

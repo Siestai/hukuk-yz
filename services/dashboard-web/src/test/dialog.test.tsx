@@ -91,3 +91,68 @@ describe("Dialog without a target", () => {
         expect(opener).toHaveFocus();
     });
 });
+
+describe("Dialog drawer variant", () => {
+    function Drawer({ onClose }: { onClose?: () => void }) {
+        const [open, setOpen] = useState(false);
+        const opener = useRef<HTMLButtonElement>(null);
+        return (
+            <>
+                <button ref={opener} onClick={() => setOpen(true)}>
+                    open
+                </button>
+                <Dialog
+                    open={open}
+                    variant="drawer"
+                    closeLabel="Kapat"
+                    returnFocusTo={opener}
+                    onClose={() => {
+                        onClose?.();
+                        setOpen(false);
+                    }}
+                    title="Menü"
+                >
+                    <button>içerik</button>
+                </Dialog>
+            </>
+        );
+    }
+
+    it("sticks to the left edge at full height and keeps the modal behaviour", async () => {
+        const onClose = vi.fn();
+        render(<Drawer onClose={onClose} />);
+        await userEvent.click(screen.getByText("open"));
+        const dialog = screen.getByRole("dialog", { name: "Menü" });
+        expect(dialog).toHaveClass("mr-auto", "h-viewport", "overscroll-contain");
+        expect(dialog).not.toHaveClass("m-auto");
+        const event = escape();
+        dialog.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(screen.getByText("open")).toHaveFocus();
+    });
+
+    it("has a close button that asks to close", async () => {
+        const onClose = vi.fn();
+        render(<Drawer onClose={onClose} />);
+        await userEvent.click(screen.getByText("open"));
+        await userEvent.click(screen.getByRole("button", { name: "Kapat" }));
+        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+});
+
+describe("Dialog (center variant)", () => {
+    it("is a bounded, scrollable box inset from the screen edges", async () => {
+        render(<Harness />);
+        await userEvent.click(screen.getByText("open"));
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).toHaveClass(
+            "w-inset",
+            "max-h-inset",
+            "overflow-y-auto",
+            "overscroll-contain",
+        );
+    });
+});

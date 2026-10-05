@@ -9,7 +9,8 @@ export function QueueEmpty({ params, pastEnd }: { params: QueueParams; pastEnd: 
     const t = useTranslations("review.queue");
     const firstPage = queueHref({ ...params, page: 1 });
     const cleared = queueHref({ sort: params.sort, page: 1 });
-    const linkClass = "text-sm font-medium text-primary underline";
+    const linkClass =
+        "inline-flex items-center text-sm font-medium text-primary underline pointer-coarse:min-h-11";
 
     return (
         <Card>

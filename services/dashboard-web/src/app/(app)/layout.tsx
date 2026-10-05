@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { SideNav } from "@/components/side-nav";
+import { AppShell } from "@/components/app-shell";
 import { UpstreamUnavailableError } from "@/lib/api/errors";
 import { getReviewSummary } from "@/lib/api/review";
 import { createServerApi } from "@/lib/api/server";
@@ -25,9 +25,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         : null;
 
     return (
-        <div className="flex min-h-screen">
-            <SideNav user={me.data} pending={pending} />
-            <div className="min-w-0 flex-1">{children}</div>
-        </div>
+        <AppShell user={me.data} pending={pending}>
+            {children}
+        </AppShell>
     );
 }

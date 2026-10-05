@@ -4,6 +4,7 @@ import {
     apiQuery,
     changeQueueParams,
     detailHref,
+    activeFilterCount,
     hasFilters,
     parseNotice,
     parsePosition,
@@ -124,6 +125,26 @@ describe("changeQueueParams", () => {
 
     it("keeps the page it is told to go to", () => {
         expect(changeQueueParams(current, { page: 6 })).toMatchObject({ band: "low", page: 6 });
+    });
+});
+
+describe("activeFilterCount", () => {
+    it("is zero for a sort and a page only", () => {
+        expect(activeFilterCount({ sort: "score_desc", page: 4 })).toBe(0);
+    });
+
+    it("counts each filter that is set", () => {
+        expect(activeFilterCount({ ...defaults, band: "low", q: "x" })).toBe(2);
+        expect(
+            activeFilterCount({
+                ...defaults,
+                band: "low",
+                court: "bam",
+                reason: "duplicate_of",
+                journalIssue: 3,
+                q: "x",
+            }),
+        ).toBe(5);
     });
 });
 

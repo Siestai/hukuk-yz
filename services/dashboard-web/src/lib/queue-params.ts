@@ -136,8 +136,14 @@ export function changeQueueParams(params: QueueParams, change: QueueChange): Que
     return { ...params, ...change, page: change.page ?? 1 };
 }
 
+/** How many of the filters (band, court, reason, journal issue, search) are set. */
+export function activeFilterCount(params: QueueParams): number {
+    return [params.band, params.court, params.reason, params.journalIssue, params.q].filter(Boolean)
+        .length;
+}
+
 export function hasFilters(params: QueueParams): boolean {
-    return Boolean(params.band || params.court || params.reason || params.journalIssue || params.q);
+    return activeFilterCount(params) > 0;
 }
 
 /** The `/review/decisions` query of a state. */
