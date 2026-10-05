@@ -4,9 +4,12 @@ x-app: &app
   build:
     context: ../..
     dockerfile: services/app/Dockerfile
-  # Optional: Dokploy writes the Environment tab to a .env next to the compose (docs/deploy.md).
+  # Both optional. Local: the repo-root .env (`make up`). Dokploy writes its Environment tab to a
+  # .env next to this file, i.e. infra/compose/.env (docs/deploy.md); both are gitignored.
   env_file:
     - path: ../../.env
+      required: false
+    - path: .env
       required: false
   environment:
     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}

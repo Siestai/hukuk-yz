@@ -22,7 +22,7 @@ Dokploy'da tek compose uygulaması: `infra/compose/docker-compose.yml`
 ## Ortam değişkenleri
 
 Dokploy'un **Environment sekmesinde** tanımlanır (`.env.example` her birini açıklar); Dokploy bunu
-compose'un yanına bir `.env` olarak yazar. Compose değerleri hem `${...}` yerine koymasıyla hem
+compose dosyasının yanına, `infra/compose/.env` olarak yazar (kök `.env` değil; compose ikisini de okur). Compose değerleri hem `${...}` yerine koymasıyla hem
 `env_file` ile okur; `env_file` isteğe bağlıdır (`required: false`, compose v2.24+), dosya yoksa
 hata vermez. Sır değerleri repoya yazılmaz.
 
