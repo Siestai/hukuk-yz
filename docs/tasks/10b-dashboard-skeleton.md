@@ -8,7 +8,7 @@ Tasarım: `docs/design/dashboard-v0.md` (bağlayıcı: token değerleri, fontlar
 
 ## Hedef
 
-`services/dashboard-web`: Baran ve İbrahim'in giriş yapıp onay bekleyen kararları görebildiği, `hukuk-dashboard.siestai.com` adresinde yayına alınabilir ilk sürüm. Bu görevde kuyruk listesi ve özet; karar detayı ve onay aksiyonları Görev 10c'de.
+`services/dashboard-web`: Baran ve İbrahim'in giriş yapıp onay bekleyen kararları görebildiği, `dash-hukuk.siestai.com` adresinde yayına alınabilir ilk sürüm. Bu görevde kuyruk listesi ve özet; karar detayı ve onay aksiyonları Görev 10c'de.
 
 ## Kapsam
 
@@ -36,7 +36,7 @@ Tasarım: `docs/design/dashboard-v0.md` (bağlayıcı: token değerleri, fontlar
 6. **Çalıştırma ve yayın.**
    - `services/dashboard-web/Dockerfile`: çok aşamalı, standalone çıktı, root olmayan kullanıcı, healthcheck.
    - Compose'a `dashboard-web` servisi: `APP_API_URL=http://app:8000`, `127.0.0.1:3000`. `app`'e `ARCHIVE_ROOT` salt okunur bağlama örneği (yol `.env`'den).
-   - `docs/deploy.md` (yeni, kısa): Dokploy'da `hukuk-dashboard.siestai.com` (TLS Dokploy/Traefik'te), yalnız `dashboard-web` dışarı açılır; `app` ve `postgres` iç ağda; gerekli env listesi; ilk kurulum adımları (migrate, karar arşivini yükleme `python -m app.loaders.decisions`, arşiv dosyalarını sunucuya bağlama, kullanıcıları CLI ile açma, `prune-login-attempts` cron'u). Sunucu IP'si, alan adı dışındaki altyapı ayrıntısı ve kişi bilgisi yazılmaz (repo public).
+   - `docs/deploy.md` (yeni, kısa): Dokploy'da `dash-hukuk.siestai.com` (TLS Dokploy/Traefik'te), yalnız `dashboard-web` dışarı açılır; `app` ve `postgres` iç ağda; gerekli env listesi; ilk kurulum adımları (migrate, karar arşivini yükleme `python -m app.loaders.decisions`, arşiv dosyalarını sunucuya bağlama, kullanıcıları CLI ile açma, `prune-login-attempts` cron'u). Sunucu IP'si, alan adı dışındaki altyapı ayrıntısı ve kişi bilgisi yazılmaz (repo public).
 7. **CI.** Yeni iş: `pnpm install --frozen-lockfile`, lint, typecheck, test, build, OpenAPI güncellik kontrolü, dashboard Docker build.
 8. **Testler.** Vitest + Testing Library: kuyruk tablosu (veri, boş, hata), filtrelerin URL'ye yazılması, giriş formunun hata kodlarını çevirmesi, `tr` mesaj dosyasında kullanılan her anahtarın bulunması.
 

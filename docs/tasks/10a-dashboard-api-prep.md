@@ -6,7 +6,7 @@ Skill'ler: `task-pr-hygiene`, `db-migration`.
 
 ## Neden şimdi
 
-Dashboard `hukuk-dashboard.siestai.com` adresinde internete açılacak (Orhan, 2026-10-03). Görev 08'de giriş denemesi sınırı "internete açılmadan önce" diye ertelenmişti; şimdi o an. Ayrıca i18n kararı API'nin kullanıcıya metin değil kod dönmesini, detay ekranında PDF gösterme kararı da dosya sunan bir endpoint'i gerektiriyor. Üçü de UI yazılmadan önce API'de olmalı.
+Dashboard `dash-hukuk.siestai.com` adresinde internete açılacak (Orhan, 2026-10-03). Görev 08'de giriş denemesi sınırı "internete açılmadan önce" diye ertelenmişti; şimdi o an. Ayrıca i18n kararı API'nin kullanıcıya metin değil kod dönmesini, detay ekranında PDF gösterme kararı da dosya sunan bir endpoint'i gerektiriyor. Üçü de UI yazılmadan önce API'de olmalı.
 
 ## Hedef
 

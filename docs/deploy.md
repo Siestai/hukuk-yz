@@ -1,7 +1,7 @@
 # Yayın (Dokploy)
 
 Durum: taslak, **henüz yayına alınmadı**. Yayını Orhan onaylar. Adres:
-`hukuk-dashboard.siestai.com`. Yerel çalıştırma için: [local-dev.md](local-dev.md).
+`dash-hukuk.siestai.com`. Yerel çalıştırma için: [local-dev.md](local-dev.md).
 Sunucu ayrıntıları (adres, erişim) repoda tutulmaz.
 
 ## Düzen
@@ -10,7 +10,7 @@ Dokploy'da tek compose uygulaması: `infra/compose/docker-compose.yml`
 (postgres, migrate, app, worker, dashboard-web).
 
 - **Yalnız `dashboard-web` dışarı açılır**: Dokploy'un Domains sekmesinde
-  `hukuk-dashboard.siestai.com` → servis `dashboard-web`, port `3000`, HTTPS açık (TLS'i
+  `dash-hukuk.siestai.com` → servis `dashboard-web`, port `3000`, HTTPS açık (TLS'i
   Traefik/Dokploy sonlandırır; sertifika Let's Encrypt). Domain ve Traefik etiketi Dokploy'da
   `dashboard-web` servisinin 3000 portuna ayarlanır; compose dosyası dışarıya port yayınlamaz.
 - `app` (8000) ve `postgres` (5432) yalnız compose iç ağında kalır: alan adı eklenmez. Ana makine
@@ -18,6 +18,23 @@ Dokploy'da tek compose uygulaması: `infra/compose/docker-compose.yml`
   ekler, Dokploy yalnız `docker-compose.yml`'yi kullanır. (Dokploy'un kendi paneli ana makinenin
   3000 portunu kullanır; bu yüzden tabandaki dosyada eşleme yoktur.)
 - Tarayıcı yalnız `dashboard-web` ile konuşur; `/api/*` isteklerini o `app`'e iletir.
+
+### DNS ve TLS (Cloudflare)
+
+- `dash-hukuk` A kaydı sunucu adresine gider, **Proxied** (turuncu bulut). Sunucu adresi repoda
+  tutulmaz. Ayrı API alan adı yoktur: `app` iç ağda kalır (bkz. decisions.md).
+- Cloudflare SSL/TLS modu **Full (strict)**. "Flexible" Traefik'in HTTPS yönlendirmesiyle döngüye girer.
+- Let's Encrypt sertifikası ilk alınırken HTTP doğrulaması Cloudflare'den geçemezse kaydı geçici
+  olarak "DNS only" yap, sertifika alınınca Proxied'a döndür (ya da Traefik'e Cloudflare Origin
+  Certificate ver).
+- **İstemci adresi:** Cloudflare istemci adresini `X-Forwarded-For`'a yazar. Traefik varsayılan
+  olarak güvenmediği kaynaktan gelen `X-Forwarded-For`'u atar, kendi gördüğü adresi (Cloudflare'in)
+  yazar; bu hâlde IP başına giriş sınırı tüm kullanıcılar için Cloudflare adresleriyle sayılır.
+  Düzeltmek için Dokploy Traefik ayarında `websecure` entrypoint'ine
+  `forwardedHeaders.trustedIPs` olarak Cloudflare'in IP aralıkları
+  (https://www.cloudflare.com/ips/) verilir; o zaman başlık `istemci, cloudflare` olur ve
+  `TRUSTED_PROXY_HOPS=2` doğrudur. Bu ayar sunucudaki tüm Dokploy uygulamalarını etkiler.
+  Kontrol: aşağıdaki "Kontrol" bölümündeki IP doğrulaması.
 
 ## Ortam değişkenleri
 
@@ -34,7 +51,7 @@ hata vermez. Sır değerleri repoya yazılmaz.
 | `SESSION_TTL_HOURS` | `12` |
 | `LOGIN_MAX_FAILS_PER_EMAIL`, `LOGIN_MAX_FAILS_PER_IP`, `LOGIN_WINDOW_MINUTES` | `5`, `20`, `15` (varsayılan) |
 | `FORWARDED_ALLOW_IPS` | **`dashboard-web`'in compose ağındaki adresi ya da ağın CIDR'ı** (`docker network inspect <proje>_default`); `*` değil. Boş kalırsa `app` istemci IP'sini hep `dashboard-web` adresi görür ve IP başına giriş sınırı herkes için tek sayaç olur |
-| `TRUSTED_PROXY_HOPS` | `1`: `dashboard-web`'in önünde yalnız Traefik var, istemci adresi `X-Forwarded-For`'un son girdisidir. Araya bir proxy daha (CDN) girerse artır |
+| `TRUSTED_PROXY_HOPS` | `2`: önde Cloudflare proxy ve Traefik var (aşağıdaki DNS bölümüne bak). DNS kaydı "DNS only" yapılırsa `1` |
 | `ARCHIVE_HOST_DIR` | Karar PDF'lerinin sunucudaki **mutlak** klasörü (aşağıda); compose bunu `app`'e salt okunur `/archive` olarak bağlar |
 | `DASHBOARD_HOST_PORT`, `POSTGRES_HOST_PORT` | tanımlanmaz (yalnız yerel override dosyasında kullanılır; Traefik konteyner portuna ağdan ulaşır) |
 
@@ -42,6 +59,16 @@ hata vermez. Sır değerleri repoya yazılmaz.
 da compose'dadır (`/archive`).
 
 ## İlk kurulum
+
+**İlk yayın demo veriyle yapılır** (Orhan, 2026-10-05), gerçek arşiv sonra yüklenir:
+
+- Demo: `ARCHIVE_HOST_DIR`, Dokploy'un repoyu klonladığı klasördeki `infra/demo/archive`'ın
+  mutlak yoludur. 3. ve 4. adımlar yerine yükleme `app` konteynerinde, `infra/demo` `/demo` olarak
+  bağlanarak çalışır: `python -m app.loaders.decisions /demo/decisions.jsonl --files /demo/files.jsonl`
+  (12 sentetik karar, [infra/demo/README.md](../infra/demo/README.md)).
+- Gerçek veriye geçiş: demo kayıtları gerçek kayıtlarla karışmasın diye önce veritabanı sıfırlanır
+  (yereldeki `make db-reset` gibi: postgres volume silinir, `migrate` yeniden çalışır; kullanıcılar da silinir, 2. adım tekrarlanır), sonra
+  3. ve 4. adımlar. Demo süresince yapılan onay/retler atılır; bunlar sentetik kayıtlar üzerinedir.
 
 1. **Uygulamayı ayağa kaldır** (Dokploy'da Deploy). `migrate` servisi `alembic upgrade head`'i
    `app`'ten önce çalıştırır; sonradan elle: `docker compose ... run --rm app alembic upgrade head`.
@@ -69,7 +96,7 @@ da compose'dadır (`/archive`).
 
 ## Kontrol
 
-- `https://hukuk-dashboard.siestai.com/healthz` → `ok` (API'ye bağlı değil).
+- `https://dash-hukuk.siestai.com/healthz` → `ok` (API'ye bağlı değil).
 - Giriş sayfası açılır, yanlış parola Türkçe hata verir, doğru parola kuyruğa götürür.
 - Çerez `Secure` ve `HttpOnly`; yanıtlarda `Content-Security-Policy`, `X-Robots-Tag: noindex`.
 - `app` ve `postgres` dışarıdan erişilemez (`curl` ile bu alan adının başka bir yolu yok).
