@@ -16,17 +16,18 @@ alınır). Çıktı: `.output/` (gitignore'lu). Tarayıcı `pnpm exec playwright
 
 ## Dosyalar
 
-| Dosya                | Ne dener                                                                                                                                                                                            | Veriyi                       |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| `login.spec.ts`      | oturumsuz yönlendirme, yanlış parola (Türkçe hata), giriş, boş alan, çıkış                                                                                                                          | değiştirmez                  |
-| `queue.spec.ts`      | özet, bant / mahkeme / sebep filtresi, arama, mükerrer işareti, sıralama, sayfalama                                                                                                                 | değiştirmez                  |
-| `detail.spec.ts`     | alanlar, PDF sekmesi (iframe ve PDF yanıtı), metin sekmesi, J/K                                                                                                                                     | değiştirmez                  |
-| `actions.spec.ts`    | R ile ret (not zorunlu), E ile anahtar kelime düzeltip onay, A ile onay, "kuyruk bitti"                                                                                                             | **tüketir**: Demo 12, 05, 04 |
-| `bulk.spec.ts`       | yüksek bant + dar arama, onay kutusu, çalıştırma, rapor                                                                                                                                             | **tüketir**: Demo 01-03      |
-| `responsive.spec.ts` | 360x740 ve 768x1024: yatay kaydırma yok (giriş, kuyruk, detay), menü çekmecesi, kart listesi, filtre düğmesi, toplu onay diyaloğu, aksiyon çubuğu, PDF bağlantısı / çerçevesi, 44 px dokunma hedefi | değiştirmez                  |
+| Dosya                | Ne dener                                                                                                                                                                                                                                     | Veriyi                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `login.spec.ts`      | oturumsuz yönlendirme, yanlış parola (Türkçe hata), giriş, boş alan, çıkış                                                                                                                                                                   | değiştirmez                  |
+| `queue.spec.ts`      | özet, bant / mahkeme / sebep filtresi, arama, mükerrer işareti, sıralama, sayfalama                                                                                                                                                          | değiştirmez                  |
+| `detail.spec.ts`     | alanlar, PDF sekmesi (iframe ve PDF yanıtı), metin sekmesi, J/K                                                                                                                                                                              | değiştirmez                  |
+| `actions.spec.ts`    | R ile ret (not zorunlu), E ile anahtar kelime düzeltip onay, A ile onay, "kuyruk bitti"                                                                                                                                                      | **tüketir**: Demo 12, 05, 04 |
+| `bulk.spec.ts`       | yüksek bant + dar arama, onay kutusu, çalıştırma, rapor                                                                                                                                                                                      | **tüketir**: Demo 01-03      |
+| `info-tips.spec.ts`  | bilgi ipuçları: başlık ipucu fareyle / dokunarak açılır, Escape ve dışarı basma kapatır, klavye odağı, kutu ekranda kalır (360 / 768 / 1440), yatay kaydırma yok, 44 px hedef (telefon), karşılama kartı kapanır ve yeniden yüklemede gelmez | değiştirmez                  |
+| `responsive.spec.ts` | 360x740 ve 768x1024: yatay kaydırma yok (giriş, kuyruk, detay), menü çekmecesi, kart listesi, filtre düğmesi, toplu onay diyaloğu, aksiyon çubuğu, PDF bağlantısı / çerçevesi, 44 px dokunma hedefi                                          | değiştirmez                  |
 
 Üç Playwright projesi var (hepsi Chromium): `chromium` (salt okunur dosyalar) önce, sonra
-`chromium-mobile` (`devices["Pixel 7"]`: dokunmatik, `pointer: coarse`; yalnız `responsive.spec.ts`,
+`chromium-mobile` (`devices["Pixel 7"]`: dokunmatik, `pointer: coarse`; yalnız `responsive.spec.ts` ve `info-tips.spec.ts`,
 salt okunur) ve `chromium-mutating` (veri değiştirenler) koşar; ikisi de `chromium`a bağlıdır ve tek worker'la
 tanım sırasıyla koşar (mobil önce), böylece okuyan testler dokunulmamış demo verisini görür. Testler tek worker'la, sırayla koşar. Oturum bir kez `global-setup.ts` ile açılır
 (`.output/state.json`); `login.spec.ts` kendi girişini yapar.
