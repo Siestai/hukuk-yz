@@ -10,16 +10,16 @@ import os
 import stat
 import uuid
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse, Response
-from sqlalchemy import Select, and_, exists, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.auth import Db, require_role
+from app.auth import Db
 from app.errors import ApiError
 from app.kb import (
     PARSER_NAME,
@@ -43,12 +43,13 @@ from app.models.common import (
 )
 from app.models.decision import Decision
 from app.models.user import AppUser
+from app.review_common import Limit, Offset, Reviewer, page, reviewer_check
+from app.review_common import bulk_approve as run_bulk_approve
 from app.settings import get_settings
 from hukuk_models import (
     Band,
     BulkApproveRequest,
     BulkApproveResponse,
-    BulkFailure,
     Confidence,
     DuplicateOut,
     ErrorCode,
@@ -70,13 +71,9 @@ TOP_REASONS = 15
 
 ListSort = Literal["score_asc", "score_desc", "reviewed_desc"]
 
-_reviewer = require_role("reviewer")
-Reviewer = Annotated[AppUser, Depends(_reviewer)]
-router = APIRouter(prefix="/review/decisions", tags=["review"], dependencies=[Depends(_reviewer)])
-
-
-async def _count(db: AsyncSession, stmt: Select[Any]) -> int:
-    return (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
+router = APIRouter(
+    prefix="/review/decisions", tags=["review"], dependencies=[Depends(reviewer_check)]
+)
 
 
 def _list_item(row: Any) -> ReviewListItem:
@@ -114,8 +111,8 @@ async def list_decisions(
     q: str | None = None,
     status: ListStatus = "pending",
     sort: ListSort | None = None,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Limit = 50,
+    offset: Offset = 0,
 ) -> ReviewListResponse:
     if sort == "reviewed_desc" and status == "pending":  # nothing was reviewed yet
         raise ApiError(422, ErrorCode.validation_error, {"fields": ["sort"]})
@@ -123,17 +120,7 @@ async def list_decisions(
         sort = "reviewed_desc" if status in ("approved", "rejected") else "score_asc"
     filters = ReviewFilters(court=court, reason=reason, journal_issue=journal_issue, q=q)
     stmt = queue(band, filters, sort, status=status)
-    rows = (
-        await db.execute(
-            stmt.add_columns(func.count().over().label("total")).limit(limit).offset(offset)
-        )
-    ).all()
-    if rows:
-        total = rows[0].total
-    elif offset:  # past the last page
-        total = await _count(db, stmt)
-    else:
-        total = 0
+    total, rows = await page(db, stmt, limit, offset)
     return ReviewListResponse(total=total, items=[_list_item(r) for r in rows])
 
 
@@ -175,29 +162,15 @@ async def summary(db: Db) -> ReviewSummary:
 
 @router.post("/bulk-approve")
 async def bulk_approve(body: BulkApproveRequest, user: Reviewer, db: Db) -> BulkApproveResponse:
-    def pending(after: str | None) -> Select[Any]:
-        return queue(body.band, body.filters, "sha256", after)
-
-    if body.band != "high":
-        raise ApiError(422, ErrorCode.bulk_band_not_allowed)
-    total = await _count(db, pending(body.cursor))
-    if total != body.expected_count:
-        raise ApiError(
-            409,
-            ErrorCode.bulk_count_changed,
-            {"total": total, "expected": body.expected_count},
-        )
-    rows = (await db.execute(pending(body.cursor).limit(body.limit))).all()
-    result = await publish_batch(db, [row.id for row in rows], user.id, body.band)
-    await db.commit()
-    last = rows[-1].sha256 if rows else None
-    remaining = await _count(db, pending(last)) if last else 0
-    return BulkApproveResponse(
-        published=result.published,
-        conflicts=result.conflicts,
-        failed=[BulkFailure(extraction_id=i, reason=reason) for i, reason in result.failed],
-        remaining=remaining,
-        next_cursor=last if remaining else None,
+    return await run_bulk_approve(
+        db,
+        band=body.band,
+        cursor=body.cursor,
+        expected_count=body.expected_count,
+        limit=body.limit,
+        pending=lambda after: queue(body.band, body.filters, "sha256", after),
+        cursor_of=lambda row: row.sha256,
+        publish=lambda ids: publish_batch(db, ids, user.id, body.band),
     )
 
 

@@ -331,3 +331,113 @@ class ArticleAsOf(BaseModel):
     latest_snapshot_date: date | None = None
     stale: bool | None = None
     confidence: Band | None = None
+
+
+# --- statute article review (task 11c-1) -------------------------------------------------------
+
+StatuteArticleStatus = Literal["pending", "approved", "rejected", "superseded"]
+
+
+class StatuteReviewListItem(BaseModel):
+    """A queue row: the newest extraction of one article. `status` is `pending`, `approved`
+    (live) or `rejected` here."""
+
+    extraction_id: uuid.UUID
+    source_id: uuid.UUID
+    statute_number: str
+    article_no: str
+    ordinal: int
+    heading: str | None
+    band: Band
+    reasons: list[str]
+    version_count: int
+    gap_count: int
+    latest_snapshot_date: date
+    status: StatuteArticleStatus
+
+
+class StatuteReviewListResponse(BaseModel):
+    total: int
+    items: list[StatuteReviewListItem]
+
+
+class StatuteSummaryRow(BaseModel):
+    statute_number: str
+    band: Band
+    status: Literal["pending", "approved", "rejected"]
+    count: int
+
+
+class StatuteReviewSummary(BaseModel):
+    """Only the combinations that occur have a row."""
+
+    items: list[StatuteSummaryRow]
+
+
+class StatuteBulkApproveRequest(BaseModel):
+    """Same contract as `BulkApproveRequest`; the cursor is the id of the last article of the
+    previous call (`next_cursor`), the run goes in id order."""
+
+    band: Band  # only "high" is accepted, as for decisions
+    statute: str | None = None
+    expected_count: int = Field(ge=0)
+    limit: int = Field(default=100, ge=1, le=100)
+    cursor: uuid.UUID | None = None
+
+
+class StatuteReviewActionRequest(BaseModel):
+    """No edits: a timeline is not edited on screen, a wrong one is rejected."""
+
+    action: Literal["approve", "reject"]
+    note: str | None = None
+
+    @model_validator(mode="after")
+    def _note_for_reject(self) -> Self:
+        if self.action == "reject" and not (self.note and self.note.strip()):
+            raise ValueError("note is required for action 'reject'")
+        return self
+
+
+class StatuteReviewActionResponse(BaseModel):
+    review_id: uuid.UUID
+    article_id: uuid.UUID | None  # the published article; None for a rejection
+    source_status: SourceStatus
+
+
+class StatuteSnapshotOut(BaseModel):
+    file_name: str
+    date: Day | None
+
+
+class TimelineVersion(ArticleVersionOut):
+    kind: Literal["version"]
+
+
+class TimelineGap(ArticleGapOut):
+    """A gap entry has no text field."""
+
+    kind: Literal["gap"]
+
+
+TimelineEntry = Annotated[TimelineVersion | TimelineGap, Field(discriminator="kind")]
+
+
+class StatuteReviewDetail(BaseModel):
+    extraction_id: uuid.UUID
+    source_id: uuid.UUID
+    source_status: SourceStatus
+    statute_number: str
+    statute_title: str
+    article_no: str
+    ordinal: int
+    heading: str | None
+    status: StatuteArticleStatus
+    band: Band
+    reasons: list[str]
+    warnings: list[str]
+    timeline: list[TimelineEntry]
+    snapshots: list[StatuteSnapshotOut]
+    latest_snapshot_date: date
+    reviews: list[ReviewOut]
+    # The extraction whose versions are live for this article, when it is another one.
+    live_extraction_id: uuid.UUID | None

@@ -80,6 +80,7 @@ demo-data: dev-env
 	infra/scripts/set-env.sh ARCHIVE_HOST_DIR ../../infra/demo/archive
 	$(COMPOSE) up -d --wait app
 	$(COMPOSE) run --rm -v "$(CURDIR)/infra/demo:/demo:ro" app python -m app.loaders.decisions /demo/decisions.jsonl --files /demo/files.jsonl
+	$(COMPOSE) run --rm -v "$(CURDIR)/infra/demo:/demo:ro" app python -m app.loaders.statutes /demo/statutes.jsonl
 	$(COMPOSE) up -d --wait
 
 # UI work on the host (hot reload) against the compose app on :8000. Port 3001 so it can run next

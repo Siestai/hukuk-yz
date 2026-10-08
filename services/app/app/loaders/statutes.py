@@ -129,6 +129,7 @@ def prepare(records: Sequence[dict[str, Any]]) -> list[PreparedStatute]:
                 "statute_number": r["number"],
                 "statute": r["header"],
                 "snapshot_sha256": shas,
+                "snapshots": [{"path": s["path"], "date": s["date"]} for s in r["snapshots"]],
             }
             articles.append(
                 PreparedArticle(

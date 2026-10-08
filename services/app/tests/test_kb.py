@@ -15,13 +15,18 @@ from app.kb import (
     approve_extraction,
     approve_statute_article,
     article_as_of,
+    fold_tr,
     format_amending_ref,
     publish_batch,
     publish_decision,
     publish_statute_article,
+    publish_statute_batch,
     queue,
     reject_extraction,
+    reject_statute_article,
+    statute_article_status,
     statute_is_published,
+    statute_queue,
     unpublished_statute_articles,
 )
 from app.loaders import statutes as statute_loader
@@ -630,3 +635,127 @@ async def test_a_gap_carries_no_text(
     assert result["status"] == "gap"
     assert result["gap"]["known_amendments"][0]["law"] == "6552"
     assert "text" not in result["gap"]
+
+
+# --- statute review (task 11c-1) ----------------------------------------------------------------
+
+
+async def test_rejecting_an_article_writes_a_review_and_publishes_nothing(
+    kb_factory: Factory, statutes_loaded: dict[str, uuid.UUID], reviewer: AppUser
+) -> None:
+    async with kb_factory() as session:
+        review_id = await reject_statute_article(
+            session, statutes_loaded["18"], reviewer.id, "Tarih yanlış"
+        )
+        await session.commit()
+        review = await session.get(Review, review_id)
+        assert review is not None
+        assert (review.decision, review.note, review.edits) == (
+            ReviewDecision.reject,
+            "Tarih yanlış",
+            None,
+        )
+        extraction = await session.get(Extraction, statutes_loaded["18"])
+        assert extraction is not None and extraction.source_id is not None
+        source = await session.get(Source, extraction.source_id)
+        assert source is not None and source.status is RecordStatus.analyzed
+        rows = (await session.execute(statute_queue(status="rejected"))).all()
+        assert [(r.id, r.status) for r in rows] == [(statutes_loaded["18"], "rejected")]
+    assert await _total(kb_factory, StatuteArticleVersion) == 0
+
+
+async def test_a_rejected_article_is_not_approved_rejected_or_bulk_published_again(
+    kb_factory: Factory, statutes_loaded: dict[str, uuid.UUID], reviewer: AppUser
+) -> None:
+    async with kb_factory() as session:
+        await reject_statute_article(session, statutes_loaded["5"], reviewer.id, "x")
+        await session.commit()
+    async with kb_factory() as session:
+        with pytest.raises(StaleExtraction):
+            await approve_statute_article(session, statutes_loaded["5"], reviewer.id)
+        with pytest.raises(StaleExtraction):
+            await reject_statute_article(session, statutes_loaded["5"], reviewer.id, "y")
+        ids = (await session.execute(unpublished_statute_articles("high"))).scalars().all()
+        assert ids == [statutes_loaded["Geçici 1"]]
+        result = await publish_statute_batch(
+            session, [statutes_loaded["5"], statutes_loaded["Geçici 1"]], reviewer.id, "high"
+        )
+        assert (result.published, [i for i, _ in result.failed]) == (1, [statutes_loaded["5"]])
+        await session.commit()
+    assert await _total(kb_factory, Review) == 2  # the rejection and the one approval
+
+
+async def test_a_live_article_is_stale_unless_the_approval_is_idempotent(
+    kb_factory: Factory, statutes_published: dict[str, uuid.UUID], reviewer: AppUser
+) -> None:
+    async with kb_factory() as session:
+        with pytest.raises(StaleExtraction):
+            await approve_statute_article(
+                session, statutes_published["18"], reviewer.id, idempotent=False
+            )
+        with pytest.raises(StaleExtraction):
+            await reject_statute_article(session, statutes_published["18"], reviewer.id, "x")
+    assert await _total(kb_factory, Review) == 3
+
+
+async def test_a_statute_approval_checks_the_band_under_the_lock(
+    kb_factory: Factory, statutes_loaded: dict[str, uuid.UUID], reviewer: AppUser
+) -> None:
+    async with kb_factory() as session:
+        with pytest.raises(StaleExtraction, match="band high"):
+            await approve_statute_article(session, statutes_loaded["18"], reviewer.id, "high")
+        with pytest.raises(ValueError, match="not a statute article"):
+            await approve_statute_article(session, uuid.uuid4(), reviewer.id)
+    assert await _total(kb_factory, Review) == 0
+
+
+async def test_the_statute_queue_filters_and_orders(
+    kb_factory: Factory, statutes_published: dict[str, uuid.UUID]
+) -> None:
+    async def articles(**kwargs: Any) -> list[str]:
+        async with kb_factory() as session:
+            rows = (await session.execute(statute_queue(**kwargs))).all()
+        return [r.article_no for r in rows]
+
+    assert await articles(status="all") == ["5", "18", "Geçici 1", "Ek 2"]
+    assert await articles() == ["5"]
+    assert await articles(status="approved") == ["18", "Geçici 1", "Ek 2"]
+    assert await articles(status="approved", band="low") == ["Ek 2"]
+    assert await articles(status="all", statute="5510") == []
+    assert await articles(status="all", q="GEÇİCİ") == ["Geçici 1"]
+    assert await articles(status="all", q="FESHİN") == ["18"]
+    assert await articles(status="all", q="_") == []  # LIKE wildcards are plain characters
+
+
+def test_fold_tr_makes_the_dotted_and_dotless_i_and_the_capitals_one_case() -> None:
+    assert fold_tr("GEÇİCİ MADDE IŞIK") == fold_tr("geçici madde ışık") == "geçici madde işik"
+    assert fold_tr("ŞÜĞÖ") == "şüğö"
+
+
+async def test_the_statute_article_status_names_every_state(
+    kb_factory: Factory,
+    statutes_published: dict[str, uuid.UUID],
+    extraction_ids: ExtractionIds,
+    statute_record: dict[str, Any],
+    reviewer: AppUser,
+) -> None:
+    async with kb_factory() as session:
+        await reject_statute_article(session, statutes_published["5"], reviewer.id, "x")
+        await session.commit()
+    newer = await _newer_a18(kb_factory, statute_record, extraction_ids)
+
+    async def status(extraction_id: uuid.UUID) -> str:
+        async with kb_factory() as session:
+            extraction = await session.get(Extraction, extraction_id)
+            assert extraction is not None
+            return await statute_article_status(session, extraction)
+
+    assert await status(statutes_published["Ek 2"]) == "approved"
+    assert await status(statutes_published["5"]) == "rejected"
+    assert await status(newer) == "pending"
+    assert await status(statutes_published["18"]) == "approved"  # still live: a newer one waits
+    async with kb_factory() as session:
+        await approve_statute_article(session, newer, reviewer.id)
+        await session.commit()
+    assert await status(statutes_published["18"]) == "superseded"
+    assert await status(newer) == "approved"
