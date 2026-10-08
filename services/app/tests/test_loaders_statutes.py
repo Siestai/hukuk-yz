@@ -97,6 +97,20 @@ def test_an_extraction_holds_the_article_timeline_and_its_statute() -> None:
     assert by_no["5"].confidence == {"band": "high", "reasons": []}
 
 
+def test_the_content_hash_covers_the_stored_fields_and_ignores_key_order() -> None:
+    (statute,) = statutes.prepare([_record()])
+    a18 = statute.articles[0]
+    stored = {k: v for k, v in a18.fields.items() if k != "content_hash"}
+    assert a18.fields["content_hash"] == statutes.content_hash(stored)
+    assert statutes.content_hash(dict(reversed(stored.items()))) == a18.fields["content_hash"]
+    changed = copy.deepcopy(_record())
+    changed["articles"][0]["versions"][0]["text"] += " x"
+    (other,) = statutes.prepare([changed])
+    hashes = [a.fields["content_hash"] for a in statute.articles]
+    other_hashes = [a.fields["content_hash"] for a in other.articles]
+    assert other_hashes[0] != hashes[0] and other_hashes[1:] == hashes[1:]
+
+
 def test_dry_run_needs_no_database_and_writes_a_report_without_text(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -225,6 +239,32 @@ async def test_a_new_parser_version_adds_extractions_and_leaves_published_rows_a
         ).all()
     assert sorted(live_after) == sorted(live_before)
     assert all(superseded is None for _, superseded in live_after)
+
+
+async def test_a_changed_timeline_with_the_same_parser_version_adds_one_extraction(
+    kb_factory: Factory,
+) -> None:
+    await _load(kb_factory, _record())
+    record = _record()
+    record["articles"][0]["versions"][0]["text"] += " (registry update)"
+    counts = await _load(kb_factory, record)
+    assert (counts.new, counts.skipped_existing, counts.sources_new, counts.files_new) == (
+        1,
+        3,
+        0,
+        0,
+    )
+    assert await _count(kb_factory, Extraction) == 5
+    async with kb_factory() as session:
+        per_article = (
+            await session.execute(
+                select(Extraction.fields["article_no"].as_string(), func.count())
+                .group_by(Extraction.fields["article_no"].as_string())
+                .order_by(Extraction.fields["article_no"].as_string())
+            )
+        ).all()
+    assert dict(per_article) == {"18": 2, "5": 1, "Ek 2": 1, "Geçici 1": 1}
+    assert (await _load(kb_factory, record)).new == 0
 
 
 async def test_a_new_snapshot_set_adds_extractions(kb_factory: Factory) -> None:

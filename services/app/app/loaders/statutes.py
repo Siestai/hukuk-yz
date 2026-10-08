@@ -9,14 +9,18 @@ timeline one `extraction` (parser `statutes`), all under one bulk `ingest_job`. 
 is the article, not the statute. No `statute` row is written unless `--approve-band` is given;
 that flag is for tests and development (bulk approval belongs to the review screen, 11c).
 
-Idempotency: an article is loaded once per (sha256 set of its statute's snapshots, parser
-version, article number); a rerun adds nothing, a new parser version or a new snapshot adds
-extractions and leaves the old ones and the published rows alone. As in the decision loader it
+Idempotency: an article is loaded once per (parser name and version, article number, sha256 set
+of its statute's snapshots, content hash). The content hash is the sha256 of the canonical JSON of
+the article's `fields` and is stored in them as `content_hash`. A rerun adds nothing; a new parser
+version, a new snapshot or a changed timeline (a registry update with the same parser version) adds
+an extraction and leaves the old ones and the published rows alone: the new one goes to review and
+supersedes the live rows only when it is published. As in the decision loader it
 is a read-then-insert: concurrent runs are not supported.
 """
 
 import argparse
 import asyncio
+import hashlib
 import json
 import sys
 import time
@@ -66,7 +70,8 @@ from hukuk_models import Band
 REQUIRED_KEYS = frozenset(
     {"number", "parser_version", "title", "header", "latest_snapshot_date", "snapshots", "articles"}
 )
-Key = tuple[str, str, tuple[str, ...]]  # (parser version, article number, sha256 set)
+# (parser version, article number, sha256 set, content hash); the parser name is a query filter
+Key = tuple[str, str, tuple[str, ...], str | None]
 
 
 def read_records(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
@@ -100,6 +105,12 @@ def official_ref(number: str, header: dict[str, Any]) -> str:
     return ", ".join(parts)
 
 
+def content_hash(fields: dict[str, Any]) -> str:
+    """sha256 of the canonical JSON of an article's `fields` (without `content_hash` itself)."""
+    canonical = json.dumps(fields, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def prepare(records: Sequence[dict[str, Any]]) -> list[PreparedStatute]:
     prepared = []
     for r in records:
@@ -113,15 +124,16 @@ def prepare(records: Sequence[dict[str, Any]]) -> list[PreparedStatute]:
                     if band_rules.RULES.get(band_rules.code(w), band_rules.HIGH) != band_rules.HIGH
                 }
             )
+            fields = {
+                **a,
+                "statute_number": r["number"],
+                "statute": r["header"],
+                "snapshot_sha256": shas,
+            }
             articles.append(
                 PreparedArticle(
                     article_no=a["article_no"],
-                    fields={
-                        **a,
-                        "statute_number": r["number"],
-                        "statute": r["header"],
-                        "snapshot_sha256": shas,
-                    },
+                    fields={**fields, "content_hash": content_hash(fields)},
                     warnings=a["warnings"],
                     confidence={"band": a["confidence"], "reasons": reasons},
                 )
@@ -159,18 +171,19 @@ async def _known(
                 Extraction.parser_version,
                 Extraction.fields["article_no"].as_string(),
                 Extraction.fields["snapshot_sha256"],
+                Extraction.fields["content_hash"].as_string(),
             )
             .where(Extraction.parser_name == STATUTE_PARSER_NAME, number.in_(numbers))
             .order_by(Extraction.extracted_at)
         )
-        for n, source_id, version, article_no, shas in result:
+        for n, source_id, version, article_no, shas, digest in result:
             found[n].source_id = source_id
-            found[n].keys.add((version, article_no, tuple(shas)))
+            found[n].keys.add((version, article_no, tuple(shas), digest))
     return found
 
 
 def _key(st: PreparedStatute, a: PreparedArticle) -> Key:
-    return (st.parser_version, a.article_no, tuple(st.sha256s))
+    return (st.parser_version, a.article_no, tuple(st.sha256s), a.fields["content_hash"])
 
 
 async def _write_statute(

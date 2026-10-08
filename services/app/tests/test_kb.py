@@ -457,6 +457,25 @@ async def test_an_extraction_older_than_the_live_one_is_refused(
     assert {v.extraction_id for v in live} == {newer}
 
 
+async def test_approving_a_live_extraction_again_adds_no_review(
+    kb_factory: Factory, statutes_published: dict[str, uuid.UUID], reviewer: AppUser
+) -> None:
+    async with kb_factory() as session:
+        first = (
+            await session.execute(
+                select(StatuteArticleVersion.review_id, StatuteArticleVersion.article_id).where(
+                    StatuteArticleVersion.extraction_id == statutes_published["18"]
+                )
+            )
+        ).first()
+        assert first is not None
+        reviews = await _total(kb_factory, Review)
+        again = await approve_statute_article(session, statutes_published["18"], reviewer.id)
+        await session.commit()
+    assert again == (first.review_id, first.article_id)
+    assert await _total(kb_factory, Review) == reviews
+
+
 async def test_publish_statute_article_refuses_what_it_cannot_publish(
     kb_factory: Factory,
     statutes_loaded: dict[str, uuid.UUID],

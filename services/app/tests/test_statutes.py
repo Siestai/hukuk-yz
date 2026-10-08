@@ -1,7 +1,16 @@
-"""Statute API (task 11b). The database tests are skipped when DATABASE_URL is unset; CI sets it."""
+"""Statute API (task 11b). The database tests are skipped when DATABASE_URL is unset; CI sets it.
 
+The corpus test at the end also needs a real `statutes.jsonl` (`hukuk-ingest statutes ...`); CI
+has none and skips it. Run it with
+
+    DATABASE_URL=... HUKUK_STATUTES_JSONL=data/work/statutes/statutes.jsonl \\
+        uv run pytest services/app/tests/test_statutes.py -k golden
+"""
+
+import os
 import uuid
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import httpx
 import pytest
@@ -9,9 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth import hash_password
 from app.db import make_engine
+from app.loaders import statutes as statute_loader
+from app.loaders.statutes_report import StatuteCounts
 from app.main import app
 from app.models.user import AppUser, UserRole
 from app.statutes import normalize_article_no
+from hukuk_ingest.statutes.golden import check_golden, load_golden
+from hukuk_models import Band
 
 PASSWORD = "correct horse battery"
 Factory = async_sessionmaker[AsyncSession]
@@ -30,6 +43,16 @@ Factory = async_sessionmaker[AsyncSession]
         ("ek-2", "Ek 2"),
         ("Ek 2", "Ek 2"),
         ("ek-2-b", "Ek 2/B"),
+        ("geçici 4", "Geçici 4"),
+        ("GEÇİCİ 4", "Geçici 4"),
+        ("GECİCİ 4", "Geçici 4"),
+        ("Gecici-4", "Geçici 4"),
+        ("EK 2", "Ek 2"),
+        ("gecici-79-2", "Geçici 79 (2)"),
+        ("Geçici 79 (2)", "Geçici 79 (2)"),
+        ("GEÇİCİ 79(2)", "Geçici 79 (2)"),
+        ("18-ı", "18/I"),
+        ("18-i", "18/İ"),
         ("  Geçici   104 ", "Geçici 104"),
         ("madde 4", "madde 4"),  # not an alias: left to the lookup, which will not find it
     ],
@@ -194,7 +217,8 @@ async def test_an_article_that_is_not_published_is_unknown_with_a_reason(
 
 
 @pytest.mark.parametrize(
-    "article", ["Ge%C3%A7ici%201", "Geçici 1", "gecici-1", "Gecici%201", "GECICI_1"]
+    "article",
+    ["Ge%C3%A7ici%201", "Geçici 1", "gecici-1", "Gecici%201", "GECICI_1", "GEÇİCİ 1", "geçici 1"],
 )
 async def test_an_article_number_may_be_encoded_or_an_ascii_alias(
     client: httpx.AsyncClient,
@@ -215,7 +239,7 @@ async def test_errors_are_codes(
     unknown = await _get(client, headers, "18", "2020-01-01", number="9999")
     assert unknown.status_code == 404
     assert unknown.json() == {"error": {"code": "statute_not_found", "params": {"number": "9999"}}}
-    for bad in ("2020-13-01", "20200101", "2020-1-1", "yesterday", ""):
+    for bad in ("2020-13-01", "20200101", "2020-1-1", "2014-W01-1", "yesterday", ""):
         response = await _get(client, headers, "18", bad)
         assert response.status_code == 422, bad
         assert response.json() == {"error": {"code": "invalid_date", "params": {"field": "as_of"}}}
@@ -228,3 +252,33 @@ async def test_the_api_asks_for_a_login(
 ) -> None:
     response = await client.get("/statutes/4857/articles/18", params={"as_of": "2020-01-01"})
     assert (response.status_code, response.json()["error"]["code"]) == (401, "unauthorized")
+
+
+GOLDEN = Path(__file__).parents[3] / "packages/ingest/tests/fixtures/statutes/golden.toml"
+STATUTES_JSONL = os.environ.get("HUKUK_STATUTES_JSONL")
+
+
+@pytest.mark.skipif(not STATUTES_JSONL, reason="HUKUK_STATUTES_JSONL (real statutes.jsonl) not set")
+async def test_golden_queries_through_the_database_and_the_api(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    reviewer: AppUser,
+) -> None:
+    """The golden set of the ingest tests, but through load -> approve -> publish -> HTTP."""
+    assert STATUTES_JSONL
+    records, errors = statute_loader.read_records(Path(STATUTES_JSONL))
+    assert not errors
+    counts = StatuteCounts()
+    await statute_loader.load(kb_factory, statute_loader.prepare(records), {}, counts)
+    bands: tuple[Band, ...] = ("high", "medium", "low")
+    for band in bands:
+        await statute_loader.approve_band(kb_factory, band, reviewer.id, counts)
+    failures = [f"publish failed {ref}: {reason}" for ref, reason in counts.publish_failed]
+    for q in load_golden(GOLDEN):
+        response = await _get(client, headers, q["article"], str(q["as_of"]), number=q["statute"])
+        if response.status_code != 200:
+            failures.append(f"{q['statute']} m.{q['article']}: HTTP {response.status_code}")
+        elif failure := check_golden(q, response.json()):
+            failures.append(failure)
+    assert not failures, "\n".join(failures)

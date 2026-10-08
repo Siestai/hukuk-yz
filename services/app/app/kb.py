@@ -524,7 +524,21 @@ async def approve_statute_article(
 ) -> tuple[uuid.UUID, uuid.UUID]:
     """`review` row (approve) + `publish_statute_article`, in a savepoint; returns (review_id,
     article_id). Raises ValueError (not publishable, unknown reviewer, overlapping versions) or
-    StaleExtraction; the caller commits."""
+    StaleExtraction; the caller commits. An extraction that is already live is a no-op: the
+    review that published it and its article are returned and no review is added."""
+    live = (
+        await session.execute(
+            select(StatuteArticleVersion.review_id, StatuteArticleVersion.article_id)
+            .where(
+                StatuteArticleVersion.extraction_id == extraction_id,
+                StatuteArticleVersion.superseded_at.is_(None),
+                StatuteArticleVersion.review_id.is_not(None),
+            )
+            .limit(1)
+        )
+    ).first()
+    if live is not None:
+        return live.review_id, live.article_id
     try:
         async with session.begin_nested():
             review = Review(
@@ -619,12 +633,13 @@ async def article_as_of(
     )
     if not versions:
         return {"status": UNKNOWN_ARTICLE, "reason": "not_published"}
-    fields = (
+    latest, gaps = (
         await db.execute(
-            select(Extraction.fields).where(Extraction.id == versions[0].extraction_id)
+            select(
+                Extraction.fields["latest_snapshot_date"].as_string(), Extraction.fields["gaps"]
+            ).where(Extraction.id == versions[0].extraction_id)
         )
-    ).scalar_one()
-    latest = fields["latest_snapshot_date"]
+    ).one()
     base = {"latest_snapshot_date": latest, "stale": as_of > date.fromisoformat(latest)}
     for v in versions:
         if _covers(v.valid_from, v.valid_to, as_of):
@@ -632,7 +647,7 @@ async def article_as_of(
             if v.change_kind is ChangeKind.repealed:
                 return {"status": NOT_IN_FORCE, "reason": "repealed", "version": out, **base}
             return {"status": FOUND, "version": out, "confidence": v.confidence, **base}
-    for g in fields["gaps"]:
+    for g in gaps:
         start = date.fromisoformat(g["from"]) if g["from"] else None
         if _covers(start, date.fromisoformat(g["to"]), as_of):
             return {"status": GAP, "gap": g, **base}
