@@ -16,8 +16,12 @@ COPY services/app/app services/app/app
 COPY packages/models/hukuk_models packages/models/hukuk_models
 COPY packages/ingest/hukuk_ingest packages/ingest/hukuk_ingest
 COPY packages/verify/hukuk_verify packages/verify/hukuk_verify
+# The uv cache mount persists on the deploy host and keys a local package on its pyproject only:
+# without --reinstall-package a source change shipped the previous build (2026-10-08).
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-editable --package hukuk-app
+    uv sync --frozen --no-dev --no-editable --package hukuk-app \
+        --reinstall-package hukuk-app --reinstall-package hukuk-models \
+        --reinstall-package hukuk-ingest --reinstall-package hukuk-verify
 
 FROM python:3.12-slim-bookworm
 # No proxy is trusted for X-Forwarded-For unless FORWARDED_ALLOW_IPS names it (login rate limit).

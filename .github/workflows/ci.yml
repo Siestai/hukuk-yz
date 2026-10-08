@@ -56,6 +56,17 @@ jobs:
         run: |
           docker run --rm hukuk-app:ci alembic --help > /dev/null
           docker run --rm hukuk-app:ci uvicorn --version
+      - name: Image carries the checked-out source (no stale uv cache)
+        run: |
+          for pair in services/app/app:app packages/models/hukuk_models:hukuk_models \
+              packages/ingest/hukuk_ingest:hukuk_ingest packages/verify/hukuk_verify:hukuk_verify; do
+            src=${pair%%:*}; pkg=${pair##*:}
+            want=$(cd "$src" && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum)
+            got=$(docker run --rm --entrypoint sh hukuk-app:ci -c \
+              "cd /app/.venv/lib/python3.12/site-packages/$pkg && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum")
+            echo "$pkg $want / $got"
+            test "$want" = "$got"
+          done
       - name: Image is under 300MB
         run: |
           size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
