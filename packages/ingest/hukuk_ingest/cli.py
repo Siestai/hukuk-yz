@@ -16,6 +16,8 @@ from typing import Any
 from hukuk_ingest.decisions.run import run as parse_decisions
 from hukuk_ingest.pipeline import FileResult, error_result, process_file
 from hukuk_ingest.report import build_summary, dump_json, render_markdown
+from hukuk_ingest.statutes.acts import DEFAULT_ACTS, load_acts
+from hukuk_ingest.statutes.run import run as build_statutes
 
 Work = Callable[[Path], FileResult]
 
@@ -135,7 +137,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     dp.add_argument("--out", type=Path, required=True, help="report directory")
     dp.add_argument("--workers", type=int, default=os.cpu_count() or 1)
     dp.add_argument("--issue", type=int, help="only this journal issue")
+    st = sub.add_parser("statutes", help="split statute snapshots and build article timelines")
+    st.add_argument("--scan-report", type=Path, required=True, help="files.jsonl of `scan`")
+    st.add_argument("--text-cache", type=Path, default=Path("data/extracted"))
+    st.add_argument("--raw-dir", type=Path, default=Path("data/drive"), help="archive root")
+    st.add_argument("--acts", type=Path, default=DEFAULT_ACTS, help="amending_acts.toml")
+    st.add_argument("--out", type=Path, required=True, help="report directory")
     args = parser.parse_args(argv)
+    if args.command == "statutes":
+        for path in (args.scan_report, args.acts):
+            if not path.is_file():
+                parser.error(f"not a file: {path}")
+        records, summary = build_statutes(
+            args.scan_report, args.text_cache, args.raw_dir, load_acts(args.acts), args.out
+        )
+        print(
+            f"{len(records)} statutes, {sum(law['versions'] for law in summary['laws'])} versions, "
+            f"{sum(len(law['overlaps']) for law in summary['laws'])} overlaps "
+            f"in {summary['seconds']} s"
+        )
+        return 0
     if args.workers < 1:
         parser.error("--workers must be >= 1")
     if args.command == "decisions":
