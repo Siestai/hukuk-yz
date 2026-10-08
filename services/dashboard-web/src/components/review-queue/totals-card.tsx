@@ -1,16 +1,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import Link from "next/link";
 import { HelpTip } from "@/components/help-tip";
-import { queueHref, tabParams } from "@/lib/queue-params";
+import { stateHref, stateTab, type QueueState } from "@/lib/queue-state";
 import { useFormatter, useTranslations } from "next-intl";
 
-const tab = (status: "approved" | "rejected") =>
-    queueHref(tabParams({ sort: "score_asc", page: 1 }, status));
+const DECISIONS: QueueState = { sort: "score_asc", page: 1 };
 const linkClass =
     "inline-flex items-center text-ink-2 underline-offset-2 hover:underline pointer-coarse:min-h-11";
 
 /** The results of the reviews so far; each count leads to its tab of the list. */
-export function TotalsCard({ approved, rejected }: { approved: number; rejected: number }) {
+export function TotalsCard({
+    approved,
+    rejected,
+    params = DECISIONS,
+}: {
+    approved: number;
+    rejected: number;
+    /** The queue whose tabs the counts lead to (the decision queue by default). */
+    params?: QueueState;
+}) {
+    const tab = (status: "approved" | "rejected") => stateHref(stateTab(params, status));
     const t = useTranslations("review.queue.summary");
     const format = useFormatter();
     return (

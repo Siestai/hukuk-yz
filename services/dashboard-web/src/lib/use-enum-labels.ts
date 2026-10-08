@@ -35,6 +35,20 @@ export function useEnumLabels() {
             return `${label("warning", warningCode(value))}${detail}`;
         },
         isKnownWarning: (value: string) => t.has(`enums.warning.${warningCode(value)}`),
+        // Statute timelines (task 11): a reason is a short name, a warning (also the reason of a
+        // gap) a sentence in plain words. Both may carry a detail after a colon.
+        statuteReason: (value: string) => label("statuteReason", value),
+        isKnownStatuteReason: (value: string) => t.has(`enums.statuteReason.${value}`),
+        statuteWarning: (value: string) => {
+            const detail = value.slice(warningCode(value).length);
+            return `${label("statuteWarning", warningCode(value))}${detail}`;
+        },
+        isKnownStatuteWarning: (value: string) =>
+            t.has(`enums.statuteWarning.${warningCode(value)}`),
+        statuteStatus: (value: string) => label("statuteStatus", value),
+        changeKind: (value: string) => label("changeKind", value),
+        evidenceBasis: (value: string) => label("evidenceBasis", value),
+        amendmentKind: (value: string) => label("amendmentKind", value),
         reasonCodes: Object.keys(messages.enums.reason),
     };
 }

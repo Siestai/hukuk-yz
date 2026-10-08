@@ -3,13 +3,8 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
 import { HelpTip } from "@/components/help-tip";
-import {
-    BANDS,
-    changeQueueParams,
-    queueHref,
-    type Band,
-    type QueueParams,
-} from "@/lib/queue-params";
+import { BANDS, type Band } from "@/lib/queue-params";
+import { changeState, isStatuteState, stateHref, type QueueState } from "@/lib/queue-state";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
 const BAR_HEIGHT = 4;
@@ -36,7 +31,7 @@ export function BandDistribution({
     params,
 }: {
     counts: Record<Band, number>;
-    params: QueueParams;
+    params: QueueState;
 }) {
     const t = useTranslations("review.queue.summary");
     const format = useFormatter();
@@ -56,7 +51,11 @@ export function BandDistribution({
             <CardContent className="grid gap-4">
                 <svg
                     role="img"
-                    aria-label={t("bandChart", { details })}
+                    aria-label={
+                        isStatuteState(params)
+                            ? t("bandChartStatute", { details })
+                            : t("bandChart", { details })
+                    }
                     viewBox={`0 0 100 ${BAR_HEIGHT}`}
                     preserveAspectRatio="none"
                     className="h-3 w-full rounded-sm"
@@ -78,8 +77,8 @@ export function BandDistribution({
                         return (
                             <Link
                                 key={band}
-                                href={queueHref(
-                                    changeQueueParams(params, { band: active ? undefined : band }),
+                                href={stateHref(
+                                    changeState(params, { band: active ? undefined : band }),
                                 )}
                                 aria-current={active ? "true" : undefined}
                                 className={cn(

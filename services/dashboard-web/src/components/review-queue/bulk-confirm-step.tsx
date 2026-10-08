@@ -4,15 +4,22 @@ import { Badge, Button, DialogActions } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import type { QueueParams } from "@/lib/queue-params";
+import { isStatuteState, type QueueState } from "@/lib/queue-state";
 import { useCommon } from "@/lib/use-common";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 import { BulkConfirmCheck } from "./bulk-confirm-check";
 
-export type BulkSample = { id: string; title: string; esasNo: string; kararNo: string };
+/** A record shown as an example: decisions by their numbers, articles by a `note` line. */
+export type BulkSample = {
+    id: string;
+    title: string;
+    esasNo: string;
+    kararNo: string;
+    note?: string;
+};
 
 type Props = {
-    params: QueueParams;
+    params: QueueState;
     total: number;
     sample: BulkSample[];
     onStart: () => void;
@@ -25,20 +32,26 @@ export function BulkConfirmStep({ params, total, sample, onStart, onCancel }: Pr
     const { empty, separator } = useCommon();
     const [checked, setChecked] = useState(false);
 
+    const statute = isStatuteState(params);
     const filters = [
         t("filters.band", { value: labels.band("high") }),
-        params.court ? t("filters.court", { value: labels.court(params.court) }) : null,
-        params.reason ? t("filters.reason", { value: labels.reason(params.reason) }) : null,
-        params.journalIssue ? t("filters.issue", { value: params.journalIssue }) : null,
-        params.q ? t("filters.q", { value: params.q }) : null,
+        statute ? t("filters.statute", { value: params.statute }) : null,
+        !statute && params.court ? t("filters.court", { value: labels.court(params.court) }) : null,
+        !statute && params.reason
+            ? t("filters.reason", { value: labels.reason(params.reason) })
+            : null,
+        !statute && params.journalIssue ? t("filters.issue", { value: params.journalIssue }) : null,
+        !statute && params.q ? t("filters.q", { value: params.q }) : null,
     ].filter((filter) => filter !== null);
     const numbers = (item: BulkSample) =>
-        [
+        item.note ??
+        ([
             item.esasNo && t("esas", { value: item.esasNo }),
             item.kararNo && t("karar", { value: item.kararNo }),
         ]
             .filter(Boolean)
-            .join(separator) || empty;
+            .join(separator) ||
+            empty);
 
     return (
         <div className="grid gap-4">
@@ -46,8 +59,10 @@ export function BulkConfirmStep({ params, total, sample, onStart, onCancel }: Pr
                 <p className="text-sm text-ink-2">{t("none")}</p>
             ) : (
                 <>
-                    <p className="text-3xl font-semibold text-ink">{t("count", { total })}</p>
-                    <p className="text-sm text-ink-2">{t("intro")}</p>
+                    <p className="text-3xl font-semibold text-ink">
+                        {statute ? t("countStatute", { total }) : t("count", { total })}
+                    </p>
+                    <p className="text-sm text-ink-2">{statute ? t("introStatute") : t("intro")}</p>
                 </>
             )}
             <section aria-label={t("filtersLabel")}>
@@ -79,7 +94,9 @@ export function BulkConfirmStep({ params, total, sample, onStart, onCancel }: Pr
             ) : null}
             {total > 0 ? (
                 <>
-                    <p className="text-sm text-ink-2">{t("unverified")}</p>
+                    <p className="text-sm text-ink-2">
+                        {statute ? t("unverifiedStatute") : t("unverified")}
+                    </p>
                     <BulkConfirmCheck count={total} checked={checked} onChange={setChecked} />
                 </>
             ) : null}

@@ -12,7 +12,16 @@ import type { Notice } from "@/lib/queue-params";
  * one-off: once shown it is taken out of the URL (the other params stay), and the server-rendered
  * counts (summary, side-nav badge) are refreshed here, on the screen the action led to.
  */
-export function FlashStatus({ notice, atQueue }: { notice: Notice; atQueue: boolean }) {
+export function FlashStatus({
+    notice,
+    atQueue,
+    subject = "decision",
+}: {
+    notice: Notice;
+    atQueue: boolean;
+    /** What the action was done to: decides the wording of the message. */
+    subject?: "decision" | "statute";
+}) {
     const t = useTranslations("review.queue");
     const router = useRouter();
     const [text, setText] = useState("");
@@ -21,7 +30,10 @@ export function FlashStatus({ notice, atQueue }: { notice: Notice; atQueue: bool
     const finished = atQueue && notice.done;
 
     useEffect(() => {
-        const message = [flash ? t(`flash.${flash}`) : null, finished ? t("done") : null]
+        const message = [
+            flash ? t(`${subject === "statute" ? "flashStatute" : "flash"}.${flash}`) : null,
+            finished ? t("done") : null,
+        ]
             .filter(Boolean)
             .join(" ");
         if (!message || shown.current === message) return;
@@ -37,7 +49,7 @@ export function FlashStatus({ notice, atQueue }: { notice: Notice; atQueue: bool
             `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
         );
         if (flash) router.refresh();
-    }, [flash, finished, router, t]);
+    }, [flash, finished, router, subject, t]);
 
     return (
         <div

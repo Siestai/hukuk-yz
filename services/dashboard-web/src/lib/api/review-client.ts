@@ -1,7 +1,9 @@
 import { apiError } from "./errors";
 import type { createApiClient } from "./client";
 import type { components } from "./schema";
-import { apiQuery, type QueueParams } from "@/lib/queue-params";
+import { apiQuery } from "@/lib/queue-params";
+import { isStatuteState, type QueueState } from "@/lib/queue-state";
+import { statuteApiQuery } from "@/lib/statute-queue-params";
 
 type Api = ReturnType<typeof createApiClient>;
 type Answer<T> = { data?: T; error?: unknown };
@@ -43,15 +45,58 @@ export function postBulkApprove(api: Api, body: components["schemas"]["BulkAppro
     return unwrap(api.POST("/review/decisions/bulk-approve", { body }));
 }
 
-/** The record at an absolute index of the queue, or null past its end. */
-async function recordAt(api: Api, queue: QueueParams, pos: number): Promise<string | null> {
-    if (pos < 0) return null;
-    const list = await unwrap(
-        api.GET("/review/decisions", {
-            params: { query: { ...apiQuery(queue), limit: 1, offset: pos } },
+export type StatuteReviewAction = components["schemas"]["StatuteReviewActionRequest"];
+
+/** An article is approved or rejected, never edited: the timeline is not changed on screen. */
+export function postStatuteReview(api: Api, extractionId: string, body: StatuteReviewAction) {
+    return unwrap(
+        api.POST("/review/statutes/{extraction_id}", {
+            params: { path: { extraction_id: extractionId } },
+            body,
         }),
     );
-    return list.items[0]?.extraction_id ?? null;
+}
+
+export function postStatuteBulkApprove(
+    api: Api,
+    body: components["schemas"]["StatuteBulkApproveRequest"],
+) {
+    return unwrap(api.POST("/review/statutes/bulk-approve", { body }));
+}
+
+/** The review action of a record in the queue of `queue` (decision or statute article). */
+export function postReviewIn(
+    api: Api,
+    queue: QueueState,
+    extractionId: string,
+    body: ReviewAction,
+) {
+    if (!isStatuteState(queue)) return postReview(api, extractionId, body);
+    const { action, note } = body;
+    if (action === "edit") throw new Error("a statute article is not edited");
+    return postStatuteReview(api, extractionId, { action, note });
+}
+
+/** The ids of one page of a queue: its own window, or the one at `window` (limit and offset). */
+async function listIds(
+    api: Api,
+    queue: QueueState,
+    window?: { limit: number; offset: number },
+): Promise<{ ids: string[]; offset: number }> {
+    if (isStatuteState(queue)) {
+        const query = { ...statuteApiQuery(queue), ...window };
+        const list = await unwrap(api.GET("/review/statutes", { params: { query } }));
+        return { ids: list.items.map((item) => item.extraction_id), offset: query.offset };
+    }
+    const query = { ...apiQuery(queue), ...window };
+    const list = await unwrap(api.GET("/review/decisions", { params: { query } }));
+    return { ids: list.items.map((item) => item.extraction_id), offset: query.offset };
+}
+
+/** The record at an absolute index of the queue, or null past its end. */
+async function recordAt(api: Api, queue: QueueState, pos: number): Promise<string | null> {
+    if (pos < 0) return null;
+    return (await listIds(api, queue, { limit: 1, offset: pos })).ids[0] ?? null;
 }
 
 /**
@@ -62,15 +107,14 @@ async function recordAt(api: Api, queue: QueueParams, pos: number): Promise<stri
  */
 export async function locate(
     api: Api,
-    queue: QueueParams,
+    queue: QueueState,
     extractionId: string,
     pos: number | undefined,
 ): Promise<number | null> {
     if (pos !== undefined && (await recordAt(api, queue, pos)) === extractionId) return pos;
-    const query = apiQuery(queue);
-    const list = await unwrap(api.GET("/review/decisions", { params: { query } }));
-    const index = list.items.findIndex((item) => item.extraction_id === extractionId);
-    return index < 0 ? null : query.offset + index;
+    const { ids, offset } = await listIds(api, queue);
+    const index = ids.indexOf(extractionId);
+    return index < 0 ? null : offset + index;
 }
 
 export type Neighbour = { id: string; pos: number };
@@ -80,7 +124,7 @@ export type Move = ({ kind: "record" } & Neighbour) | { kind: "edge" } | { kind:
 /** The record after (`1`) or before (`-1`) this one in a queue state; it must still be in the queue. */
 export async function neighbour(
     api: Api,
-    queue: QueueParams,
+    queue: QueueState,
     extractionId: string,
     pos: number | undefined,
     step: -1 | 1,
@@ -97,7 +141,7 @@ export async function neighbour(
  */
 export async function nextAfter(
     api: Api,
-    queue: QueueParams,
+    queue: QueueState,
     at: number,
 ): Promise<Neighbour | null> {
     for (const pos of at === 0 ? [0] : [at, 0]) {

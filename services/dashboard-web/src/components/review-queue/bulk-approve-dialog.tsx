@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { RefObject } from "react";
 
-import { bulkFilters } from "@/lib/bulk-approve";
-import type { QueueParams } from "@/lib/queue-params";
+import type { QueueState } from "@/lib/queue-state";
 import { useBulkApprove } from "@/lib/use-bulk-approve";
 import { BulkConfirmStep, type BulkSample } from "./bulk-confirm-step";
 import { BulkHaltedStep } from "./bulk-halted-step";
@@ -16,7 +15,7 @@ import { BulkRunStep } from "./bulk-run-step";
 type Props = {
     onClose: () => void;
     returnFocusTo: RefObject<HTMLElement | null>;
-    params: QueueParams;
+    params: QueueState;
     /** The `total` of the list response for these filters: the number on screen. */
     total: number;
     /** The first records of that list. */
@@ -30,7 +29,7 @@ type Props = {
 export function BulkApproveDialog({ onClose, returnFocusTo, params, total, sample }: Props) {
     const t = useTranslations("review.bulk");
     const router = useRouter();
-    const run = useBulkApprove({ filters: bulkFilters(params), total });
+    const run = useBulkApprove({ params, total });
 
     function close() {
         if (run.phase !== "confirm") router.refresh();

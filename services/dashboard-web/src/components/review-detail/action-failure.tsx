@@ -46,7 +46,7 @@ export function ActionFailure({ failure }: { failure: Failure }) {
     const t = useTranslations("review.actions");
     const message = useErrorMessage();
     const router = useRouter();
-    const { queueHref } = useReviewSession();
+    const { queueHref, subject } = useReviewSession();
     const conflicting = failure.params.decision_id;
     return (
         <div
@@ -85,7 +85,7 @@ export function ActionFailure({ failure }: { failure: Failure }) {
                     ) : null}
                 </p>
             ) : failure.code === "validation_error" && failedFields(failure).length === 0 ? (
-                <p>{t("publishRefused")}</p>
+                <p>{subject === "statute" ? t("publishRefusedStatute") : t("publishRefused")}</p>
             ) : (
                 <p>{message(failure.code, failure.params)}</p>
             )}

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import type { QueueParams } from "@/lib/queue-params";
+import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import { renderWithIntl } from "@/test/intl";
 import { BulkApproveDialog } from "./bulk-approve-dialog";
 import type { BulkSample } from "./bulk-confirm-step";
@@ -331,5 +332,82 @@ describe("BulkApproveDialog report", () => {
         await user.click(await screen.findByRole("button", { name: bulk.report.close }));
         expect(refresh).toHaveBeenCalledOnce();
         expect(onClose).toHaveBeenCalledOnce();
+    });
+});
+
+describe("BulkApproveDialog on the statute queue", () => {
+    const statutes: StatuteQueueParams = {
+        kind: "statute",
+        statute: "5510",
+        band: "high",
+        page: 1,
+    };
+    const articles: BulkSample[] = [
+        { id: ID(1), title: "m. 18 · Fesih", esasNo: "", kararNo: "", note: "3 sürüm · 1 boşluk" },
+    ];
+
+    function setupStatutes(total = 120, state: StatuteQueueParams = statutes) {
+        renderWithIntl(
+            <BulkApproveDialog
+                onClose={vi.fn()}
+                returnFocusTo={{ current: null }}
+                params={state}
+                total={total}
+                sample={articles}
+            />,
+        );
+        return userEvent.setup();
+    }
+
+    it("words the confirmation for articles: count, statute, examples, and no decision verification note", () => {
+        setupStatutes();
+        expect(within(dialog()).getByText("120 madde")).toBeInTheDocument();
+        expect(within(dialog()).getByText(bulk.introStatute)).toBeInTheDocument();
+        expect(within(dialog()).getByText("Kanun: 5510")).toBeInTheDocument();
+        expect(within(dialog()).getByText("Güven: Yüksek")).toBeInTheDocument();
+        expect(within(dialog()).getByText("m. 18 · Fesih")).toBeInTheDocument();
+        expect(within(dialog()).getByText("3 sürüm · 1 boşluk")).toBeInTheDocument();
+        expect(within(dialog()).getByText(bulk.unverifiedStatute)).toBeInTheDocument();
+        expect(within(dialog()).queryByText(bulk.unverified)).not.toBeInTheDocument();
+    });
+
+    it("shows no search line: the statute scope knows no search", () => {
+        setupStatutes(120, { ...statutes, q: "fesih" });
+        expect(within(dialog()).getByText("Kanun: 5510")).toBeInTheDocument();
+        expect(within(dialog()).queryByText(/Arama/)).not.toBeInTheDocument();
+    });
+
+    it("runs the same loop against the statute endpoint with the statute as its scope", async () => {
+        POST.mockResolvedValueOnce(
+            done({ published: 100, remaining: 20, next_cursor: ID(1) }),
+        ).mockResolvedValueOnce(done({ published: 20, conflicts: [ID(7)] }));
+        const user = setupStatutes();
+        await user.click(checkbox());
+        await user.click(start());
+
+        await screen.findByRole("button", { name: bulk.report.close });
+        expect(POST.mock.calls.map(([path]) => path)).toEqual([
+            "/review/statutes/bulk-approve",
+            "/review/statutes/bulk-approve",
+        ]);
+        const bodies = POST.mock.calls.map(([, init]) => init.body);
+        expect(bodies[0]).toEqual({
+            band: "high",
+            statute: "5510",
+            expected_count: 120,
+            limit: 100,
+        });
+        expect(bodies[1]).toEqual({
+            band: "high",
+            statute: "5510",
+            expected_count: 20,
+            limit: 100,
+            cursor: ID(1),
+        });
+        // A conflict in the report leads to the statute detail screen with the queue state.
+        expect(screen.getByRole("link", { name: ID(7) })).toHaveAttribute(
+            "href",
+            `/mevzuat/${ID(7)}?kanun=5510&band=high`,
+        );
     });
 });

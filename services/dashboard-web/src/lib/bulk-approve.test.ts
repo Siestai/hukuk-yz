@@ -40,7 +40,7 @@ function run(
     const go = (state = startState(total)) =>
         runBulk({
             request,
-            filters: { court: "bam" },
+            scope: { filters: { court: "bam" } },
             state,
             onProgress,
             shouldStop: () => request.mock.calls.length >= stopAfter,
@@ -218,7 +218,7 @@ describe("runBulk", () => {
         const request = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
         const { end } = await runBulk({
             request,
-            filters: {},
+            scope: { filters: {} },
             state: startState(3),
             onProgress: vi.fn(),
             shouldStop: () => false,

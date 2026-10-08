@@ -18,11 +18,18 @@ import {
     locate,
     neighbour,
     nextAfter,
-    postReview,
+    postReviewIn,
     type ReviewAction,
 } from "@/lib/api/review-client";
 import type { DecisionEdits } from "@/lib/decision-edits";
-import { detailHref, queueHref, statusOf, type Flash, type QueueParams } from "@/lib/queue-params";
+import type { Flash } from "@/lib/queue-params";
+import {
+    isStatuteState,
+    stateDetailHref,
+    stateHref,
+    stateStatus,
+    type QueueState,
+} from "@/lib/queue-state";
 
 /** How long a screen change may take before the session gives up waiting for it. */
 export const NAVIGATION_TIMEOUT_MS = 10_000;
@@ -40,6 +47,8 @@ type Session = {
     /** Which request it is, for the button that started it. */
     pending: Pending | null;
     failure: Failure | null;
+    /** What the record is, for the texts that name it. */
+    subject: "decision" | "statute";
     /** The queue list in the state this record was opened from. */
     queueHref: string;
     /** A move that found nothing: there is no next / previous record. */
@@ -57,7 +66,7 @@ const SessionContext = createContext<Session | null>(null);
 
 type Props = {
     extractionId: string;
-    queue: QueueParams;
+    queue: QueueState;
     /** The record's index in the queue, from the link that led here. */
     pos: number | undefined;
     canAct: boolean;
@@ -65,7 +74,7 @@ type Props = {
 };
 
 /**
- * The review actions of one record. Before acting, the record's index in the queue is verified
+ * The review actions of one record (a decision or a statute article, by the kind of `queue`). Before acting, the record's index in the queue is verified
  * (`locate`). After an action the screen moves on to the NEXT pending record of the same queue
  * state: the acted-on record has left the queue, so the record that now sits at its old index is
  * the next one, or the top of the queue if it was the last. Opened from another tab than the
@@ -84,7 +93,7 @@ export function ReviewProvider({ extractionId, queue, pos, canAct, children }: P
     const [edge, setEdge] = useState<Session["edge"]>(null);
     const running = useRef(false);
     const stalled = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-    const toQueue = queueHref(queue);
+    const toQueue = stateHref(queue);
 
     useEffect(() => () => clearTimeout(stalled.current), []);
 
@@ -136,20 +145,20 @@ export function ReviewProvider({ extractionId, queue, pos, canAct, children }: P
         return guarded(kind, async () => {
             // Only the queue shrinks with an action. In another tab the record stays in the list
             // (as another status), so there is no "next pending" index: back to that tab's list.
-            if (statusOf(queue) !== "pending") {
-                await postReview(api, extractionId, body);
-                go(queueHref(queue, { flash }));
+            if (stateStatus(queue) !== "pending") {
+                await postReviewIn(api, queue, extractionId, body);
+                go(stateHref(queue, { flash }));
                 return;
             }
             // Verified before the record leaves the queue; without it there is no "next" to compute.
             const at = await locate(api, queue, extractionId, pos).catch(() => null);
-            await postReview(api, extractionId, body);
+            await postReviewIn(api, queue, extractionId, body);
             // The action went through: a failed lookup from here on must not pass as "finished".
             const next =
                 at === null ? undefined : await nextAfter(api, queue, at).catch(() => undefined);
-            if (next === undefined) go(queueHref(queue, { flash }));
-            else if (next === null) go(queueHref(queue, { flash, done: true }));
-            else go(detailHref(next.id, queue, { pos: next.pos, flash }));
+            if (next === undefined) go(stateHref(queue, { flash }));
+            else if (next === null) go(stateHref(queue, { flash, done: true }));
+            else go(stateDetailHref(next.id, queue, { pos: next.pos, flash }));
         });
     }
 
@@ -159,6 +168,7 @@ export function ReviewProvider({ extractionId, queue, pos, canAct, children }: P
         busy: pending !== null,
         pending,
         failure,
+        subject: isStatuteState(queue) ? "statute" : "decision",
         queueHref: toQueue,
         edge,
         startEdit: () => {
@@ -187,7 +197,7 @@ export function ReviewProvider({ extractionId, queue, pos, canAct, children }: P
                 } else {
                     go(
                         found.kind === "record"
-                            ? detailHref(found.id, queue, { pos: found.pos })
+                            ? stateDetailHref(found.id, queue, { pos: found.pos })
                             : toQueue,
                     );
                 }

@@ -11,6 +11,12 @@ import {
     type QueueItemFormat,
 } from "./queue-item-format";
 
+/** What the reason chips need to word a record's reasons; both queues format them this way. */
+export type ReasonFormat = Pick<
+    QueueItemFormat,
+    "isKnownReason" | "unknownReasonLabel" | "reason" | "reasonHelp" | "count"
+>;
+
 /** How many reasons a card shows by name; the rest is a count. The table shows fewer (`max`). */
 const MAX_REASON_CHIPS = 2;
 
@@ -83,8 +89,8 @@ export function ReasonChips({
     wrap = false,
     max = MAX_REASON_CHIPS,
 }: {
-    item: QueueItem;
-    format: QueueItemFormat;
+    item: { reasons: string[] };
+    format: ReasonFormat;
     wrap?: boolean;
     max?: number;
 }) {

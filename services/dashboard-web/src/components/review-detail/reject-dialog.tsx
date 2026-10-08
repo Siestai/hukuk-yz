@@ -22,7 +22,7 @@ export function RejectDialog({ open, onClose, returnFocusTo }: Props) {
         <Dialog
             open={open}
             onClose={onClose}
-            title={t("title")}
+            title={session.subject === "statute" ? t("titleStatute") : t("title")}
             dismissible={!session.busy}
             returnFocusTo={returnFocusTo}
         >

@@ -4,6 +4,7 @@ import { Input } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useEffect, useEffectEvent, useState } from "react";
 
+import type { QueueState } from "@/lib/queue-state";
 import { useQueueNavigation } from "./queue-navigation";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -11,7 +12,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 /** The `q` box: typing updates the URL after a pause (replace), Enter at once (push). */
 export function SearchBox({ id }: { id: string }) {
     const t = useTranslations("review.queue.filters");
-    const { params, navigate } = useQueueNavigation();
+    const { params, navigate } = useQueueNavigation<QueueState>();
     const urlValue = params.q ?? "";
     const [text, setText] = useState(urlValue);
     // Values this box wrote to the URL that the URL has not shown yet, oldest first, and the last

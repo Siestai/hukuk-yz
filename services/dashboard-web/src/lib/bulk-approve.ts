@@ -1,10 +1,17 @@
 import { ApiFailure } from "@/lib/api/review-client";
 import type { components } from "@/lib/api/schema";
 import { apiQuery, type QueueParams } from "@/lib/queue-params";
+import { isStatuteState, type QueueState } from "@/lib/queue-state";
 
 export type BulkRequest = components["schemas"]["BulkApproveRequest"];
 export type BulkResponse = components["schemas"]["BulkApproveResponse"];
 export type BulkFilters = NonNullable<BulkRequest["filters"]>;
+export type StatuteBulkRequest = components["schemas"]["StatuteBulkApproveRequest"];
+
+/** What the run covers: the list filters of decisions, or the statute of articles. */
+export type BulkScope = { filters: BulkFilters } | { statute: string };
+export type BulkBody = (Omit<BulkRequest, "filters"> | Omit<StatuteBulkRequest, "statute">) &
+    BulkScope;
 
 /** How many records one call may take; the API's ceiling. */
 export const BULK_LIMIT = 100;
@@ -13,6 +20,11 @@ export const BULK_LIMIT = 100;
 export function bulkFilters(params: QueueParams): BulkFilters {
     const { court, reason, journal_issue, q } = apiQuery(params);
     return { court, reason, journal_issue, q };
+}
+
+/** The scope of a bulk run over the queue state: its filters (decisions) or its statute (articles). */
+export function bulkScope(state: QueueState): BulkScope {
+    return isStatuteState(state) ? { statute: state.statute } : { filters: bulkFilters(state) };
 }
 
 /**
@@ -85,9 +97,9 @@ function uniqueFailures(
 }
 
 type Run = {
-    /** One call of `POST /review/decisions/bulk-approve`; it throws `ApiFailure` when refused. */
-    request: (body: BulkRequest) => Promise<BulkResponse>;
-    filters: BulkFilters;
+    /** One call of the queue's bulk-approve endpoint; it throws `ApiFailure` when refused. */
+    request: (body: BulkBody) => Promise<BulkResponse>;
+    scope: BulkScope;
     state: BulkState;
     onProgress: (state: BulkState) => void;
     /** Asked between calls only: a call that has gone out is never abandoned. */
@@ -101,7 +113,7 @@ type Run = {
  */
 export async function runBulk({
     request,
-    filters,
+    scope,
     state,
     onProgress,
     shouldStop,
@@ -114,7 +126,7 @@ export async function runBulk({
         try {
             answer = await request({
                 band: "high",
-                filters,
+                ...scope,
                 expected_count: current.expected,
                 limit: BULK_LIMIT,
                 ...(current.cursor ? { cursor: current.cursor } : {}),
