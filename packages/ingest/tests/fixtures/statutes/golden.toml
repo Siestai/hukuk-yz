@@ -1,0 +1,591 @@
+# Golden point-in-time article queries: 4857 and 5510
+# snapshots: 4857old=13.05.2016 docx; 4857new=latest PDF; 5510: 04.10.2017, 08.01.2018, 14.07.2020, 17.07.2024, 24.11.2025
+
+[[query]]
+statute = "4857"
+article = "20"
+as_of = 2017-06-01
+expect = "found"
+contains = "bir ay içinde iş mahkemesinde dava açabilir"
+not_contains = "arabulucuya"
+source = "2016 docx m.20 has no dated annotation (original). Latest PDF m.20: '(Değişik birinci fıkra: 12/10/2017-7036/11 md.)', the only amending law with kabul in (13.05.2016, 2026]. PDF yürürlük table: 7036 -> m.20, 21 in force 1/1/2018. 2017-06-01 is before that, so the 2016 text applies."
+
+[[query]]
+statute = "4857"
+article = "20"
+as_of = 2017-11-15
+expect = "found"
+contains = "bir ay içinde iş mahkemesinde dava açabilir"
+not_contains = "arabulucuya"
+source = "Per-article date check: PDF table says 7036 m.91,92,Ek 3,Geçici 8 entered force 25/10/2017 but m.20,21 only on 1/1/2018. 7036 was already published on 2017-11-15 yet m.20 still has the old text. Tests per-article yürürlük (not RG date)."
+
+[[query]]
+statute = "4857"
+article = "20"
+as_of = 2019-01-01
+expect = "found"
+contains = "hükümleri uyarınca arabulucuya başvurmak"
+not_contains = "iş mahkemesinde dava açabilir"
+source = "Latest PDF m.20 after 7036/11 (in force 1/1/2018). Latest snapshot -> valid_to null."
+
+[[query]]
+statute = "4857"
+article = "21"
+as_of = 2019-01-01
+expect = "found"
+contains = "ücreti esas alarak parasal olarak belirler"
+source = "Latest PDF m.21 carries '(Ek fıkra: 12/10/2017-7036/12 md.)' (dava tarihindeki ücreti esas alarak ... belirler); absent from 2016 docx. Only one new law; m.21 in force 1/1/2018 (PDF table)."
+
+[[query]]
+statute = "4857"
+article = "21"
+as_of = 2017-06-01
+expect = "found"
+contains = "işçiyi bir ay içinde işe başlatmak zorundadır"
+not_contains = "ücreti esas alarak parasal olarak belirler"
+source = "2016 docx m.21 lacks the 7036/12 fıkra; valid until 1/1/2018."
+
+[[query]]
+statute = "4857"
+article = "91"
+as_of = 2018-06-01
+expect = "found"
+contains = "devam etmesi kaydıyla"
+source = "Latest PDF m.91: '(Ek fıkra: 13/2/2011-6111/77 md.; Değişik fıkra: 12/10/2017-7036/13 md.)'. 2016 docx has only the 6111 version (bölge müdürlüklerince incelenir). PDF table: 7036 -> m.91 in force 25/10/2017; 2018-06-01 is safely after."
+
+[[query]]
+statute = "4857"
+article = "91"
+as_of = 2016-12-01
+expect = "found"
+contains = "bölge müdürlüklerince incelenir"
+not_contains = "devam etmesi kaydıyla"
+source = "2016 docx m.91 text (6111/77); one new amending law 7036 (kabul 12/10/2017, in force 25/10/2017) so 2016 text valid until then."
+
+[[query]]
+statute = "4857"
+article = "91"
+as_of = 2010-01-01
+expect = "gap"
+source = "2016 docx m.91 is annotated '(Ek fıkra: 13/2/2011-6111/77 md.)' (6111 RG 25/2/2011). Earliest snapshot with annotation -> before the newest annotation's yürürlük the text is unknown => gap."
+
+[[query]]
+statute = "4857"
+article = "64"
+as_of = 2019-01-01
+expect = "found"
+contains = "işveren iki ay içinde çalışılmayan süreler için telafi"
+not_contains = "Cumhurbaşkanı bu süreyi"
+source = "2016 docx m.64 has no annotation (original). Latest PDF adds '(Ek cümle:25/3/2020-7226/43 md.)' (iki -> dört ay). PDF table: 7226 -> m.64 in force 26/3/2020; 2019-01-01 earlier."
+
+[[query]]
+statute = "4857"
+article = "64"
+as_of = 2021-01-01
+expect = "found"
+contains = "işveren dört ay içinde çalışılmayan süreler için telafi"
+not_contains = "işveren iki ay içinde"
+source = "Latest PDF m.64 after 7226/43 (in force 26/3/2020)."
+
+[[query]]
+statute = "4857"
+article = "74"
+as_of = 2020-01-01
+expect = "found"
+contains = "toplam onaltı haftalık süre için"
+not_contains = "yirmidört haftalık"
+source = "2016 docx m.74 (newest annotation 6663/22, in force 10/2/2016). Latest PDF adds '(Ek cümle:22/4/2026-7578/15 md.)' + footnote 'doğumdan sonra sekiz -> onaltı, toplam onaltı -> yirmidört'. PDF table: 7578 -> m.74, Ek 2 in force 1/5/2026. Single new law, so the old text holds through 2020."
+
+[[query]]
+statute = "4857"
+article = "74"
+as_of = 2026-08-01
+expect = "found"
+contains = "toplam yirmidört haftalık süre için"
+not_contains = "toplam onaltı haftalık"
+source = "Latest PDF m.74 after 7578/15, in force 1/5/2026; 2026-08-01 after it. Latest snapshot valid_to null."
+
+[[query]]
+statute = "4857"
+article = "74"
+as_of = 2013-01-01
+expect = "gap"
+source = "2016 docx m.74 annotated 6111/76 (2011) and 6663/22 (kabul 29/1/2016; PDF table: m.13,74 in force 10/2/2016). Newest annotation's yürürlük is 10/2/2016; earlier text unknown => gap."
+
+[[query]]
+statute = "4857"
+article = "108"
+as_of = 2020-01-01
+expect = "found"
+contains = "Bölge Müdürünce verilir"
+not_contains = "Çalışma ve İş Kurumu"
+source = "2016 docx m.108 text; latest PDF '(Değişik:10/7/2025-7553/10 md.)' is the only new law; PDF table 7553 -> m.46, 108 in force 14/7/2025."
+
+[[query]]
+statute = "4857"
+article = "108"
+as_of = 2025-12-01
+expect = "found"
+contains = "Çalışma ve İş Kurumu il müdürünce verilir"
+not_contains = "Bölge Müdürünce verilir"
+source = "Latest PDF m.108 after 7553/10 (in force 14/7/2025)."
+
+[[query]]
+statute = "4857"
+article = "109"
+as_of = 2020-01-01
+expect = "found"
+contains = "imza karşılığında yapılması gerekir"
+not_contains = "kayıtlı elektronik posta"
+source = "2016 docx m.109 has no annotation (original). Latest PDF '(Başlığı ile Birlikte Değişik:20/7/2025-7555/23 md.)'; PDF table 7555 -> m.109 in force 24/7/2025."
+
+[[query]]
+statute = "4857"
+article = "109"
+as_of = 2025-12-01
+expect = "found"
+contains = "elektronik posta (KEP) hesabı üzerinden gönderilmek"
+source = "Latest PDF m.109 after 7555/23 (in force 24/7/2025)."
+
+[[query]]
+statute = "4857"
+article = "46"
+as_of = 2020-01-01
+expect = "found"
+contains = "kesintisiz en az yirmidört saat dinlenme"
+not_contains = "turizm işletmesi belgesi"
+source = "2016 docx m.46 (newest annotation 6645, in force 23/4/2015). Latest PDF adds '(Ek cümleler:10/7/2025-7553/9 md.)' (turizm işletmesi belgesi ... hafta tatili). Only one new law; PDF table 7553 m.46 in force 14/7/2025."
+
+[[query]]
+statute = "4857"
+article = "46"
+as_of = 2025-12-01
+expect = "found"
+contains = "Kültür ve Turizm Bakanlığı tarafından"
+source = "Latest PDF m.46 after 7553/9 (in force 14/7/2025)."
+
+[[query]]
+statute = "4857"
+article = "46"
+as_of = 2014-01-01
+expect = "gap"
+source = "2016 docx m.46 annotated 6645 (kabul 4/4/2015, PDF table: in force 23/4/2015); earlier text unknown => gap."
+
+[[query]]
+statute = "4857"
+article = "13"
+as_of = 2013-01-01
+expect = "gap"
+source = "2016 docx m.13 annotated 6663 (kabul 29/1/2016, in force 10/2/2016 per PDF table); earlier text unknown => gap."
+
+[[query]]
+statute = "4857"
+article = "18"
+as_of = 2014-01-01
+expect = "gap"
+source = "2016 docx m.18 contains '(Ek cümle: 10/9/2014-6552/2 md.)' (PDF table: 6552 m.18 in force 11/9/2014). Text before is unknown => gap (required case)."
+
+[[query]]
+statute = "4857"
+article = "18"
+as_of = 2015-06-01
+expect = "found"
+contains = "Yer altı işlerinde çalışan"
+source = "2016 docx m.18 text with the 6552 sentence, valid from 11/9/2014 (PDF table); identical in latest PDF (no newer annotation)."
+
+[[query]]
+statute = "4857"
+article = "17"
+as_of = 2005-01-01
+expect = "found"
+contains = "Belirsiz süreli iş sözleşmelerinin feshinden önce"
+source = "2016 docx m.17 has no dated annotation => original, valid from 10.06.2003; unchanged in latest PDF."
+
+[[query]]
+statute = "4857"
+article = "17"
+as_of = 2003-03-01
+expect = "not_in_force"
+source = "4857 entered into force on its publication 10/6/2003 (RG); on 2003-03-01 no article is in force."
+
+[[query]]
+statute = "4857"
+article = "Ek 3"
+as_of = 2016-01-01
+expect = "not_in_force"
+source = "Ek Madde 3 absent in 2016 docx; latest PDF '(Ek: 12/10/2017-7036/15 md.)', PDF table: in force 25/10/2017."
+
+[[query]]
+statute = "4857"
+article = "Ek 3"
+as_of = 2019-01-01
+expect = "found"
+contains = "zamanaşımı süresi beş yıldır"
+source = "Latest PDF Ek Madde 3 (7036/15, in force 25/10/2017)."
+
+[[query]]
+statute = "4857"
+article = "Geçici 8"
+as_of = 2017-01-01
+expect = "not_in_force"
+source = "Geçici Madde 8 absent in 2016 docx; latest PDF '(Ek: 12/10/2017-7036/16 md.)', in force 25/10/2017."
+
+[[query]]
+statute = "4857"
+article = "Geçici 12"
+as_of = 2025-06-01
+expect = "not_in_force"
+source = "Geçici Madde 12 added by '(Ek:23/1/2026-7573/6 md.)'; PDF table: 7573 in force 29/1/2026."
+
+[[query]]
+statute = "4857"
+article = "Geçici 12"
+as_of = 2026-06-01
+expect = "found"
+contains = "tahsilinden vazgeçilir"
+source = "Latest PDF Geçici 12 (7573/6), in force 29/1/2026."
+
+[[query]]
+statute = "4857"
+article = "Ek 1"
+as_of = 2013-06-01
+expect = "not_in_force"
+source = "Ek Madde 1 is '(Ek: 6/2/2014-6518/59 md.)' in the 2016 docx; PDF table 6518 -> Ek 1 in force 19/2/2014."
+
+[[query]]
+statute = "4857"
+article = "Ek 2"
+as_of = 2014-06-01
+expect = "not_in_force"
+source = "Ek Madde 2 is '(Ek: 4/4/2015-6645/35 md.)' in the 2016 docx; 6645 in force 23/4/2015 (PDF table)."
+
+[[query]]
+statute = "4857"
+article = "77"
+as_of = 2014-01-01
+expect = "not_in_force"
+source = "2016 docx: 'Madde 77 – (Mülga: 20/6/2012-6331/37 md.)'; PDF table: 6331 m.77 in force 30/12/2012."
+
+[[query]]
+statute = "4857"
+article = "65"
+as_of = 2013-01-01
+expect = "not_in_force"
+source = "2016 docx: 'Madde 65 – (Mülga: 15/5/2008-5763/37 md.)'; repealed in 2008."
+
+[[query]]
+statute = "4857"
+article = "999"
+as_of = 2020-01-01
+expect = "unknown_article"
+source = "No Madde 999 in either 4857 snapshot (law has 122 articles)."
+
+[[query]]
+statute = "4857"
+article = "Geçici 30"
+as_of = 2020-01-01
+expect = "unknown_article"
+source = "4857 has Geçici 1-12 only in latest PDF; no Geçici 30."
+
+[[query]]
+statute = "5510"
+article = "88"
+as_of = 2017-11-01
+expect = "found"
+contains = "Hak edilen ancak, ödenmemiş olan ücretler"
+not_contains = "dairelerince reddiyat"
+source = "S0 (04.10.2017) m.88 has no 7061 text. S1 (08.01.2018) m.88 has '(Ek cümleler: 28/11/2017-7061/87 md.)'; only law with kabul in (04.10.2017, 08.01.2018]. 7061 table: m.88 in force 5/12/2017 (RG 5/12/2017). 2017-11-01 is before => S0 text."
+
+[[query]]
+statute = "5510"
+article = "88"
+as_of = 2017-12-20
+expect = "found"
+contains = "dairelerince reddiyat yapılması durumunda"
+source = "S1 m.88 with 7061/87 sentences, in force 5/12/2017 (5510 yürürlük table '7061 88 5/12/2017')."
+
+[[query]]
+statute = "5510"
+article = "34"
+as_of = 2018-02-01
+expect = "found"
+contains = "Ölen sigortalının 33 üncü madde hükümlerine göre"
+not_contains = "bunlara aylık bağlanmasına engel"
+source = "S1 (08.01.2018) m.34 lacks the 7103 sentence. S2 (14.07.2020) m.34: '(Ek cümle: 21/3/2018-7103/66 md.)'; only law in window. 5510 table: 7103 -> m.34 in force 27/3/2018 (RG 27/3/2018 2.Mükerrer, verified via mevzuat 7103 header)."
+
+[[query]]
+statute = "5510"
+article = "34"
+as_of = 2019-01-01
+expect = "found"
+contains = "sayılmaları, bunlara aylık bağlanmasına"
+source = "S2 m.34 with 7103/66 sentence (in force 27/3/2018)."
+
+[[query]]
+statute = "5510"
+article = "11"
+as_of = 2018-02-20
+expect = "found"
+contains = "çalıştıracağı sigortalı sayısını ve bunların işe başlama"
+not_contains = "ayrıca işyeri bildirgesi düzenlenmez"
+source = "S2 m.11 '(Değişik ikinci cümle: 15/2/2018-7099/18 md.)' and 'Ek cümle'; 7099 kabul 15/2/2018 but 5510 table: 7099 -> m.11, 100 in force 10/3/2018 (RG). 2018-02-20 is after kabul but before RG => still S1 text. Only one law in window."
+
+[[query]]
+statute = "5510"
+article = "11"
+as_of = 2018-06-01
+expect = "found"
+contains = "ilgililerce ayrıca işyeri bildirgesi düzenlenmez"
+source = "S2 m.11 after 7099/18 (in force 10/3/2018)."
+
+[[query]]
+statute = "5510"
+article = "102"
+as_of = 2018-05-20
+expect = "found"
+contains = "Kurumca dayanağı belirtilmek suretiyle"
+not_contains = "brüt asgari ücretin üçte birini geçmeyecek"
+source = "S2 m.102 has '(Ek üç cümle: 16/5/2018-7144/16 md.)' (brüt asgari ücretin üçte birini geçmeyecek ...); S1 lacks it. Only law in window; table: 7144 m.102 in force 25/5/2018 (kabul 16/5/2018). 2018-05-20 is between => S1 text."
+
+[[query]]
+statute = "5510"
+article = "102"
+as_of = 2018-08-01
+expect = "found"
+contains = "brüt asgari ücretin üçte birini geçmeyecek"
+source = "S2 m.102 with 7144/16; in force 25/5/2018 (table)."
+
+[[query]]
+statute = "5510"
+article = "17"
+as_of = 2021-04-18
+expect = "found"
+contains = "gelirin hesabına esas alınan üç aylık"
+not_contains = "önceki son bir yıl içerisinde 180 günden az"
+source = "S2 (14.07.2020) m.17 has no annotation; S3 (17.07.2024) m.17 '(Değişik birinci fıkra:15/4/2021-7316/9 md.)'. Only law in window. 5510 table: 7316 -> m.17 in force 22/4/2021 (kabul 15/4/2021). 2021-04-18 is between kabul and RG => S2 text."
+
+[[query]]
+statute = "5510"
+article = "17"
+as_of = 2022-01-01
+expect = "found"
+contains = "önceki son bir yıl içerisinde 180 günden az"
+source = "S3 m.17 after 7316/9 (in force 22/4/2021) and before 7537 (S4)."
+
+[[query]]
+statute = "5510"
+article = "17"
+as_of = 2025-06-01
+expect = "found"
+contains = "önceki oniki ay içerisinde 180 günden az"
+not_contains = "önceki son bir yıl içerisinde 180 günden az"
+source = "S4 (24.11.2025) m.17: '(Değişik birinci fıkra:25/12/2024-7537/25 md.)' (also AYM 1/2/2024 E.2021/61 K.2024/31 iptal, effective 21/12/2024; table: 7537 m.17 'yayımı tarihinde 27/12/2024'). Only law in window (S3,S4]. 2025-06-01 well after 27/12/2024."
+
+[[query]]
+statute = "5510"
+article = "63"
+as_of = 2025-01-12
+expect = "found"
+contains = "Genel sağlık sigortalısının ve bakmakla yükümlü olduğu"
+not_contains = "Türkiye Sağlık Enstitüleri Başkanlığı"
+source = "S4 m.63 adds bent g) '(Ek:9/1/2025-7538/7 md.)' (Türkiye Sağlık Enstitüleri Başkanlığı ...), only law in (17.07.2024, 24.11.2025] for m.63. 5510 table: 7538 -> m.63 in force 15/1/2025 (kabul 9/1/2025). 2025-01-12 is between => S3 text."
+
+[[query]]
+statute = "5510"
+article = "63"
+as_of = 2025-02-01
+expect = "found"
+contains = "Türkiye Sağlık Enstitüleri Başkanlığı tarafından"
+source = "S4 m.63 with 7538/7 bent g (in force 15/1/2025)."
+
+[[query]]
+statute = "5510"
+article = "68"
+as_of = 2024-10-01
+expect = "found"
+contains = "önceki basamaklardan sevkli"
+not_contains = "birinci basamak sağlık hizmeti sunucularından sevk"
+source = "S4 m.68 has '(Değişik cümle:9/1/2025-7538/9 md.)' with 'birinci basamak sağlık hizmeti sunucularından sevk edilenler için yarısına kadar azaltmaya'; S3 text has 'önceki basamaklardan sevkli ...'. One law in window; table: 7538 m.68 in force 15/1/2025."
+
+[[query]]
+statute = "5510"
+article = "68"
+as_of = 2025-03-01
+expect = "found"
+contains = "sevk edilenler için yarısına kadar azaltmaya"
+source = "S4 m.68 after 7538/9 (in force 15/1/2025)."
+
+[[query]]
+statute = "5510"
+article = "Geçici 95"
+as_of = 2024-08-15
+expect = "found"
+contains = "Birinci fıkra kapsamında yaşlılık veya emekli aylığı talebinde bulunarak"
+source = "S4 Geçici 95 shows '(Mülga fıkra: 28/7/2024-7524/30 md.)' for the second fıkra; S3 still has it. One law; table: 7524 -> m.81, Geçici 95 'yayımını izleyen ayın başında' (RG 2/8/2024 => 1/9/2024). 2024-08-15 is after RG but before 1/9/2024 => S3 text."
+
+[[query]]
+statute = "5510"
+article = "Geçici 95"
+as_of = 2025-03-01
+expect = "found"
+contains = "Bu maddenin yürürlük tarihinden sonra aylık bağlanması için"
+not_contains = "Birinci fıkra kapsamında yaşlılık veya emekli aylığı talebinde bulunarak"
+source = "S4 Geçici 95 after the fıkra repeal (1/9/2024)."
+
+[[query]]
+statute = "5510"
+article = "Geçici 59"
+as_of = 2021-06-01
+expect = "found"
+contains = "tarihleri arasında maden ocaklarının yer altı"
+source = "S2 Geçici 59 full text; S3 shows '(Mülga:16/11/2022-7421/19 md.)'. 5510 table: 7421 -> Ek 23, Geçici 59, Geçici 66 in force 26/11/2022. 2021-06-01 earlier."
+
+[[query]]
+statute = "5510"
+article = "Geçici 59"
+as_of = 2023-06-01
+expect = "not_in_force"
+source = "S3/S4 Geçici 59 '(Mülga:16/11/2022-7421/19 md.)'; repealed, in force of repeal 26/11/2022 (table)."
+
+[[query]]
+statute = "5510"
+article = "Ek 3"
+as_of = 2018-07-01
+expect = "found"
+contains = "4/1/1961 tarihli ve 209 sayılı Sağlık Bakanlığına"
+source = "S1 Ek 3 present; S2 shows '(Mülga:26/7/2018-7146/12 md.)' (7146 kabul 26/7/2018; table lists Ek Madde 3 1/1/2019 under 7146). 2018-07-01 precedes any possible repeal date."
+
+[[query]]
+statute = "5510"
+article = "Ek 3"
+as_of = 2019-06-01
+expect = "not_in_force"
+source = "S2 Ek 3 repealed by 7146/12; table: Ek Madde 3 1/1/2019 (RG of 7146 3/8/2018). 2019-06-01 after both candidate dates."
+
+[[query]]
+statute = "5510"
+article = "Ek 16"
+as_of = 2018-02-01
+expect = "not_in_force"
+source = "Ek 16 absent in S1; S2 '(Ek: 21/3/2018-7103/69 md.)'; table: Ek 16,17 'yayım tarihi olan 27/3/2018'i izleyen aybaşında (1/4/2018)'."
+
+[[query]]
+statute = "5510"
+article = "Ek 16"
+as_of = 2018-03-30
+expect = "not_in_force"
+source = "After RG (27/3/2018) but before 1/4/2018 per table => still not in force."
+
+[[query]]
+statute = "5510"
+article = "Ek 16"
+as_of = 2019-01-01
+expect = "found"
+contains = "kurulan yükseköğretim kurumları, okul aile birlikleri"
+source = "S2 Ek 16 (7103/69), in force 1/4/2018."
+
+[[query]]
+statute = "5510"
+article = "Geçici 104"
+as_of = 2024-07-25
+expect = "not_in_force"
+source = "Geçici 104 absent in S3 (17.07.2024); S4 '(Ek:28/7/2024-7524/31 md.)'; table: Geçici Madde 104 in force 2/8/2024. 2024-07-25 earlier."
+
+[[query]]
+statute = "5510"
+article = "Geçici 104"
+as_of = 2025-03-01
+expect = "found"
+contains = "Ek 19 uncu madde uyarınca yapılacak ödemeler"
+source = "S4 Geçici 104 (7524/31), in force 2/8/2024."
+
+[[query]]
+statute = "5510"
+article = "Geçici 107"
+as_of = 2024-12-01
+expect = "not_in_force"
+source = "Geçici 107 '(Ek:9/1/2025-7538/16 md.)'; table 7538 -> Geçici 107 in force 15/1/2025."
+
+[[query]]
+statute = "5510"
+article = "Geçici 82"
+as_of = 2020-11-13
+expect = "not_in_force"
+source = "Geçici 82 '(Ek:11/11/2020-7256/33 md.)' absent in S2; table: 7256 Geçici 82, 83 in force 17/11/2020 (kabul 11/11/2020). 2020-11-13 between."
+
+[[query]]
+statute = "5510"
+article = "Geçici 82"
+as_of = 2021-06-01
+expect = "found"
+contains = "götürü bedel üzerinden hizmet alım sözleşmesi yapılmış"
+source = "S3 Geçici 82 (7256/33), in force 17/11/2020."
+
+[[query]]
+statute = "5510"
+article = "83"
+as_of = 2018-01-01
+expect = "not_in_force"
+source = "Every 5510 snapshot shows 'MADDE 83- (Mülga: 10/1/2013-6385/10 md.)'; repealed 2013."
+
+[[query]]
+statute = "5510"
+article = "40"
+as_of = 2019-06-01
+expect = "gap"
+known_issue = "footnote-carried changes (703 in force 2018-07-09, 7179 kabul 2019-06-25) are not read by the timeline: it returns the 2020-07-14 text, which already has 7179's 'yedek astsubay,'"
+source = "Expectation kept, premise corrected. The 2020-07-14 text has ONE new inline note in (08.01.2018, 14.07.2020]: 7146/11 (kabul 26/7/2018, in force 3/8/2018); 7078 is not annotated in that text (it appears only in the 2024 text). The text did change in the window through footnote-only amendments: 703/203 (in force 9/7/2018) and 7179/62 (kabul 25/6/2019, after 2019-06-01), so the 2020 text is not the text of 2019-06-01. Needs footnote evidence (follow-up)."
+
+[[query]]
+statute = "5510"
+article = "40"
+as_of = 2020-07-14
+expect = "found"
+contains = "yedek astsubay,"
+source = "Snapshot date of the 14.07.2020 text, which contains 7146/11 (20 numaralı sıra 'İnsan sağlığına ilişkin işler') and the 7179 footnote change."
+
+[[query]]
+statute = "5510"
+article = "63"
+as_of = 2019-06-01
+expect = "found"
+contains = "Kadının primer ovaryan yetmezliği ve erkeğin azoospermisi olması hâlleri hariç"
+not_contains = "sigortalısı kadın ise kendisinin, erkek ise karısının"
+source = "Corrected from gap. The only change in the text between 08.01.2018 and 14.07.2020 is 7151/29 (kabul 15/11/2018, in force 5/12/2018 per table). 7073 (1/2/2018) is '(Aynen kabul: 1/2/2018-7073/75 md.)' of KHK-681/76, which the 08.01.2018 text already has (2/1/2017-KHK-681/76 note), so it does not change the text. 2019-06-01 is after 5/12/2018 => 2020 text."
+
+[[query]]
+statute = "5510"
+article = "60"
+as_of = 2024-12-01
+expect = "gap"
+source = "Date changed from 2025-03-01 (the gap is real but ends earlier). m.60 S3->S4: 7528/35 (kabul 10/10/2024, in force 18/10/2024) and 7538/6 (kabul 9/1/2025, in force 15/1/2025). Text between 18/10/2024 and 15/1/2025 is unknown."
+
+[[query]]
+statute = "5510"
+article = "60"
+as_of = 2025-03-01
+expect = "found"
+contains = "eğitim öğretim yılı başlangıç"
+source = "After the later in-force date (15/1/2025) both changes apply, so the latest text (24.11.2025) is the text: 7528/35 added fıkra (Millî Eğitim Akademisi) and 7538/6 replaced 'ilk kayıt' with 'eğitim öğretim yılı başlangıç'."
+
+[[query]]
+statute = "5510"
+article = "1"
+as_of = 2009-01-01
+expect = "found"
+contains = "Bu Kanunun amacı, sosyal sigortalar ile genel sağlık sigortası"
+source = "m.1 has no annotation in any snapshot => original; 5510 m.108 (5754/74): 'd) Diğer hükümleri 2008 yılı Ekim ayı başında' => in force 1/10/2008."
+
+[[query]]
+statute = "5510"
+article = "1"
+as_of = 2008-06-01
+expect = "not_in_force"
+source = "Before 1/10/2008 (m.108 d), 5510's general provisions were not in force. DOUBTFUL: depends on how the system models law-wide entry-into-force."
+
+[[query]]
+statute = "5510"
+article = "999"
+as_of = 2020-01-01
+expect = "unknown_article"
+source = "No MADDE 999 in any 5510 snapshot (law has ~110 articles)."

@@ -12,39 +12,1755 @@
 #   statute, article (normalised: "18", "Ek 2", "Geçici 4"), scope (free text), yururluk,
 #   source ("dipnot" or a URL)
 # The statutes themselves (4857, 5510) are acts too: their entry gives the original in-force date.
+#
+# Source of most rows: the official "yürürlüğe giriş tarihlerini gösterir liste/tablo" printed at the end of
+# the consolidated 4857 and 5510 texts (mevzuat.gov.tr); RG numbers and AYM rows cross-checked against
+# the Resmî Gazete. Dates marked "hesaplanmış" in a note are computed from a deferred annulment.
 
-# PLACEHOLDER ENTRIES BELOW: examples of the format, to be replaced by the real registry.
-# Do not rely on them.
-
-# PLACEHOLDER
 [[act]]
 law = "4857"
 kabul_tarihi = 2003-05-22
 rg_tarihi = 2003-06-10
 rg_sayisi = "25134"
 yururluk = 2003-06-10
-source_url = "https://www.mevzuat.gov.tr/"  # placeholder URL
-note = "placeholder"
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "md. 121: yayımı tarihinde"
 
-# PLACEHOLDER
+[[act]]
+law = "5510"
+kabul_tarihi = 2006-05-31
+rg_tarihi = 2006-06-16
+rg_sayisi = "26200"
+yururluk = 2008-10-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "md. 108 (5754 ile değişik) (d) bendi: diğer hükümler 1/10/2008. (a)-(c) bentlerindeki erken tarihler 5754 ile değişen maddelere ait; o maddelerin notu var, istisna eklenmedi."
+
+# Değiştiren kanun/KHK/AYM kararı kayıt defteri: 4857 ve 5510 yürürlük tablolarından (mevzuat.gov.tr güncel metinler)
+
+[[act]]
+law = "4884"
+kabul_tarihi = 2003-06-11
+rg_tarihi = 2003-06-17
+rg_sayisi = "25141"
+yururluk = 2003-06-17
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin); anahtar metindeki tarih yazımı"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2005-10-19
+rg_tarihi = 2007-11-24
+rg_sayisi = "26710"
+yururluk = 2007-11-24
+source_url = "https://www.resmigazete.gov.tr/eskiler/2007/11/20071124-4.htm"
+note = "E. 2003/66 K. 2005/72; 4857 m.20 iptali RG tarihinde. m.111 iptali RG'den alti ay sonra (2008-05-24, hesaplanmis); m.111 suruleri icin istisna eklenmedi."
+
+[[act.exception]]
+statute = "4857"
+article = "111"
+scope = "birinci ve ikinci fikra iptali; RG'den alti ay sonra (hesaplanmis)"
+yururluk = 2008-05-24
+source = "https://www.resmigazete.gov.tr/eskiler/2007/11/20071124-4.htm"
+
+[[act]]
+law = "5538"
+kabul_tarihi = 2006-07-01
+rg_tarihi = 2006-07-12
+yururluk = 2006-07-12
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md. 2, 81"
+
+[[act]]
+law = "5728"
+kabul_tarihi = 2008-01-23
+rg_tarihi = 2008-02-08
+rg_sayisi = "26781"
+yururluk = 2008-02-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md. 107, 108"
+
+[[act]]
+law = "5754"
+kabul_tarihi = 2008-04-17
+rg_tarihi = 2008-05-08
+rg_sayisi = "26870"
+yururluk = 2008-05-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 (md. 32, 102) ve 5510 (çok sayıda madde) aynı tarih 8/5/2008"
+
+[[act]]
+law = "5763"
+kabul_tarihi = 2008-05-15
+rg_tarihi = 2008-05-26
+rg_sayisi = "26887"
+yururluk = 2008-05-26
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 ve 5510 (5510 satırlarının 5763'e aidiyeti sütun düzenine göre okundu)"
+
+[[act.exception]]
+statute = "4857"
+article = "30"
+scope = ""
+yururluk = 2008-07-01
+source = "yürürlük tablosu: 4857 güncel metin"
+
+[[act.exception]]
+statute = "4857"
+article = "85"
+scope = ""
+yururluk = 2009-01-01
+source = "yürürlük tablosu: 4857 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = ""
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 16"
+scope = ""
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "5797"
+kabul_tarihi = 2008-07-31
+rg_tarihi = 2008-08-19
+rg_sayisi = "26972"
+yururluk = 2008-08-19
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md.30 ve 5510 (Geçici 4, 12, 16, 25: 19/8/2008)"
+
+[[act.exception]]
+statute = "4857"
+article = "30"
+scope = "geriye etkili; yayım 2008-08-19"
+yururluk = 2008-07-01
+source = "yürürlük tablosu: 4857 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = ""
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "80"
+scope = ""
+yururluk = 2008-10-15
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "5838"
+kabul_tarihi = 2009-02-18
+rg_tarihi = 2009-02-28
+rg_sayisi = "27155"
+yururluk = 2009-02-28
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md.18 ve 5510 (93, 97, 100); RG Mükerrer"
+
+[[act.exception]]
+statute = "5510"
+article = "5"
+scope = "geriye etkili; yayım 2009-02-28"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 14"
+scope = "geriye etkili; yayım 2009-02-28"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "102"
+scope = ""
+yururluk = 2009-08-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 1"
+scope = ""
+yururluk = 2009-08-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "5917"
+kabul_tarihi = 2009-06-25
+rg_tarihi = 2009-07-10
+rg_sayisi = "27284"
+yururluk = 2009-07-10
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 68, 100, 102"
+
+[[act]]
+law = "5921"
+kabul_tarihi = 2009-08-11
+rg_tarihi = 2009-08-18
+rg_sayisi = "27323"
+yururluk = 2009-08-18
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Ek 2"
+
+[[act]]
+law = "5947"
+kabul_tarihi = 2010-01-21
+rg_tarihi = 2010-01-30
+rg_sayisi = "27478"
+yururluk = 2010-07-30
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Ek 3 -> 30/7/2010, md.73 -> 30/1/2011 (iki satır, eşit ağırlık; Ek 3 ana tarih seçildi)"
+
+[[act.exception]]
+statute = "5510"
+article = "73"
+scope = ""
+yururluk = 2011-01-30
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "5951"
+kabul_tarihi = 2010-01-28
+rg_tarihi = 2010-02-05
+rg_sayisi = "27484"
+yururluk = 2010-01-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 26; geriye etkili 1/1/2010; yayım 5/2/2010"
+
+[[act]]
+law = "5997"
+kabul_tarihi = 2010-06-16
+rg_tarihi = 2010-06-19
+rg_sayisi = "27616"
+yururluk = 2010-06-19
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 40, 67, 106; belirsiz: Geçici 12/4 hem 19/6/2010 satırında hem 1/10/2008 retro satırında yazılı, bu nedenle Geçici 12 için yalnızca 12/5 istisnası eklendi"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 4"
+scope = "geriye etkili; yayım 2010-06-19"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 12"
+scope = "12/5; geriye etkili; yayım 2010-06-19"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 18"
+scope = "geriye etkili; yayım 2010-06-19"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 27"
+scope = "geriye etkili; yayım 2010-06-19"
+yururluk = 2002-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6009"
+kabul_tarihi = 2010-07-23
+rg_tarihi = 2010-08-01
+rg_sayisi = "27659"
+yururluk = 2010-08-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md. 2, 81 (1/8/2010) ve 5510 Ek 4 (geriye etkili)"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 4"
+scope = "geriye etkili; yayım 2010-08-01"
+yururluk = 2010-01-15
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6111"
+kabul_tarihi = 2011-02-13
+rg_tarihi = 2011-02-25
+rg_sayisi = "27857"
+yururluk = 2011-02-25
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md. 74, 91, 92, 108 (25/2/2011); 5510: md. 18, 41, 51, 86, 96, Geçici 7, 16, 19, 28, 31, 33, 35, 36 ile 67/102/Geçici 12'nin diğer hükümleri ana tarihte; RG 1. Mükerrer"
+
+[[act.exception]]
+statute = "5510"
+article = "5"
+scope = "birinci fıkranın (g) bendine eklenen cümle; geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "5"
+scope = "birinci fıkranın (g) bendine eklenen cümle haricindeki değişiklikler"
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "6"
+scope = "birinci fıkranın (ı) bendindeki 'belgeleyenler ile 65 yaşını dolduranlardan talepte bulunanlar,' ibare değişikliği; geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "6"
+scope = "birinci fıkranın (ı) bendindeki 'kamu idarelerinde ve kanunun ek 5 inci maddesi kapsamında sayılanlar' ibare değişikliği"
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "8"
+scope = "geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "9"
+scope = "geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "67"
+scope = "dördüncü fıkranın ikinci cümlesinden çıkarılan ibare; geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "80"
+scope = "geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "90"
+scope = "geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "106"
+scope = "geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 12"
+scope = "sekizinci fıkraya eklenen cümle haricindeki değişiklikler; geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 30"
+scope = "geriye etkili; yayım 2011-02-25"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 34"
+scope = "geriye etkili; yayım 2011-02-25"
+yururluk = 2011-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "3"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "7"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "45"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "53"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "60"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "61"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "82"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "87"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "88"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "102"
+scope = "eklenen (l) bendi"
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 5"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 6"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 29"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 32"
+scope = ""
+yururluk = 2011-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "KHK-665"
+kabul_tarihi = 2011-10-11
+rg_tarihi = 2011-11-02
+yururluk = 2011-11-02
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md.30 ve 5510 md. 4, 5 (RG Mükerrer)"
+
+[[act]]
+law = "KHK-666"
+kabul_tarihi = 2011-10-11
+yururluk = 2012-01-15
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 80, Geçici 4"
+
+[[act]]
+law = "6270"
+kabul_tarihi = 2012-01-17
+rg_tarihi = 2012-01-26
+rg_sayisi = "28185"
+yururluk = 2012-01-26
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md. 99-105 ve 5510 md. 60, 64, 65, 68, 70, 102, Geçici 7, 37 ana tarihte"
+
+[[act.exception]]
+statute = "5510"
+article = "14"
+scope = ""
+yururluk = 2012-02-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "43"
+scope = "geriye etkili; tablodaki tarih 2012-03-01"
+yururluk = 2012-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 38"
+scope = "geriye etkili; tablodaki tarih 2012-03-01"
+yururluk = 2012-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 7"
+scope = ""
+yururluk = 2012-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6283"
+kabul_tarihi = 2012-03-01
+rg_tarihi = 2012-03-08
+rg_sayisi = "28227"
+yururluk = 2012-03-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 67, 68, 102, Geçici 20 (+ 'işlenemeyen hüküm' ifadesi, belirsiz); belirsiz: Geçici 39 ve Geçici 40 için '2013 yılı Ocak ödeme döneminde' (tam tarih yok), istisna eklenmedi"
+
+[[act]]
+law = "6322"
+kabul_tarihi = 2012-05-31
+rg_tarihi = 2012-06-15
+rg_sayisi = "28324"
+yururluk = 2012-06-15
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Ek 2, Geçici 41"
+
+[[act]]
+law = "6331"
+kabul_tarihi = 2012-06-20
+rg_tarihi = 2012-06-30
+rg_sayisi = "28339"
+yururluk = 2012-12-30
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): tüm maddeler 30/12/2012"
+
+[[act]]
+law = "6353"
+kabul_tarihi = 2012-07-04
+rg_tarihi = 2012-07-12
+rg_sayisi = "28351"
+yururluk = 2012-07-12
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md.30 ve 5510 (6, 41, 47, 69, 73, Geçici 4, 14, 18, 42-44); tabloda 5510 md.43 yok"
+
+[[act]]
+law = "6385"
+kabul_tarihi = 2013-01-10
+rg_tarihi = 2013-01-19
+rg_sayisi = "28533"
+yururluk = 2013-01-19
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md.73, Geçici 38, 45-48 ana tarihte; md.40 için tablo '2008 yılı Ekim ayı başından geçerli olmak üzere' (1. gün olarak okundu)"
+
+[[act.exception]]
+statute = "5510"
+article = "40"
+scope = "geriye etkili; yayım 2013-01-19; tabloda '2008 yılı Ekim ayı başından'"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "67"
+scope = "geriye etkili; yayım 2013-01-19"
+yururluk = 2012-06-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = ""
+yururluk = 2013-09-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "83"
+scope = ""
+yururluk = 2013-09-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "84"
+scope = ""
+yururluk = 2013-09-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 8"
+scope = ""
+yururluk = 2013-09-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6458"
+kabul_tarihi = 2013-04-04
+rg_tarihi = 2013-04-11
+rg_sayisi = "28615"
+yururluk = 2013-04-11
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 3, 60, 61"
+
+[[act]]
+law = "6486"
+kabul_tarihi = 2013-05-21
+rg_tarihi = 2013-05-29
+rg_sayisi = "28661"
+yururluk = 2013-05-29
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 60, 61, 72, 73, Geçici 49, 50 ana tarihte"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = "(i) bendi haricindeki değişiklikler; geriye etkili; yayım 2013-05-29"
+yururluk = 2013-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = "(i) bendi"
+yururluk = 2013-06-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6494"
+kabul_tarihi = 2013-06-27
+rg_tarihi = 2013-07-07
+rg_sayisi = "28700"
+yururluk = 2013-07-07
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 60"
+
+[[act]]
+law = "6495"
+kabul_tarihi = 2013-07-12
+rg_tarihi = 2013-08-02
+rg_sayisi = "28726"
+yururluk = 2013-08-02
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 4, 66, Geçici 51; belirsiz: md. 5, 47, Geçici 14, Geçici 52 için 'Ağustos 2013 ödeme döneminden geçerli olmak üzere 1/1/2014' (dönem + tablo tarihi), istisna eklenmedi"
+
+[[act]]
+law = "6518"
+kabul_tarihi = 2014-02-06
+rg_tarihi = 2014-02-19
+rg_sayisi = "28918"
+yururluk = 2014-02-19
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md. 5, 30, Ek 1 ve 5510 md.63 (19/2/2014); 4857 listesinin RG tarihi sütunu 6/2/2014 yazıyor (bu kabul tarihi; RG 19/2/2014 sayı 28918, 2016 listesi ve çapraz kontrol)"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2013-11-28
+yururluk = 2014-05-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): E.:2013/40, K.:2013/139 -> md.102 (9/5/2014); aynı satır grubundaki 29/1/2014 tarihli E.:2013/126, K.:2014/17 kararı Geçici 36 için aynı tarih 9/5/2014; satır-karar eşlemesi sütun düzeninden"
+
+[[act]]
+law = "6552"
+kabul_tarihi = 2014-09-16
+rg_tarihi = 2014-09-11
+rg_sayisi = "29116"
+yururluk = 2014-09-11
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "anahtar metindeki tarih yazımı; yürürlük tablosu: 4857 (md. 3, 18, 36, 41, 53, 56, 112) ve 5510 (çok sayıda md.) 11/9/2014"
+
+[[act.exception]]
+statute = "4857"
+article = "41"
+scope = "onuncu fıkrası"
+yururluk = 2015-01-01
+source = "yürürlük tablosu: 4857 güncel metin"
+
+[[act.exception]]
+statute = "4857"
+article = "63"
+scope = ""
+yururluk = 2015-01-01
+source = "yürürlük tablosu: 4857 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 59"
+scope = "geriye etkili; yayım 2014-09-11"
+yururluk = 2014-05-13
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "82"
+scope = ""
+yururluk = 2014-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "6"
+scope = "ibare değişikliği (e) bendindeki değişiklik dışında"
+yururluk = 2015-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 9"
+scope = ""
+yururluk = 2015-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2014-12-25
+yururluk = 2015-05-23
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): E.:2014/74, K.:2014/201 -> md.66"
+
+[[act]]
+law = "6645"
+kabul_tarihi = 2015-04-04
+rg_tarihi = 2015-04-23
+rg_sayisi = "29335"
+yururluk = 2015-04-23
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 (md. 41, 46, 55, 63, 69, 71, 104, 112, Ek 2) ve 5510 (md. 5, 30, 81, 102, Ek 10, Geçici 14, 20, 43, 61-66)"
+
+[[act.exception]]
+statute = "5510"
+article = "80"
+scope = "2 nci fıkrasının (b) bendi; geriye etkili; yayım 2015-04-23"
+yururluk = 2008-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 59"
+scope = "geriye etkili; yayım 2015-04-23"
+yururluk = 2014-05-13
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6655"
+kabul_tarihi = 2015-12-25
+rg_tarihi = 2016-01-01
+rg_sayisi = "29580"
+yururluk = 2016-01-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 67"
+
+[[act]]
+law = "6661"
+kabul_tarihi = 2016-01-14
+rg_tarihi = 2016-01-27
+rg_sayisi = "29606"
+yururluk = 2016-01-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 68; geriye etkili; yayım 27/1/2016"
+
+[[act]]
+law = "6663"
+kabul_tarihi = 2016-01-29
+rg_tarihi = 2016-02-10
+rg_sayisi = "29620"
+yururluk = 2016-02-10
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md. 13, 74 ve 5510 md. 60, 67, Ek 11 (10/2/2016); belirsiz: 5510 md. 6, 30, 47, 87, Geçici 14 için '10/2/2016 tarihini takip eden ödeme dönemi başında' (tam tarih yok), istisna eklenmedi"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = ""
+yururluk = 2016-03-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6704"
+kabul_tarihi = 2016-04-14
+rg_tarihi = 2016-04-26
+rg_sayisi = "29695"
+yururluk = 2016-04-26
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md.56 ve 5510 Geçici 69"
+
+[[act]]
+law = "6715"
+kabul_tarihi = 2016-05-06
+rg_tarihi = 2016-05-20
+rg_sayisi = "29717"
+yururluk = 2016-05-20
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md. 7, 14, 63, 99, Geçici 7"
+
+[[act]]
+law = "6728"
+kabul_tarihi = 2016-07-15
+rg_tarihi = 2016-08-09
+rg_sayisi = "29796"
+yururluk = 2016-08-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 12, 81, 86, 91, 100, 102, Ek 2, Ek 12, Geçici 68 (liste sonu virgülle bitiyor)"
+
+[[act.exception]]
+statute = "5510"
+article = "102"
+scope = "(n) bendi"
+yururluk = 2018-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6745"
+kabul_tarihi = 2016-08-20
+rg_tarihi = 2016-09-07
+rg_sayisi = "29824"
+yururluk = 2016-10-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 3, 81, 88 -> 1/10/2016; md.73 -> 7/9/2016 (RG tarihi)"
+
+[[act.exception]]
+statute = "5510"
+article = "73"
+scope = ""
+yururluk = 2016-09-07
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "6764"
+kabul_tarihi = 2016-12-02
+rg_tarihi = 2016-12-09
+rg_sayisi = "29913"
+yururluk = 2016-12-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 5, 6, 7, 80, 81, 87, Geçici 70"
+
+[[act]]
+law = "KHK-680"
+kabul_tarihi = 2017-01-02
+yururluk = 2017-01-06
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 4, 46"
+
+[[act]]
+law = "KHK-681"
+kabul_tarihi = 2017-01-02
+yururluk = 2017-03-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 3, 60, 61, 63, 65, 66, 67, 69, 70, 73, 80, 87, 88"
+
+[[act]]
+law = "KHK681"
+kabul_tarihi = 2017-01-02
+yururluk = 2017-03-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "KHK-681 ile aynı, ayrıştırma yazımı"
+
+[[act]]
+law = "6770"
+kabul_tarihi = 2017-01-18
+rg_tarihi = 2017-01-27
+rg_sayisi = "29961"
+yururluk = 2017-01-27
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 71, Geçici 72"
+
+[[act]]
+law = "6824"
+kabul_tarihi = 2017-02-23
+rg_tarihi = 2017-03-08
+rg_sayisi = "30001"
+yururluk = 2017-04-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 80, 81, Ek 13, Ek 14, Geçici 73 -> 1/4/2017; Geçici 41 ve Geçici 71 -> 8/3/2017; md. 60, 61 -> 1/1/2018"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 41"
+scope = ""
+yururluk = 2017-03-08
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 71"
+scope = ""
+yururluk = 2017-03-08
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "60"
+scope = ""
+yururluk = 2018-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "61"
+scope = ""
+yururluk = 2018-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "KHK-690"
+kabul_tarihi = 2017-04-17
+yururluk = 2017-04-29
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): ana tarih 29/4/2017 (md. 60, 70, Ek 15); dört satır grubu farklı tarihli, hepsi istisna olarak yazıldı; md. 53, 80, 81, 87, Geçici 16, 21 için tablo '29/4/2017 tarihini izleyen aybaşında' -> 1/5/2017"
+
+[[act.exception]]
+statute = "5510"
+article = "7"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2017-01-06
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "35"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2017-01-06
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "69"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2017-01-06
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "40"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "47"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "49"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "57"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 18"
+scope = "geriye etkili; yayım 2017-04-29"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "53"
+scope = "29/4/2017 tarihini izleyen aybaşı"
+yururluk = 2017-05-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "80"
+scope = "29/4/2017 tarihini izleyen aybaşı"
+yururluk = 2017-05-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = "29/4/2017 tarihini izleyen aybaşı"
+yururluk = 2017-05-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "87"
+scope = "29/4/2017 tarihini izleyen aybaşı"
+yururluk = 2017-05-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 16"
+scope = "29/4/2017 tarihini izleyen aybaşı"
+yururluk = 2017-05-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 21"
+scope = "29/4/2017 tarihini izleyen aybaşı"
+yururluk = 2017-05-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7020"
+kabul_tarihi = 2017-05-18
+rg_tarihi = 2017-05-27
+rg_sayisi = "30078"
+yururluk = 2017-05-27
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md.88 (yirmiikinci fıkradan sonra eklenen fıkra 27/5/2017)"
+
+[[act.exception]]
+statute = "5510"
+article = "88"
+scope = "onaltıncı fıkrasına eklenen cümle; 1/1/2018 tarihinden itibaren vadesi gelen alacaklara uygulanmak üzere; yayım 2017-05-27"
+yururluk = 2018-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "KHK-694"
+kabul_tarihi = 2017-08-15
+yururluk = 2017-08-25
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 40, 67"
+
+[[act]]
+law = "7061"
+kabul_tarihi = 2017-11-28
+yururluk = 2017-12-05
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 88"
+
+[[act]]
+law = "7072"
+kabul_tarihi = 2018-02-01
+yururluk = 2018-03-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "KHK onay kanunu; yürürlük tablosu (5510 güncel metin): md. 4, 46"
+
+[[act]]
+law = "7073"
+kabul_tarihi = 2018-02-01
+yururluk = 2017-03-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "KHK onay kanunu; yürürlük tablosu (5510 güncel metin): md. 3, 60, 61, 63, 65, 66, 67, 69, 70, 73, 80, 87, 88 -> 1/3/2017 (KHK-681 ile aynı tarih)"
+
+[[act]]
+law = "7077"
+kabul_tarihi = 2018-02-01
+yururluk = 2018-03-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "KHK onay kanunu; yürürlük tablosu (5510 güncel metin): md. 60, 70, Ek 15 -> 8/3/2018; md. 53, 80, 81, 87, Geçici 16, 21 için tablo '8/3/2018 tarihini izleyen aybaşında' -> 1/4/2018"
+
+[[act.exception]]
+statute = "5510"
+article = "7"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2017-01-06
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "35"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2017-01-06
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "69"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2017-01-06
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "40"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "47"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "49"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "57"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 18"
+scope = "geriye etkili; yayım 2018-03-08"
+yururluk = 2016-07-27
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "53"
+scope = "8/3/2018 tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "80"
+scope = "8/3/2018 tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = "8/3/2018 tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "87"
+scope = "8/3/2018 tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 16"
+scope = "8/3/2018 tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 21"
+scope = "8/3/2018 tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7078"
+kabul_tarihi = 2018-02-01
+yururluk = 2018-03-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "KHK onay kanunu; yürürlük tablosu (5510 güncel metin): md. 40, 67"
+
+[[act]]
+law = "7099"
+kabul_tarihi = 2018-02-15
+yururluk = 2018-03-10
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 11, 100"
+
+[[act]]
+law = "7103"
+kabul_tarihi = 2018-03-21
+rg_tarihi = 2018-03-27
+yururluk = 2018-03-27
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 34, 86, Ek 9, Geçici 66, 74 -> 27/3/2018"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 75"
+scope = "geriye etkili; yayım 2018-03-27"
+yururluk = 2018-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 16"
+scope = "yayım tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 17"
+scope = "yayım tarihini izleyen aybaşı"
+yururluk = 2018-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7143"
+kabul_tarihi = 2018-05-11
+yururluk = 2018-05-18
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 81, Ek 18, Geçici 76"
+
+[[act]]
+law = "7144"
+kabul_tarihi = 2018-05-16
+yururluk = 2018-05-25
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 102"
+
+[[act]]
+law = "KHK-700"
+kabul_tarihi = 2018-07-02
+yururluk = 2018-07-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md. 2, 36, 39, 43, 54, 55, 92; 24/6/2018 seçimleri sonucunda Cumhurbaşkanının göreve başladığı tarih (9/7/2018)"
+
+[[act]]
+law = "KHK-703"
+kabul_tarihi = 2018-07-02
+yururluk = 2018-07-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 4, 40, 43, 47, 48, 66, 73, 80, 81, 88, 89, 90, Ek 2, Ek 7, Geçici 20, 38; Cumhurbaşkanının göreve başladığı tarih (9/7/2018)"
+
+[[act]]
+law = "7146"
+kabul_tarihi = 2018-07-26
+yururluk = 2018-08-03
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md.40 -> 3/8/2018; belirsiz: '40,' sonrasındaki virgül ve sayfa kırılması nedeniyle Geçici 77 / Ek 3 satırları (1/1/2019) ayrı satır olarak okundu, 2019-01-01 istisnaları buna göre eklendi"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 77"
+scope = ""
+yururluk = 2019-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 3"
+scope = ""
+yururluk = 2019-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7151"
+kabul_tarihi = 2018-11-15
+yururluk = 2018-12-05
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 63"
+
+[[act]]
+law = "7161"
+kabul_tarihi = 2019-01-17
+rg_tarihi = 2019-01-18
+yururluk = 2019-01-18
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md.3 yayımı tarihinde (18/1/2019); belirsiz: Ek 19 'yayımı tarihini takip eden ilk ödeme döneminde' (tam tarih yok), istisna eklenmedi"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = "yayımını izleyen aybaşından itibaren uygulanmak üzere yayımı tarihinde (yürürlük 2019-01-18, uygulama 2019-02-01)"
+yururluk = 2019-02-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7162"
+kabul_tarihi = 2019-01-18
+rg_tarihi = 2019-01-30
+yururluk = 2019-01-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 78; geriye etkili; yayım 30/1/2019"
+
+[[act]]
+law = "7166"
+kabul_tarihi = 2019-02-21
+yururluk = 2019-02-22
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md.112, Geçici 9"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2019-09-19
+yururluk = 2019-10-15
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): E.:2019/42, K.:2019/73 -> md.112, Geçici 9"
+
+[[act]]
+law = "7194"
+kabul_tarihi = 2019-12-05
+yururluk = 2019-12-07
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 79"
+
+[[act]]
+law = "7196"
+kabul_tarihi = 2019-12-06
+yururluk = 2019-12-24
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 79"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2019-12-25
+yururluk = 2020-11-14
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): E.:2019/62, K.:2019/98 -> md.40; tabloda açık tarih yok: 'yayımı tarihi olan 14/2/2020 tarihinden başlayarak dokuz ay sonra' -> hesaplanan 14/11/2020 (7256 ile md.40 13/11/2020'den itibaren uygulanır)"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2020-02-19
+yururluk = 2020-05-05
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): E.:2018/139, K.:2020/12 -> Ek 17"
+
+[[act]]
+law = "7226"
+kabul_tarihi = 2020-03-25
+rg_tarihi = 2020-03-26
+yururluk = 2020-03-26
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md.64 ve 5510 Geçici 81, Ek 18 -> 26/3/2020; belirsiz: tablo '3 üncü ve 88 inci maddeler yayımı izleyen ayın başında (1/4/2020)' diyor ama 5510 madde listesinde 3 ve 88 yok, istisna eklenmedi; Ek 19 '2020 Nisan ödeme döneminden itibaren' (tam tarih yok)"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 80"
+scope = "1/1/2020 tarihinden itibaren uygulanmak üzere; yayım 2020-03-26"
+yururluk = 2020-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7244"
+kabul_tarihi = 2020-04-16
+yururluk = 2020-04-17
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): Geçici 10"
+
+[[act]]
+law = "7252"
+kabul_tarihi = 2020-07-23
+yururluk = 2020-07-28
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): Geçici 10, Geçici 11"
+
+[[act]]
+law = "7256"
+kabul_tarihi = 2020-11-11
+rg_tarihi = 2020-11-17
+yururluk = 2020-11-17
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 82, 83 yayımı tarihinde (17/11/2020)"
+
+[[act.exception]]
+statute = "5510"
+article = "40"
+scope = "13/11/2020 tarihinden itibaren uygulanmak üzere; geriye etkili; yayım 2020-11-17"
+yururluk = 2020-11-13
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7316"
+kabul_tarihi = 2021-04-15
+yururluk = 2021-04-22
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md.17 -> 22/4/2021"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 17"
+scope = "yayımı tarihini takip eden ayın başı"
+yururluk = 2021-05-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7326"
+kabul_tarihi = 2021-06-03
+yururluk = 2021-06-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 84"
+
+[[act]]
+law = "7333"
+kabul_tarihi = 2021-07-18
+rg_tarihi = 2021-07-28
+yururluk = 2021-01-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 85; geriye etkili; yayım 28/7/2021"
+
+[[act]]
+law = "7346"
+kabul_tarihi = 2021-12-21
+yururluk = 2021-12-25
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Ek 20"
+
+[[act]]
+law = "7349"
+kabul_tarihi = 2021-12-22
+yururluk = 2021-12-25
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 86"
+
+[[act]]
+law = "7417"
+kabul_tarihi = 2022-07-01
+rg_tarihi = 2022-07-05
+yururluk = 2022-07-05
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 87, 88 yayımı tarihinde (5/7/2022); md.43 ve Ek 19 yayımı tarihinde (5/7/2022), Temmuz ödeme döneminden itibaren uygulanır; belirsiz: Ek 21, Ek 22 '2023 yılı Ocak ayı ödeme döneminde' (tam tarih yok), istisna eklenmedi"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 7"
+scope = ""
+yururluk = 2022-07-15
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "80"
+scope = ""
+yururluk = 2023-01-15
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7420"
+kabul_tarihi = 2022-11-03
+yururluk = 2022-11-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 89"
+
+[[act]]
+law = "7421"
+kabul_tarihi = 2022-11-16
+yururluk = 2022-11-26
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Ek 23, Geçici 59, Geçici 66"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2022-12-13
+yururluk = 2023-01-05
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): E.:2021/35, K.:2022/161 -> Geçici 4"
+
+[[act]]
+law = "7429"
+kabul_tarihi = 2022-12-22
+yururluk = 2022-12-28
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu: 4857 md.69 ve 5510 Geçici 90, 91 (aynı tarih 28/12/2022)"
+
+[[act]]
+law = "7431"
+kabul_tarihi = 2023-01-12
+rg_tarihi = 2023-01-13
+yururluk = 2023-01-13
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 94 -> 13/1/2023; Ek 19, Geçici 92 '2023 Ocak ödeme döneminden itibaren uygulanmak üzere yayımı tarihinde' (yürürlük yayım tarihi, uygulama dönemi tam tarih değil)"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 93"
+scope = "1/1/2023 tarihinden itibaren geçerli olmak üzere yayımı tarihinde; geriye etkili; yayım 2023-01-13"
+yururluk = 2023-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7438"
+kabul_tarihi = 2023-03-01
+yururluk = 2023-03-03
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 95"
+
+[[act]]
+law = "7456"
+kabul_tarihi = 2023-07-14
+rg_tarihi = 2023-07-15
+yururluk = 2023-07-15
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md.43 ve Geçici 97 yayımı tarihinde (15/7/2023), Temmuz ödeme döneminden itibaren uygulanır"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 96"
+scope = "1/7/2023 tarihinden itibaren uygulanmak üzere yayımı tarihinde; geriye etkili; yayım 2023-07-15"
+yururluk = 2023-07-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7464"
+kabul_tarihi = 2023-10-25
+yururluk = 2023-11-02
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 98"
+
+[[act]]
+law = "7491"
+kabul_tarihi = 2023-12-27
+rg_tarihi = 2023-12-28
+yururluk = 2023-12-28
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 41, 98, 99 -> 28/12/2023"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 100"
+scope = "31/12/2023 tarihinden itibaren geçerli olmak üzere yayımı tarihinde (28/12/2023)"
+yururluk = 2023-12-31
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7495"
+kabul_tarihi = 2024-01-25
+rg_tarihi = 2024-02-03
+yururluk = 2024-02-03
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Ek 19, Geçici 102 yayımı tarihinde (3/2/2024), 2024 Ocak ödeme döneminden itibaren uygulanır"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 101"
+scope = "1/1/2024 tarihinden itibaren uygulanmak üzere yayımı tarihinde; yayım 2024-02-03"
+yururluk = 2024-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7517"
+kabul_tarihi = 2024-06-12
+yururluk = 2024-06-28
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 4, Geçici 103"
+
+[[act]]
+law = "7524"
+kabul_tarihi = 2024-07-28
+rg_tarihi = 2024-08-02
+yururluk = 2024-08-02
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 104 ve Ek 19 yayımı tarihinde (2/8/2024; Ek 19 Temmuz 2024 ödeme döneminden itibaren uygulanır)"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = "yayımını izleyen ayın başı"
+yururluk = 2024-09-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 95"
+scope = "yayımını izleyen ayın başı"
+yururluk = 2024-09-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7528"
+kabul_tarihi = 2024-10-10
+yururluk = 2024-10-18
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 60"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2024-11-05
+yururluk = 2025-01-09
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): E.:2023/175, K.:2024/184 -> Geçici 98"
+
+[[act]]
+law = "7537"
+kabul_tarihi = 2024-12-25
+rg_tarihi = 2024-12-27
+yururluk = 2024-12-27
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 105, 106 -> 27/12/2024"
+
+[[act.exception]]
+statute = "5510"
+article = "17"
+scope = "21/12/2024 tarihinden itibaren geçerli olmak üzere yayımı tarihinde; geriye etkili; yayım 2024-12-27"
+yururluk = 2024-12-21
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7538"
+kabul_tarihi = 2025-01-09
+yururluk = 2025-01-15
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md. 60, 63, 67, 68, 88, Geçici 2, 4, 6, 10, 107 -> 15/1/2025"
+
+[[act.exception]]
+statute = "5510"
+article = "81"
+scope = "yayımını izleyen ayın başı"
+yururluk = 2025-02-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 108"
+scope = "yayımını izleyen ayın başı"
+yururluk = 2025-02-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7539"
+kabul_tarihi = 2025-01-31
+rg_tarihi = 2025-02-04
+yururluk = 2025-02-04
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): Ek 19 yayımı tarihinde (4/2/2025), 2025 Ocak ödeme döneminden itibaren uygulanır (ana tarih yayım tarihi)"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 109"
+scope = "1/1/2025 tarihinden itibaren uygulanmak üzere yayımı tarihinde; geriye etkili; yayım 2025-02-04"
+yururluk = 2025-01-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7546"
+kabul_tarihi = 2025-03-27
+rg_tarihi = 2025-03-30
+yururluk = 2025-03-30
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
+note = "yürürlük tablosu (5510 güncel metin): md.43 -> 30/3/2025"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 18"
+scope = "20/3/2025 tarihinden itibaren geçerli olmak üzere; geriye etkili; yayım 2025-03-30"
+yururluk = 2025-03-20
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act]]
+law = "7553"
+kabul_tarihi = 2025-07-10
+yururluk = 2025-07-14
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md. 46, 108"
+
+[[act]]
+law = "7555"
+kabul_tarihi = 2025-07-20
+yururluk = 2025-07-24
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md. 109"
+
+[[act]]
+law = "7573"
+kabul_tarihi = 2026-01-23
+yururluk = 2026-01-29
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): Geçici 12"
+
+[[act]]
+law = "7578"
+kabul_tarihi = 2026-04-22
+yururluk = 2026-05-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): md. 74, Ek 2"
+
 [[act]]
 law = "6552"
 kabul_tarihi = 2014-09-10
 rg_tarihi = 2014-09-11
 rg_sayisi = "29116"
 yururluk = 2014-09-11
-source_url = "https://www.mevzuat.gov.tr/"  # placeholder URL
-note = "placeholder"
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 ve 5510 güncel metin). Kısmi istisnalar eklenmedi (madde düzeyinde iki tarih var): 4857 m.41 onuncu fıkra 1/1/2015; 5510 m.6 ibare değişikliği 1/4/2015."
+
+[[act.exception]]
+statute = "4857"
+article = "63"
+scope = ""
+yururluk = 2015-01-01
+source = "yürürlük tablosu: 4857 güncel metin"
 
 [[act.exception]]
 statute = "5510"
-article = "Geçici 1"
-scope = "placeholder example of a per-article exception"
-yururluk = 2015-01-01
-source = "dipnot"
+article = "82"
+scope = ""
+yururluk = 2014-10-01
+source = "yürürlük tablosu: 5510 güncel metin"
 
-# PLACEHOLDER: no yururluk, so the timeline warns yururluk_unknown for it
+[[act.exception]]
+statute = "5510"
+article = "Ek 9"
+scope = ""
+yururluk = 2015-04-01
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 59"
+scope = "geriye etkili; yayım 11/9/2014"
+yururluk = 2014-05-13
+source = "yürürlük tablosu: 5510 güncel metin"
+
 [[act]]
 law = "7036"
 kabul_tarihi = 2017-10-12
-note = "placeholder"
+rg_tarihi = 2017-10-25
+rg_sayisi = "30221"
+yururluk = 2017-10-25
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
+note = "yürürlük tablosu (4857 güncel metin): 91, 92, Ek 3, Geçici 8 25/10/2017; 20, 21 1/1/2018 (7036 md. 38)."
+
+[[act.exception]]
+statute = "4857"
+article = "20"
+scope = ""
+yururluk = 2018-01-01
+source = "yürürlük tablosu: 4857 güncel metin"
+
+[[act.exception]]
+statute = "4857"
+article = "21"
+scope = ""
+yururluk = 2018-01-01
+source = "yürürlük tablosu: 4857 güncel metin"

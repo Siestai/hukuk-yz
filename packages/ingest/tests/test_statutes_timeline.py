@@ -136,6 +136,10 @@ def test_change_without_a_note_is_a_gap_and_low() -> None:
     assert spans(art) == [("2003-06-10", "2018-01-02"), ("2020-01-01", None)]
     assert gaps(art) == [("2018-01-02", "2020-01-01", "unexplained_change")]
     assert art["confidence"] == "low"
+    # a version evidenced only by a snapshot is valid on the snapshot date, the day after is a gap
+    assert as_of(art, S1)["status"] == "found"
+    assert as_of(art, "2018-01-02")["status"] == "gap"
+    assert as_of(art, S2)["status"] == "found"
 
 
 def test_unknown_in_force_date_falls_back_to_the_snapshot_dates() -> None:
@@ -182,6 +186,25 @@ def test_repealed_article_is_not_in_force_but_returns_the_stub() -> None:
     assert result["status"] == "not_in_force" and result["reason"] == "repealed"
     assert result["version"]["text"] == "(Mülga: 1/3/2010-7000/1 md.)"
     assert as_of(arts["7"], "2005-01-01")["status"] == "gap"
+
+
+def test_repealed_stub_after_other_notes_is_not_in_force_even_with_retained_text() -> None:
+    arts = build(
+        (
+            S0,
+            {
+                "1": "Kalır.",
+                "7": "(Ek: 1/3/2010-7000/1 md.) (Mülga: 1/3/2017-7001/5 md.)",
+                "8": "(Ek: 1/3/2010-7000/1 md.) (Mülga:1/3/2017-7001/5 md.) Eski metin kalmış.",
+            },
+        )
+    )
+    for no in ("7", "8"):
+        assert arts[no]["status"] == "repealed"
+        assert as_of(arts[no], "2018-01-01")["status"] == "not_in_force"
+    assert "repealed_text_retained" in arts["8"]["versions"][0]["warnings"] or (
+        "repealed_text_retained" in arts["8"]["warnings"]
+    )
 
 
 def test_cosmetic_difference_is_one_version_with_uncertain_diff() -> None:
@@ -317,6 +340,7 @@ def test_golden_queries_against_the_real_snapshots() -> None:
     by_number = {r["number"]: r for r in records}
     queries = tomllib.loads(GOLDEN.read_text(encoding="utf-8"))["query"]
     failures = []
+    known = []
     for q in queries:
         record = by_number.get(q["statute"])
         result: dict[str, Any] = (
@@ -325,6 +349,9 @@ def test_golden_queries_against_the_real_snapshots() -> None:
             else {"status": "unknown_article"}
         )
         label = f"{q['statute']} m.{q['article']} @ {q['as_of']}"
+        if "known_issue" in q:  # a documented timeline limitation: must keep failing until fixed
+            known.append((label, result["status"] != q["expect"]))
+            continue
         if result["status"] != q["expect"]:
             failures.append(f"{label}: expected {q['expect']}, got {result['status']}")
             continue
@@ -333,4 +360,5 @@ def test_golden_queries_against_the_real_snapshots() -> None:
             failures.append(f"{label}: missing {q['contains']!r}")
         if "not_contains" in q and _flat(q["not_contains"]) in text:
             failures.append(f"{label}: unexpected {q['not_contains']!r}")
+    failures += [f"{label}: known_issue is fixed, remove it" for label, wrong in known if not wrong]
     assert not failures, json.dumps(failures, ensure_ascii=False, indent=2)

@@ -54,7 +54,8 @@ _FOOTNOTE_LEAK_RE = re.compile(
     r"\d+\s+sayılı\s+(?:Kanunun|KHK)[^.]{0,80}maddesiyle[^.]{0,300}"
     r"(?:değiştirilmiş|eklenmiş|çıkarılmış|kanunlaşmıştır|hüküm altına)"
 )
-_REPEALED_RE = re.compile(r"^\(\s*(?:Mülga|İptal)\s*:[^()]*\)$", re.IGNORECASE)
+# Notes at the head of an article ending in a whole-article repeal: `(Ek: ...) (Mülga: ...)`.
+_REPEAL_HEAD_RE = re.compile(r"^(?:\([^()]*\)\s*)*\(\s*(?:Mülga|İptal)\s*:[^()]*\)", re.IGNORECASE)
 
 
 @dataclass
@@ -374,10 +375,8 @@ def _article_no(m: re.Match[str]) -> str:
     return no
 
 
-def _is_repealed(text: str) -> bool:
-    """A stub article: a single `(Mülga: ...)` note and no running text."""
-    flat = " ".join(text.split())
-    return bool(_REPEALED_RE.match(flat))
+def _repeal_head(text: str) -> re.Match[str] | None:
+    return _REPEAL_HEAD_RE.match(" ".join(text.split()))
 
 
 def _attach_footnotes(
@@ -503,7 +502,11 @@ def split_statute(text: str) -> Snapshot:
         heading, heading_warnings = next_heading, next_warnings
     _attach_footnotes(articles, spans, body, notes, known)
     for a in articles:
-        a.status = "repealed" if _is_repealed(a.text) else "in_force"
+        head = _repeal_head(a.text)
+        a.status = "repealed" if head else "in_force"
+        if head and " ".join(a.text.split())[head.end() :].strip():
+            # the source keeps the old text after the note
+            a.warnings.append("repealed_text_retained")
         if any(not fn.marker_found for fn in a.footnotes):
             a.warnings.append("footnote_marker_not_found")
         if _FOOTNOTE_LEAK_RE.search(a.text):
