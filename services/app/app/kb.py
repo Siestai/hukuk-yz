@@ -575,12 +575,13 @@ def _is_rejected(extraction_id: Any) -> Exists:
     )
 
 
-_TR_UPPER, _TR_LOWER = "İIıÇĞÖŞÜ", "iiiçğöşü"
+_TR_UPPER, _TR_LOWER = "İIıÇĞÖŞÜÂâÎîÛû", "iiiçğöşüaaiiuu"
 
 
 def fold_tr(text: str) -> str:
-    """Turkish case-insensitive form for search: İ, I, ı and i are one letter, and the other
-    Turkish capitals go to their lowercase (the database's `lower` may know only ASCII)."""
+    """Turkish case-insensitive form for search: İ, I, ı and i are one letter, the other
+    Turkish capitals go to their lowercase and the circumflex vowels (kâr, hâl) to the plain
+    ones (the database's `lower` may know only ASCII)."""
     return text.translate(str.maketrans(_TR_UPPER, _TR_LOWER)).lower()
 
 
@@ -696,13 +697,16 @@ async def approve_statute_article(
     reviewer_id: uuid.UUID,
     band: Band | None = None,
     *,
+    note: str | None = None,
     idempotent: bool = True,
 ) -> tuple[uuid.UUID, uuid.UUID]:
-    """`review` row (approve) + `publish_statute_article`, in a savepoint; returns (review_id,
-    article_id). Raises ValueError (not publishable, unknown reviewer, overlapping versions) or
-    StaleExtraction (see `lock_pending_statute`); the caller commits. An extraction that is
-    already live is a no-op when `idempotent`: the review that published it and its article are
-    returned and no review is added; otherwise it is stale like any other non-pending one."""
+    """`review` row (approve, with `note`) + `publish_statute_article`, in a savepoint; returns
+    (review_id, article_id). Raises ValueError (not publishable, unknown reviewer, overlapping
+    versions) or StaleExtraction (see `lock_pending_statute`); the caller commits.
+
+    `idempotent` (default): an extraction that is already live is a no-op, the review that
+    published it and its article are returned and no review is added. `idempotent=False` (the
+    API, where a second approval is a conflict): it is stale like any other non-pending one."""
     if idempotent:
         live = (
             await session.execute(
@@ -724,6 +728,7 @@ async def approve_statute_article(
                 extraction_id=extraction_id,
                 reviewer_id=reviewer_id,
                 decision=ReviewDecision.approve,
+                note=note,
             )
             session.add(review)
             await session.flush()

@@ -227,6 +227,19 @@ async def test_the_detail_has_a_timeline_of_versions_and_gaps_in_date_order(
     ]
 
 
+async def test_the_detail_of_an_old_shape_extraction_has_no_snapshots(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login, statutes_loaded: Ids
+) -> None:
+    async with kb_factory() as session:
+        extraction = await session.get(Extraction, statutes_loaded["18"])
+        assert extraction is not None
+        extraction.fields = {k: v for k, v in extraction.fields.items() if k != "snapshots"}
+        await session.commit()
+    response = await client.get(f"{BASE}/{statutes_loaded['18']}", headers=me.headers)
+    assert response.status_code == 200
+    assert response.json()["snapshots"] == []
+
+
 async def test_an_open_gap_comes_first(
     client: httpx.AsyncClient, me: Login, statutes_loaded: Ids
 ) -> None:
@@ -322,7 +335,7 @@ async def test_approving_publishes_the_article_for_as_of(
     assert (await _as_of(client, me, "18", "2010-01-01"))["status"] == "gap"
     detail = (await client.get(f"{BASE}/{statutes_loaded['18']}", headers=me.headers)).json()
     assert detail["status"] == "approved" and detail["source_status"] == "approved"
-    assert [r["decision"] for r in detail["reviews"]] == ["approve"]
+    assert [(r["decision"], r["note"]) for r in detail["reviews"]] == [("approve", "ok")]
 
 
 async def test_rejecting_keeps_the_article_out_of_as_of_and_the_source_as_it_was(

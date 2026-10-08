@@ -169,7 +169,7 @@ async def get_article(extraction_id: uuid.UUID, db: Db) -> StatuteReviewDetail:
                 file_name=PurePath(s["path"]).name,
                 date=date.fromisoformat(s["date"]) if s["date"] else None,
             )
-            for s in fields["snapshots"]
+            for s in fields.get("snapshots", [])
         ],
         latest_snapshot_date=date.fromisoformat(fields["latest_snapshot_date"]),
         reviews=[
@@ -195,12 +195,13 @@ async def act(
     _, source = await _statute_extraction(db, extraction_id)
     try:
         if body.action == "reject":
-            assert body.note  # StatuteReviewActionRequest guarantees it
+            if body.note is None:  # the request model guarantees it; narrows the type
+                raise ApiError(422, ErrorCode.validation_error, {"fields": ["note"]})
             review_id = await reject_statute_article(db, extraction_id, user.id, body.note)
             article_id = None
         else:
             review_id, article_id = await approve_statute_article(
-                db, extraction_id, user.id, idempotent=False
+                db, extraction_id, user.id, note=body.note, idempotent=False
             )
     except StaleExtraction:
         raise ApiError(409, ErrorCode.review_conflict) from None

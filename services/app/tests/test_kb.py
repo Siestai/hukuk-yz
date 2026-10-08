@@ -685,6 +685,26 @@ async def test_a_rejected_article_is_not_approved_rejected_or_bulk_published_aga
     assert await _total(kb_factory, Review) == 2  # the rejection and the one approval
 
 
+async def test_an_idempotent_approval_of_a_live_article_returns_its_review(
+    kb_factory: Factory, statutes_published: dict[str, uuid.UUID], reviewer: AppUser
+) -> None:
+    async with kb_factory() as session:
+        live = (
+            await session.execute(
+                select(StatuteArticleVersion.review_id, StatuteArticleVersion.article_id).where(
+                    StatuteArticleVersion.extraction_id == statutes_published["18"],
+                    StatuteArticleVersion.superseded_at.is_(None),
+                )
+            )
+        ).first()
+        assert live is not None
+        again = await approve_statute_article(
+            session, statutes_published["18"], reviewer.id, idempotent=True
+        )
+        assert again == (live.review_id, live.article_id)
+    assert await _total(kb_factory, Review) == 3  # no review was added
+
+
 async def test_a_live_article_is_stale_unless_the_approval_is_idempotent(
     kb_factory: Factory, statutes_published: dict[str, uuid.UUID], reviewer: AppUser
 ) -> None:
@@ -730,6 +750,8 @@ async def test_the_statute_queue_filters_and_orders(
 def test_fold_tr_makes_the_dotted_and_dotless_i_and_the_capitals_one_case() -> None:
     assert fold_tr("GEÇİCİ MADDE IŞIK") == fold_tr("geçici madde ışık") == "geçici madde işik"
     assert fold_tr("ŞÜĞÖ") == "şüğö"
+    assert fold_tr("KÂR") == fold_tr("kar") == "kar"
+    assert fold_tr("HÂLİ ÎMÂ DÛ") == "hali ima du"
 
 
 async def test_the_statute_article_status_names_every_state(

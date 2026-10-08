@@ -102,6 +102,14 @@ def test_an_extraction_holds_the_article_timeline_and_its_statute() -> None:
     assert by_no["5"].confidence == {"band": "high", "reasons": []}
 
 
+def test_the_content_hash_ignores_the_derived_snapshots() -> None:
+    (statute,) = statutes.prepare([_record()])
+    stored = {k: v for k, v in statute.articles[0].fields.items() if k != "content_hash"}
+    assert "snapshots" in stored
+    without = {k: v for k, v in stored.items() if k != "snapshots"}
+    assert statutes.content_hash(stored) == statutes.content_hash(without)
+
+
 def test_the_content_hash_covers_the_stored_fields_and_ignores_key_order() -> None:
     (statute,) = statutes.prepare([_record()])
     a18 = statute.articles[0]

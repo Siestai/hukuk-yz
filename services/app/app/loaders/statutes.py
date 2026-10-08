@@ -38,7 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.db import make_engine, make_session_factory
 from app.kb import (
     STATUTE_PARSER_NAME,
-    approve_statute_article,
+    publish_statute_batch,
     unpublished_statute_articles,
 )
 from app.loaders.decisions import error_name, finish_job, is_row_error, read_files
@@ -106,8 +106,10 @@ def official_ref(number: str, header: dict[str, Any]) -> str:
 
 
 def content_hash(fields: dict[str, Any]) -> str:
-    """sha256 of the canonical JSON of an article's `fields` (without `content_hash` itself)."""
-    canonical = json.dumps(fields, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    """sha256 of the canonical JSON of an article's `fields`, without `content_hash` itself and
+    without `snapshots` (derived from the snapshot set, which `snapshot_sha256` already holds)."""
+    hashed = {k: v for k, v in fields.items() if k not in ("content_hash", "snapshots")}
+    canonical = json.dumps(hashed, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -307,17 +309,14 @@ async def approve_band(
     counts: StatuteCounts,
 ) -> None:
     """Approve and publish (app.kb) the newest unpublished extraction of every article in
-    `band`. A record `approve_statute_article` refuses goes to `counts.publish_failed`
-    (extraction id, reason); each has its own savepoint, so none stops the run. Development
-    and tests only."""
+    `band` (`publish_statute_batch`, as the bulk approval of the API). A record it refuses goes
+    to `counts.publish_failed` (extraction id, reason); each has its own savepoint, so none stops
+    the run. Development and tests only."""
     async with factory() as session:
         ids = (await session.execute(unpublished_statute_articles(band))).scalars().all()
-        for extraction_id in ids:
-            try:
-                await approve_statute_article(session, extraction_id, reviewer_id)
-                counts.published += 1
-            except ValueError as exc:
-                counts.publish_failed.append((str(extraction_id), str(exc)))
+        result = await publish_statute_batch(session, ids, reviewer_id, band)
+        counts.published += result.published
+        counts.publish_failed += [(str(i), reason) for i, reason in result.failed]
         await session.commit()
 
 

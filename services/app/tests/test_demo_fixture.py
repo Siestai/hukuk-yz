@@ -20,6 +20,7 @@ from hukuk_models import Band, ReviewFilters
 DEMO = Path(__file__).parents[3] / "infra" / "demo"
 ARCHIVE = DEMO / "archive"
 BANDS: dict[Band, int] = {"high": 6, "medium": 4, "low": 2}
+STATUTE_BANDS: dict[Band, int] = {"high": 2, "medium": 4, "low": 1}
 
 
 def _prepared() -> list[PreparedRecord]:
@@ -83,19 +84,9 @@ def test_the_statute_fixture_covers_every_case_of_the_review_screen() -> None:
     (statute,) = _statutes()
     assert (statute.number, len(statute.articles)) == ("4857", 7)
     by_no = {a.article_no: a for a in statute.articles}
-    assert Counter(a.confidence["band"] for a in statute.articles) == {
-        "high": 2,
-        "medium": 4,
-        "low": 1,
-    }
-    assert [len(by_no[n].fields["gaps"]) for n in ("1", "9", "18", "20", "33", "Geçici 1")] == [
-        0,
-        0,
-        1,
-        1,
-        1,
-        1,
-    ]
+    assert Counter(a.confidence["band"] for a in statute.articles) == STATUTE_BANDS
+    gaps = {no: len(a.fields["gaps"]) for no, a in by_no.items()}
+    assert gaps == {"1": 0, "9": 0, "18": 1, "20": 1, "33": 1, "Geçici 1": 1, "Ek 2": 1}
     assert len(by_no["20"].fields["versions"]) == 2
     assert by_no["33"].fields["status"] == "repealed"
     assert {"Geçici 1", "Ek 2"} <= set(by_no)
@@ -108,7 +99,7 @@ async def test_loaded_statute_fixture_is_pending_and_not_published(
     assert await statute_loader.load(kb_factory, _statutes(), {}, counts) is not None
     assert (counts.new, counts.errors, counts.published) == (7, [], 0)
     async with kb_factory() as session:
-        for band, expected in {"high": 2, "medium": 4, "low": 1}.items():
-            ids = (await session.execute(unpublished_statute_articles(band))).scalars().all()  # type: ignore[arg-type]
+        for band, expected in STATUTE_BANDS.items():
+            ids = (await session.execute(unpublished_statute_articles(band))).scalars().all()
             assert len(ids) == expected, band
         assert (await session.execute(select(func.count()).select_from(Statute))).scalar_one() == 0
