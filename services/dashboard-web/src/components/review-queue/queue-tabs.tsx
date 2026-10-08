@@ -3,14 +3,14 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
 import { HelpTip } from "@/components/help-tip";
+import { STATUSES, type QueueStatus } from "@/lib/queue-params";
 import {
-    queueHref,
-    STATUSES,
-    statusOf,
-    tabParams,
-    type QueueParams,
-    type QueueStatus,
-} from "@/lib/queue-params";
+    isStatuteState,
+    stateHref,
+    stateStatus,
+    stateTab,
+    type QueueState,
+} from "@/lib/queue-state";
 
 const HELP = {
     pending: "tabPending",
@@ -20,7 +20,7 @@ const HELP = {
 } as const;
 
 /**
- * The status tabs of the list. They are links that load another URL, so this is a navigation
+ * The status tabs of the list (decisions or statute articles). They are links that load another URL, so this is a navigation
  * landmark with `aria-current="page"` on the open one, not the ARIA tab pattern. A tab keeps the
  * filters and takes the sort of its own (`tabParams`). The tips sit beside the links, not in them.
  */
@@ -28,20 +28,21 @@ export function QueueTabs({
     params,
     counts,
 }: {
-    params: QueueParams;
+    params: QueueState;
     counts: Record<QueueStatus, number>;
 }) {
     const t = useTranslations("review.queue.tabs");
     const format = useFormatter();
-    const current = statusOf(params);
+    const current = stateStatus(params);
+    const statute = isStatuteState(params);
 
     return (
-        <nav aria-label={t("label")}>
+        <nav aria-label={statute ? t("labelStatute") : t("label")}>
             <ul className="flex flex-wrap gap-x-2 gap-y-1 border-b border-border">
                 {STATUSES.map((status) => (
                     <li key={status} className="flex items-center gap-1">
                         <Link
-                            href={queueHref(tabParams(params, status))}
+                            href={stateHref(stateTab(params, status))}
                             aria-current={status === current ? "page" : undefined}
                             className={cn(
                                 "-mb-px inline-flex items-center gap-2 border-b-2 px-2 py-2 text-sm font-medium pointer-coarse:min-h-11",
@@ -55,7 +56,7 @@ export function QueueTabs({
                                 {format.number(counts[status], "integer")}
                             </span>
                         </Link>
-                        <HelpTip name={HELP[status]} topic={t(status)} />
+                        {statute ? null : <HelpTip name={HELP[status]} topic={t(status)} />}
                     </li>
                 ))}
             </ul>

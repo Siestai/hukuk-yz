@@ -68,4 +68,17 @@ describe("AppShell help", () => {
             ),
         ).toBeNull();
     });
+
+    it("links the statute review beside the decisions in the side navigation", () => {
+        renderWithIntl(
+            <AppShell user={user} pending={3}>
+                <p>içerik</p>
+            </AppShell>,
+        );
+        const side = within(screen.getByRole("complementary"));
+        expect(side.getByRole("link", { name: messages.nav.statutes })).toHaveAttribute(
+            "href",
+            "/mevzuat",
+        );
+    });
 });

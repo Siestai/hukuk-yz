@@ -71,6 +71,10 @@ describe("MobileNav", () => {
         expect(
             within(drawer).getByRole("link", { name: new RegExp(messages.nav.queue) }),
         ).toHaveAttribute("href", "/");
+        expect(within(drawer).getByRole("link", { name: messages.nav.statutes })).toHaveAttribute(
+            "href",
+            "/mevzuat",
+        );
         expect(within(drawer).getByText("Baran Yılmaz")).toBeInTheDocument();
         expect(
             within(drawer).getByRole("button", { name: messages.nav.logout }),

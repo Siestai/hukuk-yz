@@ -17,7 +17,7 @@ export const SORTS = ["score_asc", "score_desc", "reviewed_desc"] as const;
 /** The tabs of the list, in order; `pending` is the queue itself. */
 export const STATUSES = ["pending", "approved", "rejected", "all"] as const;
 /** The `durum` value of each tab in the URL; the queue (pending) has none. */
-const STATUS_SLUGS = { approved: "onaylanan", rejected: "reddedilen", all: "tumu" } as const;
+export const STATUS_SLUGS = { approved: "onaylanan", rejected: "reddedilen", all: "tumu" } as const;
 
 export type Band = (typeof BANDS)[number];
 export type Sort = (typeof SORTS)[number];
@@ -52,22 +52,25 @@ export function statusOf(params: QueueParams): QueueStatus {
 /** What a filter control may change; the page is reset unless the change names one. */
 export type QueueChange = Partial<QueueParams>;
 
-type RawParams = URLSearchParams | Record<string, string | string[] | undefined>;
+export type RawParams = URLSearchParams | Record<string, string | string[] | undefined>;
 
-const MAX_PAGE = 100_000;
+export const MAX_PAGE = 100_000;
 export const MAX_JOURNAL_ISSUE = 10_000;
-const MAX_QUERY_LENGTH = 100;
+export const MAX_QUERY_LENGTH = 100;
 
-function pick(raw: RawParams, key: string): string | undefined {
+export function pick(raw: RawParams, key: string): string | undefined {
     const value = raw instanceof URLSearchParams ? (raw.get(key) ?? undefined) : raw[key];
     return Array.isArray(value) ? value[0] : value;
 }
 
-function oneOf<T extends string>(values: readonly T[], value: string | undefined): T | undefined {
+export function oneOf<T extends string>(
+    values: readonly T[],
+    value: string | undefined,
+): T | undefined {
     return values.find((candidate) => candidate === value);
 }
 
-function positiveInt(value: string | undefined, max: number): number | undefined {
+export function positiveInt(value: string | undefined, max: number): number | undefined {
     if (!value || !/^\d{1,9}$/.test(value)) return undefined;
     const n = Number(value);
     return n >= 1 && n <= max ? n : undefined;
@@ -133,7 +136,7 @@ export function parseNotice(raw: RawParams): Notice {
     return { flash: oneOf(FLASHES, pick(raw, "flash")), done: pick(raw, "done") === "1" };
 }
 
-function withNotice(query: URLSearchParams, notice: Notice = {}): string {
+export function withNotice(query: URLSearchParams, notice: Notice = {}): string {
     if (notice.flash) query.set("flash", notice.flash);
     if (notice.done) query.set("done", "1");
     return query.toString();

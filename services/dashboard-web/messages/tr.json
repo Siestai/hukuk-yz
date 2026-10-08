@@ -27,7 +27,8 @@
     "logout": "Çıkış yap",
     "menu": "Menü",
     "closeMenu": "Menüyü kapat",
-    "pending": "Onay bekleyen"
+    "pending": "Onay bekleyen",
+    "statutes": "Mevzuat"
   },
   "review": {
     "queue": {
@@ -47,7 +48,8 @@
         "noReasons": "Sebep kaydı yok.",
         "totalsTitle": "Sonuçlar",
         "approved": "Onaylanan",
-        "rejected": "Reddedilen"
+        "rejected": "Reddedilen",
+        "bandChartStatute": "Bekleyen maddelerin güven dağılımı: {details}"
       },
       "filters": {
         "label": "Filtreler",
@@ -214,7 +216,12 @@
         "pending": "Bekleyen",
         "approved": "Onaylanan",
         "rejected": "Reddedilen",
-        "all": "Tümü"
+        "all": "Tümü",
+        "labelStatute": "Madde durumu"
+      },
+      "flashStatute": {
+        "approved": "Madde onaylandı ve yayına alındı.",
+        "rejected": "Madde reddedildi."
       }
     },
     "bulk": {
@@ -230,7 +237,8 @@
         "court": "Mahkeme: {value}",
         "reason": "Sebep: {value}",
         "issue": "Dergi sayısı: {value, number}",
-        "q": "Arama: {value}"
+        "q": "Arama: {value}",
+        "statute": "Kanun: {value}"
       },
       "sampleTitle": "İlk {count, number} kayıt",
       "esas": "E. {value}",
@@ -274,7 +282,10 @@
         "failures": "Başarısız kayıtlar",
         "more": "ve {count, number} daha",
         "close": "Kapat"
-      }
+      },
+      "countStatute": "{total, number} madde",
+      "introStatute": "Bu filtrelerle eşleşen maddeler onaylanıp yayınlanacak.",
+      "unverifiedStatute": "Onaylanan maddeler yayına girer ve tarih sorgularında tek kaynak olur."
     },
     "detail": {
       "back": "Kuyruğa dön",
@@ -344,7 +355,8 @@
       "publishRefused": "Kayıt bu değerlerle yayınlanamadı. Alanları kontrol edin.",
       "failureTitle": "İşlem yapılamadı",
       "navigationFailed": "Sonraki ekrana geçilemedi. İşlem kaydedilmiş olabilir.",
-      "toQueue": "Kuyruğa dön"
+      "toQueue": "Kuyruğa dön",
+      "publishRefusedStatute": "Madde çizelgesi yayınlanamadı. Maddeyi reddedip nedenini yazın."
     },
     "edit": {
       "review": "Değişiklikleri gözden geçir",
@@ -377,7 +389,114 @@
       "note": "Ret notu",
       "required": "Ret notu zorunludur.",
       "submit": "Reddet",
-      "cancel": "Vazgeç"
+      "cancel": "Vazgeç",
+      "titleStatute": "Maddeyi reddet",
+      "introStatute": "Reddedilen madde yayınlanmaz. Nedenini yazın; çizelge düzeltmesi için kullanılır."
+    },
+    "statutes": {
+      "title": "Mevzuat inceleme kuyruğu",
+      "subtitle": "{total, number} madde onay bekliyor",
+      "titles": {
+        "approved": "Yayındaki maddeler",
+        "rejected": "Reddedilen maddeler",
+        "all": "Tüm maddeler"
+      },
+      "subtitles": {
+        "approved": "{total, number} madde yayında",
+        "rejected": "{total, number} madde reddedildi",
+        "all": "{total, number} madde: {pending, number} bekliyor, {approved, number} yayında, {rejected, number} reddedildi"
+      },
+      "articleNo": "m. {no}",
+      "articleTitle": "{article} · {heading}",
+      "law": "{law} sayılı Kanun",
+      "statuteTabs": {
+        "label": "Kanun",
+        "4857": "4857 İş Kanunu",
+        "5510": "5510 SGK Kanunu"
+      },
+      "filters": {
+        "search": "Madde no veya kenar başlığı"
+      },
+      "item": {
+        "counts": "{versions, number} sürüm{gaps, plural, =0 {} other { · # boşluk}}",
+        "unknownReason": "Bilinmeyen sebep"
+      },
+      "table": {
+        "label": "Mevzuat maddeleri",
+        "band": "Güven",
+        "article": "Madde",
+        "versions": "Sürümler",
+        "snapshot": "Son kopya",
+        "reasons": "Sebepler",
+        "status": "Durum",
+        "snapshotValue": "Son kopya: {date}"
+      },
+      "empty": {
+        "pending": "Onay bekleyen madde yok.",
+        "approved": "Yayında madde yok.",
+        "rejected": "Reddedilen madde yok.",
+        "all": "Henüz madde yok."
+      },
+      "detail": {
+        "back": "Kuyruğa dön",
+        "heading": "{statute} · {article}",
+        "upToDate": "Metin {date} tarihli kopyaya kadar güncel.",
+        "liveElsewhere": "Bu maddenin yayındaki metni başka bir kayda ait.",
+        "liveLink": "Yayındaki kayda git"
+      },
+      "confidence": {
+        "title": "Güven",
+        "band": "Bant",
+        "reasons": "Neden bu bantta",
+        "noReasons": "Bandı düşüren bir sebep yok.",
+        "warnings": "Diğer uyarılar"
+      },
+      "dateQuery": {
+        "title": "Bu madde şu tarihte nasıldı?",
+        "date": "Tarih",
+        "hint": "Bir tarih seçin; o tarihte geçerli metin zaman çizgisinde işaretlenir.",
+        "found": "Bu tarihte {range} aralığındaki metin geçerliydi.",
+        "gap": "Bu tarihte metin elde yok: {range} aralığı.",
+        "repealed": "Madde bu tarihte mülgaydı ({range}).",
+        "notInForce": "Madde bu tarihte yürürlükte değildi: henüz eklenmemişti ya da kaldırılmıştı.",
+        "stale": "Tarih son kopyadan ({date}) sonra; metin o günden beri değişmiş olabilir."
+      },
+      "timeline": {
+        "title": "Zaman çizgisi",
+        "label": "Maddenin sürümleri ve boşlukları, eskiden yeniye",
+        "range": "{from} → {to}",
+        "fromStart": "Kanunun yürürlüğünden",
+        "today": "bugün",
+        "amendedBy": "{laws}, yürürlük {date}",
+        "gap": "Boşluk",
+        "gapNoText": "Bu aralıkta metin elde yok",
+        "knownAmendments": "Bu aralıkta bilinen değişiklikler",
+        "amendment": "{law} · kabul {date} · {kind}",
+        "amendmentScoped": "{law} · kabul {date} · {kind} ({scope})",
+        "queried": "Sorgulanan tarih"
+      },
+      "version": {
+        "title": "Seçili sürüm: {range}",
+        "heading": "Kenar başlığı",
+        "footnotes": "Dipnot",
+        "evidence": "Dayanak",
+        "basis": "Başlangıç tarihinin kaynağı",
+        "unknown": "Belirtilmemiş",
+        "amendments": "Değiştiren kanunlar",
+        "amendment": "{law} (kabul {date})",
+        "copies": "Metnin göründüğü kopyalar",
+        "copy": "{name} ({date})",
+        "warnings": "Bu sürümün uyarıları",
+        "diff": "Önceki sürümle fark"
+      },
+      "diff": {
+        "first": "İlk sürüm: karşılaştırılacak önceki sürüm yok.",
+        "gapBetween": "İki sürüm arasında metni elde olmayan bir aralık var; fark bilinen iki metin arasındadır.",
+        "before": "Önceki sürüm: {range}",
+        "after": "Bu sürüm: {range}",
+        "same": "Metin önceki sürümle aynı; yalnız tarih ve dayanak değişti.",
+        "legend": "Silinen kelimeler üstü çizili, eklenenler altı çizili gösterilir."
+      }
     }
   },
   "errors": {
@@ -513,6 +632,78 @@
       "court_required": "Mahkeme ve mahkeme düzeyi eksik",
       "band_changed": "Kayıt artık yüksek bantta değil",
       "constraint_violated": "Veritabanı kısıtı ihlal edildi"
+    },
+    "statuteStatus": {
+      "pending": "Onay bekliyor",
+      "approved": "Yayında",
+      "rejected": "Reddedildi",
+      "superseded": "Yeni kayıtla değişti"
+    },
+    "changeKind": {
+      "original": "İlk metin",
+      "amended": "Değişik",
+      "added": "Ek",
+      "repealed": "Mülga"
+    },
+    "evidenceBasis": {
+      "act": "Değiştiren kanunun yürürlük kaydı",
+      "exception": "Maddeye özel yürürlük tarihi (istisna)",
+      "fallback": "Kopya tarihi: yürürlük tarihi bulunamadı"
+    },
+    "amendmentKind": {
+      "degisik": "Değişiklik",
+      "ek": "Ek",
+      "mulga": "Mülga",
+      "iptal": "İptal"
+    },
+    "statuteReason": {
+      "number_skipped": "Madde numarası atlanmış",
+      "number_out_of_order": "Madde sırası bozuk",
+      "duplicate_article": "Aynı madde iki kez var",
+      "unparsed_article_no": "Madde no okunamadı",
+      "unexplained_change": "Açıklanamayan değişiklik",
+      "multi_amendment_in_window": "Birden çok değişiklik",
+      "unparsed_annotation": "Okunamayan değişiklik notu",
+      "yururluk_unknown": "Yürürlük tarihi bilinmiyor",
+      "yururluk_outside_window": "Yürürlük tarihi aralık dışı",
+      "removed_article": "Madde kaldırılmış",
+      "footnote_leak_suspect": "Dipnot metne karışmış olabilir",
+      "exception_effective": "Maddeye özel yürürlük tarihi",
+      "split_effective_dates": "Bölümler farklı tarihte yürürlükte",
+      "partial_entry_into_force": "Kısmen yürürlüğe girdi",
+      "uncertain_diff": "Metin farkı belirsiz",
+      "before_earliest_snapshot": "İlk kopyadan önce bilinmiyor",
+      "start_unverified": "Başlangıç tarihi doğrulanamadı",
+      "heading_suspect": "Kenar başlığı şüpheli",
+      "section_title_guess": "Bölüm başlığı tahmin"
+    },
+    "statuteWarning": {
+      "number_skipped": "Madde numaralarında atlama var; bir madde eksik okunmuş olabilir.",
+      "number_out_of_order": "Madde numaraları sırayla gelmiyor; metin yanlış bölünmüş olabilir.",
+      "duplicate_article": "Aynı madde numarası iki kez geçiyor; metin yanlış bölünmüş olabilir.",
+      "unparsed_article_no": "Madde numarası okunamadı.",
+      "unexplained_change": "İki kopya arasında metin değişmiş ama hangi kanunun değiştirdiği bulunamadı; aradaki metin bilinmiyor.",
+      "multi_amendment_in_window": "İki kopya arasında birden fazla değişiklik var; aradaki metin bilinmiyor.",
+      "unparsed_annotation": "Bir değişiklik notu okunamadı.",
+      "yururluk_unknown": "Değiştiren kanunun bu madde için yürürlük tarihi bulunamadı; tarih kopya tarihine göre belirlendi.",
+      "yururluk_outside_window": "Yürürlük tarihi iki kopyanın tarihleri arasına uymuyor; tarih kopya tarihine göre belirlendi.",
+      "removed_article": "Madde sonraki kopyada yok; kaldırılma nedeni bilinmiyor.",
+      "footnote_leak_suspect": "Dipnot metni madde metnine karışmış olabilir.",
+      "exception_effective": "Bu maddenin yürürlük tarihi kanunun genel tarihinden farklı (maddeye özel tarih).",
+      "split_effective_dates": "Değişikliğin bölümleri farklı tarihlerde yürürlüğe girdi; aradaki dönemin metni bilinmiyor.",
+      "partial_entry_into_force": "Değişiklik maddeye kısmen yürürlüğe girdi; aradaki dönemin metni bilinmiyor.",
+      "uncertain_diff": "İki kopya arasındaki fark çok küçük; gerçek bir değişiklik mi okuma farkı mı belli değil.",
+      "before_earliest_snapshot": "En eski kopyadan önceki döneme ait metin elde yok.",
+      "start_unverified": "Maddenin ne zaman yürürlüğe girdiği doğrulanamadı; en eski kopyanın tarihi alındı.",
+      "heading_suspect": "Kenar başlığı doğru okunmamış olabilir.",
+      "section_title_guess": "Bölüm başlığı madde başlığından ayrılırken tahmin yürütüldü.",
+      "footnote_marker_not_found": "Bir dipnotun metindeki işareti bulunamadı.",
+      "footnote_sequence_gap": "Dipnot numaralarında atlama var.",
+      "repealed_text_retained": "Madde mülga ama eski metni kopyada duruyor.",
+      "snapshot_date_inferred": "Kopyanın tarihi dosya adından tahmin edildi.",
+      "statute_number_missing": "Kanun numarası kopyada bulunamadı.",
+      "trailer_ignored": "Metnin sonundaki ek bölüm madde metnine alınmadı.",
+      "removed_unexplained": "Madde sonraki kopyada bulunamadı; kaldırılma nedeni bilinmiyor."
     }
   },
   "errorPage": {

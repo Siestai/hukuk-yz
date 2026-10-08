@@ -57,3 +57,30 @@ export function schemaEnum(schema: string, property: string): string[] {
 export function schemaProperties(schema: string): string[] {
     return Object.keys(schemas()[schema]?.properties ?? {});
 }
+
+const STATUTE_SOURCES = ["split", "timeline", "diff", "run"].map(
+    (name) => `packages/ingest/hukuk_ingest/statutes/${name}.py`,
+);
+
+/** Keys of the `RULES` table of the statute confidence rules: the codes that lower an article's band. */
+export function statuteReasonCodes(): string[] {
+    const source = readRepoFile("packages/ingest/hukuk_ingest/statutes/confidence.py");
+    const table = /^RULES[^\n]*= \{\n([\s\S]*?)^\}/m.exec(source)?.[1] ?? "";
+    return [...table.matchAll(/^\s+"([a-z_]+)":/gm)].map((m) => String(m[1]));
+}
+
+/**
+ * Codes of the warnings of a statute timeline (`extraction.warnings`) and the reasons of its gaps:
+ * the confidence rules plus what the statute code appends, without the `:detail` some carry.
+ */
+export function statuteWarningCodes(): string[] {
+    const appended = STATUTE_SOURCES.flatMap((path) =>
+        [...readRepoFile(path).matchAll(/\.append\(f?"([a-z][a-z_]+)["':]/g)].map((m) =>
+            String(m[1]),
+        ),
+    );
+    const gapReasons = [
+        ...readRepoFile(STATUTE_SOURCES[1] ?? "").matchAll(/_gap\([^)]*"([a-z][a-z_]+)"/g),
+    ].map((m) => String(m[1]));
+    return [...new Set([...statuteReasonCodes(), ...appended, ...gapReasons])];
+}

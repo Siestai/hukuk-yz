@@ -12,6 +12,8 @@ import {
     reasonCodes,
     schemaEnum,
     schemaProperties,
+    statuteReasonCodes,
+    statuteWarningCodes,
     warningCodes,
 } from "../test/reason-codes";
 
@@ -71,6 +73,12 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.court": [...COURTS, UNKNOWN_COURT],
     "enums.reason": reasonCodes(),
     "enums.warning": warningCodes(),
+    "enums.statuteReason": statuteReasonCodes(),
+    "enums.statuteWarning": statuteWarningCodes(),
+    "enums.statuteStatus": schemaEnum("StatuteReviewListItem", "status"),
+    "enums.changeKind": schemaEnum("TimelineVersion", "change_kind"),
+    "enums.evidenceBasis": ["act", "exception", "fallback"],
+    "enums.amendmentKind": ["degisik", "ek", "mulga", "iptal"],
     "enums.courtLevel": schemaEnum("DecisionEdits", "court_level"),
     "enums.outcome": schemaEnum("DecisionEdits", "outcome"),
     "enums.jurisdiction": schemaEnum("DecisionEdits", "jurisdiction"),
@@ -94,6 +102,11 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "review.queue.table.statuses": ["pending", "approved", "edited", "rejected"],
     "review.detail.statusStrip": ["approved", "edited", "rejected"],
     "review.queue.flash": FLASHES,
+    "review.queue.flashStatute": FLASHES.filter((flash) => flash !== "edited"),
+    "review.statutes.titles": STATUSES.filter((status) => status !== "pending"),
+    "review.statutes.subtitles": STATUSES.filter((status) => status !== "pending"),
+    "review.statutes.empty": STATUSES,
+    "review.statutes.statuteTabs": ["4857", "5510"],
     // "server" is read by key; the others are the client checks of the form.
     "review.edit.errors": FIELD_ERRORS,
 };

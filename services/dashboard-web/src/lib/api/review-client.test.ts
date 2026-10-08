@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { createApiClient } from "./client";
-import { ApiFailure, locate, neighbour, nextAfter, postReview } from "./review-client";
+import {
+    ApiFailure,
+    locate,
+    neighbour,
+    nextAfter,
+    postReview,
+    postReviewIn,
+} from "./review-client";
 
 const queue = { band: "low", sort: "score_asc", page: 2 } as const;
 
@@ -154,5 +161,58 @@ describe("calls", () => {
         );
         expect(failure).toBeInstanceOf(ApiFailure);
         expect(failure).toMatchObject({ code: "upstream_unavailable" });
+    });
+});
+
+describe("the statute queue", () => {
+    const statutes = {
+        kind: "statute",
+        statute: "5510",
+        band: "high",
+        page: 2,
+    } as const;
+
+    it("is listed from /review/statutes with its own query, and locates a record in it", async () => {
+        const { client, GET } = api(["a", "b", "c"]);
+        expect(await locate(client, statutes, "b", 51)).toBe(51);
+        expect(GET.mock.calls[0]?.[0]).toBe("/review/statutes");
+        expect(query(GET.mock.calls[0] as unknown[])).toEqual({
+            status: undefined,
+            band: "high",
+            statute: "5510",
+            q: undefined,
+            limit: 1,
+            offset: 51,
+        });
+        expect(await locate(client, statutes, "c", undefined)).toBe(52);
+        expect(query(GET.mock.calls[1] as unknown[])).toMatchObject({ limit: 50, offset: 50 });
+    });
+
+    it("finds the neighbours and the next record after an article has left it", async () => {
+        const { client } = api(["a", "b", "c"]);
+        expect(await neighbour(client, statutes, "b", 51, 1)).toEqual({
+            kind: "record",
+            id: "c",
+            pos: 52,
+        });
+        expect(await nextAfter(client, statutes, 51)).toEqual({ id: "b", pos: 51 });
+    });
+
+    it("posts the action to the statute endpoint, and never an edit", async () => {
+        const POST = vi.fn().mockResolvedValue({ data: { review_id: "r" } });
+        const client = { POST } as unknown as ReturnType<typeof createApiClient>;
+        await postReviewIn(client, statutes, "e1", { action: "reject", note: "yanlış" });
+        expect(POST).toHaveBeenCalledWith("/review/statutes/{extraction_id}", {
+            params: { path: { extraction_id: "e1" } },
+            body: { action: "reject", note: "yanlış" },
+        });
+        expect(() => postReviewIn(client, statutes, "e1", { action: "edit", edits: {} })).toThrow(
+            "not edited",
+        );
+        await postReviewIn(client, queue, "e2", { action: "approve" });
+        expect(POST).toHaveBeenLastCalledWith("/review/decisions/{extraction_id}", {
+            params: { path: { extraction_id: "e2" } },
+            body: { action: "approve" },
+        });
     });
 });

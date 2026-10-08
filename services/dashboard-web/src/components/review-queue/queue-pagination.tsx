@@ -4,15 +4,16 @@ import { useTranslations } from "next-intl";
 import { cn } from "@hukuk/ui";
 import { HelpTip } from "@/components/help-tip";
 import { pageItems } from "@/lib/pagination";
-import { PAGE_SIZE, queueHref, type QueueParams } from "@/lib/queue-params";
+import { PAGE_SIZE } from "@/lib/queue-params";
+import { stateHref, type QueueState } from "@/lib/queue-state";
 
 const pageClass =
     "inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm pointer-coarse:h-11 pointer-coarse:min-w-11";
 
-export function QueuePagination({ params, total }: { params: QueueParams; total: number }) {
+export function QueuePagination({ params, total }: { params: QueueState; total: number }) {
     const t = useTranslations("review.queue.pagination");
     const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-    const href = (page: number) => queueHref({ ...params, page });
+    const href = (page: number) => stateHref({ ...params, page });
     // `ml-auto` keeps "Next" at the right edge on a phone when there is no "Previous".
     const step = (label: string, page: number, enabled: boolean, className?: string) =>
         enabled ? (

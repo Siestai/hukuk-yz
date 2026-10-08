@@ -24,7 +24,9 @@ export function RejectForm({ onClose }: { onClose: () => void }) {
 
     return (
         <form onSubmit={submit} className="grid gap-4" noValidate>
-            <p className="text-sm text-ink-2">{t("intro")}</p>
+            <p className="text-sm text-ink-2">
+                {session.subject === "statute" ? t("introStatute") : t("intro")}
+            </p>
             <div className="grid gap-1">
                 <Label htmlFor={noteId}>{t("note")}</Label>
                 <Textarea

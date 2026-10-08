@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@hukuk/ui";
+import { Button, cn } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
@@ -22,10 +22,10 @@ function Key({ shortcut }: { shortcut: Shortcut }) {
 }
 
 /**
- * Approve, edit and reject of the record, with their keyboard shortcuts and the move to the
+ * Approve, edit (decisions only: `editable`) and reject of the record, with their keyboard shortcuts and the move to the
  * next or previous record. Renders nothing for a record that is not in the queue.
  */
-export function ActionBar() {
+export function ActionBar({ editable = true }: { editable?: boolean }) {
     const t = useTranslations("review.actions");
     const session = useReviewSession();
     const [rejecting, setRejecting] = useState(false);
@@ -44,7 +44,7 @@ export function ActionBar() {
     useReviewShortcuts(
         {
             approve: () => void session.approve(),
-            edit: session.startEdit,
+            edit: editable ? session.startEdit : () => {},
             reject: () => session.canAct && setRejecting(true),
             next: () => void session.move("next"),
             previous: () => void session.move("previous"),
@@ -70,7 +70,12 @@ export function ActionBar() {
                 {session.edge === "next" ? t("noNext") : null}
                 {session.edge === "previous" ? t("noPrevious") : null}
             </div>
-            <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:items-center md:gap-3">
+            <div
+                className={cn(
+                    "grid gap-2 md:flex md:flex-wrap md:items-center md:gap-3",
+                    editable ? "grid-cols-3" : "grid-cols-2",
+                )}
+            >
                 <Button
                     onClick={() => void session.approve()}
                     disabled={!idle}
@@ -79,16 +84,18 @@ export function ActionBar() {
                 >
                     {label(t("approve"), "approve")} <Key shortcut="approve" />
                 </Button>
-                <Button
-                    ref={editButton}
-                    variant="outline"
-                    onClick={session.startEdit}
-                    disabled={!idle}
-                    aria-keyshortcuts="E"
-                    className={actionButton}
-                >
-                    {label(t("edit"), "edit")} <Key shortcut="edit" />
-                </Button>
+                {editable ? (
+                    <Button
+                        ref={editButton}
+                        variant="outline"
+                        onClick={session.startEdit}
+                        disabled={!idle}
+                        aria-keyshortcuts="E"
+                        className={actionButton}
+                    >
+                        {label(t("edit"), "edit")} <Key shortcut="edit" />
+                    </Button>
+                ) : null}
                 <Button
                     ref={rejectButton}
                     variant="destructive"

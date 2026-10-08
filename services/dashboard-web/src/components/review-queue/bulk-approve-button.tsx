@@ -5,13 +5,13 @@ import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
 
 import { HelpTip } from "@/components/help-tip";
-import type { QueueParams } from "@/lib/queue-params";
+import type { QueueState } from "@/lib/queue-state";
 import { BulkApproveDialog } from "./bulk-approve-dialog";
 import type { BulkSample } from "./bulk-confirm-step";
 import { useQueueNavigation } from "./queue-navigation";
 
 type Props = {
-    params: QueueParams;
+    params: QueueState;
     total: number;
     sample: BulkSample[];
     /** There is no list to confirm (it is loading or failed). */

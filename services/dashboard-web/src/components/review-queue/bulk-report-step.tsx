@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 import type { BulkEnd, BulkState } from "@/lib/bulk-approve";
-import { detailHref, type QueueParams } from "@/lib/queue-params";
+import { stateDetailHref, type QueueState } from "@/lib/queue-state";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 import { useErrorMessage } from "@/lib/use-error-message";
 import { BulkCounters } from "./bulk-counters";
@@ -22,13 +22,13 @@ function RecordLink({
     children,
 }: {
     id: string;
-    params: QueueParams;
+    params: QueueState;
     children?: ReactNode;
 }) {
     return (
         <li className="flex flex-wrap justify-between gap-x-4 gap-y-1">
             <Link
-                href={detailHref(id, params)}
+                href={stateDetailHref(id, params)}
                 className="font-mono wrap-anywhere text-primary underline"
             >
                 {id}
@@ -41,7 +41,7 @@ function RecordLink({
 type Props = {
     state: BulkState;
     end: BulkEnd | null;
-    params: QueueParams;
+    params: QueueState;
     onClose: () => void;
 };
 
