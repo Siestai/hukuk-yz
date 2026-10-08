@@ -90,12 +90,24 @@ def test_an_extraction_holds_the_article_timeline_and_its_statute() -> None:
     assert a18.fields["latest_snapshot_date"] == "2026-04-22"
     assert a18.fields["statute_number"] == "4857"
     assert a18.fields["snapshot_sha256"] == ["a" * 64, "b" * 64]
+    assert a18.fields["snapshots"] == [
+        {"path": "Mevzuat/Kanunlar/4857 sayılı İş Kanunu 13.05.2016 .docx", "date": "2016-05-13"},
+        {"path": "Mevzuat/Kanunlar/4857 sayılı İş Kanunu.pdf", "date": "2026-04-22"},
+    ]
     assert a18.confidence == {
         "band": "medium",
         "reasons": ["before_earliest_snapshot", "exception_effective"],
     }
     assert by_no["Ek 2"].confidence["band"] == "low"
     assert by_no["5"].confidence == {"band": "high", "reasons": []}
+
+
+def test_the_content_hash_ignores_the_derived_snapshots() -> None:
+    (statute,) = statutes.prepare([_record()])
+    stored = {k: v for k, v in statute.articles[0].fields.items() if k != "content_hash"}
+    assert "snapshots" in stored
+    without = {k: v for k, v in stored.items() if k != "snapshots"}
+    assert statutes.content_hash(stored) == statutes.content_hash(without)
 
 
 def test_the_content_hash_covers_the_stored_fields_and_ignores_key_order() -> None:

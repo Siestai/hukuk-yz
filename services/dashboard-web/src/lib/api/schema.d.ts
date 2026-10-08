@@ -187,6 +187,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/review/statutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Articles */
+        get: operations["list_articles_review_statutes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review/statutes/bulk-approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk Approve */
+        post: operations["bulk_approve_review_statutes_bulk_approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review/statutes/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_review_statutes_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review/statutes/{extraction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Article */
+        get: operations["get_article_review_statutes__extraction_id__get"];
+        put?: never;
+        /** Act */
+        post: operations["act_review_statutes__extraction_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/statutes/{number}/articles/{article_no}": {
         parameters: {
             query?: never;
@@ -657,6 +726,255 @@ export interface components {
             rejected: number;
             /** Top Reasons */
             top_reasons: components["schemas"]["ReasonCount"][];
+        };
+        /**
+         * StatuteBulkApproveRequest
+         * @description Same contract as `BulkApproveRequest`; the cursor is the id of the last article of the
+         *     previous call (`next_cursor`), the run goes in id order.
+         */
+        StatuteBulkApproveRequest: {
+            /**
+             * Band
+             * @enum {string}
+             */
+            band: "high" | "medium" | "low";
+            /** Cursor */
+            cursor?: string | null;
+            /** Expected Count */
+            expected_count: number;
+            /**
+             * Limit
+             * @default 100
+             */
+            limit: number;
+            /** Statute */
+            statute?: string | null;
+        };
+        /**
+         * StatuteReviewActionRequest
+         * @description No edits: a timeline is not edited on screen, a wrong one is rejected.
+         */
+        StatuteReviewActionRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "approve" | "reject";
+            /** Note */
+            note?: string | null;
+        };
+        /** StatuteReviewActionResponse */
+        StatuteReviewActionResponse: {
+            /** Article Id */
+            article_id: string | null;
+            /**
+             * Review Id
+             * Format: uuid
+             */
+            review_id: string;
+            /**
+             * Source Status
+             * @enum {string}
+             */
+            source_status: "draft" | "analyzed" | "approved" | "published" | "superseded" | "withdrawn" | "failed" | "rejected";
+        };
+        /** StatuteReviewDetail */
+        StatuteReviewDetail: {
+            /** Article No */
+            article_no: string;
+            /**
+             * Band
+             * @enum {string}
+             */
+            band: "high" | "medium" | "low";
+            /**
+             * Extraction Id
+             * Format: uuid
+             */
+            extraction_id: string;
+            /** Heading */
+            heading: string | null;
+            /**
+             * Latest Snapshot Date
+             * Format: date
+             */
+            latest_snapshot_date: string;
+            /** Live Extraction Id */
+            live_extraction_id: string | null;
+            /** Ordinal */
+            ordinal: number;
+            /** Reasons */
+            reasons: string[];
+            /** Reviews */
+            reviews: components["schemas"]["ReviewOut"][];
+            /** Snapshots */
+            snapshots: components["schemas"]["StatuteSnapshotOut"][];
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * Source Status
+             * @enum {string}
+             */
+            source_status: "draft" | "analyzed" | "approved" | "published" | "superseded" | "withdrawn" | "failed" | "rejected";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected" | "superseded";
+            /** Statute Number */
+            statute_number: string;
+            /** Statute Title */
+            statute_title: string;
+            /** Timeline */
+            timeline: (components["schemas"]["TimelineVersion"] | components["schemas"]["TimelineGap"])[];
+            /** Warnings */
+            warnings: string[];
+        };
+        /**
+         * StatuteReviewListItem
+         * @description A queue row: the newest extraction of one article. `status` is `pending`, `approved`
+         *     (live) or `rejected` here.
+         */
+        StatuteReviewListItem: {
+            /** Article No */
+            article_no: string;
+            /**
+             * Band
+             * @enum {string}
+             */
+            band: "high" | "medium" | "low";
+            /**
+             * Extraction Id
+             * Format: uuid
+             */
+            extraction_id: string;
+            /** Gap Count */
+            gap_count: number;
+            /** Heading */
+            heading: string | null;
+            /**
+             * Latest Snapshot Date
+             * Format: date
+             */
+            latest_snapshot_date: string;
+            /** Ordinal */
+            ordinal: number;
+            /** Reasons */
+            reasons: string[];
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected" | "superseded";
+            /** Statute Number */
+            statute_number: string;
+            /** Version Count */
+            version_count: number;
+        };
+        /** StatuteReviewListResponse */
+        StatuteReviewListResponse: {
+            /** Items */
+            items: components["schemas"]["StatuteReviewListItem"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * StatuteReviewSummary
+         * @description Only the combinations that occur have a row.
+         */
+        StatuteReviewSummary: {
+            /** Items */
+            items: components["schemas"]["StatuteSummaryRow"][];
+        };
+        /** StatuteSnapshotOut */
+        StatuteSnapshotOut: {
+            /** Date */
+            date: string | null;
+            /** File Name */
+            file_name: string;
+        };
+        /** StatuteSummaryRow */
+        StatuteSummaryRow: {
+            /**
+             * Band
+             * @enum {string}
+             */
+            band: "high" | "medium" | "low";
+            /** Count */
+            count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
+            /** Statute Number */
+            statute_number: string;
+        };
+        /**
+         * TimelineGap
+         * @description A gap entry has no text field.
+         */
+        TimelineGap: {
+            /** From */
+            from: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "gap";
+            /** Known Amendments */
+            known_amendments: components["schemas"]["KnownAmendment"][];
+            /** Reason */
+            reason: string;
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+        };
+        /** TimelineVersion */
+        TimelineVersion: {
+            /** Amending Ref */
+            amending_ref: string | null;
+            /**
+             * Change Kind
+             * @enum {string}
+             */
+            change_kind: "original" | "amended" | "repealed" | "added";
+            /** Confidence */
+            confidence: ("high" | "medium" | "low") | null;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Footnotes */
+            footnotes: unknown[];
+            /** Heading */
+            heading: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "version";
+            /** Text */
+            text: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
+            /** Warnings */
+            warnings: string[];
         };
         /** UserOut */
         UserOut: {
@@ -1736,6 +2054,530 @@ export interface operations {
                 };
                 content: {
                     "application/pdf": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_articles_review_statutes_get: {
+        parameters: {
+            query?: {
+                statute?: string | null;
+                band?: ("high" | "medium" | "low") | null;
+                status?: "pending" | "approved" | "rejected" | "all";
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatuteReviewListResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulk_approve_review_statutes_bulk_approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatuteBulkApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkApproveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    summary_review_statutes_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatuteReviewSummary"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_article_review_statutes__extraction_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                extraction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatuteReviewDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    act_review_statutes__extraction_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                extraction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatuteReviewActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatuteReviewActionResponse"];
                 };
             };
             /** @description Unauthorized */

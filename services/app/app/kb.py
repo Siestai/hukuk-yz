@@ -1,7 +1,7 @@
 """Knowledge-base writes that follow a human review (data-model.md §3-§4)."""
 
 import uuid
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import date
@@ -9,8 +9,10 @@ from typing import Any, Literal
 
 from sqlalchemy import (
     ColumnElement,
+    Exists,
     Select,
     Subquery,
+    case,
     exists,
     func,
     nulls_last,
@@ -42,7 +44,7 @@ from app.models.decision import LIVE_KEY_INDEX, Decision
 from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
 from app.models.user import AppUser
 from hukuk_ingest.statutes.timeline import FOUND, GAP, NOT_IN_FORCE, UNKNOWN_ARTICLE
-from hukuk_models import Band, ListStatus, ReviewFilters
+from hukuk_models import Band, ListStatus, ReviewFilters, StatuteArticleStatus
 
 PARSER_NAME = "decisions"
 STATUTE_PARSER_NAME = "statutes"
@@ -351,6 +353,21 @@ class BatchResult:
     failed: list[tuple[uuid.UUID, str]] = field(default_factory=list)
 
 
+async def _run_batch(
+    extraction_ids: Sequence[uuid.UUID], approve: Callable[[uuid.UUID], Awaitable[object]]
+) -> BatchResult:
+    result = BatchResult()
+    for extraction_id in extraction_ids:
+        try:
+            await approve(extraction_id)
+            result.published += 1
+        except IntegrityError:
+            result.conflicts.append(extraction_id)
+        except ValueError as exc:
+            result.failed.append((extraction_id, str(exc)))
+    return result
+
+
 async def publish_batch(
     session: AsyncSession,
     extraction_ids: Sequence[uuid.UUID],
@@ -360,16 +377,10 @@ async def publish_batch(
     """Approve and publish each extraction in its own savepoint: a live-key collision goes to
     `conflicts`, any other record `approve_extraction` refuses (not publishable, stale, no
     longer in `band`) to `failed` (id, reason); neither stops the run. The caller commits."""
-    result = BatchResult()
-    for extraction_id in extraction_ids:
-        try:
-            await approve_extraction(session, extraction_id, reviewer_id, band=band)
-            result.published += 1
-        except IntegrityError:
-            result.conflicts.append(extraction_id)
-        except ValueError as exc:
-            result.failed.append((extraction_id, str(exc)))
-    return result
+    return await _run_batch(
+        extraction_ids,
+        lambda extraction_id: approve_extraction(session, extraction_id, reviewer_id, band=band),
+    )
 
 
 # --- statutes (task 11b) ----------------------------------------------------------------------
@@ -389,6 +400,12 @@ def format_amending_ref(refs: Sequence[dict[str, Any]]) -> str | None:
     (law number and kabul date, each pair once); None when no note is known."""
     labels = dict.fromkeys(f"{r['law']} ({_rg_date(r['date'])})" for r in refs)
     return ", ".join(labels) or None
+
+
+def version_evidence(version: dict[str, Any]) -> dict[str, Any]:
+    """The `evidence` of a timeline version as published: its own evidence plus the amending
+    notes (`amendments`)."""
+    return {**version["evidence"], "amendments": version["amending_ref"]}
 
 
 async def _statute_row(session: AsyncSession, source: Source, fields: dict[str, Any]) -> Statute:
@@ -503,7 +520,7 @@ async def publish_statute_article(
                 valid_to=date.fromisoformat(v["valid_to"]) if v["valid_to"] else None,
                 change_kind=ChangeKind(v["change_kind"]),
                 amending_ref=format_amending_ref(v["amending_ref"]),
-                evidence={**v["evidence"], "amendments": v["amending_ref"]},
+                evidence=version_evidence(v),
                 confidence=v["confidence"],
                 warnings=v["warnings"],
                 footnotes=v["footnotes"],
@@ -519,32 +536,199 @@ async def publish_statute_article(
     return article.id
 
 
-async def approve_statute_article(
-    session: AsyncSession, extraction_id: uuid.UUID, reviewer_id: uuid.UUID
-) -> tuple[uuid.UUID, uuid.UUID]:
-    """`review` row (approve) + `publish_statute_article`, in a savepoint; returns (review_id,
-    article_id). Raises ValueError (not publishable, unknown reviewer, overlapping versions) or
-    StaleExtraction; the caller commits. An extraction that is already live is a no-op: the
-    review that published it and its article are returned and no review is added."""
-    live = (
-        await session.execute(
-            select(StatuteArticleVersion.review_id, StatuteArticleVersion.article_id)
-            .where(
-                StatuteArticleVersion.extraction_id == extraction_id,
-                StatuteArticleVersion.superseded_at.is_(None),
-                StatuteArticleVersion.review_id.is_not(None),
+def newest_statute_extractions() -> Subquery:
+    """The newest `statutes` extraction of every article, with what the queue filters and shows,
+    cut out of `fields` (the version texts are not read)."""
+    number = Extraction.fields["statute_number"].as_string()
+    article_no = Extraction.fields["article_no"].as_string()
+    return (
+        select(
+            Extraction.id,
+            Extraction.source_id,
+            number.label("statute_number"),
+            article_no.label("article_no"),
+            Extraction.fields["ordinal"].as_integer().label("ordinal"),
+            Extraction.fields["heading"].as_string().label("heading"),
+            Extraction.fields["latest_snapshot_date"].as_string().label("latest_snapshot_date"),
+            func.jsonb_array_length(Extraction.fields["versions"]).label("version_count"),
+            func.jsonb_array_length(Extraction.fields["gaps"]).label("gap_count"),
+            Extraction.confidence["band"].as_string().label("band"),
+            Extraction.confidence["reasons"].label("reasons"),
+        )
+        .ext(distinct_on(number, article_no))
+        .where(Extraction.parser_name == STATUTE_PARSER_NAME)
+        .order_by(number, article_no, Extraction.extracted_at.desc(), Extraction.id)
+        .subquery()
+    )
+
+
+def _is_live(extraction_id: Any) -> Exists:
+    return exists().where(
+        StatuteArticleVersion.extraction_id == extraction_id,
+        StatuteArticleVersion.superseded_at.is_(None),
+    )
+
+
+def _is_rejected(extraction_id: Any) -> Exists:
+    return exists().where(
+        Review.extraction_id == extraction_id, Review.decision == ReviewDecision.reject
+    )
+
+
+_TR_UPPER, _TR_LOWER = "İIıÇĞÖŞÜÂâÎîÛû", "iiiçğöşüaaiiuu"
+
+
+def fold_tr(text: str) -> str:
+    """Turkish case-insensitive form for search: İ, I, ı and i are one letter, the other
+    Turkish capitals go to their lowercase and the circumflex vowels (kâr, hâl) to the plain
+    ones (the database's `lower` may know only ASCII)."""
+    return text.translate(str.maketrans(_TR_UPPER, _TR_LOWER)).lower()
+
+
+def statute_queue(
+    band: Band | None = None,
+    status: ListStatus = "pending",
+    statute: str | None = None,
+    q: str | None = None,
+) -> Select[Any]:
+    """The article queue: newest extraction of every article in `status` (`pending` = not live
+    and not rejected, `approved` = live, `rejected`), filtered by band, statute number and a
+    search in article number and margin heading, ordered by statute and `ordinal`. Rows carry
+    `status` too."""
+    newest = newest_statute_extractions()
+    state = case(
+        (_is_live(newest.c.id), "approved"),
+        (_is_rejected(newest.c.id), "rejected"),
+        else_="pending",
+    )
+    conditions: list[ColumnElement[bool]] = []
+    if status != "all":
+        conditions.append(state == status)
+    if band:
+        conditions.append(newest.c.band == band)
+    if statute:
+        conditions.append(newest.c.statute_number == statute)
+    if q:
+        folded = fold_tr(q)
+        conditions.append(
+            or_(
+                *(
+                    func.lower(func.translate(column, _TR_UPPER, _TR_LOWER)).contains(
+                        folded, autoescape=True
+                    )
+                    for column in (newest.c.article_no, newest.c.heading)
+                )
             )
+        )
+    return (
+        select(*newest.c, state.label("status"))
+        .where(*conditions)
+        .order_by(newest.c.statute_number, newest.c.ordinal, newest.c.id)
+    )
+
+
+def unpublished_statute_articles(
+    band: Band, statute: str | None = None, after: uuid.UUID | None = None
+) -> Select[Any]:
+    """Ids of the newest `statutes` extraction of every article that is in `band` and still
+    pending (not live, not rejected; an older extraction of it may be live: publishing the newer
+    one supersedes it), by id; `after` is the cursor of bulk runs: only greater ids."""
+    pending = statute_queue(band, "pending", statute).subquery()
+    stmt = select(pending.c.id).order_by(pending.c.id)
+    return stmt if after is None else stmt.where(pending.c.id > after)
+
+
+async def statute_article_status(
+    session: AsyncSession, extraction: Extraction
+) -> StatuteArticleStatus:
+    """`approved` (live), `rejected`, `pending` (the newest of its article, neither) or
+    `superseded` (a newer extraction of the article exists, or its rows were replaced)."""
+    if await session.scalar(select(_is_live(extraction.id))):
+        return "approved"
+    if await session.scalar(select(_is_rejected(extraction.id))):
+        return "rejected"
+    return "pending" if await _is_newest_statute(session, extraction) else "superseded"
+
+
+async def _is_newest_statute(session: AsyncSession, extraction: Extraction) -> bool:
+    newest = (
+        await session.execute(
+            select(Extraction.id)
+            .where(
+                Extraction.parser_name == STATUTE_PARSER_NAME,
+                Extraction.fields["statute_number"].as_string()
+                == extraction.fields["statute_number"],
+                Extraction.fields["article_no"].as_string() == extraction.fields["article_no"],
+            )
+            .order_by(Extraction.extracted_at.desc(), Extraction.id)
             .limit(1)
         )
-    ).first()
-    if live is not None:
-        return live.review_id, live.article_id
+    ).scalar_one()
+    return newest == extraction.id
+
+
+async def lock_pending_statute(
+    session: AsyncSession, extraction_id: uuid.UUID, band: Band | None = None
+) -> Extraction:
+    """Lock the extraction row and check under it that it is still `pending` (see
+    `statute_article_status`) and, if `band` is given, still in that band. Raises StaleExtraction
+    otherwise (a rejected extraction is not publishable unless a newer one arrives) and
+    ValueError when it is no statute article; the lock lasts to the end of the transaction."""
+    extraction = (
+        await session.execute(
+            select(Extraction)
+            .where(Extraction.id == extraction_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none()
+    if extraction is None or extraction.parser_name != STATUTE_PARSER_NAME:
+        raise ValueError("extraction is not a statute article")
+    if (state := await statute_article_status(session, extraction)) != "pending":
+        raise StaleExtraction(f"extraction is {state}")
+    if band is not None and extraction.confidence["band"] != band:
+        raise StaleExtraction(f"extraction is no longer in band {band}")
+    return extraction
+
+
+async def approve_statute_article(
+    session: AsyncSession,
+    extraction_id: uuid.UUID,
+    reviewer_id: uuid.UUID,
+    band: Band | None = None,
+    *,
+    note: str | None = None,
+    idempotent: bool = True,
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """`review` row (approve, with `note`) + `publish_statute_article`, in a savepoint; returns
+    (review_id, article_id). Raises ValueError (not publishable, unknown reviewer, overlapping
+    versions) or StaleExtraction (see `lock_pending_statute`); the caller commits.
+
+    `idempotent` (default): an extraction that is already live is a no-op, the review that
+    published it and its article are returned and no review is added. `idempotent=False` (the
+    API, where a second approval is a conflict): it is stale like any other non-pending one."""
+    if idempotent:
+        live = (
+            await session.execute(
+                select(StatuteArticleVersion.review_id, StatuteArticleVersion.article_id)
+                .where(
+                    StatuteArticleVersion.extraction_id == extraction_id,
+                    StatuteArticleVersion.superseded_at.is_(None),
+                    StatuteArticleVersion.review_id.is_not(None),
+                )
+                .limit(1)
+            )
+        ).first()
+        if live is not None:
+            return live.review_id, live.article_id
     try:
         async with session.begin_nested():
+            await lock_pending_statute(session, extraction_id, band)
             review = Review(
                 extraction_id=extraction_id,
                 reviewer_id=reviewer_id,
                 decision=ReviewDecision.approve,
+                note=note,
             )
             session.add(review)
             await session.flush()
@@ -554,23 +738,42 @@ async def approve_statute_article(
     return review.id, article_id
 
 
-def unpublished_statute_articles(band: Band) -> Select[Any]:
-    """Ids of the newest `statutes` extraction of every article that is in `band` and not live
-    yet (an older extraction of it may be: publishing the newer one supersedes it)."""
-    number = Extraction.fields["statute_number"].as_string()
-    article_no = Extraction.fields["article_no"].as_string()
-    newest = (
-        select(Extraction.id, Extraction.confidence["band"].as_string().label("band"))
-        .ext(distinct_on(number, article_no))
-        .where(Extraction.parser_name == STATUTE_PARSER_NAME)
-        .order_by(number, article_no, Extraction.extracted_at.desc(), Extraction.id)
-        .subquery()
+async def reject_statute_article(
+    session: AsyncSession, extraction_id: uuid.UUID, reviewer_id: uuid.UUID, note: str
+) -> uuid.UUID:
+    """`review` row (reject) in a savepoint; nothing is published and the source keeps its
+    status (the statute is one source, the article the review unit). Returns the review id.
+    Raises like `approve_statute_article`; the caller commits."""
+    try:
+        async with session.begin_nested():
+            await lock_pending_statute(session, extraction_id)
+            review = Review(
+                extraction_id=extraction_id,
+                reviewer_id=reviewer_id,
+                decision=ReviewDecision.reject,
+                note=note,
+            )
+            session.add(review)
+            await session.flush()
+    except IntegrityError as exc:
+        raise ValueError(f"database constraint violated: {_violated_constraint(exc)}") from exc
+    return review.id
+
+
+async def publish_statute_batch(
+    session: AsyncSession,
+    extraction_ids: Sequence[uuid.UUID],
+    reviewer_id: uuid.UUID,
+    band: Band,
+) -> BatchResult:
+    """`publish_batch` of statute articles: each in its own savepoint, a record that is refused
+    (stale, no longer in `band`, not publishable) goes to `failed`. The caller commits."""
+    return await _run_batch(
+        extraction_ids,
+        lambda extraction_id: approve_statute_article(
+            session, extraction_id, reviewer_id, band, idempotent=False
+        ),
     )
-    live = exists().where(
-        StatuteArticleVersion.extraction_id == newest.c.id,
-        StatuteArticleVersion.superseded_at.is_(None),
-    )
-    return select(newest.c.id).where(newest.c.band == band, ~live).order_by(newest.c.id)
 
 
 def _covers(start: date | None, end: date | None, day: date) -> bool:

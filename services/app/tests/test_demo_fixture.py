@@ -6,16 +6,21 @@ from collections import Counter
 from pathlib import Path
 
 import pypdfium2
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.kb import queue
+from app.kb import queue, unpublished_statute_articles
+from app.loaders import statutes as statute_loader
 from app.loaders.decisions import load, prepare, read_files, read_rows
 from app.loaders.report import LoadCounts, PreparedRecord
+from app.loaders.statutes_report import PreparedStatute, StatuteCounts
+from app.models.statute import Statute
 from hukuk_models import Band, ReviewFilters
 
 DEMO = Path(__file__).parents[3] / "infra" / "demo"
 ARCHIVE = DEMO / "archive"
 BANDS: dict[Band, int] = {"high": 6, "medium": 4, "low": 2}
+STATUTE_BANDS: dict[Band, int] = {"high": 2, "medium": 4, "low": 1}
 
 
 def _prepared() -> list[PreparedRecord]:
@@ -67,3 +72,34 @@ async def test_loaded_fixture_fills_each_band(
         for band, expected in BANDS.items():
             rows = (await session.execute(queue(band, ReviewFilters()))).all()
             assert len(rows) == expected, band
+
+
+def _statutes() -> list[PreparedStatute]:
+    records, errors = statute_loader.read_records(DEMO / "statutes.jsonl")
+    assert errors == []
+    return statute_loader.prepare(records)
+
+
+def test_the_statute_fixture_covers_every_case_of_the_review_screen() -> None:
+    (statute,) = _statutes()
+    assert (statute.number, len(statute.articles)) == ("4857", 7)
+    by_no = {a.article_no: a for a in statute.articles}
+    assert Counter(a.confidence["band"] for a in statute.articles) == STATUTE_BANDS
+    gaps = {no: len(a.fields["gaps"]) for no, a in by_no.items()}
+    assert gaps == {"1": 0, "9": 0, "18": 1, "20": 1, "33": 1, "Geçici 1": 1, "Ek 2": 1}
+    assert len(by_no["20"].fields["versions"]) == 2
+    assert by_no["33"].fields["status"] == "repealed"
+    assert {"Geçici 1", "Ek 2"} <= set(by_no)
+
+
+async def test_loaded_statute_fixture_is_pending_and_not_published(
+    kb_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    counts = StatuteCounts()
+    assert await statute_loader.load(kb_factory, _statutes(), {}, counts) is not None
+    assert (counts.new, counts.errors, counts.published) == (7, [], 0)
+    async with kb_factory() as session:
+        for band, expected in STATUTE_BANDS.items():
+            ids = (await session.execute(unpublished_statute_articles(band))).scalars().all()
+            assert len(ids) == expected, band
+        assert (await session.execute(select(func.count()).select_from(Statute))).scalar_one() == 0

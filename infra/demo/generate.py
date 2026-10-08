@@ -1,12 +1,15 @@
-"""Regenerate the synthetic demo fixture (decisions.jsonl, files.jsonl, archive/*.pdf).
+"""Regenerate the synthetic demo fixture (decisions.jsonl, files.jsonl, archive/*.pdf) and,
+given the real output of `hukuk-ingest statutes`, the statute fixture (statutes.jsonl).
 
     python infra/demo/generate.py
+    python infra/demo/generate.py --statutes path/to/statutes.jsonl
 
 Standard library only; the output is deterministic, so a regenerated fixture shows no diff. Every
 case number, date and text here is invented (see README.md): the numbers are in the 2031-2032
 range, which no real decision has yet.
 """
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -237,7 +240,34 @@ def pdf(lines: list[str]) -> bytes:
     return out
 
 
+# The statute fixture: seven articles of 4857 picked from a real `statutes.jsonl` (public law
+# text, no personal data), unchanged. They cover every case the statute review screen shows:
+# high (1, 9), medium with a gap (18), medium with two versions and a gap (20), repealed (33),
+# Geçici (Geçici 1, start unverified) and low with two versions and gaps (Ek 2).
+STATUTE = "4857"
+STATUTE_ARTICLES = ("1", "9", "18", "20", "33", "Geçici 1", "Ek 2")
+
+
+def statute_fixture(source: Path) -> str:
+    """The `statutes.jsonl` line of the demo: the 4857 record of `source` reduced to
+    `STATUTE_ARTICLES`, in their original order."""
+    for line in source.read_text(encoding="utf-8").splitlines():
+        record = json.loads(line)
+        if record["number"] == STATUTE:
+            articles = {a["article_no"]: a for a in record["articles"]}
+            record["articles"] = [articles[no] for no in STATUTE_ARTICLES]
+            for snapshot in record["snapshots"]:
+                snapshot["articles"] = len(STATUTE_ARTICLES)
+            return json.dumps(record, ensure_ascii=False) + "\n"
+    raise SystemExit(f"no record for statute {STATUTE} in {source}")
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--statutes", type=Path, help="real statutes.jsonl to pick the articles of")
+    args = parser.parse_args()
+    if args.statutes:
+        (HERE / "statutes.jsonl").write_text(statute_fixture(args.statutes), encoding="utf-8")
     files = []
     for n, row in enumerate(RECORDS, 1):
         content = pdf(
