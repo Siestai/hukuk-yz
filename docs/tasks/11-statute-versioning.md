@@ -62,7 +62,7 @@ Görev iki PR'a bölünür (her biri 1-3 saatlik Claude Code işi); inceleme ekr
 3. **Tarihli sorgu:** `kb.article_as_of(statute_no, article_no, as_of)` → `{status: found|gap|not_in_force|unknown_article, version?, gap?}`. `gap` dönerse bilinen değişiklikler (kanun no + tarih) listelenir, metin dönmez. API: `GET /statutes/{number}/articles/{article_no}?as_of=YYYY-MM-DD` (yetki: giriş yapmış kullanıcı; hata kodları `errors.py` kalıbında). Agent ve atıf kapısı bunu kullanacak (md. 25: `gap` atıf olarak geçemez).
 4. **Şema:** `statute_article_version`'da eksik alan çıkarsa (`evidence` jsonb: hangi snapshot'lar + hangi not; `footnotes`) Alembic migration, `db-migration` skill'i. `gap` için ayrı tablo açılmaz: çizelge `extraction.fields`'ta kalır, sorgu `version` bulamazsa yayımlanmış çizelgeden `gap` bilgisini okur. (Bu karar PR'da gerekçesiyle yazılır; daha iyi yol çıkarsa önce Themis'e sorulur.)
 
-### 11c: inceleme ekranı (ayrı spec, bu görevin dışında)
+### 11c: inceleme ekranı (spec: `docs/tasks/11c-statute-review.md`)
 
 Madde çizelgesini zaman çizgisi olarak gösterir: sürümler, aralarındaki fark (eski / yeni metin yan yana), dayanak not ve yürürlük kaynağı, `gap` aralıkları. Toplu onay `high` bant için. 11b merge edildikten sonra yazılır.
 
