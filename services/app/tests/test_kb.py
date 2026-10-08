@@ -568,19 +568,23 @@ async def test_the_database_query_mirrors_the_pure_as_of(
     kb_factory: Factory, statutes_published: dict[str, uuid.UUID], statute_record: dict[str, Any]
 ) -> None:
     seen: set[str] = set()
-    compared = 0
+    compared: set[tuple[str, date]] = set()
+    expected_pairs: set[tuple[str, date]] = set()
     async with kb_factory() as session:
         for article in statute_record["articles"]:
             if article["article_no"] not in statutes_published or article["article_no"] == "5":
                 continue
+            expected_pairs |= {(article["article_no"], d) for d in _probe_dates(article)}
             for day in sorted(_probe_dates(article)):
                 expected = _db_shape(statute_as_of(statute_record, article["article_no"], day))
                 actual = await article_as_of(session, "4857", article["article_no"], day)
                 assert actual == expected, (article["article_no"], day)
                 seen.add(actual["status"])
-                compared += 1
+                compared.add((article["article_no"], day))
     assert seen == {"found", "gap", "not_in_force"}
-    assert compared > 40
+    # every version/gap boundary (and the snapshot date) was probed at -1/0/+1 days
+    assert compared == expected_pairs
+    assert len(compared) > 2 * 3  # at least two articles with boundaries, not an empty loop
 
 
 async def test_only_published_articles_count(

@@ -38,12 +38,13 @@ def upgrade() -> None:
     op.add_column(
         TABLE, sa.Column("footnotes", pg.JSONB(), server_default=sa.text("'[]'"), nullable=False)
     )
+    # op.f(): the metadata naming convention would prefix the already complete name a second time.
     op.create_check_constraint(
-        CHECK, TABLE, "confidence IN (" + ", ".join(f"'{b}'" for b in BANDS) + ")"
+        op.f(CHECK), TABLE, "confidence IN (" + ", ".join(f"'{b}'" for b in BANDS) + ")"
     )
 
 
 def downgrade() -> None:
-    op.drop_constraint(CHECK, TABLE, type_="check")
+    op.drop_constraint(op.f(CHECK), TABLE, type_="check")
     for column in ("footnotes", "warnings", "confidence", "evidence"):
         op.drop_column(TABLE, column)
