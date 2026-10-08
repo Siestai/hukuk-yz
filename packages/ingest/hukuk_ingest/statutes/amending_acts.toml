@@ -1,0 +1,50 @@
+# Amending acts (değiştiren kanunlar) used by the statute timeline (task 11a).
+#
+# One [[act]] per (law, kabul_tarihi); public data, sourced from the Resmî Gazete / mevzuat.gov.tr.
+#   law          "6552", or "KHK-665" for decree-laws, or "AYM" for Constitutional Court annulments
+#                (kabul_tarihi is then the decision date)
+#   kabul_tarihi date the act was adopted; matches the date in the inline annotation
+#   rg_tarihi, rg_sayisi   Resmî Gazete date and issue
+#   yururluk     in-force date; leave it out when unknown (the timeline reports yururluk_unknown)
+#   source_url   required whenever yururluk is set; no invented dates
+#   note         optional
+# [[act.exception]]: an article whose in-force date differs from the act's
+#   statute, article (normalised: "18", "Ek 2", "Geçici 4"), scope (free text), yururluk,
+#   source ("dipnot" or a URL)
+# The statutes themselves (4857, 5510) are acts too: their entry gives the original in-force date.
+
+# PLACEHOLDER ENTRIES BELOW: examples of the format, to be replaced by the real registry.
+# Do not rely on them.
+
+# PLACEHOLDER
+[[act]]
+law = "4857"
+kabul_tarihi = 2003-05-22
+rg_tarihi = 2003-06-10
+rg_sayisi = "25134"
+yururluk = 2003-06-10
+source_url = "https://www.mevzuat.gov.tr/"  # placeholder URL
+note = "placeholder"
+
+# PLACEHOLDER
+[[act]]
+law = "6552"
+kabul_tarihi = 2014-09-10
+rg_tarihi = 2014-09-11
+rg_sayisi = "29116"
+yururluk = 2014-09-11
+source_url = "https://www.mevzuat.gov.tr/"  # placeholder URL
+note = "placeholder"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 1"
+scope = "placeholder example of a per-article exception"
+yururluk = 2015-01-01
+source = "dipnot"
+
+# PLACEHOLDER: no yururluk, so the timeline warns yururluk_unknown for it
+[[act]]
+law = "7036"
+kabul_tarihi = 2017-10-12
+note = "placeholder"
