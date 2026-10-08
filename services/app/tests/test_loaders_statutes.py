@@ -5,6 +5,7 @@ import asyncio
 import copy
 import json
 import uuid
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
@@ -256,14 +257,10 @@ async def test_a_changed_timeline_with_the_same_parser_version_adds_one_extracti
     )
     assert await _count(kb_factory, Extraction) == 5
     async with kb_factory() as session:
-        per_article = (
-            await session.execute(
-                select(Extraction.fields["article_no"].as_string(), func.count())
-                .group_by(Extraction.fields["article_no"].as_string())
-                .order_by(Extraction.fields["article_no"].as_string())
-            )
+        article_nos = (
+            await session.scalars(select(Extraction.fields["article_no"].as_string()))
         ).all()
-    assert dict(per_article) == {"18": 2, "5": 1, "Ek 2": 1, "Geçici 1": 1}
+    assert Counter(article_nos) == {"18": 2, "5": 1, "Ek 2": 1, "Geçici 1": 1}
     assert (await _load(kb_factory, record)).new == 0
 
 
