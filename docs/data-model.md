@@ -124,13 +124,32 @@ Toplu yüklemede (6.342 karar) onay tek tek olmaz: inceleme ekranı güven skoru
 | heading | kenar başlığı |
 | valid_from | yürürlük başlangıcı |
 | valid_to | null = hâlâ yürürlükte; CHECK `valid_from < valid_to` (yarı açık aralık `[from, to)`) |
-| amending_ref | değiştiren kanun/RG künyesi |
+| amending_ref | değiştiren kanunların etiketi: `6552 (10/9/2014), 7036 (12/10/2017)` (kanun no + kabul tarihi; yoksa null). Notların kendisi `evidence.amendments`'ta |
 | change_kind | `original` / `amended` / `repealed` / `added` |
+| evidence jsonb | sürümü neyin tarihlediği (Görev 11b, migration 0008): `basis` (`act` / `exception` / `fallback`), `snapshots`, `snapshot_dates`, `amendments` (`{law, date, kind, scope}` listesi) |
+| confidence | 11a bandı: `high` / `medium` / `low` (CHECK); null = statute hattından gelmeyen satır |
+| warnings jsonb | sürümün 11a uyarıları (`exception_effective`, `yururluk_unknown`, ...) |
+| footnotes jsonb | maddenin dipnotları (metne karışmaz, sürümle birlikte saklanır) |
 | provenance alanları | |
 
 Enum etiketleri DB'de ASCII ve `snake_case` (`yonetmelik`, `genel_yazi`); Türkçe karşılığı yalnızca arayüzde gösterilir.
 
 Sorgu: `4857 m.18, 2019-03-01` → `article_version WHERE valid_from <= date AND (valid_to IS NULL OR valid_to > date)`. Tek satır dönmeli; birden fazla dönerse veri hatası, QA'da yakalanır.
+
+**Yükleme ve inceleme birimi (Görev 11b).** `python -m app.loaders.statutes` her snapshot dosyasını `ingest_file`, her kanunu bir `source` (`statute`, `official_secondary`, `public`), her **madde çizelgesini** bir `extraction` yapar (`parser_name = statutes`; `fields` = çizelge: `versions`, `gaps`, `latest_snapshot_date`, ... + `statute_number`, `statute` başlığı, `snapshot_sha256`; `confidence = {band, reasons}`). İnceleme birimi maddedir. Karar kuyruğu bunları görmez (`parser_name = decisions` ve `decision` kategorisi). Madde onayı = `review` satırı + `kb.publish_statute_article`; `source` ilk yayımlanan maddeyle `analyzed` → `approved` olur, sonraki maddelerde değişmez; maddenin yayımlı olması canlı (`superseded_at IS NULL`) sürüm satırlarının varlığıdır, hepsi aynı `extraction_id`'yi taşır. Aynı extraction'ı yeniden yayımlamak işlemsizdir; aynı maddenin daha yeni extraction'ı yayımlanınca eski satırlar `superseded_at` alır (silinmez, EXCLUDE yalnız canlıları kapsar). Sürümü olmayan çizelge yayımlanmaz.
+
+**`gap` (boşluk) satır değildir.** Metni elde olmayan aralık (`before_earliest_snapshot`, `multi_amendment_in_window`, ...) için `statute_article_version` satırı yazılmaz; çizelgedeki `gaps` (`{from, to, reason, known_amendments}`) yayımlı extraction'ın `fields`'ında kalır. `from = null`: kanunun kendi yürürlüğünden beri belirsiz.
+
+**`kb.article_as_of(statute_no, article_no, as_of)`** (API: `GET /statutes/{number}/articles/{article_no}?as_of=YYYY-MM-DD`, giriş yapmış herkes) `hukuk_ingest.statutes.timeline.as_of` ile aynı sonucu verir: önce canlı sürümler (`valid_from <= as_of < valid_to`), bulunamazsa yayımlı extraction'ın `gaps`'ı, o da yoksa `not_in_force`.
+
+| `status` | anlamı | alanlar |
+|---|---|---|
+| `found` | o tarihte yürürlükte metin | `version`, `confidence` (sürümün bandı; `low` ise tüketici gizlemez), `latest_snapshot_date`, `stale` |
+| `gap` | bu aralık için metin elde yok | `gap` (`from`, `to`, `reason`, `known_amendments`), `latest_snapshot_date`, `stale`; **metin yok, `version` yok** (md. 25: `gap` atıf olamaz) |
+| `not_in_force` | madde o tarihte yok (henüz eklenmemiş) ya da mülga | `latest_snapshot_date`, `stale`; mülgada ayrıca `reason: repealed` ve kalıntı metin `version` içinde |
+| `unknown_article` | yayımlı veri yok | `reason: not_published` (madde bilinmiyor ya da henüz onaylanmadı; yalnız yayımlanmış veri sayılır) |
+
+`stale = as_of > latest_snapshot_date`: son snapshot'tan sonra değişiklik olmuş olabilir, durum `found` kalır, ürün "metin <tarih> itibarıyla" der. `article_no` kanonik biçimdedir (`18`, `Ek 2`, `Geçici 4`); API ASCII takma adları da kabul eder (`ek-2`, `gecici-4`). Bilinmeyen kanun `statute_not_found` (404), geçersiz tarih `invalid_date` (422).
 
 `Eskiler/` klasörü: aynı kanunun eski tam metinleri. Pipeline iki sürümü madde düzeyinde diff'ler, farklı maddeler için yeni `article_version` önerir; `valid_from` tarihi RG'den veya değişiklik kanunundan çıkarılır, bulunamazsa inceleme ekranında sorulur. **Burası Faz 1'in en zor işi**; önce 4857 ve 5510 ile başlanır.
 

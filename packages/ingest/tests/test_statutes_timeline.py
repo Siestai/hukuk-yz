@@ -11,6 +11,7 @@ import pytest
 from hukuk_ingest.detect import detect_type
 from hukuk_ingest.extract import extract
 from hukuk_ingest.statutes.acts import DEFAULT_ACTS, Registry, load_acts, parse_acts
+from hukuk_ingest.statutes.golden import check_golden, load_golden
 from hukuk_ingest.statutes.run import SnapshotFile, _file_date, build_records
 from hukuk_ingest.statutes.timeline import as_of, find_overlaps, statute_as_of
 
@@ -427,10 +428,6 @@ def _real_files(raw: Path) -> list[SnapshotFile]:
     return list(by_sha.values())
 
 
-def _flat(text: str) -> str:
-    return " ".join(text.split())
-
-
 @pytest.mark.skipif(
     not (RAW / "Mevzuat" / "Kanunlar").is_dir() or not GOLDEN.is_file(),
     reason="needs the raw corpus (data/drive) and tests/fixtures/statutes/golden.toml",
@@ -438,22 +435,14 @@ def _flat(text: str) -> str:
 def test_golden_queries_against_the_real_snapshots() -> None:
     records, _ = build_records(_real_files(RAW), load_acts(DEFAULT_ACTS))
     by_number = {r["number"]: r for r in records}
-    queries = tomllib.loads(GOLDEN.read_text(encoding="utf-8"))["query"]
     failures = []
-    for q in queries:
+    for q in load_golden(GOLDEN):
         record = by_number.get(q["statute"])
         result: dict[str, Any] = (
             statute_as_of(record, q["article"], q["as_of"])
             if record
             else {"status": "unknown_article"}
         )
-        label = f"{q['statute']} m.{q['article']} @ {q['as_of']}"
-        if result["status"] != q["expect"]:
-            failures.append(f"{label}: expected {q['expect']}, got {result['status']}")
-            continue
-        text = _flat(result.get("version", {}).get("text", ""))
-        if q["expect"] == "found" and "contains" in q and _flat(q["contains"]) not in text:
-            failures.append(f"{label}: missing {q['contains']!r}")
-        if "not_contains" in q and _flat(q["not_contains"]) in text:
-            failures.append(f"{label}: unexpected {q['not_contains']!r}")
+        if failure := check_golden(q, result):
+            failures.append(failure)
     assert not failures, json.dumps(failures, ensure_ascii=False, indent=2)

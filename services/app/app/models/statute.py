@@ -2,9 +2,11 @@
 
 import uuid
 from datetime import date
+from typing import Any
 
-from sqlalchemy import ForeignKey, Index, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, Index, UniqueConstraint
 from sqlalchemy import text as sql_text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.common import (
@@ -60,6 +62,7 @@ class StatuteArticleVersion(UuidPkMixin, ProvenanceMixin, BitemporalMixin, Base)
     __tablename__ = "statute_article_version"
     __table_args__ = (
         valid_range_check(),
+        CheckConstraint("confidence IN ('high', 'medium', 'low')", name="confidence"),
         no_overlap("statute_article_version", "article_id"),
     )
 
@@ -69,3 +72,9 @@ class StatuteArticleVersion(UuidPkMixin, ProvenanceMixin, BitemporalMixin, Base)
     heading: Mapped[str | None]
     amending_ref: Mapped[str | None]
     change_kind: Mapped[ChangeKind] = mapped_column(ChangeKind.pg_type("change_kind"))
+    # Task 11b: what dated the version. `evidence` = {basis, snapshots, snapshot_dates,
+    # amendments}; `confidence` is the band of the 11a timeline (NULL: not from that pipeline).
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=sql_text("'{}'"))
+    confidence: Mapped[str | None]
+    warnings: Mapped[list[Any]] = mapped_column(JSONB, server_default=sql_text("'[]'"))
+    footnotes: Mapped[list[Any]] = mapped_column(JSONB, server_default=sql_text("'[]'"))

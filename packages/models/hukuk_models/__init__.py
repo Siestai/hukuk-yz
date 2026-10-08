@@ -36,6 +36,8 @@ class ErrorCode(StrEnum):
     too_many_attempts = "too_many_attempts"  # params: retry_after (seconds)
     file_not_found = "file_not_found"
     file_not_previewable = "file_not_previewable"
+    statute_not_found = "statute_not_found"  # params: number
+    invalid_date = "invalid_date"  # params: field
     http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
     internal_error = "internal_error"
 
@@ -276,3 +278,56 @@ class ReviewDetail(BaseModel):
     pdf: Literal["available", "missing", "not_previewable"]
     duplicates: list[DuplicateOut]
     reviews: list[ReviewOut]
+
+
+ArticleStatus = Literal["found", "gap", "not_in_force", "unknown_article"]
+
+
+class ArticleVersionOut(BaseModel):
+    text: str
+    heading: str | None
+    valid_from: date
+    valid_to: date | None  # None: still in force
+    change_kind: Literal["original", "amended", "repealed", "added"]
+    amending_ref: str | None
+    evidence: dict[str, Any]
+    confidence: Band | None
+    footnotes: list[Any]
+    warnings: list[str]
+
+
+Day = date  # `KnownAmendment.date` shadows the type inside its class body
+
+
+class KnownAmendment(BaseModel):
+    law: str
+    date: Day
+    kind: str
+    scope: str
+
+
+class ArticleGapOut(BaseModel):
+    """An interval with no text on file. It names the amendments that are known to fall in it
+    and never carries article text (md. 25: a gap cannot be cited)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: date | None = Field(alias="from")  # None: from the statute's own entry into force
+    to: date
+    reason: str
+    known_amendments: list[KnownAmendment]
+
+
+class ArticleAsOf(BaseModel):
+    """What a published article said on a date (task 11b). Only fields that apply to the status
+    are present: `version` for found / repealed, `gap` for gap, `reason` for unknown_article
+    (`not_published`) and for a repealed article (`repealed`)."""
+
+    status: ArticleStatus
+    reason: Literal["repealed", "not_published"] | None = None
+    version: ArticleVersionOut | None = None
+    gap: ArticleGapOut | None = None
+    # `stale`: the date is after the newest snapshot, so the text may have been amended since.
+    latest_snapshot_date: date | None = None
+    stale: bool | None = None
+    confidence: Band | None = None

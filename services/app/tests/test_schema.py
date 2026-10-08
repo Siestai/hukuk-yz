@@ -51,6 +51,36 @@ def _tables(url: str) -> set[str]:
     return asyncio.run(run())
 
 
+def _columns(url: str, table: str) -> set[str]:
+    async def run() -> set[str]:
+        engine = make_engine(url)
+        try:
+            async with engine.connect() as connection:
+                rows = await connection.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns WHERE table_name = :t"
+                    ),
+                    {"t": table},
+                )
+                return {row[0] for row in rows}
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(run())
+
+
+def test_the_statute_evidence_migration_downgrades_to_0007(
+    alembic_config: Config, database_url: str
+) -> None:
+    new = {"evidence", "confidence", "warnings", "footnotes"}
+    command.upgrade(alembic_config, "head")
+    assert new <= _columns(database_url, "statute_article_version")
+    command.downgrade(alembic_config, "0007")
+    assert not new & _columns(database_url, "statute_article_version")
+    command.upgrade(alembic_config, "head")
+    assert new <= _columns(database_url, "statute_article_version")
+
+
 def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) -> None:
     expected = set(Base.metadata.tables)
 
@@ -241,6 +271,24 @@ async def test_adjacent_and_superseded_versions_are_allowed(conn: AsyncConnectio
     await _version(conn, source_id, article_id, date(2020, 1, 1), None)
     # superseded history may overlap anything
     await _version(conn, source_id, article_id, date(2019, 6, 1), None, superseded=True)
+
+
+async def test_a_version_has_empty_evidence_by_default_and_a_known_confidence_band(
+    conn: AsyncConnection,
+) -> None:
+    source_id = await _source(conn)
+    article_id = await _article(conn, source_id)
+    await _version(conn, source_id, article_id, date(2019, 1, 1), None)
+    row = (
+        await conn.execute(
+            text("SELECT evidence, confidence, warnings, footnotes FROM statute_article_version")
+        )
+    ).one()
+    assert (row.evidence, row.confidence, row.warnings, row.footnotes) == ({}, None, [], [])
+    with pytest.raises(IntegrityError, match="ck_statute_article_version_confidence"):
+        async with conn.begin_nested():
+            await conn.execute(text("UPDATE statute_article_version SET confidence = 'certain'"))
+    await conn.execute(text("UPDATE statute_article_version SET confidence = 'low'"))
 
 
 async def test_valid_range_check(conn: AsyncConnection) -> None:

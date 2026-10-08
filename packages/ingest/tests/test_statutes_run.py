@@ -7,7 +7,7 @@ from statute_texts import numbered_style, rule_style
 from word_doc import make_doc
 
 from hukuk_ingest.cli import main
-from hukuk_ingest.statutes.run import discover
+from hukuk_ingest.statutes.run import PARSER_VERSION, discover
 
 STATUTES = "Mevzuat/Kanunlar"
 ACTS = """
@@ -117,6 +117,7 @@ def test_cli_writes_jsonl_and_report(tmp_path: Path) -> None:
     assert [r["number"] for r in records] == ["9001", "9002", "9004"]
     nine = records[0]
     assert nine["latest_snapshot_date"] == "2018-03-05"
+    assert all(r["parser_version"] == PARSER_VERSION for r in records)  # the loader keys on it
     assert nine["snapshots"][0]["duplicates"]
     assert [a["article_no"] for a in nine["articles"]][:2] == ["1", "2"]
     for rec in records:

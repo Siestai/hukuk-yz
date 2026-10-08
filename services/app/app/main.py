@@ -15,6 +15,7 @@ from app.errors import install as install_error_handlers
 from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.settings import get_settings
+from app.statutes import router as statutes_router
 from hukuk_models import HealthResponse
 
 logger = logging.getLogger("app")
@@ -41,6 +42,7 @@ app = FastAPI(title="hukuk-agent", lifespan=lifespan, responses=ERROR_RESPONSES)
 install_error_handlers(app)
 app.include_router(auth_router)
 app.include_router(review_router)
+app.include_router(statutes_router)
 
 
 @app.middleware("http")

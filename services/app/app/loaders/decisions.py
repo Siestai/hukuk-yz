@@ -272,13 +272,13 @@ async def _write(
     await session.execute(insert(Extraction), extractions)
 
 
-def _is_row_error(exc: DBAPIError) -> bool:
+def is_row_error(exc: DBAPIError) -> bool:
     """A database error caused by the row (constraint, value out of range), not by the
     connection or the server; only these are retried row by row."""
     return not (isinstance(exc, OperationalError | InterfaceError) or exc.connection_invalidated)
 
 
-def _error_name(exc: Exception) -> str:
+def error_name(exc: Exception) -> str:
     """Exception class only: SQLAlchemy messages carry the statement parameters (decision text)."""
     return type(getattr(exc, "orig", None) or exc).__name__
 
@@ -312,7 +312,7 @@ async def load(
                 await session.commit()
             counts.new += len(batch)
         except DBAPIError as batch_exc:
-            if not _is_row_error(batch_exc):
+            if not is_row_error(batch_exc):
                 raise
             for p in batch:
                 try:
@@ -321,9 +321,9 @@ async def load(
                         await session.commit()
                     counts.new += 1
                 except DBAPIError as exc:
-                    if not _is_row_error(exc):
+                    if not is_row_error(exc):
                         raise
-                    counts.errors.append({"ref": p.ref, "error": _error_name(exc)})
+                    counts.errors.append({"ref": p.ref, "error": error_name(exc)})
     return job.id
 
 
