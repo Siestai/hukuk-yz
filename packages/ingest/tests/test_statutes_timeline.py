@@ -55,6 +55,26 @@ source_url = "https://example.test/7003"
 [[act]]
 law = "7004"
 kabul_tarihi = 2018-06-01
+
+[[act]]
+law = "7005"
+kabul_tarihi = 2012-01-01
+yururluk = 2012-01-10
+source_url = "https://example.test/7005"
+
+[[act.exception]]
+statute = "9001"
+article = "4"
+scope = "ikinci fıkra"
+yururluk = 2012-04-01
+partial = true
+source = "dipnot"
+
+[[act.exception]]
+statute = "9001"
+article = "5"
+scope = "ödeme dönemi başında"
+source = "dipnot"
 """
 S0, S1, S2 = date(2016, 1, 1), date(2018, 1, 1), date(2020, 1, 1)
 
@@ -174,6 +194,67 @@ def test_article_exception_overrides_the_act_date_and_is_medium() -> None:
     assert art["confidence"] == "medium"
     assert as_of(art, "2019-08-31")["status"] == "not_in_force"
     assert as_of(art, "2019-09-01")["status"] == "found"
+
+
+def test_partial_entry_into_force_is_a_gap_between_the_two_dates() -> None:
+    d0 = date(2011, 6, 1)
+    new = "(Değişik: 1/1/2012-7005/1 md.) Yepyeni ve farklı metin burada."
+    art = build(
+        (d0, {"1": "A.", "2": "B.", "3": "C.", "4": "Eski metin burada duruyor."}),
+        (S1, {"1": "A.", "2": "B.", "3": "C.", "4": new}),
+    )["4"]
+    assert spans(art) == [("2003-06-10", "2012-01-10"), ("2012-04-01", None)]
+    assert gaps(art) == [("2012-01-10", "2012-04-01", "partial_entry_into_force")]
+    assert as_of(art, "2012-02-01")["status"] == "gap"
+    assert art["confidence"] == "medium"
+
+
+def test_exception_without_a_date_is_unknown_not_the_act_date() -> None:
+    d0 = date(2011, 6, 1)
+    new = "(Değişik: 1/1/2012-7005/1 md.) Yepyeni ve farklı metin burada."
+    art = build((d0, {"5": "Eski metin burada duruyor."}), (S1, {"5": new}))["5"]
+    assert gaps(art) == [("2011-06-02", "2018-01-01", "yururluk_unknown")]
+    assert as_of(art, "2012-02-01")["status"] == "gap"
+    assert art["confidence"] == "low"
+
+
+def test_extra_article_with_several_notes_was_added_by_its_first_ek_note() -> None:
+    text = "(Ek: 1/3/2010-7000/1 md.) (Değişik: 1/3/2017-7001/5 md.) Ek madde metni burada."
+    art = build((S1, {"1": "Madde.", "Ek 2": text}))["Ek 2"]
+    assert spans(art) == [("2017-03-10", None)]
+    assert gaps(art) == [("2010-03-10", "2017-03-10", "before_earliest_snapshot")]
+    assert art["versions"][0]["change_kind"] == "amended"
+    assert as_of(art, "2010-03-09")["status"] == "not_in_force"
+    assert as_of(art, "2012-01-01")["status"] == "gap"
+    assert as_of(art, "2017-03-10")["status"] == "found"
+
+
+def test_extra_article_with_several_notes_but_no_ek_note_keeps_the_gap_from_the_statute() -> None:
+    text = "(Değişik: 1/3/2010-7000/1 md.) (Değişik: 1/3/2017-7001/5 md.) Ek madde metni burada."
+    art = build((S1, {"1": "Madde.", "Ek 2": text}))["Ek 2"]
+    assert gaps(art) == [("2003-06-10", "2017-03-10", "before_earliest_snapshot")]
+    assert as_of(art, "2005-01-01")["status"] == "gap"
+
+
+def test_unchanged_version_keeps_the_text_of_the_earliest_snapshot() -> None:
+    first, later = "Malûl sayılır, işçi.", "Malul sayılır işçi."
+    art = build((S0, {"1": first}), (S1, {"1": later}), (S2, {"1": later}))["1"]
+    version = art["versions"][0]
+    assert version["text"] == first
+    assert len(version["evidence"]["snapshots"]) == 3
+    assert "uncertain_diff" in version["warnings"] and version["confidence"] == "medium"
+    quotes = build((S0, {"1": "Bir “söz”."}), (S1, {"1": 'Bir  "söz".'}))["1"]["versions"][0]
+    assert quotes["text"] == "Bir “söz”." and quotes["warnings"] == []
+
+
+def test_as_of_reports_staleness_and_the_confidence_band() -> None:
+    art = build((S0, {"1": "Aynı metin."}), (S1, {"1": "Aynı metin."}))["1"]
+    now = as_of(art, "2018-01-01")
+    assert now["status"] == "found" and now["stale"] is False
+    assert now["latest_snapshot_date"] == "2018-01-01" and now["confidence"] == "high"
+    later = as_of(art, "2030-01-01")
+    assert later["status"] == "found" and later["stale"] is True
+    assert later["latest_snapshot_date"] == "2018-01-01"
 
 
 def test_removed_article_ends_with_a_gap_and_is_not_in_force_afterwards() -> None:
@@ -299,15 +380,21 @@ def test_find_overlaps_detects_intersections() -> None:
 
 
 def test_statute_as_of_reports_unknown_articles() -> None:
-    record = {"articles": [{"article_no": "1", "versions": [], "gaps": []}]}
+    art = {"article_no": "1", "versions": [], "gaps": [], "latest_snapshot_date": "2025-01-01"}
+    record = {"articles": [art]}
     assert statute_as_of(record, "99", "2020-01-01") == {"status": "unknown_article"}
-    assert statute_as_of(record, "1", "2020-01-01") == {"status": "not_in_force"}
+    assert statute_as_of(record, "1", "2020-01-01") == {
+        "status": "not_in_force",
+        "latest_snapshot_date": "2025-01-01",
+        "stale": False,
+    }
 
 
 def test_open_start_gap_covers_everything_before_its_end() -> None:
     art = {
         "versions": [{"valid_from": "2016-01-01", "valid_to": None, "change_kind": "original"}],
         "gaps": [{"from": None, "to": "2016-01-01", "reason": "before_earliest_snapshot"}],
+        "latest_snapshot_date": "2025-01-01",
     }
     assert as_of(art, date(1990, 1, 1))["status"] == "gap"
 

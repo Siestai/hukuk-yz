@@ -21,7 +21,7 @@ def _snap(**articles: str) -> Snapshot:
 def test_normalize_ignores_layout_quotes_and_markers() -> None:
     a = "İşçi “kıdem”\ntazminatı alır.(1)\nİkinci   fıkra.12"
     b = 'İşçi "kıdem" tazminatı  alır. İkinci fıkra.'
-    assert normalize(a) == normalize(b)
+    assert normalize(a, frozenset({1, 12})) == normalize(b)
     assert normalize("iş- veren") == normalize("iş-veren")
     assert normalize("(Ek:5/12/2019-7194/48 md.)") == normalize("(Ek: 5/12/2019 - 7194/48 md.)")
 
@@ -38,6 +38,19 @@ def test_skeleton_folds_case_diacritics_and_punctuation() -> None:
     ("old", "new", "kind", "warnings"),
     [
         ("Bu bir madde.", "Bu  bir\nmadde.(1)", UNCHANGED, []),
+        (
+            "(3) 5 inci maddenin (4) numaralı",
+            "(3) 5 inci maddenin (5) numaralı",
+            CHANGED,
+            ["uncertain_diff"],
+        ),
+        (
+            "işçi (1) numaralı bent uyarınca",
+            "işçi (2) numaralı bent uyarınca",
+            CHANGED,
+            ["uncertain_diff"],
+        ),
+        ("madde5 uyarınca", "madde6 uyarınca", CHANGED, ["uncertain_diff"]),
         ("Malûl sayılır, işçi.", "Malul sayılır işçi.", UNCHANGED, ["uncertain_diff"]),
         ("Süre altı iş günüdür.", "Süre otuz iş günüdür.", CHANGED, ["uncertain_diff"]),
         (
@@ -50,7 +63,15 @@ def test_skeleton_folds_case_diacritics_and_punctuation() -> None:
     ],
 )
 def test_compare(old: str, new: str, kind: str, warnings: list[str]) -> None:
-    assert compare(old, new) == (kind, warnings)
+    assert compare(old, new, frozenset({1}), frozenset({1})) == (kind, warnings)
+
+
+def test_compare_strips_only_known_footnote_markers() -> None:
+    old, new = "işçi alır.(2) Süre kesilmesi47 durur.", "işçi alır. Süre kesilmesi durur."
+    assert compare(old, new, frozenset({2, 47}), frozenset()) == (UNCHANGED, [])
+    # a number the splitter did not take for a footnote is text
+    assert compare(old, new, frozenset(), frozenset())[0] == CHANGED
+    assert compare("işçi (1) bent", "işçi (2) bent", frozenset({1}), frozenset())[0] == CHANGED
 
 
 def test_diff_snapshots_classifies_each_article() -> None:

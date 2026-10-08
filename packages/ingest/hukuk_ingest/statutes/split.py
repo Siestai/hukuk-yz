@@ -249,7 +249,7 @@ def _extract_footnotes(
 # --- helpers for assembling articles -----------------------------------------------------------
 
 
-def _decompose(digits: str, known: set[int]) -> list[int] | None:
+def decompose(digits: str, known: set[int]) -> list[int] | None:
     """`910` -> [9, 10] when 9 is a known footnote number: markers glued next to each other."""
     for k in range(1, len(digits) + 1):
         first = int(digits[:k])
@@ -271,7 +271,7 @@ def _strip_markers(heading: str, known: set[int]) -> str:
     """Removes footnote markers glued to a heading: `... (1)` or `...zorunluluğu910`."""
     heading = re.sub(r"(?:\s*\(\d{1,3}\))+$", "", heading).strip()
     m = re.search(r"(?<=[^\W\d_])(\d+)$", heading)
-    if m and _decompose(m.group(1), known):
+    if m and decompose(m.group(1), known):
         return heading[: m.start()].rstrip()
     return heading
 
@@ -279,7 +279,7 @@ def _strip_markers(heading: str, known: set[int]) -> str:
 def _has_marker(line: str, n: int, bracket: bool, known: set[int]) -> bool:
     if bracket:
         return bool(re.search(_BRACKET_MARK_RE.format(n=n), line))
-    return any(n in (_decompose(m.group(0), known) or ()) for m in _GLUED_RUN_RE.finditer(line))
+    return any(n in (decompose(m.group(0), known) or ()) for m in _GLUED_RUN_RE.finditer(line))
 
 
 _NOTE_END_RE = re.compile(r"\((?:Ek|Değişik|Mülga|İptal|Yeniden|Aynen|Başlığı)[^()]*\)$")

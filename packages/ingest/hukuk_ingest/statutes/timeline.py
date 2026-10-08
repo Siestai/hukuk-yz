@@ -12,9 +12,9 @@ from datetime import date, timedelta
 from typing import Any
 
 from hukuk_ingest.statutes import confidence
-from hukuk_ingest.statutes.acts import Registry
+from hukuk_ingest.statutes.acts import BASIS_ACT, BASIS_PARTIAL, Registry
 from hukuk_ingest.statutes.annotations import Annotation, footnote_laws
-from hukuk_ingest.statutes.diff import UNCHANGED, compare
+from hukuk_ingest.statutes.diff import UNCHANGED, compare, marker_numbers, same_wording
 from hukuk_ingest.statutes.split import Article, Snapshot
 
 DAY = timedelta(days=1)
@@ -121,16 +121,20 @@ def _explain(
     if any(y <= d_old or (y > d_new and not d_new_inferred) for y in dates):
         return _fallback(d_old, d_new, "yururluk_outside_window", window)
     start, end = min(dates), max(dates)
-    warnings = ["exception_effective"] if "exception" in bases else []
+    own = bases != {BASIS_ACT}  # an exception or a partial date, not the act's plain date
+    warnings = ["exception_effective"] if own else []
     gap = None
     if start < end:
         multi = len(pairs) > 1 or widened
-        reason = "multi_amendment_in_window" if multi else "split_effective_dates"
+        if multi:
+            reason = "multi_amendment_in_window"
+        elif BASIS_PARTIAL in bases:
+            reason = "partial_entry_into_force"
+        else:
+            reason = "split_effective_dates"
         warnings.append(reason)
         gap = _gap(start, end, reason, window)
-    return _Trans(
-        start, end, gap, warnings, "exception" if "exception" in bases else "act", _known(window)
-    )
+    return _Trans(start, end, gap, warnings, "exception" if own else "act", _known(window))
 
 
 def _is_added_kind(article_no: str) -> bool:
@@ -163,6 +167,26 @@ def _version(
     }
 
 
+def _add_dates(
+    art: Article, real: list[Annotation], number: str, registry: Registry
+) -> set[date] | None:
+    """In-force dates of the act that added the article, when a note says so.
+
+    Ek and Geçici articles: the earliest whole-article `Ek` note (a later `Ek` without a scope can
+    be a paragraph). Other articles: only a lone `Ek` heading note, since any further note means
+    the article may have existed long before. None when no note adds it or its date is unknown."""
+    if _is_added_kind(art.article_no):
+        adds = [n for n in real if n.kind == "ek" and not n.scope]
+        add = min(adds, key=lambda n: n.date) if adds else None
+    else:
+        heads = [n for n in real if n.kind == "ek" and not n.scope and n.offset == 0]
+        add = heads[0] if heads and len({(n.date, n.law) for n in real}) == 1 else None
+    if add is None:
+        return None
+    found = registry.effective_dates(add.law, add.date, number, art.article_no)
+    return found[0] if found else None
+
+
 def _first_snapshot(
     art: Article,
     notes: list[Annotation],
@@ -182,7 +206,6 @@ def _first_snapshot(
     if law_dates:
         law_from = min(law_dates)
     warnings: list[str] = []
-    head_added = bool(real) and real[0].kind == "ek" and not real[0].scope and real[0].offset == 0
     kind = "repealed" if art.status == "repealed" else "amended"
     if real:
         dates: set[date] = set()
@@ -193,7 +216,7 @@ def _first_snapshot(
                 dates = set()
                 break
             dates |= found[0]
-            if found[1] == "exception":
+            if found[1] != BASIS_ACT:
                 basis = "exception"
         if not dates:
             valid_from, basis = snap.date, "fallback"
@@ -205,16 +228,21 @@ def _first_snapshot(
                 warnings.append("yururluk_outside_window")
             elif basis == "exception":
                 warnings.append("exception_effective")
-        if head_added and art.status != "repealed":
-            kind = "added"
-        version = _version(art, snap, valid_from, kind, _known(real), basis)
+        # The note that brought the article in dates its start; nothing is known before it.
+        add = _add_dates(art, real, number, registry)
+        gap_from = min(add) if add else law_from
+        reason = "before_earliest_snapshot"
+        if add and valid_from == max(add) and min(add) < valid_from:
+            reason = "partial_entry_into_force"
         gap = None
-        if not head_added and (law_from is None or law_from < valid_from):
-            warnings.append("before_earliest_snapshot")
-            gap = _gap(law_from, valid_from, "before_earliest_snapshot", real)
-            if law_from is None:
+        if gap_from is None or gap_from < valid_from:
+            warnings.append(reason)
+            gap = _gap(gap_from, valid_from, reason, real)
+            if gap_from is None:
                 warnings.append("yururluk_unknown")
-        return version, gap, warnings
+        elif add and art.status != "repealed":
+            kind = "added"
+        return _version(art, snap, valid_from, kind, _known(real), basis), gap, warnings
     if _is_added_kind(art.article_no):
         # No note says when this extra/transitional article came in: only the snapshot is evidence.
         version = _version(art, snap, snap.date, "original", [], "fallback")
@@ -248,6 +276,7 @@ def build_article(
     warnings: list[str] = []
     current: dict[str, Any] | None = None
     last_art: Article | None = None
+    base_art: Article | None = None  # snapshot article the current version's text comes from
     last_idx = -1
     for i, snap in enumerate(inputs):
         art = next((a for a in snap.snapshot.articles if a.article_no == article_no), None)
@@ -262,7 +291,7 @@ def build_article(
             continue
         if current is None and not versions and i == 0:
             first, first_gap, w = _first_snapshot(art, notes, snap, number, original, registry)
-            current = first
+            current, base_art = first, art
             versions.append(first)
             if first_gap:
                 gaps.append(first_gap)
@@ -279,16 +308,24 @@ def build_article(
             warnings += tr.warnings
             if tr.gap:
                 gaps.append(tr.gap)
+            base_art = art
             versions.append(current)
         else:
-            assert last_art is not None
-            kind, diff_warnings = compare(last_art.text, art.text)
+            assert base_art is not None
+            # Compared with the text the version holds, so small drifts cannot add up unseen.
+            kind, diff_warnings = compare(
+                base_art.text, art.text, marker_numbers(base_art), marker_numbers(art)
+            )
             warnings += diff_warnings
             if kind == UNCHANGED:
+                # The version keeps the text of the earliest snapshot that evidences it.
+                if not same_wording(
+                    base_art.text, art.text, marker_numbers(base_art), marker_numbers(art)
+                ):
+                    current["warnings"] = sorted({*current["warnings"], "uncertain_diff"})
+                    warnings.append("uncertain_diff")
                 current["evidence"]["snapshots"].append(snap.path)
                 current["evidence"]["snapshot_dates"].append(snap.date.isoformat())
-                current["footnotes"] = [f.to_dict() for f in art.footnotes]
-                current["text"], current["heading"] = art.text, art.heading
             else:
                 tr = _explain(
                     art,
@@ -303,7 +340,7 @@ def build_article(
                 if tr.gap:
                     gaps.append(tr.gap)
                 ck = "repealed" if art.status == "repealed" else "amended"
-                current = _version(art, snap, tr.new_from, ck, tr.acts, tr.basis)
+                current, base_art = _version(art, snap, tr.new_from, ck, tr.acts, tr.basis), art
                 current["warnings"] = [*tr.warnings, *diff_warnings]
                 warnings += tr.warnings
                 versions.append(current)
@@ -322,6 +359,7 @@ def build_article(
         "annotations": [n.to_dict() for n in inputs[last_idx].notes.get(article_no, [])]
         if latest
         else [],
+        "latest_snapshot_date": inputs[-1].date.isoformat(),
         "warnings": sorted(set(warnings)),
     }
 
@@ -342,22 +380,30 @@ def find_overlaps(timeline: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def as_of(timeline: dict[str, Any], when: date | str) -> dict[str, Any]:
-    """What an article said on `when`: `{status: found, version}`, `{status: gap, gap}` or
-    `{status: not_in_force}` (before the article existed, after it was removed, or repealed:
-    then the stub `version` is included). Mirrors the DB query of task 11b."""
+    """What an article said on `when`: `{status: found, version, confidence}`,
+    `{status: gap, gap}` or `{status: not_in_force}` (before the article existed, after it was
+    removed, or repealed: then the stub `version` is included).
+
+    Every result carries `latest_snapshot_date` and `stale`: `stale` is true when `when` is after
+    the newest snapshot, so the text may have been amended since; the status stays `found` and
+    the product says "metin <tarih> itibarıyla". A `found` result carries the `confidence` band
+    of its version (`low` versions rest on a fallback boundary): the consumer must not hide it.
+    Mirrors the DB query of task 11b, which must return the same three fields."""
     day = _d(when)
     assert day is not None
+    latest = timeline["latest_snapshot_date"]
+    base = {"latest_snapshot_date": latest, "stale": day > (_d(latest) or date.min)}
     for v in timeline["versions"]:
         start, end = _d(v["valid_from"]), _d(v["valid_to"])
         if (start is None or start <= day) and (end is None or day < end):
             if v["change_kind"] == "repealed":
-                return {"status": NOT_IN_FORCE, "reason": "repealed", "version": v}
-            return {"status": FOUND, "version": v}
+                return {"status": NOT_IN_FORCE, "reason": "repealed", "version": v, **base}
+            return {"status": FOUND, "version": v, "confidence": v["confidence"], **base}
     for g in timeline["gaps"]:
         start, end = _d(g["from"]), _d(g["to"])
         if (start is None or start <= day) and (end is None or day < end):
-            return {"status": GAP, "gap": g}
-    return {"status": NOT_IN_FORCE}
+            return {"status": GAP, "gap": g, **base}
+    return {"status": NOT_IN_FORCE, **base}
 
 
 def statute_as_of(statute: dict[str, Any], article_no: str, when: date | str) -> dict[str, Any]:

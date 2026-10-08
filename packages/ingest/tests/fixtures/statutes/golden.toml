@@ -584,6 +584,34 @@ source = "Before 1/10/2008 (m.108 d), 5510's general provisions were not in forc
 
 [[query]]
 statute = "5510"
+article = "Ek 2"
+as_of = 2009-08-17
+expect = "not_in_force"
+source = "Added by '(Ek: 11/8/2009-5921/3 md.; Değişik: 31/5/2012-6322/32 md.)' (first whole-article Ek note); 5921 yürürlük tablosu: 18/8/2009. The day before that the article did not exist. Review round: with several notes the old code said not_in_force for every date before the earliest snapshot version; now only before the add date."
+
+[[query]]
+statute = "5510"
+article = "Ek 2"
+as_of = 2010-01-01
+expect = "gap"
+source = "Ek 2 exists since 18/8/2009 (5921) but the earliest snapshot (2017) shows the text amended by later notes (earliest known version starts 15/6/2012, 6322 yürürlük tablosu). Between add date and that version the text is unknown: gap, not not_in_force (md. 25)."
+
+[[query]]
+statute = "4857"
+article = "41"
+as_of = 2014-12-01
+expect = "gap"
+source = "6552 yürürlük tablosu: 4857 m.41 onuncu fıkra 1/1/2015, rest 11/9/2014. Part-way in force on 2014-12-01 and the 2016 docx has both parts: gap, never the new text (review round, partial_entry_into_force)."
+
+[[query]]
+statute = "5510"
+article = "6"
+as_of = 2016-02-15
+expect = "gap"
+source = "6663 (kabul 29/1/2016, yürürlük 10/2/2016) puts m.6 into force 'takip eden ödeme dönemi başında' (no exact date). The earliest snapshot with that text is 2016-09-27; before it the text is unknown: gap (review round)."
+
+[[query]]
+statute = "5510"
 article = "999"
 as_of = 2020-01-01
 expect = "unknown_article"

@@ -27,6 +27,7 @@ RULES: dict[str, str] = {
     # clean, but with a caveat
     "exception_effective": MEDIUM,
     "split_effective_dates": MEDIUM,
+    "partial_entry_into_force": MEDIUM,
     "uncertain_diff": MEDIUM,
     "before_earliest_snapshot": MEDIUM,
     "start_unverified": MEDIUM,

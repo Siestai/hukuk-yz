@@ -8,9 +8,17 @@
 #   yururluk     in-force date; leave it out when unknown (the timeline reports yururluk_unknown)
 #   source_url   required whenever yururluk is set; no invented dates
 #   note         optional
+#   alias_of     kabul date of another entry of the same law that this one repeats (a typo of a date in
+#                the annotations); it carries nothing else and takes everything from that entry.
+#                Otherwise kabul_tarihi after rg_tarihi is an error.
 # [[act.exception]]: an article whose in-force date differs from the act's
 #   statute, article (normalised: "18", "Ek 2", "Geçici 4"), scope (free text), yururluk,
 #   source ("dipnot" or a URL)
+#   partial      true when only the part named in scope (fıkra, bent, cümle, ibare) enters into force
+#                on yururluk and the rest follows the act's date: the timeline reports a gap
+#                (partial_entry_into_force) between the two dates. Needs scope and yururluk.
+#   yururluk     leave it out when the date is vague ("ödeme dönemi başında"): the article then has an
+#                unknown in-force date (yururluk_unknown), never the act's date.
 # The statutes themselves (4857, 5510) are acts too: their entry gives the original in-force date.
 #
 # Source of most rows: the official "yürürlüğe giriş tarihlerini gösterir liste/tablo" printed at the end of
@@ -60,6 +68,7 @@ statute = "4857"
 article = "111"
 scope = "birinci ve ikinci fikra iptali; RG'den alti ay sonra (hesaplanmis)"
 yururluk = 2008-05-24
+partial = true
 source = "https://www.resmigazete.gov.tr/eskiler/2007/11/20071124-4.htm"
 
 [[act]]
@@ -344,6 +353,7 @@ statute = "5510"
 article = "67"
 scope = "dördüncü fıkranın ikinci cümlesinden çıkarılan ibare; geriye etkili; yayım 2011-02-25"
 yururluk = 2008-10-01
+partial = true
 source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
@@ -463,6 +473,7 @@ statute = "5510"
 article = "102"
 scope = "eklenen (l) bendi"
 yururluk = 2011-03-01
+partial = true
 source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
@@ -552,7 +563,19 @@ rg_tarihi = 2012-03-08
 rg_sayisi = "28227"
 yururluk = 2012-03-08
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
-note = "yürürlük tablosu (5510 güncel metin): md. 67, 68, 102, Geçici 20 (+ 'işlenemeyen hüküm' ifadesi, belirsiz); belirsiz: Geçici 39 ve Geçici 40 için '2013 yılı Ocak ödeme döneminde' (tam tarih yok), istisna eklenmedi"
+note = "yürürlük tablosu (5510 güncel metin): md. 67, 68, 102, Geçici 20 (+ 'işlenemeyen hüküm' ifadesi, belirsiz); Geçici 39 ve Geçici 40 için '2013 yılı Ocak ödeme döneminde' (tam tarih yok): istisna olarak tarihsiz kayıtlı, yürürlük bilinmiyor"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 39"
+scope = "2013 yılı Ocak ödeme döneminde"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 40"
+scope = "2013 yılı Ocak ödeme döneminde"
+source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act]]
 law = "6322"
@@ -680,7 +703,31 @@ rg_tarihi = 2013-08-02
 rg_sayisi = "28726"
 yururluk = 2013-08-02
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
-note = "yürürlük tablosu (5510 güncel metin): md. 4, 66, Geçici 51; belirsiz: md. 5, 47, Geçici 14, Geçici 52 için 'Ağustos 2013 ödeme döneminden geçerli olmak üzere 1/1/2014' (dönem + tablo tarihi), istisna eklenmedi"
+note = "yürürlük tablosu (5510 güncel metin): md. 4, 66, Geçici 51; belirsiz: md. 5, 47, Geçici 14, Geçici 52 için 'Ağustos 2013 ödeme döneminden geçerli olmak üzere 1/1/2014' (dönem + tablo tarihi); istisna olarak tarihsiz kayıtlı, yürürlük bilinmiyor"
+
+[[act.exception]]
+statute = "5510"
+article = "5"
+scope = "Ağustos 2013 ödeme döneminden geçerli olmak üzere 1/1/2014"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "47"
+scope = "Ağustos 2013 ödeme döneminden geçerli olmak üzere 1/1/2014"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 14"
+scope = "Ağustos 2013 ödeme döneminden geçerli olmak üzere 1/1/2014"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 52"
+scope = "Ağustos 2013 ödeme döneminden geçerli olmak üzere 1/1/2014"
+source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act]]
 law = "6518"
@@ -701,53 +748,8 @@ note = "yürürlük tablosu (5510 güncel metin): E.:2013/40, K.:2013/139 -> md.
 [[act]]
 law = "6552"
 kabul_tarihi = 2014-09-16
-rg_tarihi = 2014-09-11
-rg_sayisi = "29116"
-yururluk = 2014-09-11
-source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
-note = "anahtar metindeki tarih yazımı; yürürlük tablosu: 4857 (md. 3, 18, 36, 41, 53, 56, 112) ve 5510 (çok sayıda md.) 11/9/2014"
-
-[[act.exception]]
-statute = "4857"
-article = "41"
-scope = "onuncu fıkrası"
-yururluk = 2015-01-01
-source = "yürürlük tablosu: 4857 güncel metin"
-
-[[act.exception]]
-statute = "4857"
-article = "63"
-scope = ""
-yururluk = 2015-01-01
-source = "yürürlük tablosu: 4857 güncel metin"
-
-[[act.exception]]
-statute = "5510"
-article = "Geçici 59"
-scope = "geriye etkili; yayım 2014-09-11"
-yururluk = 2014-05-13
-source = "yürürlük tablosu: 5510 güncel metin"
-
-[[act.exception]]
-statute = "5510"
-article = "82"
-scope = ""
-yururluk = 2014-10-01
-source = "yürürlük tablosu: 5510 güncel metin"
-
-[[act.exception]]
-statute = "5510"
-article = "6"
-scope = "ibare değişikliği (e) bendindeki değişiklik dışında"
-yururluk = 2015-04-01
-source = "yürürlük tablosu: 5510 güncel metin"
-
-[[act.exception]]
-statute = "5510"
-article = "Ek 9"
-scope = ""
-yururluk = 2015-04-01
-source = "yürürlük tablosu: 5510 güncel metin"
+alias_of = 2014-09-10
+note = "anahtar metindeki (4857 md. 3) tarih yazımı; gerçek kabul tarihi 10/9/2014, tüm bilgi o kayıttan alınır"
 
 [[act]]
 law = "AYM"
@@ -770,6 +772,7 @@ statute = "5510"
 article = "80"
 scope = "2 nci fıkrasının (b) bendi; geriye etkili; yayım 2015-04-23"
 yururluk = 2008-10-01
+partial = true
 source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
@@ -804,7 +807,37 @@ rg_tarihi = 2016-02-10
 rg_sayisi = "29620"
 yururluk = 2016-02-10
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
-note = "yürürlük tablosu: 4857 md. 13, 74 ve 5510 md. 60, 67, Ek 11 (10/2/2016); belirsiz: 5510 md. 6, 30, 47, 87, Geçici 14 için '10/2/2016 tarihini takip eden ödeme dönemi başında' (tam tarih yok), istisna eklenmedi"
+note = "yürürlük tablosu: 4857 md. 13, 74 ve 5510 md. 60, 67, Ek 11 (10/2/2016); belirsiz: 5510 md. 6, 30, 47, 87, Geçici 14 için '10/2/2016 tarihini takip eden ödeme dönemi başında' (tam tarih yok); istisna olarak tarihsiz kayıtlı, yürürlük bilinmiyor"
+
+[[act.exception]]
+statute = "5510"
+article = "6"
+scope = "10/2/2016 tarihini takip eden ödeme dönemi başında"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "30"
+scope = "10/2/2016 tarihini takip eden ödeme dönemi başında"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "47"
+scope = "10/2/2016 tarihini takip eden ödeme dönemi başında"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "87"
+scope = "10/2/2016 tarihini takip eden ödeme dönemi başında"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Geçici 14"
+scope = "10/2/2016 tarihini takip eden ödeme dönemi başında"
+source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
 statute = "5510"
@@ -845,6 +878,7 @@ statute = "5510"
 article = "102"
 scope = "(n) bendi"
 yururluk = 2018-01-01
+partial = true
 source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act]]
@@ -1058,6 +1092,7 @@ statute = "5510"
 article = "88"
 scope = "onaltıncı fıkrasına eklenen cümle; 1/1/2018 tarihinden itibaren vadesi gelen alacaklara uygulanmak üzere; yayım 2017-05-27"
 yururluk = 2018-01-01
+partial = true
 source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act]]
@@ -1298,7 +1333,13 @@ kabul_tarihi = 2019-01-17
 rg_tarihi = 2019-01-18
 yururluk = 2019-01-18
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
-note = "yürürlük tablosu (5510 güncel metin): md.3 yayımı tarihinde (18/1/2019); belirsiz: Ek 19 'yayımı tarihini takip eden ilk ödeme döneminde' (tam tarih yok), istisna eklenmedi"
+note = "yürürlük tablosu (5510 güncel metin): md.3 yayımı tarihinde (18/1/2019); belirsiz: Ek 19 'yayımı tarihini takip eden ilk ödeme döneminde' (tam tarih yok); istisna olarak tarihsiz kayıtlı, yürürlük bilinmiyor"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 19"
+scope = "yayımı takip eden ilk ödeme döneminde"
+source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
 statute = "5510"
@@ -1363,7 +1404,13 @@ kabul_tarihi = 2020-03-25
 rg_tarihi = 2020-03-26
 yururluk = 2020-03-26
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
-note = "yürürlük tablosu: 4857 md.64 ve 5510 Geçici 81, Ek 18 -> 26/3/2020; belirsiz: tablo '3 üncü ve 88 inci maddeler yayımı izleyen ayın başında (1/4/2020)' diyor ama 5510 madde listesinde 3 ve 88 yok, istisna eklenmedi; Ek 19 '2020 Nisan ödeme döneminden itibaren' (tam tarih yok)"
+note = "yürürlük tablosu: 4857 md.64 ve 5510 Geçici 81, Ek 18 -> 26/3/2020; belirsiz: tablo '3 üncü ve 88 inci maddeler yayımı izleyen ayın başında (1/4/2020)' diyor ama 5510 madde listesinde 3 ve 88 yok, bu ikisi için istisna eklenmedi; Ek 19 '2020 Nisan ödeme döneminden itibaren' (tam tarih yok): istisna olarak tarihsiz kayıtlı, yürürlük bilinmiyor"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 19"
+scope = "2020 Nisan ödeme döneminden itibaren"
+source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
 statute = "5510"
@@ -1450,7 +1497,19 @@ kabul_tarihi = 2022-07-01
 rg_tarihi = 2022-07-05
 yururluk = 2022-07-05
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
-note = "yürürlük tablosu (5510 güncel metin): Geçici 87, 88 yayımı tarihinde (5/7/2022); md.43 ve Ek 19 yayımı tarihinde (5/7/2022), Temmuz ödeme döneminden itibaren uygulanır; belirsiz: Ek 21, Ek 22 '2023 yılı Ocak ayı ödeme döneminde' (tam tarih yok), istisna eklenmedi"
+note = "yürürlük tablosu (5510 güncel metin): Geçici 87, 88 yayımı tarihinde (5/7/2022); md.43 ve Ek 19 yayımı tarihinde (5/7/2022), Temmuz ödeme döneminden itibaren uygulanır; belirsiz: Ek 21, Ek 22 '2023 yılı Ocak ayı ödeme döneminde' (tam tarih yok); istisna olarak tarihsiz kayıtlı, yürürlük bilinmiyor"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 21"
+scope = "2023 yılı Ocak ayı ödeme döneminde"
+source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "Ek 22"
+scope = "2023 yılı Ocak ayı ödeme döneminde"
+source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
 statute = "5510"
@@ -1712,7 +1771,23 @@ rg_tarihi = 2014-09-11
 rg_sayisi = "29116"
 yururluk = 2014-09-11
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
-note = "yürürlük tablosu (4857 ve 5510 güncel metin). Kısmi istisnalar eklenmedi (madde düzeyinde iki tarih var): 4857 m.41 onuncu fıkra 1/1/2015; 5510 m.6 ibare değişikliği 1/4/2015."
+note = "yürürlük tablosu (4857 ve 5510 güncel metin). Kısmi: 4857 m.41 onuncu fıkra 1/1/2015; 5510 m.6 ibare değişikliği 1/4/2015 (istisna olarak kayıtlı; kalan kısım 11/9/2014). Kayıt 2014-09-16 anahtarıyla da aranır (alias_of)."
+
+[[act.exception]]
+statute = "4857"
+article = "41"
+scope = "onuncu fıkra"
+yururluk = 2015-01-01
+partial = true
+source = "yürürlük tablosu: 4857 güncel metin"
+
+[[act.exception]]
+statute = "5510"
+article = "6"
+scope = "ibare değişikliği"
+yururluk = 2015-04-01
+partial = true
+source = "yürürlük tablosu: 5510 güncel metin"
 
 [[act.exception]]
 statute = "4857"
