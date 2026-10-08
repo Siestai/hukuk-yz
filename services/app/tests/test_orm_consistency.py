@@ -14,6 +14,7 @@ MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
 USERS_MIGRATION = VERSIONS / "0005_users_and_sessions.py"
 REVIEW_FK_MIGRATION = VERSIONS / "0006_review_reviewer_fk.py"
 LOGIN_ATTEMPT_MIGRATION = VERSIONS / "0007_login_attempt.py"
+EVIDENCE_MIGRATION = VERSIONS / "0008_statute_version_evidence.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
 # 0007: login_attempt).
 LATER_TABLES = {"decision_verification", "app_user", "user_session", "login_attempt"}
@@ -137,3 +138,22 @@ def test_faz1_indexes_exist_in_orm_and_migration() -> None:
     assert all(f'"{name}"' in migration for name in literal)
     assert "uq_decision_court_bam_region_chamber_esas_no_karar_no_live" in orm
     assert "uq_decision_court_chamber_esas_no_karar_no_live" not in orm
+
+
+def test_statute_version_evidence_columns_are_in_orm_and_migration() -> None:
+    migration = _load_migration(EVIDENCE_MIGRATION)
+    source = EVIDENCE_MIGRATION.read_text()
+    table = Base.metadata.tables["statute_article_version"]
+    new = {"evidence", "confidence", "warnings", "footnotes"}
+    assert new <= {c.name for c in table.columns}
+    assert all(f'"{name}"' in source for name in new)
+    assert (migration.TABLE, migration.down_revision) == ("statute_article_version", "0007")
+    checks = {c.name: str(c.sqltext) for c in table.constraints if isinstance(c, CheckConstraint)}
+    assert migration.CHECK in checks
+    assert (
+        checks[migration.CHECK]
+        == "confidence IN (" + ", ".join(f"'{b}'" for b in migration.BANDS) + ")"
+    )
+    for name in ("evidence", "warnings", "footnotes"):
+        assert not table.columns[name].nullable, name
+    assert table.columns["confidence"].nullable

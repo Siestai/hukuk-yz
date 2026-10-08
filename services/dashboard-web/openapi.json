@@ -1,6 +1,245 @@
 {
   "components": {
     "schemas": {
+      "ArticleAsOf": {
+        "description": "What a published article said on a date (task 11b). Only fields that apply to the status\nare present: `version` for found / repealed, `gap` for gap, `reason` for unknown_article\n(`not_published`) and for a repealed article (`repealed`).",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "gap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleGapOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_snapshot_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Snapshot Date"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "repealed",
+                  "not_published"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "stale": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale"
+          },
+          "status": {
+            "enum": [
+              "found",
+              "gap",
+              "not_in_force",
+              "unknown_article"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ArticleAsOf",
+        "type": "object"
+      },
+      "ArticleGapOut": {
+        "description": "An interval with no text on file. It names the amendments that are known to fall in it\nand never carries article text (md. 25: a gap cannot be cited).",
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "known_amendments": {
+            "items": {
+              "$ref": "#/components/schemas/KnownAmendment"
+            },
+            "title": "Known Amendments",
+            "type": "array"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "reason",
+          "known_amendments"
+        ],
+        "title": "ArticleGapOut",
+        "type": "object"
+      },
+      "ArticleVersionOut": {
+        "properties": {
+          "amending_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amending Ref"
+          },
+          "change_kind": {
+            "enum": [
+              "original",
+              "amended",
+              "repealed",
+              "added"
+            ],
+            "title": "Change Kind",
+            "type": "string"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "footnotes": {
+            "items": {},
+            "title": "Footnotes",
+            "type": "array"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "text",
+          "heading",
+          "valid_from",
+          "valid_to",
+          "change_kind",
+          "amending_ref",
+          "evidence",
+          "confidence",
+          "footnotes",
+          "warnings"
+        ],
+        "title": "ArticleVersionOut",
+        "type": "object"
+      },
       "BulkApproveRequest": {
         "properties": {
           "band": {
@@ -424,6 +663,8 @@
           "too_many_attempts",
           "file_not_found",
           "file_not_previewable",
+          "statute_not_found",
+          "invalid_date",
           "http_error",
           "internal_error"
         ],
@@ -453,6 +694,35 @@
           "status"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "KnownAmendment": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "law": {
+            "title": "Law",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "law",
+          "date",
+          "kind",
+          "scope"
+        ],
+        "title": "KnownAmendment",
         "type": "object"
       },
       "LoginRequest": {
@@ -2544,6 +2814,146 @@
         "summary": "Get File",
         "tags": [
           "review"
+        ]
+      }
+    },
+    "/statutes/{number}/articles/{article_no}": {
+      "get": {
+        "operationId": "get_article_statutes__number__articles__article_no__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "title": "Number",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "article_no",
+            "required": true,
+            "schema": {
+              "title": "Article No",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": true,
+            "schema": {
+              "title": "As Of",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleAsOf"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get Article",
+        "tags": [
+          "statutes"
         ]
       }
     }

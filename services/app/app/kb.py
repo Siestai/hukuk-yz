@@ -7,12 +7,23 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
 
-from sqlalchemy import ColumnElement, Select, Subquery, nulls_last, or_, select
+from sqlalchemy import (
+    ColumnElement,
+    Select,
+    Subquery,
+    exists,
+    func,
+    nulls_last,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.common import (
+    ChangeKind,
     Court,
     CourtLevel,
     Extraction,
@@ -23,14 +34,18 @@ from app.models.common import (
     ReviewDecision,
     Source,
     SourceCategory,
+    StatuteKind,
     TextCompleteness,
     Verification,
 )
 from app.models.decision import LIVE_KEY_INDEX, Decision
+from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
 from app.models.user import AppUser
+from hukuk_ingest.statutes.timeline import FOUND, GAP, NOT_IN_FORCE, UNKNOWN_ARTICLE
 from hukuk_models import Band, ListStatus, ReviewFilters
 
 PARSER_NAME = "decisions"
+STATUTE_PARSER_NAME = "statutes"
 Sort = Literal["score_asc", "score_desc", "reviewed_desc", "sha256"]
 
 # The source statuses of each list tab. A published decision was approved, so it stays under
@@ -355,3 +370,270 @@ async def publish_batch(
         except ValueError as exc:
             result.failed.append((extraction_id, str(exc)))
     return result
+
+
+# --- statutes (task 11b) ----------------------------------------------------------------------
+# The review unit is the article: one `statutes` extraction holds the whole timeline of one
+# article. Its source is the statute; the source goes `approved` with the first published article
+# and the per-article state is the `review` row plus the live version rows (`extraction_id`).
+# These paths never touch `queue`, which reads decision sources only.
+
+
+def _rg_date(iso: str) -> str:
+    d = date.fromisoformat(iso)
+    return f"{d.day}/{d.month}/{d.year}"
+
+
+def format_amending_ref(refs: Sequence[dict[str, Any]]) -> str | None:
+    """The amending acts of a timeline version as one label: "6552 (10/9/2014), 7036 (12/10/2017)"
+    (law number and kabul date, each pair once); None when no note is known."""
+    labels = dict.fromkeys(f"{r['law']} ({_rg_date(r['date'])})" for r in refs)
+    return ", ".join(labels) or None
+
+
+async def _statute_row(session: AsyncSession, source: Source, fields: dict[str, Any]) -> Statute:
+    number = fields["statute_number"]
+    statute = (
+        await session.execute(
+            select(Statute).where(Statute.kind == StatuteKind.kanun, Statute.number == number)
+        )
+    ).scalar_one_or_none()
+    if statute is None:
+        header = fields["statute"]
+        statute = Statute(
+            source_id=source.id,
+            number=number,
+            kind=StatuteKind.kanun,
+            full_title=header["title"] or f"{number} sayılı Kanun",
+            rg_date=date.fromisoformat(header["rg_tarihi"]) if header["rg_tarihi"] else None,
+            rg_number=header["rg_sayisi"],
+        )
+        session.add(statute)
+        await session.flush()
+    return statute
+
+
+async def publish_statute_article(
+    session: AsyncSession, extraction_id: uuid.UUID, review_id: uuid.UUID
+) -> uuid.UUID:
+    """Copy an approved article timeline into `statute` (if missing), `statute_article` and one
+    `statute_article_version` per timeline version (a gap has no row); returns the article id.
+    The source moves `analyzed` -> `approved`; the caller commits.
+
+    Republishing the extraction that is already live is a no-op. A newer extraction of the same
+    article supersedes the live rows (`superseded_at`, never deleted); an older one than the
+    live one raises StaleExtraction. `review.edits` are not applied: a review of a statute
+    article only approves it. Overlapping live versions fail at flush (IntegrityError)."""
+    review = await session.get(Review, review_id)
+    extraction = await session.get(Extraction, extraction_id)
+    if review is None or extraction is None or review.extraction_id != extraction_id:
+        raise ValueError("review does not belong to the extraction")
+    if review.decision is ReviewDecision.reject:
+        raise ValueError("a rejected review cannot be published")
+    if review.edits:
+        raise ValueError("edits are not supported for statute articles")
+    if extraction.parser_name != STATUTE_PARSER_NAME:
+        raise ValueError("extraction is not a statute article")
+    source = (
+        (
+            await session.execute(
+                select(Source)
+                .where(Source.id == extraction.source_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).scalar_one_or_none()
+        if extraction.source_id
+        else None
+    )
+    if source is None or source.category is not SourceCategory.statute:
+        raise ValueError("extraction has no source of category 'statute'")
+
+    fields = extraction.fields
+    if not fields["versions"]:
+        raise ValueError("the timeline has no version to publish")
+    statute = await _statute_row(session, source, fields)
+    article = (
+        await session.execute(
+            select(StatuteArticle).where(
+                StatuteArticle.statute_id == statute.id,
+                StatuteArticle.article_no == fields["article_no"],
+            )
+        )
+    ).scalar_one_or_none()
+    if article is None:
+        article = StatuteArticle(
+            statute_id=statute.id, article_no=fields["article_no"], ordinal=fields["ordinal"]
+        )
+        session.add(article)
+        await session.flush()
+    live = (
+        (
+            await session.execute(
+                select(StatuteArticleVersion).where(
+                    StatuteArticleVersion.article_id == article.id,
+                    StatuteArticleVersion.superseded_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if live and all(v.extraction_id == extraction_id for v in live):
+        return article.id
+    if live:
+        current = await session.get(Extraction, live[0].extraction_id)
+        if current is not None and current.extracted_at > extraction.extracted_at:
+            raise StaleExtraction("a newer extraction of this article is already published")
+        await session.execute(
+            update(StatuteArticleVersion)
+            .where(StatuteArticleVersion.id.in_([v.id for v in live]))
+            .values(superseded_at=func.now())
+        )
+    article.ordinal = fields["ordinal"]
+    for v in fields["versions"]:
+        if v["valid_from"] is None:
+            raise ValueError("a version has no start date")
+        session.add(
+            StatuteArticleVersion(
+                article_id=article.id,
+                text=v["text"],
+                heading=v["heading"],
+                valid_from=date.fromisoformat(v["valid_from"]),
+                valid_to=date.fromisoformat(v["valid_to"]) if v["valid_to"] else None,
+                change_kind=ChangeKind(v["change_kind"]),
+                amending_ref=format_amending_ref(v["amending_ref"]),
+                evidence={**v["evidence"], "amendments": v["amending_ref"]},
+                confidence=v["confidence"],
+                warnings=v["warnings"],
+                footnotes=v["footnotes"],
+                source_id=source.id,
+                extraction_id=extraction_id,
+                review_id=review_id,
+                recorded_by=str(review.reviewer_id),
+            )
+        )
+    if source.status is RecordStatus.analyzed:
+        source.status = RecordStatus.approved
+    await session.flush()
+    return article.id
+
+
+async def approve_statute_article(
+    session: AsyncSession, extraction_id: uuid.UUID, reviewer_id: uuid.UUID
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """`review` row (approve) + `publish_statute_article`, in a savepoint; returns (review_id,
+    article_id). Raises ValueError (not publishable, unknown reviewer, overlapping versions) or
+    StaleExtraction; the caller commits."""
+    try:
+        async with session.begin_nested():
+            review = Review(
+                extraction_id=extraction_id,
+                reviewer_id=reviewer_id,
+                decision=ReviewDecision.approve,
+            )
+            session.add(review)
+            await session.flush()
+            article_id = await publish_statute_article(session, extraction_id, review.id)
+    except IntegrityError as exc:
+        raise ValueError(f"database constraint violated: {_violated_constraint(exc)}") from exc
+    return review.id, article_id
+
+
+def unpublished_statute_articles(band: Band) -> Select[Any]:
+    """Ids of the newest `statutes` extraction of every article that is in `band` and not live
+    yet (an older extraction of it may be: publishing the newer one supersedes it)."""
+    number = Extraction.fields["statute_number"].as_string()
+    article_no = Extraction.fields["article_no"].as_string()
+    newest = (
+        select(Extraction.id, Extraction.confidence["band"].as_string().label("band"))
+        .ext(distinct_on(number, article_no))
+        .where(Extraction.parser_name == STATUTE_PARSER_NAME)
+        .order_by(number, article_no, Extraction.extracted_at.desc(), Extraction.id)
+        .subquery()
+    )
+    live = exists().where(
+        StatuteArticleVersion.extraction_id == newest.c.id,
+        StatuteArticleVersion.superseded_at.is_(None),
+    )
+    return select(newest.c.id).where(newest.c.band == band, ~live).order_by(newest.c.id)
+
+
+def _covers(start: date | None, end: date | None, day: date) -> bool:
+    return (start is None or start <= day) and (end is None or day < end)
+
+
+def _version_dict(v: StatuteArticleVersion) -> dict[str, Any]:
+    return {
+        "text": v.text,
+        "heading": v.heading,
+        "valid_from": v.valid_from.isoformat(),
+        "valid_to": v.valid_to.isoformat() if v.valid_to else None,
+        "change_kind": v.change_kind.value,
+        "amending_ref": v.amending_ref,
+        "evidence": v.evidence,
+        "footnotes": v.footnotes,
+        "warnings": v.warnings,
+        "confidence": v.confidence,
+    }
+
+
+async def statute_is_published(db: AsyncSession, number: str) -> bool:
+    return (
+        await db.execute(
+            select(exists().where(Statute.kind == StatuteKind.kanun, Statute.number == number))
+        )
+    ).scalar_one()
+
+
+async def article_as_of(
+    db: AsyncSession, statute_no: str, article_no: str, as_of: date
+) -> dict[str, Any]:
+    """What a published article said on `as_of`; mirrors `hukuk_ingest.statutes.timeline.as_of`
+    (same statuses, same fields, same order: versions first, then gaps), except that
+
+    - only published data counts: no live version rows -> `{status: unknown_article, reason:
+      "not_published"}`, whether the article is unknown or merely not approved yet;
+    - `version.amending_ref` is the label of `format_amending_ref` (the notes themselves are in
+      `version.evidence["amendments"]`).
+
+    The gaps and `latest_snapshot_date` come from the extraction of the live versions. A `gap`
+    result has no `version`, so it carries no article text."""
+    versions = (
+        (
+            await db.execute(
+                select(StatuteArticleVersion)
+                .join(StatuteArticle, StatuteArticle.id == StatuteArticleVersion.article_id)
+                .join(Statute, Statute.id == StatuteArticle.statute_id)
+                .where(
+                    Statute.kind == StatuteKind.kanun,
+                    Statute.number == statute_no,
+                    StatuteArticle.article_no == article_no,
+                    StatuteArticleVersion.superseded_at.is_(None),
+                )
+                .order_by(StatuteArticleVersion.valid_from)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not versions:
+        return {"status": UNKNOWN_ARTICLE, "reason": "not_published"}
+    fields = (
+        await db.execute(
+            select(Extraction.fields).where(Extraction.id == versions[0].extraction_id)
+        )
+    ).scalar_one()
+    latest = fields["latest_snapshot_date"]
+    base = {"latest_snapshot_date": latest, "stale": as_of > date.fromisoformat(latest)}
+    for v in versions:
+        if _covers(v.valid_from, v.valid_to, as_of):
+            out = _version_dict(v)
+            if v.change_kind is ChangeKind.repealed:
+                return {"status": NOT_IN_FORCE, "reason": "repealed", "version": out, **base}
+            return {"status": FOUND, "version": out, "confidence": v.confidence, **base}
+    for g in fields["gaps"]:
+        start = date.fromisoformat(g["from"]) if g["from"] else None
+        if _covers(start, date.fromisoformat(g["to"]), as_of):
+            return {"status": GAP, "gap": g, **base}
+    return {"status": NOT_IN_FORCE, **base}

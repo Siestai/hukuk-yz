@@ -35,6 +35,7 @@ from app.models.common import (
     TextCompleteness,
 )
 from app.models.decision import Decision
+from app.models.statute import StatuteArticleVersion
 from app.models.user import AppUser, UserRole
 from app.settings import Settings
 from hukuk_ingest.decisions.parse import DecisionRecord
@@ -1229,3 +1230,48 @@ async def test_a_file_over_the_size_cap_is_404_and_logged(
         response = await client.get(archive.url, headers=me.headers)
     assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
     assert "size cap" in caplog.text
+
+
+# --- statute extractions (task 11b) -----------------------------------------------------------
+
+
+async def test_statute_extractions_stay_out_of_the_decision_review(
+    client: httpx.AsyncClient,
+    kb_factory: Factory,
+    me: Login,
+    statutes_published: dict[str, uuid.UUID],
+) -> None:
+    await _seed(kb_factory, {}, {}, {})
+    statute_ids = {str(i) for i in statutes_published.values()}
+    for status in ("pending", "approved", "rejected", "all"):
+        response = await client.get(BASE, params={"status": status}, headers=me.headers)
+        body = response.json()
+        assert not {i["extraction_id"] for i in body["items"]} & statute_ids, status
+        assert body["total"] == (3 if status in ("pending", "all") else 0), status
+    assert (await client.get(f"{BASE}/summary", headers=me.headers)).json() == {
+        "by_band": {"high": 3, "medium": 0, "low": 0},
+        "by_court": {"yargitay": 3},
+        "top_reasons": [],
+        "approved": 0,
+        "rejected": 0,
+    }
+
+    # bulk approval publishes the three decisions and nothing else
+    response = await client.post(f"{BASE}/bulk-approve", json=_bulk(3), headers=me.headers)
+    assert response.json()["published"] == 3
+    assert await _count(kb_factory, Decision) == 3
+    assert await _count(kb_factory, StatuteArticleVersion) == 5
+
+    # the review endpoints do not know a statute extraction
+    for extraction_id in statute_ids:
+        url = f"{BASE}/{extraction_id}"
+        for call in (
+            client.get(url, headers=me.headers),
+            client.get(f"{url}/file", headers=me.headers),
+        ):
+            assert (await call).json()["error"]["code"] == "extraction_not_found"
+        response = await client.post(url, json={"action": "approve"}, headers=me.headers)
+        assert (response.status_code, response.json()["error"]["code"]) == (
+            404,
+            "extraction_not_found",
+        )

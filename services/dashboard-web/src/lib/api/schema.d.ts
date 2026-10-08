@@ -187,10 +187,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/statutes/{number}/articles/{article_no}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Article */
+        get: operations["get_article_statutes__number__articles__article_no__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ArticleAsOf
+         * @description What a published article said on a date (task 11b). Only fields that apply to the status
+         *     are present: `version` for found / repealed, `gap` for gap, `reason` for unknown_article
+         *     (`not_published`) and for a repealed article (`repealed`).
+         */
+        ArticleAsOf: {
+            /** Confidence */
+            confidence?: ("high" | "medium" | "low") | null;
+            gap?: components["schemas"]["ArticleGapOut"] | null;
+            /** Latest Snapshot Date */
+            latest_snapshot_date?: string | null;
+            /** Reason */
+            reason?: ("repealed" | "not_published") | null;
+            /** Stale */
+            stale?: boolean | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "found" | "gap" | "not_in_force" | "unknown_article";
+            version?: components["schemas"]["ArticleVersionOut"] | null;
+        };
+        /**
+         * ArticleGapOut
+         * @description An interval with no text on file. It names the amendments that are known to fall in it
+         *     and never carries article text (md. 25: a gap cannot be cited).
+         */
+        ArticleGapOut: {
+            /** From */
+            from: string | null;
+            /** Known Amendments */
+            known_amendments: components["schemas"]["KnownAmendment"][];
+            /** Reason */
+            reason: string;
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+        };
+        /** ArticleVersionOut */
+        ArticleVersionOut: {
+            /** Amending Ref */
+            amending_ref: string | null;
+            /**
+             * Change Kind
+             * @enum {string}
+             */
+            change_kind: "original" | "amended" | "repealed" | "added";
+            /** Confidence */
+            confidence: ("high" | "medium" | "low") | null;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Footnotes */
+            footnotes: unknown[];
+            /** Heading */
+            heading: string | null;
+            /** Text */
+            text: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+            /** Valid To */
+            valid_to: string | null;
+            /** Warnings */
+            warnings: string[];
+        };
         /** BulkApproveRequest */
         BulkApproveRequest: {
             /**
@@ -318,7 +407,7 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "http_error" | "internal_error";
+        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_date" | "http_error" | "internal_error";
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
@@ -327,6 +416,20 @@ export interface components {
         HealthResponse: {
             /** Status */
             status: string;
+        };
+        /** KnownAmendment */
+        KnownAmendment: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Kind */
+            kind: string;
+            /** Law */
+            law: string;
+            /** Scope */
+            scope: string;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1633,6 +1736,112 @@ export interface operations {
                 };
                 content: {
                     "application/pdf": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_article_statutes__number__articles__article_no__get: {
+        parameters: {
+            query: {
+                as_of: string;
+            };
+            header?: never;
+            path: {
+                number: string;
+                article_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleAsOf"];
                 };
             };
             /** @description Unauthorized */
