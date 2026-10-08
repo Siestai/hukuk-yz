@@ -582,9 +582,11 @@ async def test_the_database_query_mirrors_the_pure_as_of(
                 seen.add(actual["status"])
                 compared.add((article["article_no"], day))
     assert seen == {"found", "gap", "not_in_force"}
-    # every version/gap boundary (and the snapshot date) was probed at -1/0/+1 days
+    # every published article of the fixture was probed (so a fixture or publish change that
+    # drops articles fails here), at every version/gap boundary -1/0/+1 days
+    probed_articles = {no for no, _ in compared}
+    assert probed_articles == {"18", "Geçici 1", "Ek 2"}  # conftest PUBLISHED_ARTICLES
     assert compared == expected_pairs
-    assert len(compared) > 2 * 3  # at least two articles with boundaries, not an empty loop
 
 
 async def test_only_published_articles_count(
