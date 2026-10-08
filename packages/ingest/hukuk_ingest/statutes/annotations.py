@@ -42,6 +42,12 @@ _SPLIT_RE = re.compile(
 )
 _PAREN_RE = re.compile(r"\((?:[^()]|\([^()]*\))*\)")
 _SCOPE_DROP = {"başlığı", "ile", "birlikte"}
+# A footnote naming an amending law: "2/7/2018 tarihli ve 703 sayılı Kanun Hükmünde Kararnamenin".
+_FOOTNOTE_LAW_RE = re.compile(
+    r"(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})\s+tarihli\s+ve\s+(\d+)\s+sayılı\s+"
+    r"(Kanun\s+Hükmünde|KHK|Kanun)",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -119,3 +125,15 @@ def parse_annotations(text: str) -> tuple[list[Annotation], list[str]]:
         else:
             unparsed.append(m.group(0))
     return notes, unparsed
+
+
+def footnote_laws(text: str) -> set[tuple[date, str]]:
+    """(kabul date, law) of every law or KHK a footnote text names; the law key is the one of
+    `Annotation.law`. Evidence of a change only: a footnote never dates a version."""
+    flat = " ".join(text.split())
+    found = set()
+    for m in _FOOTNOTE_LAW_RE.finditer(flat):
+        when = _date(m[1], m[2], m[3])
+        if when is not None:
+            found.add((when, m[4] if m[5].lower() == "kanun" else f"KHK-{m[4]}"))
+    return found

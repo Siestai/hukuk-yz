@@ -533,8 +533,7 @@ statute = "5510"
 article = "40"
 as_of = 2019-06-01
 expect = "gap"
-known_issue = "footnote-carried changes (703 in force 2018-07-09, 7179 kabul 2019-06-25) are not read by the timeline: it returns the 2020-07-14 text, which already has 7179's 'yedek astsubay,'"
-source = "Expectation kept, premise corrected. The 2020-07-14 text has ONE new inline note in (08.01.2018, 14.07.2020]: 7146/11 (kabul 26/7/2018, in force 3/8/2018); 7078 is not annotated in that text (it appears only in the 2024 text). The text did change in the window through footnote-only amendments: 703/203 (in force 9/7/2018) and 7179/62 (kabul 25/6/2019, after 2019-06-01), so the 2020 text is not the text of 2019-06-01. Needs footnote evidence (follow-up)."
+source = "Expectation kept, premise corrected. The 2020-07-14 text has ONE new inline note in (08.01.2018, 14.07.2020]: 7146/11 (kabul 26/7/2018, in force 3/8/2018); 7078 is not annotated in that text (it appears only in the 2024 text). The text did change in the window through footnote-only amendments: 703/203 (in force 9/7/2018) and 7179/62 (kabul 25/6/2019, after 2019-06-01), so the 2020 text is not the text of 2019-06-01. The timeline reads footnote laws only to widen the gap (multi_amendment_in_window)."
 
 [[query]]
 statute = "5510"

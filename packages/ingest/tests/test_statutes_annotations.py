@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from hukuk_ingest.statutes.annotations import parse_annotations
+from hukuk_ingest.statutes.annotations import footnote_laws, parse_annotations
 
 
 def _one(text: str) -> tuple[str, str, date, str, str]:
@@ -110,3 +110,17 @@ def test_body_parentheses_are_not_notes() -> None:
 def test_note_that_starts_unknown_but_looks_like_one_is_reported() -> None:
     _, unparsed = parse_annotations("(Birleştirilmiş: 1/1/2010-5000/1 md.)")
     assert unparsed == ["(Birleştirilmiş: 1/1/2010-5000/1 md.)"]
+
+
+def test_footnote_laws_name_laws_and_khks_but_not_quoted_ones() -> None:
+    text = (
+        "2/7/2018 tarihli ve 703 sayılı Kanun Hükmünde Kararnamenin 203 üncü maddesiyle ... "
+        "“9/6/2004 tarihli ve 5187 sayılı Basın Kanununa” şeklinde; "
+        "25/6/2019 tarihli ve 7179 sayılı Kanunun 62 nci maddesiyle; "
+        "17/4/2017 tarihli ve 690 sayılı KHK’nin 37 nci maddesiyle"
+    )
+    assert footnote_laws(text) == {
+        (date(2018, 7, 2), "KHK-703"),
+        (date(2019, 6, 25), "7179"),
+        (date(2017, 4, 17), "KHK-690"),
+    }

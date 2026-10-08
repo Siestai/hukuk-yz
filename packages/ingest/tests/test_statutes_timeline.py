@@ -129,6 +129,19 @@ def test_two_amendments_in_one_window_leave_a_gap_between_their_in_force_dates()
     assert "version" not in as_of(art, "2019-06-15")
 
 
+def test_footnote_only_amendment_in_the_window_widens_the_gap() -> None:
+    new = "(Değişik: 1/5/2019-7002/1 md.) Yepyeni ve farklı metin.(1)"
+    note = "\n––––––––––\n(1) 1/6/2019 tarihli ve 7003 sayılı Kanunun 2 nci maddesiyle değişti.\n"
+    art = build((S1, {"3": "Eski metin burada duruyor."}), (S2, {"3": new + note}))["3"]
+    assert spans(art) == [("2003-06-10", "2019-06-01"), ("2019-07-01", None)]
+    assert gaps(art) == [("2019-06-01", "2019-07-01", "multi_amendment_in_window")]
+    assert as_of(art, "2019-06-15")["status"] == "gap"
+    unregistered = note.replace("7003", "7999")
+    art = build((S1, {"3": "Eski metin burada duruyor."}), (S2, {"3": new + unregistered}))["3"]
+    assert gaps(art) == [("2018-01-02", "2020-01-01", "multi_amendment_in_window")]
+    assert as_of(art, "2019-06-15")["status"] == "gap"
+
+
 def test_change_without_a_note_is_a_gap_and_low() -> None:
     art = build(
         (S1, {"4": "Eski metin burada duruyor."}), (S2, {"4": "Yepyeni ve farklı metin yazıldı."})
@@ -340,7 +353,6 @@ def test_golden_queries_against_the_real_snapshots() -> None:
     by_number = {r["number"]: r for r in records}
     queries = tomllib.loads(GOLDEN.read_text(encoding="utf-8"))["query"]
     failures = []
-    known = []
     for q in queries:
         record = by_number.get(q["statute"])
         result: dict[str, Any] = (
@@ -349,9 +361,6 @@ def test_golden_queries_against_the_real_snapshots() -> None:
             else {"status": "unknown_article"}
         )
         label = f"{q['statute']} m.{q['article']} @ {q['as_of']}"
-        if "known_issue" in q:  # a documented timeline limitation: must keep failing until fixed
-            known.append((label, result["status"] != q["expect"]))
-            continue
         if result["status"] != q["expect"]:
             failures.append(f"{label}: expected {q['expect']}, got {result['status']}")
             continue
@@ -360,5 +369,4 @@ def test_golden_queries_against_the_real_snapshots() -> None:
             failures.append(f"{label}: missing {q['contains']!r}")
         if "not_contains" in q and _flat(q["not_contains"]) in text:
             failures.append(f"{label}: unexpected {q['not_contains']!r}")
-    failures += [f"{label}: known_issue is fixed, remove it" for label, wrong in known if not wrong]
     assert not failures, json.dumps(failures, ensure_ascii=False, indent=2)

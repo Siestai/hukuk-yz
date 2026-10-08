@@ -13,7 +13,7 @@ from typing import Any
 
 from hukuk_ingest.statutes import confidence
 from hukuk_ingest.statutes.acts import Registry
-from hukuk_ingest.statutes.annotations import Annotation
+from hukuk_ingest.statutes.annotations import Annotation, footnote_laws
 from hukuk_ingest.statutes.diff import UNCHANGED, compare
 from hukuk_ingest.statutes.split import Article, Snapshot
 
@@ -91,6 +91,16 @@ def _explain(
     pairs = sorted({(n.date, n.law) for n in window})
     if not pairs:
         return _fallback(d_old, d_new, "unexplained_change", [])
+    # Footnotes only make the window more cautious: they never date a version.
+    foot_only = sorted(
+        {
+            (when, law)
+            for f in art.footnotes
+            for when, law in footnote_laws(f.text)
+            if d_old < when <= d_new
+        }
+        - set(pairs)
+    )
     dates: set[date] = set()
     bases: set[str] = set()
     for when, law in pairs:
@@ -99,13 +109,23 @@ def _explain(
             return _fallback(d_old, d_new, "yururluk_unknown", window)
         dates |= found[0]
         bases.add(found[1])
+    widened = False
+    for when, law in foot_only:
+        found = registry.effective_dates(law, when, number, art.article_no)
+        if found is None:
+            return _fallback(d_old, d_new, "multi_amendment_in_window", window)
+        # In force before the old snapshot (a confirmation law): the old text already has it.
+        later = {y for y in found[0] if y > d_old}
+        dates |= later
+        widened = widened or bool(later)
     if any(y <= d_old or (y > d_new and not d_new_inferred) for y in dates):
         return _fallback(d_old, d_new, "yururluk_outside_window", window)
     start, end = min(dates), max(dates)
     warnings = ["exception_effective"] if "exception" in bases else []
     gap = None
     if start < end:
-        reason = "multi_amendment_in_window" if len(pairs) > 1 else "split_effective_dates"
+        multi = len(pairs) > 1 or widened
+        reason = "multi_amendment_in_window" if multi else "split_effective_dates"
         warnings.append(reason)
         gap = _gap(start, end, reason, window)
     return _Trans(
