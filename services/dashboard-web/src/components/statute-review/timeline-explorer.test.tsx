@@ -64,7 +64,7 @@ describe("TimelineExplorer", () => {
         expect(panel()).toHaveTextContent("Seçili sürüm: 11.09.2014 → 01.01.2018");
     });
 
-    it("says there is no text for a date in a gap, marks the gap and keeps the selection", () => {
+    it("says there is no text for a date in a gap, marks the gap and shows no version text", () => {
         setup();
         ask("2010-01-01");
         expect(screen.getByRole("status")).toHaveTextContent(
@@ -75,7 +75,40 @@ describe("TimelineExplorer", () => {
                 texts.queried,
             ),
         ).toBeInTheDocument();
-        expect(panel()).toHaveTextContent("Seçili sürüm: 01.01.2018 → bugün");
+        expect(screen.queryByText(/Seçili sürüm/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/dava açabilir/)).not.toBeInTheDocument();
+        ask("2016-06-01");
+        expect(panel()).toHaveTextContent("Seçili sürüm: 11.09.2014 → 01.01.2018");
+    });
+
+    it("shows the confidence band of the version found, and warns on a low one", () => {
+        setup();
+        ask("2016-06-01");
+        expect(screen.getByRole("status")).toHaveTextContent("Güven: Orta");
+        expect(screen.queryByText(dateQuery.lowConfidence)).not.toBeInTheDocument();
+        ask("2020-01-01");
+        expect(screen.getByRole("status")).toHaveTextContent("Güven: Yüksek");
+        expect(screen.queryByText(dateQuery.lowConfidence)).not.toBeInTheDocument();
+    });
+
+    it("warns that the date limit is not certain when the version found is low", () => {
+        renderWithIntl(
+            <TimelineExplorer
+                timeline={timeline.map((entry) =>
+                    entry.kind === "version" ? { ...entry, confidence: "low" as const } : entry,
+                )}
+                latestSnapshotDate={LATEST}
+            />,
+        );
+        ask("2016-06-01");
+        expect(screen.getByRole("status")).toHaveTextContent("Güven: Düşük");
+        expect(screen.getByText(dateQuery.lowConfidence)).toBeInTheDocument();
+    });
+
+    it("clears the selection when the article was not in force on the date", () => {
+        setup();
+        ask("2001-01-01");
+        expect(screen.queryByText(/Seçili sürüm/)).not.toBeInTheDocument();
     });
 
     it("says the article was not in force before it existed, and warns about a date after the newest copy", () => {

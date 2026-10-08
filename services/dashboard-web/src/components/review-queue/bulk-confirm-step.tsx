@@ -41,7 +41,7 @@ export function BulkConfirmStep({ params, total, sample, onStart, onCancel }: Pr
             ? t("filters.reason", { value: labels.reason(params.reason) })
             : null,
         !statute && params.journalIssue ? t("filters.issue", { value: params.journalIssue }) : null,
-        params.q ? t("filters.q", { value: params.q }) : null,
+        !statute && params.q ? t("filters.q", { value: params.q }) : null,
     ].filter((filter) => filter !== null);
     const numbers = (item: BulkSample) =>
         item.note ??

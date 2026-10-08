@@ -73,7 +73,11 @@ export default async function StatuteQueuePage({
                     </div>
                     {status === "pending" ? (
                         <Suspense fallback={<StatuteBulkApprove params={params} />}>
-                            <StatuteBulkApprove params={params} list={list} />
+                            <StatuteBulkApprove
+                                params={params}
+                                pending={summary.data ? counts.bands.high : undefined}
+                                list={list}
+                            />
                         </Suspense>
                     ) : null}
                 </header>

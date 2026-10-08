@@ -27,6 +27,7 @@ describe("StatuteBulkApprove", () => {
         }));
         const element = (await StatuteBulkApprove({
             params,
+            pending: 130,
             list: Promise.resolve({ data: { total: 130, items } }),
         })) as ReactElement<Props>;
         expect(element.props).toMatchObject({ params, total: 130, unavailable: false });
@@ -41,6 +42,24 @@ describe("StatuteBulkApprove", () => {
         });
         expect(sample[1]?.title).toBe("Geçici 8 · Feshin geçerli sebebe dayandırılması");
         expect(sample[2]?.title).toBe("m. 3");
+    });
+
+    it("confirms the pending count of the statute and band, not the total of a searched list", async () => {
+        const searched = { ...params, q: "fesih" };
+        const element = (await StatuteBulkApprove({
+            params: searched,
+            pending: 130,
+            list: Promise.resolve({ data: { total: 3, items: [listItem] } }),
+        })) as ReactElement<Props>;
+        expect(element.props).toMatchObject({ total: 130, unavailable: false });
+    });
+
+    it("is unavailable without the summary count", async () => {
+        const element = (await StatuteBulkApprove({
+            params,
+            list: Promise.resolve({ data: { total: 3, items: [listItem] } }),
+        })) as ReactElement<Props>;
+        expect(element.props.unavailable).toBe(true);
     });
 
     it("is unavailable without a list, or when the list failed", async () => {

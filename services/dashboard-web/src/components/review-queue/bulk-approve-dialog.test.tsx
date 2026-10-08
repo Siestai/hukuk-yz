@@ -346,12 +346,12 @@ describe("BulkApproveDialog on the statute queue", () => {
         { id: ID(1), title: "m. 18 · Fesih", esasNo: "", kararNo: "", note: "3 sürüm · 1 boşluk" },
     ];
 
-    function setupStatutes(total = 120) {
+    function setupStatutes(total = 120, state: StatuteQueueParams = statutes) {
         renderWithIntl(
             <BulkApproveDialog
                 onClose={vi.fn()}
                 returnFocusTo={{ current: null }}
-                params={statutes}
+                params={state}
                 total={total}
                 sample={articles}
             />,
@@ -369,6 +369,12 @@ describe("BulkApproveDialog on the statute queue", () => {
         expect(within(dialog()).getByText("3 sürüm · 1 boşluk")).toBeInTheDocument();
         expect(within(dialog()).getByText(bulk.unverifiedStatute)).toBeInTheDocument();
         expect(within(dialog()).queryByText(bulk.unverified)).not.toBeInTheDocument();
+    });
+
+    it("shows no search line: the statute scope knows no search", () => {
+        setupStatutes(120, { ...statutes, q: "fesih" });
+        expect(within(dialog()).getByText("Kanun: 5510")).toBeInTheDocument();
+        expect(within(dialog()).queryByText(/Arama/)).not.toBeInTheDocument();
     });
 
     it("runs the same loop against the statute endpoint with the statute as its scope", async () => {

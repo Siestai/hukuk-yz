@@ -6,6 +6,7 @@ const version = (
     valid_from: string,
     valid_to: string | null,
     change_kind: "original" | "amended" | "repealed" | "added" = "amended",
+    confidence: "high" | "medium" | "low" = "high",
 ): TimelineEntry => ({
     kind: "version",
     text: `text from ${valid_from}`,
@@ -15,7 +16,7 @@ const version = (
     change_kind,
     amending_ref: null,
     evidence: {},
-    confidence: "high",
+    confidence,
     footnotes: [],
     warnings: [],
 });
@@ -43,8 +44,17 @@ describe("statuteAsOf", () => {
             status: "found",
             index: 0,
             stale: false,
+            confidence: "high",
         });
         expect(statuteAsOf(m20, "2019-01-01", LATEST)).toMatchObject({ status: "found", index: 1 });
+    });
+
+    it("carries the confidence band of the version found", () => {
+        const low = [version("2003-06-10", null, "original", "low")];
+        expect(statuteAsOf(low, "2010-01-01", LATEST)).toMatchObject({
+            status: "found",
+            confidence: "low",
+        });
     });
 
     it("hands a boundary day to the later version: intervals are half open", () => {

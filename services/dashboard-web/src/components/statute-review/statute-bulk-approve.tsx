@@ -11,13 +11,17 @@ const SAMPLE_SIZE = 5;
 
 /**
  * The bulk approve button of the statute queue, with the list it will confirm (as for decisions):
- * the total and the first articles of the list response on screen.
+ * the pending count of the statute and band (the API's bulk scope knows no search) and the first
+ * articles of the list response on screen.
  */
 export async function StatuteBulkApprove({
     params,
+    pending,
     list,
 }: {
     params: StatuteQueueParams;
+    /** The articles waiting in this statute and band (the summary), whatever the search: the count the API checks. */
+    pending?: number;
     list?: Promise<Settled<components["schemas"]["StatuteReviewListResponse"]>>;
 }) {
     const t = await getTranslations("review.statutes");
@@ -26,8 +30,8 @@ export async function StatuteBulkApprove({
     return (
         <BulkApproveButton
             params={params}
-            unavailable={!data}
-            total={data?.total ?? 0}
+            unavailable={!data || pending === undefined}
+            total={pending ?? 0}
             sample={(data?.items ?? []).slice(0, SAMPLE_SIZE).map((item) => ({
                 id: item.extraction_id,
                 title: item.heading

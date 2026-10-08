@@ -18,8 +18,8 @@ function lastVersion(timeline: TimelineEntry[]): number | null {
 
 /**
  * The timeline of one article with its date query and the selected version. A date asked for
- * selects the version in force that day (a gap or "not in force" selects nothing and is shown on
- * the timeline); the previous version for the difference is the nearest earlier one.
+ * selects the entry that applies that day: the version in force, or the gap (no text to show); a
+ * date on which the article was not in force selects nothing; the previous version for the difference is the nearest earlier one.
  */
 export function TimelineExplorer({
     timeline,
@@ -37,9 +37,9 @@ export function TimelineExplorer({
         setDay(value);
         if (!ISO_DAY.test(value)) return;
         const answer = statuteAsOf(timeline, value, latestSnapshotDate);
-        if (answer.index !== null && timeline[answer.index]?.kind === "version") {
-            setSelected(answer.index);
-        }
+        // The panel never keeps another version's text: a gap is selected (it has no text) and
+        // "not in force" selects nothing.
+        setSelected(answer.status === "not_in_force" ? null : answer.index);
     }
 
     const current = selected === null ? undefined : timeline[selected];

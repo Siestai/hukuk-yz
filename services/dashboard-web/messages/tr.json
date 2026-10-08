@@ -227,6 +227,7 @@
     "bulk": {
       "open": "Toplu onayla",
       "bandOnly": "Toplu onay yalnız yüksek güven bandında.",
+      "searchOnly": "Toplu onay aramayla çalışmaz; aramayı temizleyin.",
       "title": "Yüksek güven bandını toplu onayla",
       "count": "{total, number} karar",
       "intro": "Bu filtrelerle eşleşen kararlar onaylanıp yayınlanacak.",
@@ -459,6 +460,8 @@
         "gap": "Bu tarihte metin elde yok: {range} aralığı.",
         "repealed": "Madde bu tarihte mülgaydı ({range}).",
         "notInForce": "Madde bu tarihte yürürlükte değildi: henüz eklenmemişti ya da kaldırılmıştı.",
+        "confidence": "Güven: {band}.",
+        "lowConfidence": "Bu sürümün tarih sınırı kesin değil.",
         "stale": "Tarih son kopyadan ({date}) sonra; metin o günden beri değişmiş olabilir."
       },
       "timeline": {
@@ -490,6 +493,7 @@
         "diff": "Önceki sürümle fark"
       },
       "diff": {
+        "tooLong": "Madde çok uzun olduğu için kelime farkı hesaplanmadı.",
         "first": "İlk sürüm: karşılaştırılacak önceki sürüm yok.",
         "gapBetween": "İki sürüm arasında metni elde olmayan bir aralık var; fark bilinen iki metin arasındadır.",
         "before": "Önceki sürüm: {range}",

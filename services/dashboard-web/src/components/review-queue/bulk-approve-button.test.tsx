@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import type { QueueParams } from "@/lib/queue-params";
+import type { StatuteQueueParams } from "@/lib/statute-queue-params";
+import type { QueueState } from "@/lib/queue-state";
 import { infoTip, renderWithIntl } from "@/test/intl";
 import { BulkApproveButton } from "./bulk-approve-button";
 import { QueueNavigationProvider } from "./queue-navigation";
@@ -17,7 +19,7 @@ vi.mock("next/navigation", () => ({
 const { bulk } = messages.review;
 const queue = (band?: QueueParams["band"]): QueueParams => ({ band, sort: "score_asc", page: 1 });
 
-function setup(params: QueueParams, extra: { unavailable?: boolean } = {}) {
+function setup(params: QueueState, extra: { unavailable?: boolean } = {}) {
     renderWithIntl(
         <QueueNavigationProvider>
             <BulkApproveButton params={params} total={12} sample={[]} {...extra} />
@@ -47,6 +49,36 @@ describe("BulkApproveButton", () => {
     it("is shut while there is no list to confirm", () => {
         setup(queue("high"), { unavailable: true });
         expect(screen.getByRole("button", { name: bulk.open })).toBeDisabled();
+    });
+});
+
+describe("BulkApproveButton on the statute queue", () => {
+    const statutes = (q?: string): StatuteQueueParams => ({
+        kind: "statute",
+        statute: "4857",
+        band: "high",
+        q,
+        page: 1,
+    });
+
+    it("is enabled on the high band without a search", () => {
+        setup(statutes());
+        expect(screen.getByRole("button", { name: bulk.open })).toBeEnabled();
+    });
+
+    it("is disabled under a search, says why, and never opens a dialog", async () => {
+        setup(statutes("fesih"));
+        const button = screen.getByRole("button", { name: bulk.open });
+        expect(button).toBeDisabled();
+        expect(button).toHaveAccessibleDescription(bulk.searchOnly);
+        expect(button.parentElement).toHaveAttribute("title", bulk.searchOnly);
+        await userEvent.click(button);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("keeps the decision queue's search from disabling the button", () => {
+        setup({ ...queue("high"), q: "işçi" });
+        expect(screen.getByRole("button", { name: bulk.open })).toBeEnabled();
     });
 });
 

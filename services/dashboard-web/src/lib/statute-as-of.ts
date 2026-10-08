@@ -10,10 +10,11 @@ export type TimelineEntry = TimelineVersion | TimelineGap;
  * `[from, to)`: the day a version ends is already the next one's. A version wins over a gap; a
  * repealed version is `not_in_force` with the reason. `index` is the entry in `timeline` (null
  * when none applies). `stale`: the date is after the newest snapshot, so the text may have been
- * amended since.
+ * amended since. A `found` answer carries the `confidence` band of its version (`low`: the boundary
+ * rests on a fallback), as the Python result does; it must not be hidden.
  */
 export type AsOfResult =
-    | { status: "found"; index: number; stale: boolean }
+    | { status: "found"; index: number; stale: boolean; confidence: TimelineVersion["confidence"] }
     | { status: "gap"; index: number; stale: boolean }
     | { status: "not_in_force"; reason: "repealed" | null; index: number | null; stale: boolean };
 
@@ -35,7 +36,7 @@ export function statuteAsOf(
     if (found?.kind === "version") {
         return found.change_kind === "repealed"
             ? { status: "not_in_force", reason: "repealed", index: version, stale }
-            : { status: "found", index: version, stale };
+            : { status: "found", index: version, stale, confidence: found.confidence };
     }
     const gap = timeline.findIndex(
         (entry) => entry.kind === "gap" && covers(entry.from, entry.to, day),

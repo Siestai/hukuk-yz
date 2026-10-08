@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { diffWords, hasChanges, type DiffPart } from "./word-diff";
+import {
+    diffWords as diff3,
+    hasChanges,
+    MAX_CELLS,
+    type DiffPart,
+    type WordDiff,
+} from "./word-diff";
+
+/** The tests below compare texts that are short enough. */
+function diffWords(before: string, after: string): WordDiff {
+    const diff = diff3(before, after);
+    if (diff.tooLong) throw new Error("too long");
+    return diff;
+}
 
 const text = (parts: DiffPart[], kind: DiffPart["kind"]) =>
     parts.filter((p) => p.kind === kind).map((p) => p.text.trim());
@@ -49,6 +62,22 @@ describe("diffWords", () => {
         expect(hasChanges(diffWords("bir iki\nüç", "bir  iki üç"))).toBe(false);
     });
 
+    it("compares words trimmed: a change of spacing or line breaks only is not a change", () => {
+        const diff = diffWords("bir iki üç", "bir\n iki\t\tüç ");
+        expect(hasChanges(diff)).toBe(false);
+        expect(diff.after.map((p) => p.text).join("")).toBe("bir\n iki\t\tüç ");
+    });
+
+    it("answers tooLong, and marks nothing, past the cell limit; just under it still compares", () => {
+        const side = (n: number, prefix: string) =>
+            Array.from({ length: n }, (_, i) => `${prefix}${i}`).join(" ");
+        // No common word: the middle is the whole text, (n + 1)² cells.
+        const edge = Math.floor(Math.sqrt(MAX_CELLS)) - 1;
+        expect((edge + 1) * (edge + 1)).toBeLessThanOrEqual(MAX_CELLS);
+        expect(diff3(side(edge, "a"), side(edge, "b")).tooLong).toBeFalsy();
+        expect(diff3(side(edge + 1, "a"), side(edge + 1, "b"))).toEqual({ tooLong: true });
+    });
+
     it("handles empty sides", () => {
         expect(diffWords("", "yeni metin").after).toEqual([{ kind: "added", text: "yeni metin" }]);
         expect(diffWords("eski metin", "").before).toEqual([
@@ -57,15 +86,16 @@ describe("diffWords", () => {
         expect(hasChanges(diffWords("", ""))).toBe(false);
     });
 
-    it("is quick on a long article with a few edits and on one with no common word", () => {
+    it("is quick on a long article with a few edits, and gives up on one with no common word", () => {
         const words = Array.from({ length: 3000 }, (_, i) => `kelime${i}`);
         const edited = [...words.slice(0, 1000), "yeni", ...words.slice(1010)];
         const started = performance.now();
         const diff = diffWords(words.join(" "), edited.join(" "));
         expect(text(diff.after, "added")).toEqual(["yeni"]);
         expect(text(diff.before, "removed")[0]).toContain("kelime1000");
-        const unrelated = diffWords(words.join(" "), words.map((w) => `${w}x`).join(" "));
-        expect(unrelated.before).toEqual([expect.objectContaining({ kind: "removed" })]);
+        expect(diff3(words.join(" "), words.map((w) => `${w}x`).join(" "))).toEqual({
+            tooLong: true,
+        });
         expect(performance.now() - started).toBeLessThan(2000);
     });
 });
