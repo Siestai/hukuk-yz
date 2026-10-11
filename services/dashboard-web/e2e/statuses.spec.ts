@@ -174,11 +174,11 @@ test("an approved record is taken back with 'Onaydan çıkar' and can then be re
     await openFromTab(page, "onaylanan", "Onaylanan kararlar", "Demo 07");
     await expect(strip(page)).toContainText("Onaylandı");
     await reopen(page, "Onaydan çıkar", "e2e: yanlış onay");
-    const history = page
-        .getByRole("heading", { name: "Önceki incelemeler" })
-        .locator("xpath=../..");
-    await expect(history).toContainText("Yeniden incelemeye aldı");
-    await expect(history).toContainText("e2e: yanlış onay");
+    // the history card's title is not a heading element; its entries are the list items
+    const entry = page.getByRole("listitem").filter({ hasText: "Yeniden incelemeye aldı" });
+    await expect(entry).toHaveCount(1);
+    await expect(entry).toContainText("E2E Test");
+    await expect(entry).toContainText("e2e: yanlış onay");
 
     await actionBar(page)
         .getByRole("button", { name: /^Reddet/ })
