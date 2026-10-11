@@ -28,7 +28,8 @@
     "menu": "Menü",
     "closeMenu": "Menüyü kapat",
     "pending": "Onay bekleyen",
-    "statutes": "Mevzuat"
+    "statutes": "Mevzuat",
+    "files": "Dosyalar"
   },
   "review": {
     "queue": {
@@ -594,6 +595,7 @@
     "too_many_attempts": "Çok fazla hatalı deneme. {minutes, plural, other {# dakika}} sonra tekrar deneyin.",
     "validation_error": "Girilen bilgiler geçersiz. Alanları kontrol edin.",
     "upstream_unavailable": "Sunucuya ulaşılamıyor. Biraz sonra tekrar deneyin.",
+    "invalid_response": "Sunucudan beklenmeyen bir yanıt geldi. Dosyanın yüklenip yüklenmediğini listeden kontrol edin.",
     "generic": "Beklenmeyen bir hata oluştu. Daha sonra tekrar deneyin.",
     "payload_too_large": "Gönderilen veri çok büyük.",
     "review_conflict": "Bu kaydı az önce başka biri işledi.",
@@ -602,7 +604,16 @@
     "forbidden": "Bu işlem için yetkiniz yok.",
     "bulk_count_changed": "Kuyruktaki kayıt sayısı değişti.",
     "bulk_band_not_allowed": "Toplu onay yalnız yüksek güven bandında yapılır.",
-    "bulk_no_progress": "Sunucu ilerlemedi; toplu onay durduruldu."
+    "bulk_no_progress": "Sunucu ilerlemedi; toplu onay durduruldu.",
+    "file_not_found": "Dosya bulunamadı.",
+    "invalid_file": "Dosya geçersiz ya da boş.",
+    "duplicate_file": "Bu dosya zaten yüklü.",
+    "file_too_large": "Dosya izin verilen boyuttan büyük. En fazla 50 MB yüklenebilir.",
+    "unsupported_file_type": "Bu dosya türü desteklenmiyor ya da içeriği uzantısıyla uyuşmuyor. Kabul edilenler: PDF, Word, UDF, Excel, PNG, JPG ve TXT.",
+    "file_store_unavailable": "Dosya depolama şu an kullanılamıyor.",
+    "file_version_conflict": "Bu dosyanın daha yeni bir sürümü var ya da arşivde; yeni sürüm eklenemez.",
+    "scan_in_progress": "Dosya şu anda taranıyor; bitince yeniden deneyin.",
+    "invalid_date": "Tarih geçersiz."
   },
   "enums": {
     "role": {
@@ -794,6 +805,35 @@
       "statute_number_missing": "Kanun numarası kopyada bulunamadı.",
       "trailer_ignored": "Metnin sonundaki ek bölüm madde metnine alınmadı.",
       "removed_unexplained": "Madde sonraki kopyada bulunamadı; kaldırılma nedeni bilinmiyor."
+    },
+    "docType": {
+      "kanun": "Kanun",
+      "cbk": "Cumhurbaşkanlığı kararnamesi",
+      "yonetmelik": "Yönetmelik",
+      "teblig": "Tebliğ",
+      "genelge": "Genelge",
+      "genel_yazi": "Genel yazı",
+      "ic_emri": "İç emir",
+      "karar": "Karar",
+      "kitap": "Kitap",
+      "hesap_tablosu": "Hesap tablosu",
+      "diger": "Diğer"
+    },
+    "scanStatus": {
+      "queued": "Sırada",
+      "running": "Taranıyor",
+      "done": "Tamamlandı",
+      "needs_ocr": "OCR gerekiyor",
+      "unsupported": "Desteklenmiyor",
+      "failed": "Başarısız"
+    },
+    "scanWarning": {
+      "ocr_unavailable": "OCR kullanılamadı (Tesseract kurulu değil)",
+      "lone_surrogates": "Metinde geçersiz karakterler temizlendi",
+      "too_little_text": "Çıkarılan metin çok az",
+      "borderline_quality": "Metin kalitesi sınırda",
+      "empty_pages": "Metni boş sayfalar var",
+      "weak_page_text": "Bazı sayfaların metni zayıf"
     }
   },
   "errorPage": {
@@ -821,5 +861,135 @@
     "outcome": "Sonuç",
     "text_completeness": "Metin kapsamı",
     "journal_issue": "Dergi sayısı"
+  },
+  "files": {
+    "list": {
+      "title": "Dosyalar",
+      "subtitle": "Sisteme yüklenen kaynak dosyalar, taramaları ve sürümleri.",
+      "table": {
+        "label": "Dosyalar",
+        "name": "Dosya",
+        "docType": "Tür",
+        "docDate": "Belge tarihi",
+        "uploaded": "Yükleyen",
+        "scan": "Tarama",
+        "versions": "Sürüm",
+        "uploadedBy": "{name} · {date}"
+      },
+      "empty": {
+        "none": "Henüz yüklenmiş dosya yok.",
+        "filtered": "Bu filtrelere uyan dosya yok.",
+        "clear": "Filtreleri temizle",
+        "pastEnd": "Bu sayfada dosya kalmadı."
+      },
+      "pagination": {
+        "label": "Sayfalar",
+        "first": "İlk sayfa",
+        "next": "Sonraki"
+      }
+    },
+    "filters": {
+      "docType": "Belge türü",
+      "allTypes": "Tüm türler",
+      "scan": "Tarama durumu",
+      "allScans": "Tüm durumlar",
+      "search": "Dosya adı veya resmî sayı",
+      "searchPlaceholder": "Ara",
+      "clear": "Filtreleri temizle"
+    },
+    "format": {
+      "unnamed": "(adsız dosya)",
+      "system": "Sistem",
+      "versions": "{count, number} sürüm",
+      "sizeKb": "{value} KB",
+      "sizeMb": "{value} MB"
+    },
+    "upload": {
+      "title": "Dosya yükle",
+      "titleVersion": "Yeni sürüm yükle",
+      "dropLabel": "Dosya yükleme alanı",
+      "drop": "Dosyaları buraya sürükleyin ya da seçin",
+      "dropVersion": "Yeni sürümün dosyasını buraya sürükleyin ya da seçin",
+      "choose": "Dosya seç",
+      "hint": "PDF, Word, UDF, Excel, PNG, JPG ve TXT; her dosya en fazla 50 MB.",
+      "listLabel": "Seçilen dosyalar",
+      "remove": "{name} dosyasını listeden kaldır",
+      "removeShort": "Kaldır",
+      "docTypeRequired": "Belge türü (zorunlu)",
+      "docType": "Belge türü",
+      "chooseType": "Seçin",
+      "sameAsPrevious": "Önceki sürümle aynı",
+      "typeMissing": "Belge türünü seçin.",
+      "docDate": "Belge tarihi",
+      "officialRef": "Resmî sayı",
+      "originUrl": "Kaynak adresi",
+      "note": "Not",
+      "submit": "Yükle",
+      "uploading": "Yükleniyor…",
+      "progress": "{name} yükleniyor",
+      "done": "Yüklendi.",
+      "openRecord": "Kaydı aç",
+      "duplicate": "Bu dosya zaten yüklü.",
+      "duplicateArchived": "Bu dosya arşivde.",
+      "openExisting": "Mevcut kaydı aç",
+      "unarchive": "Arşivden çıkar",
+      "unarchived": "Dosya arşivden çıkarıldı."
+    },
+    "detail": {
+      "back": "Dosyalara dön",
+      "unnamed": "(adsız dosya)",
+      "archived": "Arşivde",
+      "olderVersion": "Bu, belgenin eski bir sürümü.",
+      "openNewest": "En yeni sürümü aç",
+      "newVersion": "Yeni sürüm yükle",
+      "viewer": {
+        "open": "Dosyayı aç",
+        "title": "Dosyanın içeriği"
+      },
+      "text": {
+        "show": "Metni gör",
+        "hide": "Metni gizle",
+        "loading": "Metin yükleniyor…",
+        "failed": "Metin alınamadı.",
+        "empty": "Dosyadan metin çıkarılamadı.",
+        "label": "Çıkarılan metin"
+      },
+      "fields": {
+        "title": "Dosya bilgileri",
+        "docType": "Belge türü",
+        "docDate": "Belge tarihi",
+        "officialRef": "Resmî sayı",
+        "originUrl": "Kaynak adresi",
+        "note": "Not",
+        "size": "Boyut",
+        "uploader": "Yükleyen",
+        "uploadedAt": "Yükleme tarihi",
+        "sha256": "SHA-256",
+        "archivedAt": "Arşive alınma tarihi"
+      },
+      "scan": {
+        "title": "Tarama sonucu",
+        "type": "Algılanan tür",
+        "pages": "Sayfa sayısı",
+        "textChars": "Metin uzunluğu (karakter)",
+        "ocr": "OCR kullanıldı mı",
+        "yes": "Evet",
+        "no": "Hayır",
+        "warnings": "Uyarılar",
+        "error": "Hata"
+      },
+      "versions": {
+        "title": "Sürüm geçmişi",
+        "label": "Sürümler, eskiden yeniye",
+        "number": "Sürüm {number, number}",
+        "current": "Bu sayfa",
+        "uploadedBy": "{name} · {date}"
+      },
+      "actions": {
+        "archive": "Arşivle",
+        "unarchive": "Arşivden çıkar",
+        "rescan": "Yeniden tara"
+      }
+    }
   }
 }

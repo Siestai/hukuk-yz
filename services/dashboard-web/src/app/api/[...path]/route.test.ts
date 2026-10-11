@@ -42,6 +42,7 @@ describe("api proxy", () => {
                 "x-forwarded-for": "6.6.6.6, 203.0.113.7",
                 "x-forwarded-proto": "https",
                 authorization: "Bearer nope",
+                "x-requested-with": "XMLHttpRequest",
             },
         });
         const { url, init } = upstreamCall();
@@ -54,6 +55,7 @@ describe("api proxy", () => {
         expect(init.headers.get("cookie")).toBe("hukuk_session=abc");
         expect(init.headers.get("x-forwarded-for")).toBe("203.0.113.7");
         expect(init.headers.get("x-forwarded-proto")).toBe("https");
+        expect(init.headers.get("x-requested-with")).toBe("XMLHttpRequest");
         expect(init.headers.get("authorization")).toBeNull();
     });
 
@@ -66,7 +68,7 @@ describe("api proxy", () => {
         expect(upstreamCall().init.method).toBe("DELETE");
     });
 
-    it.each(["internal/health", "authx/login", "auth", "", "docs"])(
+    it.each(["internal/health", "authx/login", "auth", "", "docs", "filesx/1"])(
         "answers 404 not_found for %j without calling the API",
         async (path) => {
             const response = await call(GET, path);
@@ -131,6 +133,55 @@ describe("api proxy", () => {
         } as ConstructorParameters<typeof NextRequest>[1]);
         expect(response.status).toBe(413);
         expect((await response.json()).error.code).toBe("payload_too_large");
+    });
+
+    it.each([
+        ["PATCH", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10"],
+        ["DELETE", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10"],
+        ["POST", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10/text"],
+        ["POST", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10/rescan"],
+        ["POST", "files/not-a-uuid/versions"],
+        ["PUT", "files"],
+    ])("keeps the 1 MB limit for %s %s", async (method, path) => {
+        const response = await call(POST, path, {
+            method,
+            body: "{}",
+            headers: { "content-length": String(2 * 1024 * 1024) },
+        });
+        expect(response.status).toBe(413);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("keeps the 30 s timeout for a request that is not an upload", async () => {
+        const timeout = vi.spyOn(globalThis, "setTimeout");
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        await call(DELETE, "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10", { method: "DELETE" });
+        await call(POST, "files", { method: "POST", body: "x" });
+        expect(timeout.mock.calls.map(([, ms]) => ms)).toEqual([30_000, 5 * 60_000]);
+        timeout.mockRestore();
+    });
+
+    it("lets a file upload past 1 MB through to the files routes, up to 64 MB", async () => {
+        fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
+            await new Response(init.body).text();
+            return new Response(null, { status: 201 });
+        });
+        const big = new Uint8Array(2 * 1024 * 1024);
+        const upload = await call(POST, "files", {
+            method: "POST",
+            body: big,
+            headers: { "content-length": String(big.byteLength) },
+        });
+        expect(upload.status).toBe(201);
+        expect(upstreamCall().url).toBe("http://app:8000/files");
+        fetchMock.mockClear();
+        const tooBig = await call(POST, "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10/versions", {
+            method: "POST",
+            body: "{}",
+            headers: { "content-length": String(64 * 1024 * 1024 + 1) },
+        });
+        expect(tooBig.status).toBe(413);
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("lets a body under the cap through", async () => {

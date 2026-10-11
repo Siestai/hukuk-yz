@@ -234,6 +234,33 @@ async def test_bad_uploads_are_400_or_422(
     assert not_form.status_code == 415
 
 
+async def test_a_cookie_session_uploads_only_with_the_script_header(
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    pdf: Callable[..., bytes],
+) -> None:
+    """The browser authenticates by cookie: a multipart POST is refused (CSRF) unless it carries
+    `X-Requested-With`, which a cross-site form cannot add."""
+    login = await client.post("/auth/login", json={"email": "baran@x.test", "password": PASSWORD})
+    assert login.status_code == 200  # the cookie is in the client's jar now
+    form = {"doc_type": "genelge"}
+    files = {"file": ("a.pdf", pdf(9), "application/pdf")}
+    refused = await client.post("/files", data=form, files=files)
+    assert (refused.status_code, refused.json()["error"]["code"]) == (415, "unsupported_media_type")
+    allowed = await client.post(
+        "/files", data=form, files=files, headers={"X-Requested-With": "XMLHttpRequest"}
+    )
+    assert allowed.status_code == 201
+    # the exemption is for the upload routes only: other routes and methods stay JSON-only
+    other = await client.post(
+        f"/files/{allowed.json()['id']}/rescan",
+        files=files,
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+    assert (other.status_code, other.json()["error"]["code"]) == (415, "unsupported_media_type")
+
+
 async def test_the_name_is_metadata_only(
     client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:

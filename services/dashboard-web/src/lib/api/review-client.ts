@@ -19,7 +19,7 @@ export class ApiFailure extends Error {
     }
 }
 
-async function unwrap<T>(request: Promise<Answer<T>>): Promise<T> {
+export async function unwrap<T>(request: Promise<Answer<T>>): Promise<T> {
     const answer = await request.catch(() => {
         throw new ApiFailure("upstream_unavailable");
     });

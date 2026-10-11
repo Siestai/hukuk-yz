@@ -70,6 +70,15 @@ describe("apiFrameHeaders", () => {
         });
     });
 
+    it("lets the same origin frame the content of a stored file", () => {
+        expect(apiFrameHeaders(`/api/files/${id}/content`)).toMatchObject({
+            "X-Frame-Options": "SAMEORIGIN",
+        });
+        expect(apiFrameHeaders(`/api/files/${id}/text`)).toMatchObject({
+            "X-Frame-Options": "DENY",
+        });
+    });
+
     it("matches the UUID in upper case", () => {
         expect(apiFrameHeaders(`/api/review/decisions/${id.toUpperCase()}/file`)).toMatchObject({
             "X-Frame-Options": "SAMEORIGIN",
@@ -80,6 +89,7 @@ describe("apiFrameHeaders", () => {
         `/api/review/decisions/%33f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10/file`,
         `/api/review/decisions/${encodeURIComponent(id)}%2Ffile`,
         `/api/review/decisions/${id}/file/x`,
+        `/api/files/${id}/content/x`,
         `/api/review/decisions/${id}`,
         `/api/review/decisions/${id}/file/extra`,
         `/api/review/decisions/${id}/files`,

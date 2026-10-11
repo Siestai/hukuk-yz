@@ -31,6 +31,26 @@ export function useErrorMessage() {
                 return t("forbidden");
             case "payload_too_large":
                 return t("payload_too_large");
+            case "file_not_found":
+                return t("file_not_found");
+            case "invalid_file":
+                return t("invalid_file");
+            case "duplicate_file":
+                return t("duplicate_file");
+            case "file_too_large":
+                return t("file_too_large");
+            case "unsupported_file_type":
+                return t("unsupported_file_type");
+            case "file_store_unavailable":
+                return t("file_store_unavailable");
+            case "file_version_conflict":
+                return t("file_version_conflict");
+            case "scan_in_progress":
+                return t("scan_in_progress");
+            case "invalid_date":
+                return t("invalid_date");
+            case "invalid_response":
+                return t("invalid_response");
             case "upstream_unavailable":
                 return t("upstream_unavailable");
             default:
