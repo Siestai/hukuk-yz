@@ -422,6 +422,10 @@ async def test_a_rescan_clears_the_old_outcome_and_a_running_file_is_refused(
     assert (gone.status_code, gone.json()["error"]["code"]) == (404, "file_not_found")
     # already queued: nothing changes
     assert (await client.post(f"/files/{fid}/rescan", headers=boss.headers)).status_code == 200
+    # the path an imported file had in the archive outlives a rescan (task 12c)
+    await set_scan(ScanStatus.done, {"import_path": "Mevzuat/Genelge/G.pdf", "pages": 3})
+    kept = await client.post(f"/files/{fid}/rescan", headers=boss.headers)
+    assert kept.json()["scan_result"] == {"import_path": "Mevzuat/Genelge/G.pdf"}
     await set_scan(ScanStatus.running, {"claim": "x", "attempts": 1})
     busy = await client.post(f"/files/{fid}/rescan", headers=boss.headers)
     assert (busy.status_code, busy.json()["error"]["code"]) == (409, "scan_in_progress")

@@ -32,6 +32,7 @@ from sqlalchemy.orm import aliased
 
 from app.auth import CurrentUser, Db, require_role
 from app.errors import ApiError
+from app.files.scan_result import carry_import_path
 from app.files.store import CHUNK_BYTES, FileStore, LocalFileStore
 from app.files.upload import Staged, read_upload
 from app.models.common import (
@@ -527,7 +528,7 @@ async def rescan_file(file_id: uuid.UUID, db: Db) -> FileOut:
         raise ApiError(409, ErrorCode.scan_in_progress)
     if file.scan_status is not ScanStatus.queued:
         file.scan_status = ScanStatus.queued
-        file.scan_result = None
+        file.scan_result = carry_import_path(file.scan_result) or None
         file.error = None
         await db.commit()
     return _out(file, uploader)

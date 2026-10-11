@@ -52,11 +52,13 @@ hata vermez. Sır değerleri repoya yazılmaz.
 | `LOGIN_MAX_FAILS_PER_EMAIL`, `LOGIN_MAX_FAILS_PER_IP`, `LOGIN_WINDOW_MINUTES` | `5`, `20`, `15` (varsayılan) |
 | `FORWARDED_ALLOW_IPS` | **`dashboard-web`'in compose ağındaki adresi ya da ağın CIDR'ı** (`docker network inspect <proje>_default`); `*` değil. Boş kalırsa `app` istemci IP'sini hep `dashboard-web` adresi görür ve IP başına giriş sınırı herkes için tek sayaç olur |
 | `TRUSTED_PROXY_HOPS` | `2`: önde Cloudflare proxy ve Traefik var (aşağıdaki DNS bölümüne bak). DNS kaydı "DNS only" yapılırsa `1` |
-| `ARCHIVE_HOST_DIR` | Karar PDF'lerinin sunucudaki **mutlak** klasörü (aşağıda); compose bunu `app`'e salt okunur `/archive` olarak bağlar |
+| `FILE_STORE_ROOT` | Dosya deposunun konteyner içindeki yolu. Compose `app` ve `worker` için `/filestore` koyar (`filestore` adlı Docker volume, ikisine okuma-yazma bağlı); elle ayarlanmaz. Boşsa `/files` yükleme uç noktaları 503 verir, worker taramaz, karar PDF'i yalnız `ARCHIVE_ROOT`'tan gelir |
+| `ARCHIVE_HOST_DIR` | **İsteğe bağlı, eski.** Karar PDF'lerinin sunucudaki **mutlak** klasörü (aşağıda); compose bunu `app`'e salt okunur `/archive` olarak bağlar. Arşiv "Arşivin içeri alınması" adımıyla dosya deposuna alındıktan sonra gerekmez; `storage_key`'i boş kayıtlar için geçiş süresince kalır |
 | `DASHBOARD_HOST_PORT`, `POSTGRES_HOST_PORT` | tanımlanmaz (yalnız yerel override dosyasında kullanılır; Traefik konteyner portuna ağdan ulaşır) |
 
 `APP_API_URL` ayarlanmaz: compose `dashboard-web` için `http://app:8000` koyar. `ARCHIVE_ROOT`
-da compose'dadır (`/archive`).
+da compose'dadır (`/archive`; **isteğe bağlı, eski**: yalnız dosya deposunda karşılığı olmayan karar
+kayıtları için okunur, kaldırılması ayrı küçük iş).
 
 ## İlk kurulum
 
@@ -85,14 +87,71 @@ da compose'dadır (`/archive`).
    `python -m app.loaders.decisions /work/decisions.jsonl --files /work/files.jsonl`
    (tekrar çalıştırılabilir; olan kaydı atlar). Dosya yolları (`ingest_file.path`) `ARCHIVE_ROOT`'a
    göredir: `Yargi_Kararlari_Arsivi/...`.
-4. **Arşiv dosyalarını salt okunur bağla.** Yalnız `Yargi_Kararlari_Arsivi/` klasörünü sunucuda bir
+4. **Arşiv dosyalarını salt okunur bağla** (eski yol; 5. adımdan sonra gerekmez). Yalnız `Yargi_Kararlari_Arsivi/` klasörünü sunucuda bir
    dizine kopyala (örn. `rsync -a`; dizin yalnız okuyabilen bir hesaba ait olsun), `ARCHIVE_HOST_DIR`'i
    o dizinin **üst** klasörüne (içinde `Yargi_Kararlari_Arsivi/` bulunan) mutlak yol olarak ver.
    Dosyalar Çalışma ve Toplum'un sayfalarıdır (telif): yalnız giriş yapmış reviewer'lara, iç
    inceleme için sunulur; yayınlama ve çoğaltma yok. `app` her dosyayı sunmadan SHA-256'sını
    kontrol eder; eşleşmeyen dosya sunulmaz.
-5. **Giriş denemesi temizliği** (cron): `login_attempt` tablosu büyür. Dokploy'da Schedules ile
+5. **Arşivin içeri alınması** (Görev 12c; tek seferlik, tekrar çalıştırılabilir). Karar kayıtları
+   3. adımla yüklendikten **sonra** yapılır. Drive'ın tam kopyası (`Mevzuat/`, `Yargi_Kararlari_Arsivi/`
+   ve kökteki hesap tabloları) sunucuda bir dizine kopyalanır (örn. `rsync -a data/drive/ SUNUCU:/srv/arsiv-aktarim/`;
+   Mac'ten gelen klasör adlarının NFC ya da NFD olması fark etmez). CLI, `filestore` volume'ünü
+   bağlayan tek seferlik bir `app` konteynerinde çalışır (Dokploy terminalinde compose
+   klasöründe; `/import` salt okunur bağlanır):
+
+   ```bash
+   docker compose run --rm -v /srv/arsiv-aktarim:/import:ro -v /srv/rapor:/rapor app \
+     python -m app.files.import_dir /import --uploaded-by-system --report /rapor/ozet.json
+   ```
+
+   `/import` altındaki dosyalar `app` konteyner kullanıcısı tarafından okunabilir olmalıdır
+   (okunamayan dosya hata olarak listelenir). `--report` yolu o kullanıcı için yazılabilir bir
+   bağ olmalıdır (`/rapor` için `/srv/rapor` yazılabilir olsun); aksi halde özet yazılamaz.
+
+   Her dosya dosya deposuna konur. SHA-256'sı 3. adımda yüklenen bir karar kaydınınkiyle aynıysa
+   o kayda yalnız `storage_key` ve `original_name` yazılır (yeni kayıt açılmaz); diğerleri yeni
+   kayıt olur (`doc_type` Drive klasör adından, yükleyen boş = sistem, tarama kuyruğunda; `worker`
+   tarar). `Eskiler/` altındaki dosya, aynı adlı güncel dosyanın önceki sürümü olarak bağlanır
+   (ad kuralı: uzantısız, harf/aksan/büyük-küçük harf farkı yok sayılan ad aynı olmalı); eşleşmeyenler
+   özette listelenir. Özet (eklenen, eşleşen, atlanan, bağlanan, hatalı, eşleşmeyen `Eskiler/`
+   dosyaları) ekrana basılır (Eskiler bağlama hatası da `errors`'a girer, çalışma sürer); bir dosyanın hatası çalışmayı durdurmaz. Çıkış kodu 1 hata olduğunu
+   söyler. Komutu ikinci kez çalıştırınca eklenen 0 olmalıdır. Aktarım `FILE_MAX_BYTES` sınırına
+   tabi değildir (yönetici sunucuda çalıştırır). İsteğe bağlı `--report YOL` özeti JSON olarak yazar (yol
+   konteynerin içindedir; saklamak için ek bir `-v` ile bağla). Aktarımdan sonra dosyası depoya
+   alınmamış karar satırı kalıp kalmadığına bak (özetteki `skipped` bunları göstermez):
+
+   ```sql
+   SELECT count(*) FROM ingest_file WHERE storage_key IS NULL;
+   ```
+
+   Sıfırdan büyük sayı, aynı SHA-256'lı ikinci satırlar (dergi yeniden basımı) olabilir; bunların
+   PDF'i içerik adresli depodan açılır. Sayıyı `SELECT path FROM ingest_file WHERE storage_key IS
+   NULL` ile incele; deponun dışında kalan dosya varsa o satırlar için `ARCHIVE_HOST_DIR` gerekir.
+6. **Aktarım sonrası Drive salt arşivdir.** İki yönlü senkron yoktur; yeni dosyalar dashboard'daki
+   Dosyalar ekranından yüklenir. `ARCHIVE_HOST_DIR` bağı, yukarıdaki kontrolde
+   `storage_key`'i boş satır kalmadıysa ya da kalanların içeriği depoda varsa gerekmez (PDF
+   uç noktası dosya deposundan sunar; `storage_key` doluysa `ARCHIVE_ROOT`'a düşmez). İçeriği
+   depoda olmayan boş `storage_key`'li satırlar için eski yol çalışmaya devam eder.
+7. **Giriş denemesi temizliği** (cron): `login_attempt` tablosu büyür. Dokploy'da Schedules ile
    `app` konteynerinde günlük: `python -m app.users prune-login-attempts` (30 günden eskiyi siler).
+
+## Dosya deposu: yedek ve risk
+
+Yüklenen ve aktarılan tüm dosyalar `filestore` Docker volume'ündedir. **Tek kopya sunucu
+diskindedir**: disk ya da volume giderse dosyalar (ve Drive'dan başka kaynağı olmayan yüklemeler)
+kaybolur; veritabanı yedeği dosyaları kapsamaz. Zamanlanmış yedek bu görevde yoktur; **12d olarak
+önerilir ve 12c'nin hemen ardından yapılmalıdır**. O zamana kadar elle yedek (volume adı
+`docker volume ls`'ten bakılır, Dokploy proje adıyla öneklenir):
+
+```bash
+docker run --rm -v PROJE_filestore:/filestore:ro -v /srv/yedek:/yedek alpine \
+  tar czf /yedek/filestore-$(date +%F).tar.gz -C /filestore .
+```
+
+Yedek dosyasını sunucu dışına kopyala. Geri yükleme: aynı komutun `tar xzf` karşılığı, boş
+bir volume'e. Dosyalar içerikle adreslendiği için (`sha256/ab/cd/<sha256>`) geri yüklenen bir
+dosya yanlışsa uygulama onu sunmaz (SHA-256 kontrolü).
 
 ## Kontrol
 
@@ -107,4 +166,4 @@ da compose'dadır (`/archive`).
 
 Bu belge sunucuda denenmedi; Docker imajı CI'da derlenir ve `/healthz` kontrol edilir ama Dokploy
 alan adı ve ağ ayarı, `FORWARDED_ALLOW_IPS` değeri ve Traefik'in tek proxy olması ilk yayında
-elle doğrulanmalıdır.
+elle doğrulanmalıdır. Aktarım komutu ve yedek komutu da sunucuda denenmedi (aktarım yerelde tam Drive kopyasıyla denendi, sayılar PR'da).
