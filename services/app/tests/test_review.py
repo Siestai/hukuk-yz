@@ -795,6 +795,21 @@ async def test_a_reopened_rejection_can_be_approved_into_a_new_live_decision(
 ) -> None:
     (record,) = await _seed(kb_factory, {})
     url = f"{BASE}/{await _eid(kb_factory, record)}"
+    await client.post(url, json={"action": "reject", "note": "n"}, headers=me.headers)
+    await client.post(url, json={"action": "reopen"}, headers=me.headers)
+    again = await client.post(url, json={"action": "approve"}, headers=me.headers)
+    assert again.status_code == 200
+    async with kb_factory() as session:
+        rows = (await session.execute(select(Decision))).scalars().all()
+    assert [str(d.id) for d in rows] == [again.json()["decision_id"]]
+    assert rows[0].superseded_at is None
+
+
+async def test_a_reopened_approval_is_approved_again_keeping_the_old_decision_superseded(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
     await client.post(url, json={"action": "approve"}, headers=me.headers)
     await client.post(url, json={"action": "reopen"}, headers=me.headers)
     again = await client.post(url, json={"action": "approve"}, headers=me.headers)
@@ -829,13 +844,16 @@ async def test_reopen_of_an_older_extraction_is_409(
     assert (response.status_code, response.json()["error"]["code"]) == (409, "review_conflict")
 
 
-async def test_reopen_of_an_unknown_extraction_is_404_and_edits_are_refused(
-    client: httpx.AsyncClient, kb_factory: Factory, me: Login
-) -> None:
+async def test_reopen_of_an_unknown_extraction_is_404(client: httpx.AsyncClient, me: Login) -> None:
     response = await client.post(
         f"{BASE}/{uuid.uuid4()}", json={"action": "reopen"}, headers=me.headers
     )
     assert response.status_code == 404
+
+
+async def test_reopen_with_edits_is_422(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
     (record,) = await _seed(kb_factory, {})
     url = f"{BASE}/{await _eid(kb_factory, record)}"
     refused = await client.post(

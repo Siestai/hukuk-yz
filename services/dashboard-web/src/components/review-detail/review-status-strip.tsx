@@ -101,7 +101,7 @@ export function ReviewStatusStrip({
                     ) : null}
                 </section>
             ) : null}
-            {failure?.during === "reopen" ? (
+            {failure?.during === "reopen" && (!reopening || failure.code === "review_conflict") ? (
                 <p
                     role="alert"
                     className="rounded-md border border-destructive bg-surface p-3 text-sm text-destructive"

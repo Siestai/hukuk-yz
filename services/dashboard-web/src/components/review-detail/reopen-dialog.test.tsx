@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -98,5 +98,18 @@ describe("reopening a reviewed decision", () => {
         await userEvent.click(screen.getByRole("button", { name: reopen.submit }));
         expect(await screen.findByRole("alert")).toHaveTextContent(reopen.conflict);
         expect(refresh).toHaveBeenCalled();
+    });
+
+    it("keeps the dialog open with the note and shows the error on a server failure", async () => {
+        POST.mockResolvedValue({ error: { error: { code: "internal_error", params: {} } } });
+        setup("approved");
+        await userEvent.click(screen.getByRole("button", { name: reopen.fromApproved }));
+        await userEvent.type(screen.getByLabelText(reopen.note), "yanlış onay");
+        await userEvent.click(screen.getByRole("button", { name: reopen.submit }));
+        const dialog = screen.getByRole("dialog", { name: reopen.title });
+        expect(await within(dialog).findByRole("alert")).toHaveTextContent(messages.errors.generic);
+        expect(screen.getAllByRole("alert")).toHaveLength(1);
+        expect(screen.getByLabelText(reopen.note)).toHaveValue("yanlış onay");
+        expect(refresh).not.toHaveBeenCalled();
     });
 });
