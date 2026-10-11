@@ -5,6 +5,7 @@ import { ActionBar } from "@/components/review-detail/action-bar";
 import { HistoryCard } from "@/components/review-detail/history-card";
 import { ReviewProvider } from "@/components/review-detail/review-session";
 import { ReviewStatusStrip } from "@/components/review-detail/review-status-strip";
+import { ActionsHelp, StatusHelp } from "@/components/statute-review/statute-detail-help";
 import { LiveNotice } from "@/components/statute-review/live-notice";
 import { StatuteConfidenceCard } from "@/components/statute-review/statute-confidence-card";
 import { StatuteHeader } from "@/components/statute-review/statute-header";
@@ -70,6 +71,7 @@ export default async function StatuteArticlePage({
                 <ReviewStatusStrip
                     sourceStatus={STRIP_STATUS[detail.status]}
                     reviews={detail.reviews}
+                    help={<StatusHelp />}
                 />
                 {detail.live_extraction_id ? (
                     <LiveNotice id={detail.live_extraction_id} queue={queue} />
@@ -86,7 +88,7 @@ export default async function StatuteArticlePage({
                     timeline={detail.timeline}
                     latestSnapshotDate={detail.latest_snapshot_date}
                 />
-                <ActionBar editable={false} />
+                <ActionBar editable={false} help={<ActionsHelp />} />
             </main>
         </ReviewProvider>
     );

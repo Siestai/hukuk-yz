@@ -2,7 +2,7 @@
 
 import { Button } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import type { components } from "@/lib/api/schema";
 import { useCommon } from "@/lib/use-common";
@@ -25,9 +25,12 @@ type Review = components["schemas"]["ReviewOut"];
 export function ReviewStatusStrip({
     sourceStatus,
     reviews,
+    help,
 }: {
     sourceStatus: string;
     reviews: Review[];
+    /** A tip about the statuses (the statute screen has one), beside the outcome. */
+    help?: ReactNode;
 }) {
     const t = useTranslations();
     const { dateTime } = useDates();
@@ -53,23 +56,26 @@ export function ReviewStatusStrip({
                     aria-label={t("review.detail.statusStrip.label")}
                     className="grid gap-1 rounded-md border border-border bg-surface-2 p-3 text-sm"
                 >
-                    <p className="text-ink">
-                        <span className="font-medium">
-                            {last
-                                ? t(`review.detail.statusStrip.${outcome}`)
-                                : labels.sourceStatus(sourceStatus)}
-                        </span>
-                        {last ? (
-                            <>
-                                {separator}
-                                <time dateTime={last.reviewed_at}>
-                                    {dateTime(last.reviewed_at)}
-                                </time>
-                                {separator}
-                                {last.reviewer_name ?? t("review.detail.unknownReviewer")}
-                            </>
-                        ) : null}
-                    </p>
+                    <div className="flex items-start gap-2">
+                        <p className="text-ink">
+                            <span className="font-medium">
+                                {last
+                                    ? t(`review.detail.statusStrip.${outcome}`)
+                                    : labels.sourceStatus(sourceStatus)}
+                            </span>
+                            {last ? (
+                                <>
+                                    {separator}
+                                    <time dateTime={last.reviewed_at}>
+                                        {dateTime(last.reviewed_at)}
+                                    </time>
+                                    {separator}
+                                    {last.reviewer_name ?? t("review.detail.unknownReviewer")}
+                                </>
+                            ) : null}
+                        </p>
+                        {help}
+                    </div>
                     {outcome === "rejected" && last?.note ? (
                         <p className="wrap-anywhere text-ink-2">
                             <span className="font-medium">

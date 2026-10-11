@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import Link from "next/link";
 import { HelpTip } from "@/components/help-tip";
-import { stateHref, stateTab, type QueueState } from "@/lib/queue-state";
+import { isStatuteState, stateHref, stateTab, type QueueState } from "@/lib/queue-state";
 import { useFormatter, useTranslations } from "next-intl";
 
 const DECISIONS: QueueState = { sort: "score_asc", page: 1 };
@@ -27,7 +27,11 @@ export function TotalsCard({
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     {t("totalsTitle")}
-                    <HelpTip name="totals" topic={t("totalsTitle")} />
+                    <HelpTip
+                        name="totals"
+                        scope={isStatuteState(params) ? "statutes" : "queue"}
+                        topic={t("totalsTitle")}
+                    />
                 </CardTitle>
             </CardHeader>
             <CardContent>

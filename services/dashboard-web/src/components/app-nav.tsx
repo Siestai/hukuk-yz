@@ -39,9 +39,14 @@ export function AppNav({ user, pending, onNavigate }: AppNavProps) {
                         <HelpTip name="navPending" topic={t("nav.pending")} />
                     ) : null}
                 </div>
-                <NavLink href="/mevzuat" onNavigate={onNavigate}>
-                    {t("nav.statutes")}
-                </NavLink>
+                <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                        <NavLink href="/mevzuat" onNavigate={onNavigate}>
+                            {t("nav.statutes")}
+                        </NavLink>
+                    </div>
+                    <HelpTip name="navStatutes" scope="statutes" topic={t("nav.statutes")} />
+                </div>
                 {comingLater.map(({ key, help, label }) => (
                     <div key={key} className="flex items-center gap-2">
                         <span

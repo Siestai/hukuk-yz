@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { useId } from "react";
 
 import { HelpTip } from "@/components/help-tip";
+import type { HelpScope } from "@/lib/help-topics";
 
 import {
     itemStatus,
@@ -26,13 +27,13 @@ const MAX_REASON_CHIPS = 2;
 // interactive inside (a tooltip, a future link or button) needs `relative z-10` to sit above it.
 export const stretchedLink = "after:absolute after:inset-0 hover:underline focus-visible:underline";
 
-/** The one tip of the card list: the cards have no column headers, so it says what a card holds. */
-export function CardsHelp() {
+/** The one tip of the card list (either queue): the cards have no column headers, so it says what a card holds. */
+export function CardsHelp({ scope = "queue" }: { scope?: HelpScope }) {
     const t = useTranslations("review.queue.table");
     return (
         <div className="flex items-center gap-2 text-sm text-ink-2">
             {t("cardsTopic")}
-            <HelpTip name="cards" topic={t("cardsTopic")} />
+            <HelpTip name="cards" scope={scope} topic={t("cardsTopic")} />
         </div>
     );
 }

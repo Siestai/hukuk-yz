@@ -2,7 +2,8 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
-import { infoTip, renderWithIntl } from "@/test/intl";
+import userEvent from "@testing-library/user-event";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { TotalsCard } from "./totals-card";
 
 describe("TotalsCard", () => {
@@ -24,5 +25,17 @@ describe("TotalsCard", () => {
             "href",
             "/?durum=reddedilen",
         );
+    });
+
+    it("explains the counts with the statute text on the statute queue", async () => {
+        renderWithIntl(
+            <TotalsCard
+                approved={4}
+                rejected={1}
+                params={{ kind: "statute", statute: "4857", page: 1 }}
+            />,
+        );
+        await userEvent.click(infoTip(messages.review.queue.summary.totalsTitle));
+        expect(openTipText()).toHaveTextContent(messages.review.statutes.help.totals);
     });
 });

@@ -45,7 +45,11 @@ export function BandDistribution({
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     {t("bandTitle")}
-                    <HelpTip name="band" topic={t("bandTitle")} />
+                    <HelpTip
+                        name="band"
+                        scope={isStatuteState(params) ? "statutes" : "queue"}
+                        topic={t("bandTitle")}
+                    />
                 </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">

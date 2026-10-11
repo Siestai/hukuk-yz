@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import { QueueNavigationProvider } from "@/components/review-queue/queue-navigation";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { StatuteFilters } from "./statute-filters";
 
 const nav = vi.hoisted(() => ({ search: "", push: vi.fn(), replace: vi.fn() }));
@@ -55,5 +55,21 @@ describe("StatuteFilters", () => {
     it("offers no clear link without filters", () => {
         setup("kanun=5510");
         expect(screen.queryByRole("link", { name: filters.clear })).not.toBeInTheDocument();
+    });
+
+    it("explains the band, the search and the clear link in tips", async () => {
+        const user = setup("band=low");
+        const { help } = messages.review.statutes;
+        await user.click(infoTip(filters.band));
+        expect(openTipText()).toHaveTextContent(help.filterBand);
+        await user.click(infoTip(messages.review.statutes.filters.search));
+        expect(openTipText()).toHaveTextContent(help.filterSearch);
+        expect(infoTip(filters.clear).closest("a")).toBeNull();
+        expect(screen.getByRole("link", { name: filters.clear })).toBeInTheDocument();
+    });
+
+    it("has no clear tip while no filter is active", () => {
+        setup();
+        expect(screen.queryByRole("button", { name: `Bilgi: ${filters.clear}` })).toBeNull();
     });
 });

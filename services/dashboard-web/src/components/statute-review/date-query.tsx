@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, Input, Label } from "@hukuk/u
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 
+import { HelpTip } from "@/components/help-tip";
 import type { AsOfResult, TimelineEntry } from "@/lib/statute-as-of";
 import { DateQueryAnswer } from "./date-query-answer";
 
@@ -29,7 +30,10 @@ export function DateQuery({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>{t("title")}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    {t("title")}
+                    <HelpTip name="dateQuery" scope="statutes" topic={t("title")} />
+                </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
                 <div className="grid gap-1.5 md:w-56">

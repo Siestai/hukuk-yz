@@ -31,7 +31,9 @@ export function infoTip(topic: string) {
 
 /** The live region of the InfoTip that was just activated: the only one with text in it. */
 export function openTipText() {
-    const region = screen.getAllByRole("status").find((node) => node.textContent);
+    const region = screen
+        .getAllByRole("status")
+        .find((node) => node.classList.contains("sr-only") && node.textContent);
     if (!region) throw new Error("No InfoTip is open");
     return region;
 }

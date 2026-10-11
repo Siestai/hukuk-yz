@@ -1,10 +1,11 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import { listItem, NEXT_STATUTE_ID, STATUTE_ID } from "@/test/statute-fixtures";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { StatuteResults } from "./statute-results";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -98,5 +99,55 @@ describe("StatuteResults", () => {
         });
         renderWithIntl(element);
         expect(screen.getByRole("alert")).toHaveTextContent(messages.errors.forbidden);
+    });
+
+    it("explains every column of the table in a tip on its header, the status only with all statuses", async () => {
+        await setup();
+        const table = within(screen.getByRole("table"));
+        const { table: columns, help } = messages.review.statutes;
+        for (const label of [
+            columns.band,
+            columns.article,
+            columns.versions,
+            columns.snapshot,
+            columns.reasons,
+        ]) {
+            expect(table.getByRole("button", { name: `Bilgi: ${label}` })).toBeInTheDocument();
+        }
+        expect(table.queryByRole("button", { name: `Bilgi: ${columns.status}` })).toBeNull();
+        await userEvent.click(table.getByRole("button", { name: `Bilgi: ${columns.snapshot}` }));
+        expect(openTipText()).toHaveTextContent(help.colSnapshot);
+    });
+
+    it("has the status column tip when the list shows all statuses", async () => {
+        await setup({
+            kind: "statute",
+            statute: "4857",
+            status: "all",
+            page: 1,
+        } as StatuteQueueParams);
+        expect(
+            within(screen.getByRole("table")).getByRole("button", {
+                name: `Bilgi: ${messages.review.statutes.table.status}`,
+            }),
+        ).toBeInTheDocument();
+    });
+
+    it("has one tip for the card list, none on the cards, and the reason texts only for screen readers", async () => {
+        await setup();
+        const list = screen.getByRole("list", { name: messages.review.statutes.table.label });
+        expect(within(list).queryByRole("button")).toBeNull();
+        await userEvent.click(infoTip(messages.review.queue.table.cardsTopic));
+        expect(openTipText()).toHaveTextContent(messages.review.statutes.help.cards);
+        const { reason } = messages.review.statutes.help;
+        expect(list).toHaveTextContent(reason.multi_amendment_in_window);
+        expect(list.querySelector(".sr-only")).not.toBeNull();
+    });
+
+    it("renders a reason code without a text as a chip with no tip and no error", async () => {
+        await setup(params, [{ ...listItem, reasons: ["not_a_real_code"] }], 1);
+        const list = screen.getByRole("list", { name: messages.review.statutes.table.label });
+        expect(list).toHaveTextContent(messages.review.statutes.item.unknownReason);
+        expect(within(list).queryByRole("button")).toBeNull();
     });
 });
