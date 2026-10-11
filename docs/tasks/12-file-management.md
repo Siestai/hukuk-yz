@@ -32,7 +32,7 @@ Görev üç PR'a bölünür: **12a** saklama + API + worker taraması, **12b** d
     - `archived_at` (yumuşak silme; dosya ve kayıt kalır).
     Çıkarılan metin dosyanın yanında saklanır (`FileStore`, anahtar `text/<sha256>.txt`), `extraction.raw_text_ref` deseniyle `ingest_file.scan_result.text_key`'e yazılır. Yeni tablo yok.
 3. **API** (`/files`, OpenAPI tipleri yeniden üretilir; `packages/models`):
-    - `POST /files` (multipart: dosya + alanlar). Yetki `reviewer` ve `admin`. Sınırlar: en fazla 50 MB (`FILE_MAX_BYTES`), izinli uzantı/içerik: pdf, doc, docx, udf, png, jpg/jpeg, xlsx, xlsm, txt. İçerik türü uzantıya değil içeriğe göre de kontrol edilir (Görev 03 `detect`). Aynı sha256 canlı bir kayıtta varsa 409 `duplicate_file` + mevcut kaydın kimliği. Başarıda bir `ingest_job` (`kind=upload`, `created_by`) + `ingest_file` (`scan_status=queued`) yazılır, 201.
+    - `POST /files` (multipart: dosya + alanlar). Yetki `reviewer` ve `admin`. Sınırlar: en fazla 50 MB (`FILE_MAX_BYTES`), izinli uzantı/içerik: pdf, doc, docx, udf, png, jpg/jpeg, xlsx, xlsm, txt. İçerik türü uzantıya değil içeriğe göre de kontrol edilir (Görev 03 `detect`). Aynı sha256 canlı bir kayıtta varsa 409 `duplicate_file` + mevcut kaydın kimliği. Aynı sha256 **arşivlenmiş** bir kayıtta varsa da 409 `duplicate_file` döner: mevcut kimlik + `archived: true`; UI "Bu dosya arşivde" der ve (admin için) "Arşivden çıkar" sunar. Başarıda bir `ingest_job` (`kind=upload`, `created_by`) + `ingest_file` (`scan_status=queued`) yazılır, 201.
     - `POST /files/{id}/versions`: aynı belgenin yeni sürümü; yeni kayıt `supersedes_id` ile eskiye bağlanır, eski kayıt değişmez. Alanlar boş gelirse öncekinden kopyalanır.
     - `GET /files`: sayfalı liste (`cursor`), filtre `doc_type`, `scan_status`, `q` (ad / resmî sayı), `archived` (varsayılan hariç). Liste her belgenin yalnız en yeni sürümünü gösterir, `version_count` taşır.
     - `GET /files/{id}`: alanlar, tarama sonucu, sürüm zinciri (eskiden yeniye), yükleyen ve tarih.
@@ -60,7 +60,7 @@ Görev üç PR'a bölünür: **12a** saklama + API + worker taraması, **12b** d
 
 - **Yeni belge türlerini KB'ye ayrıştırmak** (genelge, genel yazı, yönetmelik → `admin_act`; Çalışma ve Toplum dışı karar biçimleri). 12 dosyayı saklar ve metnini çıkarır; türe özel ayrıştırma ve inceleme kuyruğuna düşürme her tür için ayrı görev. Yeni kanun snapshot'ının Görev 11 zincirine bağlanması da ayrı.
 - S3 / bucket uygulaması (arayüz hazır, uygulama sonra).
-- Otomatik yedekleme işi. Volume'ün düzenli yedeği gerekli; deploy.md'ye elle yedek komutu ve risk notu yazılır, zamanlanmış yedek ayrı görev (12d önerisi).
+- Otomatik yedekleme işi. Volume'ün düzenli yedeği gerekli; deploy.md'ye elle yedek komutu ve risk notu yazılır, zamanlanmış yedek ayrı görev: **12d olarak önerilir ve 12c'nin hemen ardından yapılmalıdır** (volume tek kopya olarak sunucu diskinde durur).
 - mevzuat.gov.tr / Resmî Gazete'den otomatik çekme (ayrı görev; çekilen dosyalar aynı `POST /files` yolunu ya da `FileStore`'u kullanacak).
 - Drive ile senkron ya da Drive'a geri yazma.
 - Kalıcı silme (yalnız arşivleme), toplu arşivleme, klasör hiyerarşisi (tür + filtre yeterli).
