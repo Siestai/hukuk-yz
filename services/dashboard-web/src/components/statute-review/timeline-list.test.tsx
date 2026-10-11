@@ -59,12 +59,18 @@ describe("TimelineList", () => {
         ).toBeInTheDocument();
         // No version text anywhere in the gap, and a gap is not something to select.
         expect(gap).not.toHaveTextContent("İşçi");
-        expect(within(gap as HTMLElement).queryByRole("button")).not.toBeInTheDocument();
+        // The only button in a gap is the info tip.
+        const buttons = within(gap as HTMLElement).getAllByRole("button");
+        expect(buttons).toHaveLength(1);
+        expect(buttons[0]).toHaveAttribute("data-slot", "info-tip");
+        expect(buttons[0]).not.toHaveAttribute("aria-pressed");
     });
 
     it("selects a version on click and marks the selected one", async () => {
         const { onSelect, user } = setup(2);
-        const buttons = screen.getAllByRole("button");
+        const buttons = screen
+            .getAllByRole("button")
+            .filter((button) => button.hasAttribute("aria-pressed"));
         expect(buttons).toHaveLength(2);
         expect(buttons[1]).toHaveAttribute("aria-pressed", "true");
         expect(buttons[0]).toHaveAttribute("aria-pressed", "false");
@@ -85,9 +91,11 @@ describe("TimelineList", () => {
     it("tells a lower-confidence version apart", () => {
         setup();
         expect(
-            within(screen.getAllByRole("button")[0] as HTMLElement).getByText(
-                messages.enums.band.medium,
-            ),
+            within(
+                screen
+                    .getAllByRole("button")
+                    .find((button) => button.hasAttribute("aria-pressed")) as HTMLElement,
+            ).getByText(messages.enums.band.medium),
         ).toBeInTheDocument();
     });
 });

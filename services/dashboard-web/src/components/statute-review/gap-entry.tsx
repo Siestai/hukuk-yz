@@ -3,6 +3,7 @@
 import { Badge, cn } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
 import type { TimelineGap } from "@/lib/statute-as-of";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
@@ -27,6 +28,7 @@ export function GapEntry({ entry, matched }: { entry: TimelineGap; matched: bool
             <span className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs text-ink">{range(entry.from, entry.to)}</span>
                 <Badge variant="medium">{t("gap")}</Badge>
+                <HelpTip name="gap" scope="statutes" topic={t("gap")} />
                 {matched ? <Badge>{t("queried")}</Badge> : null}
             </span>
             <p className="font-medium text-ink">{t("gapNoText")}</p>

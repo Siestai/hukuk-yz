@@ -1,6 +1,8 @@
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
+import type { StatuteHelpName } from "@/lib/help-topics";
 import type { TimelineVersion } from "@/lib/statute-as-of";
 import { readEvidence, readFootnotes } from "@/lib/statute-timeline";
 import { useDates } from "@/lib/use-dates";
@@ -10,10 +12,21 @@ import { useRange } from "./use-range";
 import { useLawLabel } from "./use-law-label";
 import { VersionDiff } from "./version-diff";
 
-function Box({ title, children }: { title: string; children: React.ReactNode }) {
+function Box({
+    title,
+    help,
+    children,
+}: {
+    title: string;
+    help: StatuteHelpName;
+    children: React.ReactNode;
+}) {
     return (
         <section className="grid gap-2 rounded-md border border-border bg-surface-2 p-3 text-sm">
-            <h3 className="text-xs font-medium tracking-wide text-ink-2">{title}</h3>
+            <h3 className="flex items-center gap-2 text-xs font-medium tracking-wide text-ink-2">
+                {title}
+                <HelpTip name={help} scope="statutes" topic={title} />
+            </h3>
             {children}
         </section>
     );
@@ -46,20 +59,28 @@ export function VersionPanel({
                 <CardTitle className="flex flex-wrap items-center gap-2">
                     {t("title", { range: range(version.valid_from, version.valid_to) })}
                     <Badge variant="outline">{labels.changeKind(version.change_kind)}</Badge>
+                    <HelpTip
+                        name="version"
+                        scope="statutes"
+                        topic={t("title", { range: range(version.valid_from, version.valid_to) })}
+                    />
                 </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
                 {version.heading ? (
-                    <p className="text-sm text-ink-2">
-                        <span className="font-medium">{t("heading")}:</span>{" "}
-                        <span className="wrap-anywhere">{version.heading}</span>
-                    </p>
+                    <div className="flex items-start gap-2 text-sm text-ink-2">
+                        <p>
+                            <span className="font-medium">{t("heading")}:</span>{" "}
+                            <span className="wrap-anywhere">{version.heading}</span>
+                        </p>
+                        <HelpTip name="versionHeading" scope="statutes" topic={t("heading")} />
+                    </div>
                 ) : null}
                 <p className="font-serif leading-relaxed wrap-anywhere whitespace-pre-line text-ink">
                     {version.text}
                 </p>
                 {footnotes.length > 0 ? (
-                    <Box title={t("footnotes")}>
+                    <Box title={t("footnotes")} help="versionFootnotes">
                         <ol className="grid gap-2">
                             {footnotes.map((note) => (
                                 <li
@@ -72,7 +93,7 @@ export function VersionPanel({
                         </ol>
                     </Box>
                 ) : null}
-                <Box title={t("evidence")}>
+                <Box title={t("evidence")} help="versionEvidence">
                     <dl className="grid gap-2">
                         <div>
                             <dt className="text-ink-3">{t("basis")}</dt>
@@ -84,7 +105,14 @@ export function VersionPanel({
                         </div>
                         {evidence.amendments.length > 0 ? (
                             <div>
-                                <dt className="text-ink-3">{t("amendments")}</dt>
+                                <dt className="flex items-center gap-2 text-ink-3">
+                                    {t("amendments")}
+                                    <HelpTip
+                                        name="versionAmendments"
+                                        scope="statutes"
+                                        topic={t("amendments")}
+                                    />
+                                </dt>
                                 <dd>
                                     <ul className="grid gap-0.5 text-ink">
                                         {evidence.amendments.map((ref) => (
@@ -102,7 +130,14 @@ export function VersionPanel({
                             </div>
                         ) : null}
                         <div>
-                            <dt className="text-ink-3">{t("copies")}</dt>
+                            <dt className="flex items-center gap-2 text-ink-3">
+                                {t("copies")}
+                                <HelpTip
+                                    name="versionCopies"
+                                    scope="statutes"
+                                    topic={t("copies")}
+                                />
+                            </dt>
                             <dd>
                                 <ul className="grid gap-0.5 text-ink">
                                     {evidence.copies.map((copy) => (
@@ -121,7 +156,7 @@ export function VersionPanel({
                     </dl>
                 </Box>
                 {version.warnings.length > 0 ? (
-                    <Box title={t("warnings")}>
+                    <Box title={t("warnings")} help="versionWarnings">
                         <ul className="grid gap-1 text-ink-2">
                             {version.warnings.map((warning) => (
                                 <li key={warning}>
@@ -133,8 +168,12 @@ export function VersionPanel({
                     </Box>
                 ) : null}
                 <section className="grid gap-2" aria-labelledby="version-diff-title">
-                    <h3 id="version-diff-title" className="text-sm font-medium text-ink">
+                    <h3
+                        id="version-diff-title"
+                        className="flex items-center gap-2 text-sm font-medium text-ink"
+                    >
                         {t("diff")}
+                        <HelpTip name="diff" scope="statutes" topic={t("diff")} />
                     </h3>
                     <VersionDiff version={version} previous={previous} gapBetween={gapBetween} />
                 </section>

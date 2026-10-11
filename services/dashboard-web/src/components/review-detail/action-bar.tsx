@@ -2,7 +2,7 @@
 
 import { Button, cn } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { SHORTCUT_KEYS, useReviewShortcuts, type Shortcut } from "@/lib/use-review-shortcuts";
 import { ActionFailure } from "./action-failure";
@@ -25,7 +25,14 @@ function Key({ shortcut }: { shortcut: Shortcut }) {
  * Approve, edit (decisions only: `editable`) and reject of the record, with their keyboard shortcuts and the move to the
  * next or previous record. Renders nothing for a record that is not in the queue.
  */
-export function ActionBar({ editable = true }: { editable?: boolean }) {
+export function ActionBar({
+    editable = true,
+    help,
+}: {
+    editable?: boolean;
+    /** A tip about the actions (the statute screen has one), shown above the buttons. */
+    help?: ReactNode;
+}) {
     const t = useTranslations("review.actions");
     const session = useReviewSession();
     const [rejecting, setRejecting] = useState(false);
@@ -66,6 +73,7 @@ export function ActionBar({ editable = true }: { editable?: boolean }) {
                     <ActionFailure failure={session.failure} />
                 </div>
             ) : null}
+            {help}
             <div role="status" className="text-sm text-ink-2">
                 {session.edge === "next" ? t("noNext") : null}
                 {session.edge === "previous" ? t("noPrevious") : null}

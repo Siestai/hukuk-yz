@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { FlashStatus } from "@/components/flash-status";
+import { HelpTip } from "@/components/help-tip";
 import { BandDistribution } from "@/components/review-queue/band-distribution";
 import {
     QueueNavigationProvider,
@@ -24,6 +25,13 @@ import {
     statuteApiQuery,
 } from "@/lib/statute-queue-params";
 import { summarizeStatutes } from "@/lib/statute-summary";
+
+const TITLE_HELP = {
+    pending: "title",
+    approved: "titleApproved",
+    rejected: "titleRejected",
+    all: "titleAll",
+} as const;
 
 export default async function StatuteQueuePage({
     searchParams,
@@ -68,8 +76,18 @@ export default async function StatuteQueuePage({
                 <QueueTabs params={params} counts={totals} />
                 <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold text-ink">{title}</h1>
-                        <p className="mt-1 text-sm text-ink-2">{subtitle}</p>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-xl font-semibold text-ink">{title}</h1>
+                            <HelpTip name={TITLE_HELP[status]} scope="statutes" topic={title} />
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <p className="text-sm text-ink-2">{subtitle}</p>
+                            <HelpTip
+                                name={status === "pending" ? "subtitle" : "subtitleOther"}
+                                scope="statutes"
+                                topic={subtitle}
+                            />
+                        </div>
                     </div>
                     {status === "pending" ? (
                         <Suspense fallback={<StatuteBulkApprove params={params} />}>

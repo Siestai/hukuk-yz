@@ -22,7 +22,8 @@ const HELP = {
 /**
  * The status tabs of the list (decisions or statute articles). They are links that load another URL, so this is a navigation
  * landmark with `aria-current="page"` on the open one, not the ARIA tab pattern. A tab keeps the
- * filters and takes the sort of its own (`tabParams`). The tips sit beside the links, not in them.
+ * filters and takes the sort of its own (`tabParams`). The tips sit beside the links, not in them;
+ * the statute queue has texts of its own.
  */
 export function QueueTabs({
     params,
@@ -56,7 +57,11 @@ export function QueueTabs({
                                 {format.number(counts[status], "integer")}
                             </span>
                         </Link>
-                        {statute ? null : <HelpTip name={HELP[status]} topic={t(status)} />}
+                        <HelpTip
+                            name={HELP[status]}
+                            scope={statute ? "statutes" : "queue"}
+                            topic={t(status)}
+                        />
                     </li>
                 ))}
             </ul>

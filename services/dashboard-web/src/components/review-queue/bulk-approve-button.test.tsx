@@ -6,7 +6,7 @@ import messages from "../../../messages/tr.json";
 import type { QueueParams } from "@/lib/queue-params";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import type { QueueState } from "@/lib/queue-state";
-import { infoTip, renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { BulkApproveButton } from "./bulk-approve-button";
 import { QueueNavigationProvider } from "./queue-navigation";
 
@@ -87,5 +87,11 @@ describe("BulkApproveButton help", () => {
         setup(queue());
         expect(screen.getByRole("button", { name: bulk.open })).toBeDisabled();
         expect(infoTip(bulk.open)).toBeEnabled();
+    });
+
+    it("explains the statute bulk approval with the statute text", async () => {
+        setup({ kind: "statute", statute: "4857", page: 1 });
+        await userEvent.click(infoTip(bulk.open));
+        expect(openTipText()).toHaveTextContent(messages.review.statutes.help.bulk);
     });
 });

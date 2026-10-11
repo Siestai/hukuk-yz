@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 
+import { HelpTip } from "@/components/help-tip";
 import { FilterShell } from "@/components/review-queue/filter-shell";
 import { useQueueNavigation } from "@/components/review-queue/queue-navigation";
 import { SearchBox } from "@/components/review-queue/search-box";
@@ -27,7 +28,10 @@ export function StatuteFilters() {
     return (
         <FilterShell active={active}>
             <div className="grid gap-1.5 md:w-40">
-                <Label htmlFor={ids.band}>{t("queue.filters.band")}</Label>
+                <div className="flex items-center gap-1.5">
+                    <Label htmlFor={ids.band}>{t("queue.filters.band")}</Label>
+                    <HelpTip name="filterBand" scope="statutes" topic={t("queue.filters.band")} />
+                </div>
                 <Select
                     id={ids.band}
                     value={params.band ?? ""}
@@ -44,21 +48,31 @@ export function StatuteFilters() {
                 </Select>
             </div>
             <div className="grid gap-1.5 md:min-w-56 md:flex-1">
-                <Label htmlFor={ids.q}>{t("statutes.filters.search")}</Label>
+                <div className="flex items-center gap-1.5">
+                    <Label htmlFor={ids.q}>{t("statutes.filters.search")}</Label>
+                    <HelpTip
+                        name="filterSearch"
+                        scope="statutes"
+                        topic={t("statutes.filters.search")}
+                    />
+                </div>
                 <SearchBox id={ids.q} />
             </div>
             {active > 0 ? (
-                <Link
-                    href={statuteListHref({
-                        kind: "statute",
-                        statute: params.statute,
-                        status: params.status,
-                        page: 1,
-                    })}
-                    className="inline-flex items-center py-2 text-sm font-medium text-primary underline pointer-coarse:min-h-11"
-                >
-                    {t("queue.filters.clear")}
-                </Link>
+                <div className="flex items-center gap-2">
+                    <Link
+                        href={statuteListHref({
+                            kind: "statute",
+                            statute: params.statute,
+                            status: params.status,
+                            page: 1,
+                        })}
+                        className="inline-flex items-center py-2 text-sm font-medium text-primary underline pointer-coarse:min-h-11"
+                    >
+                        {t("queue.filters.clear")}
+                    </Link>
+                    <HelpTip name="filterClear" scope="statutes" topic={t("queue.filters.clear")} />
+                </div>
             ) : null}
         </FilterShell>
     );

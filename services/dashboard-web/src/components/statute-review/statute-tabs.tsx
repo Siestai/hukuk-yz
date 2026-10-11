@@ -2,6 +2,7 @@ import { cn } from "@hukuk/ui";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
 import {
     statuteListHref,
     STATUTES,
@@ -11,7 +12,7 @@ import {
 
 /**
  * The statute tabs (4857, 5510) with the articles waiting in each. Links that load another URL,
- * so a navigation landmark with `aria-current="page"`, like the status tabs; a tab keeps the
+ * so a navigation landmark with `aria-current="page"`, like the status tabs, with a tip beside each link; a tab keeps the
  * status and filters and opens the first page.
  */
 export function StatuteTabs({
@@ -28,7 +29,7 @@ export function StatuteTabs({
         <nav aria-label={t("label")}>
             <ul className="flex flex-wrap gap-x-2 gap-y-1 border-b border-border">
                 {STATUTES.map((statute) => (
-                    <li key={statute}>
+                    <li key={statute} className="flex items-center gap-1">
                         <Link
                             href={statuteListHref({ ...params, statute, page: 1 })}
                             aria-current={statute === params.statute ? "page" : undefined}
@@ -44,6 +45,7 @@ export function StatuteTabs({
                                 {format.number(waiting[statute], "integer")}
                             </span>
                         </Link>
+                        <HelpTip name={`lawTab${statute}`} scope="statutes" topic={t(statute)} />
                     </li>
                 ))}
             </ul>

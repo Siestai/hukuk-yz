@@ -1,4 +1,5 @@
 import { QueueError } from "@/components/review-queue/queue-error";
+import { CardsHelp } from "@/components/review-queue/queue-item-parts";
 import { QueuePagination } from "@/components/review-queue/queue-pagination";
 import type { components } from "@/lib/api/schema";
 import type { Settled } from "@/lib/api/settle";
@@ -28,7 +29,8 @@ export async function StatuteResults({
             <div className="hidden xl:block">
                 <StatuteTable items={result.data.items} params={params} />
             </div>
-            <div className="xl:hidden">
+            <div className="grid gap-3 xl:hidden">
+                <CardsHelp scope="statutes" />
                 <StatuteCards items={result.data.items} params={params} />
             </div>
             <QueuePagination params={params} total={result.data.total} />

@@ -1,9 +1,10 @@
 import { fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import { LATEST, timeline } from "@/test/statute-fixtures";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { TimelineExplorer } from "./timeline-explorer";
 
 const { dateQuery, version, diff, timeline: texts } = messages.review.statutes;
@@ -13,6 +14,14 @@ function setup() {
 }
 const ask = (day: string) =>
     fireEvent.change(screen.getByLabelText(dateQuery.date), { target: { value: day } });
+/** The date query's answer: the status region that is not the hidden live region of an InfoTip. */
+const answer = () => {
+    const region = screen
+        .getAllByRole("status")
+        .find((node) => !node.classList.contains("sr-only"));
+    if (!region) throw new Error("No date query answer");
+    return region;
+};
 const panel = () =>
     screen.getByText(/Seçili sürüm/).closest("div[data-slot='card']") as HTMLElement;
 
@@ -50,7 +59,7 @@ describe("TimelineExplorer", () => {
         setup();
         ask("2016-06-01");
         expect(panel()).toHaveTextContent("Seçili sürüm: 11.09.2014 → 01.01.2018");
-        expect(screen.getByRole("status")).toHaveTextContent(
+        expect(answer()).toHaveTextContent(
             "Bu tarihte 11.09.2014 → 01.01.2018 aralığındaki metin geçerliydi.",
         );
         expect(screen.getAllByText(texts.queried)).toHaveLength(1);
@@ -67,7 +76,7 @@ describe("TimelineExplorer", () => {
     it("says there is no text for a date in a gap, marks the gap and shows no version text", () => {
         setup();
         ask("2010-01-01");
-        expect(screen.getByRole("status")).toHaveTextContent(
+        expect(answer()).toHaveTextContent(
             "Bu tarihte metin elde yok: 10.06.2003 → 11.09.2014 aralığı.",
         );
         expect(
@@ -84,10 +93,10 @@ describe("TimelineExplorer", () => {
     it("shows the confidence band of the version found, and warns on a low one", () => {
         setup();
         ask("2016-06-01");
-        expect(screen.getByRole("status")).toHaveTextContent("Güven: Orta");
+        expect(answer()).toHaveTextContent("Güven: Orta");
         expect(screen.queryByText(dateQuery.lowConfidence)).not.toBeInTheDocument();
         ask("2020-01-01");
-        expect(screen.getByRole("status")).toHaveTextContent("Güven: Yüksek");
+        expect(answer()).toHaveTextContent("Güven: Yüksek");
         expect(screen.queryByText(dateQuery.lowConfidence)).not.toBeInTheDocument();
     });
 
@@ -101,7 +110,7 @@ describe("TimelineExplorer", () => {
             />,
         );
         ask("2016-06-01");
-        expect(screen.getByRole("status")).toHaveTextContent("Güven: Düşük");
+        expect(answer()).toHaveTextContent("Güven: Düşük");
         expect(screen.getByText(dateQuery.lowConfidence)).toBeInTheDocument();
     });
 
@@ -114,15 +123,48 @@ describe("TimelineExplorer", () => {
     it("says the article was not in force before it existed, and warns about a date after the newest copy", () => {
         setup();
         ask("2001-01-01");
-        expect(screen.getByRole("status")).toHaveTextContent(dateQuery.notInForce);
+        expect(answer()).toHaveTextContent(dateQuery.notInForce);
         ask("2027-01-01");
-        expect(screen.getByRole("status")).toHaveTextContent(
-            "Tarih son kopyadan (22.04.2026) sonra",
-        );
+        expect(answer()).toHaveTextContent("Tarih son kopyadan (22.04.2026) sonra");
     });
 
     it("asks for a date first", () => {
         setup();
-        expect(screen.getByRole("status")).toHaveTextContent(dateQuery.hint);
+        expect(answer()).toHaveTextContent(dateQuery.hint);
+    });
+
+    it("explains the timeline, its change kinds, the gap and the date query in tips", async () => {
+        setup();
+        const { help } = messages.review.statutes;
+        const tips = [
+            [texts.title, help.timeline],
+            [texts.kindsTopic, help.timelineKinds],
+            [texts.gap, help.gap],
+            [dateQuery.title, help.dateQuery],
+        ] as const;
+        for (const [topic, text] of tips) {
+            await userEvent.click(infoTip(topic));
+            expect(openTipText()).toHaveTextContent(text);
+        }
+    });
+
+    it("explains the parts of the selected version, but not inside the version buttons", async () => {
+        setup();
+        fireEvent.click(screen.getAllByRole("button", { name: /11.09.2014/ })[0] as HTMLElement);
+        const { help } = messages.review.statutes;
+        const parts = [
+            [version.footnotes, help.versionFootnotes],
+            [version.evidence, help.versionEvidence],
+            [version.amendments, help.versionAmendments],
+            [version.copies, help.versionCopies],
+            [version.diff, help.diff],
+        ] as const;
+        for (const [topic, text] of parts) {
+            await userEvent.click(within(panel()).getByRole("button", { name: `Bilgi: ${topic}` }));
+            expect(openTipText()).toHaveTextContent(text);
+        }
+        for (const button of screen.getAllByRole("button", { name: /\d{2}\.\d{2}\.\d{4}/ })) {
+            expect(within(button).queryByRole("button")).toBeNull();
+        }
     });
 });

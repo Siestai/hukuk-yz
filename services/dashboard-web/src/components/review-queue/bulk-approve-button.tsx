@@ -55,7 +55,11 @@ export function BulkApproveButton({ params, total, sample, unavailable = false }
                         </span>
                     )}
                 </span>
-                <HelpTip name="bulk" topic={t("open")} />
+                <HelpTip
+                    name="bulk"
+                    scope={isStatuteState(params) ? "statutes" : "queue"}
+                    topic={t("open")}
+                />
             </div>
             {open ? (
                 <BulkApproveDialog

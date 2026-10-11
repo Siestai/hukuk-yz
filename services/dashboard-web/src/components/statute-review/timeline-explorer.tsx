@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { HelpTip } from "@/components/help-tip";
 import { statuteAsOf, type TimelineEntry } from "@/lib/statute-as-of";
 import { DateQuery } from "./date-query";
 import { TimelineList } from "./timeline-list";
@@ -66,9 +67,16 @@ export function TimelineExplorer({
             />
             <Card>
                 <CardHeader>
-                    <CardTitle>{t("title")}</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                        {t("title")}
+                        <HelpTip name="timeline" scope="statutes" topic={t("title")} />
+                    </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="grid gap-3">
+                    <p className="flex items-center gap-2 text-sm text-ink-2">
+                        {t("kindsTopic")}
+                        <HelpTip name="timelineKinds" scope="statutes" topic={t("kindsTopic")} />
+                    </p>
                     <TimelineList
                         timeline={timeline}
                         selected={selected}

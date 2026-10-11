@@ -2,6 +2,7 @@ import { Badge } from "@hukuk/ui";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
 import { stateHref } from "@/lib/queue-state";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import { useDates } from "@/lib/use-dates";
@@ -42,12 +43,15 @@ export function StatuteHeader({
             >
                 {t("back")}
             </Link>
-            <h1 className="font-serif text-xl wrap-anywhere text-ink md:text-2xl">
-                {t("heading", {
-                    statute: statuteNumber,
-                    article: article.title(articleNo, heading),
-                })}
-            </h1>
+            <div className="flex items-start gap-2">
+                <h1 className="font-serif text-xl wrap-anywhere text-ink md:text-2xl">
+                    {t("heading", {
+                        statute: statuteNumber,
+                        article: article.title(articleNo, heading),
+                    })}
+                </h1>
+                <HelpTip name="detailTitle" scope="statutes" topic={t("topic")} />
+            </div>
             <p className="text-sm wrap-anywhere text-ink-2">{statuteTitle}</p>
             <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={band === "high" || band === "medium" ? band : "low"}>

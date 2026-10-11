@@ -1,9 +1,10 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import { QueueTabs } from "@/components/review-queue/queue-tabs";
-import { renderWithIntl } from "@/test/intl";
+import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import { StatuteTabs } from "./statute-tabs";
 
@@ -23,10 +24,19 @@ describe("StatuteTabs", () => {
         expect(open).toHaveAttribute("aria-current", "page");
         expect(open).toHaveAttribute("href", "/mevzuat?kanun=5510&band=low");
     });
+
+    it("explains each statute in a tip beside its link, not inside it", async () => {
+        renderWithIntl(<StatuteTabs params={params} waiting={{ "4857": 40, "5510": 11 }} />);
+        const nav = within(screen.getByRole("navigation", { name: statuteTabs.label }));
+        expect(nav.getAllByRole("link")).toHaveLength(2);
+        await userEvent.click(infoTip(statuteTabs["4857"]));
+        expect(openTipText()).toHaveTextContent(messages.review.statutes.help.lawTab4857);
+        expect(infoTip(statuteTabs["5510"]).closest("a")).toBeNull();
+    });
 });
 
 describe("QueueTabs on the statute queue", () => {
-    it("links the status tabs to /mevzuat, keeps statute and filters, and has no decision tips", () => {
+    it("links the status tabs to /mevzuat, keeps statute and filters, and explains them with the statute texts", async () => {
         renderWithIntl(
             <QueueTabs
                 params={params}
@@ -44,6 +54,13 @@ describe("QueueTabs on the statute queue", () => {
             "aria-current",
             "page",
         );
-        expect(within(nav).queryByRole("button")).not.toBeInTheDocument();
+        const { pending, approved, rejected, all } = messages.review.queue.tabs;
+        for (const label of [pending, approved, rejected, all]) {
+            expect(
+                within(nav).getByRole("button", { name: `Bilgi: ${label}` }),
+            ).toBeInTheDocument();
+        }
+        await userEvent.click(infoTip("Onaylanan"));
+        expect(openTipText()).toHaveTextContent(messages.review.statutes.help.tabApproved);
     });
 });

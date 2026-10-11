@@ -73,3 +73,17 @@ describe("BandDistribution help", () => {
         expect(openTipText()).toHaveTextContent(messages.review.queue.help.band);
     });
 });
+
+describe("BandDistribution on the statute queue", () => {
+    it("explains the band with the statute text", async () => {
+        renderWithIntl(
+            <BandDistribution
+                counts={counts}
+                params={{ kind: "statute", statute: "4857", page: 1 }}
+            />,
+        );
+        await userEvent.click(infoTip(messages.review.queue.summary.bandTitle));
+        expect(openTipText()).toHaveTextContent(messages.review.statutes.help.band);
+        expect(openTipText()).not.toHaveTextContent(messages.review.queue.help.band);
+    });
+});

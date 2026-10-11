@@ -2,7 +2,9 @@ import { cn, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } fro
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import { HelpTip } from "@/components/help-tip";
 import { ReasonChips, stretchedLink } from "@/components/review-queue/queue-item-parts";
+import type { StatuteHelpName } from "@/lib/help-topics";
 import { PAGE_SIZE } from "@/lib/queue-params";
 import { statuteDetailHref, type StatuteQueueParams } from "@/lib/statute-queue-params";
 import { useStatuteItemFormat, type StatuteItem } from "./statute-item-format";
@@ -20,22 +22,27 @@ export function StatuteTable({
 }) {
     const t = useTranslations("review.statutes.table");
     const format = useStatuteItemFormat();
-    const columns = [
-        t("band"),
-        t("article"),
-        t("versions"),
-        t("snapshot"),
-        t("reasons"),
-        ...(params.status === undefined ? [] : [t("status")]),
+    const columns: { label: string; help: StatuteHelpName }[] = [
+        { label: t("band"), help: "colConfidence" },
+        { label: t("article"), help: "colArticle" },
+        { label: t("versions"), help: "colVersions" },
+        { label: t("snapshot"), help: "colSnapshot" },
+        { label: t("reasons"), help: "colReasons" },
+        ...(params.status === undefined
+            ? []
+            : [{ label: t("status"), help: "colStatus" as const }]),
     ];
 
     return (
         <Table aria-label={t("label")}>
             <TableHeader>
                 <TableRow className="hover:bg-surface-2">
-                    {columns.map((label) => (
-                        <TableHead key={label} className={cell}>
-                            {label}
+                    {columns.map(({ label, help }) => (
+                        <TableHead key={help} className={cell}>
+                            <span className="inline-flex items-center gap-1.5">
+                                {label}
+                                <HelpTip name={help} scope="statutes" topic={label} />
+                            </span>
                         </TableHead>
                     ))}
                 </TableRow>

@@ -81,4 +81,15 @@ describe("AppShell help", () => {
             "/mevzuat",
         );
     });
+
+    it("explains the statute review in a tip beside its link, not inside it", () => {
+        renderWithIntl(
+            <AppShell user={user} pending={3}>
+                <p>içerik</p>
+            </AppShell>,
+        );
+        const side = within(screen.getByRole("complementary"));
+        const tip = side.getByRole("button", { name: `Bilgi: ${messages.nav.statutes}` });
+        expect(tip.closest("a")).toBeNull();
+    });
 });
