@@ -68,7 +68,7 @@ export function ActionBar({
             aria-busy={busy || undefined}
             className="sticky bottom-0 z-10 -mx-4 -mb-4 flex max-h-56 flex-col gap-2 md:max-h-none border-t border-line bg-surface px-4 pt-3 pb-safe-3 md:-mx-6 md:-mb-6 md:px-6 lg:-mx-8 lg:-mb-8 lg:px-8"
         >
-            {session.failure ? (
+            {session.failure && session.failure.during !== "reopen" ? (
                 <div className="min-h-0 overflow-y-auto">
                     <ActionFailure failure={session.failure} />
                 </div>

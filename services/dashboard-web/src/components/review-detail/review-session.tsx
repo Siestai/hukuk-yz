@@ -18,6 +18,7 @@ import {
     locate,
     neighbour,
     nextAfter,
+    postReview,
     postReviewIn,
     type ReviewAction,
 } from "@/lib/api/review-client";
@@ -34,9 +35,10 @@ import {
 /** How long a screen change may take before the session gives up waiting for it. */
 export const NAVIGATION_TIMEOUT_MS = 10_000;
 
-export type Failure = { code?: string; params: Record<string, unknown> };
+/** `during` is the action that failed; the move to another screen has none. */
+export type Failure = { code?: string; params: Record<string, unknown>; during?: Pending };
 export type Mode = "view" | "edit";
-export type Pending = "approve" | "edit" | "reject" | "move";
+export type Pending = "approve" | "edit" | "reject" | "reopen" | "move";
 
 type Session = {
     /** Whether the record is in the queue: only then are there actions at all. */
@@ -59,6 +61,8 @@ type Session = {
     approve: () => Promise<boolean>;
     submitEdit: (edits: DecisionEdits, note: string) => Promise<boolean>;
     reject: (note: string) => Promise<boolean>;
+    /** Takes a reviewed record back to review (decisions only); the page is refreshed, not left. */
+    reopen: (note: string) => Promise<boolean>;
     move: (direction: "next" | "previous") => Promise<void>;
 };
 
@@ -106,7 +110,9 @@ export function ReviewProvider({ extractionId, queue, pos, canAct, children }: P
     /** One request at a time; a failure is kept for the screen, a lost session leaves it. */
     async function guarded(kind: Pending, work: () => Promise<void>): Promise<boolean> {
         // Moving through the list is open to a reviewed record too; the actions are not.
-        if (running.current || (!canAct && kind !== "move")) return false;
+        // A record that left the queue can only be reopened.
+        const allowed = canAct ? kind !== "reopen" : kind === "reopen" || kind === "move";
+        if (running.current || !allowed) return false;
         running.current = true;
         setPending(kind);
         setFailure(null);
@@ -120,7 +126,7 @@ export function ReviewProvider({ extractionId, queue, pos, canAct, children }: P
                 startTransition(() => router.push("/oturum-sonu"));
                 return false;
             }
-            release({ code: failed.code, params: failed.params });
+            release({ code: failed.code, params: failed.params, during: kind });
             return false;
         }
     }
@@ -182,6 +188,23 @@ export function ReviewProvider({ extractionId, queue, pos, canAct, children }: P
         submitEdit: (edits, note) =>
             act("edit", { action: "edit", edits, note: note.trim() || undefined }, "edited"),
         reject: (note) => act("reject", { action: "reject", note: note.trim() }, "rejected"),
+        reopen: (note) =>
+            guarded("reopen", async () => {
+                try {
+                    await postReview(api, extractionId, {
+                        action: "reopen",
+                        note: note.trim() || undefined,
+                    });
+                } catch (error) {
+                    // Someone else got there first: show what the record is now.
+                    if (error instanceof ApiFailure && error.code === "review_conflict") {
+                        router.refresh();
+                    }
+                    throw error;
+                }
+                router.refresh();
+                release();
+            }),
         move: async (direction) => {
             await guarded("move", async () => {
                 const found = await neighbour(

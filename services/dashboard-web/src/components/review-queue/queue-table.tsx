@@ -12,6 +12,7 @@ import {
     ReasonChips,
     StatusBadge,
     stretchedLink,
+    showsReopened,
 } from "./queue-item-parts";
 
 // Tighter cell padding than the default `px-3`: the table sits beside the side column from `xl`
@@ -74,6 +75,9 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
                                             .filter(Boolean)
                                             .join(format.separator)}
                                     </p>
+                                    {extras.length === 0 && showsReopened(item) ? (
+                                        <StatusBadge item={item} format={format} />
+                                    ) : null}
                                 </div>
                                 {item.duplicate_group ? (
                                     <DuplicateIcon label={format.duplicateLabel} />

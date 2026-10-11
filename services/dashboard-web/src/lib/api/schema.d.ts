@@ -542,7 +542,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "approve" | "edit" | "reject";
+            action: "approve" | "edit" | "reject" | "reopen";
             edits?: components["schemas"]["DecisionEdits"] | null;
             /** Note */
             note?: string | null;
@@ -617,8 +617,8 @@ export interface components {
         /**
          * ReviewListItem
          * @description A queue row. `source_status` is the status of the decision's source. The last-review
-         *     fields are None for a decision still waiting; `note` is the reason of a rejection and None
-         *     for any other review.
+         *     fields are None for a decision never reviewed (a reopened one carries its `reopen`); `note`
+         *     is the reason of a rejection and None for any other review.
          */
         ReviewListItem: {
             /**
@@ -652,7 +652,7 @@ export interface components {
             /** Reasons */
             reasons: string[];
             /** Review Decision */
-            review_decision?: ("approve" | "edit" | "reject") | null;
+            review_decision?: ("approve" | "edit" | "reject" | "reopen") | null;
             /** Reviewed At */
             reviewed_at?: string | null;
             /** Reviewer Name */
@@ -685,7 +685,7 @@ export interface components {
              * Decision
              * @enum {string}
              */
-            decision: "approve" | "edit" | "reject";
+            decision: "approve" | "edit" | "reject" | "reopen";
             /** Edits */
             edits: {
                 [key: string]: unknown;

@@ -81,6 +81,29 @@ def test_the_statute_evidence_migration_downgrades_to_0007(
     assert new <= _columns(database_url, "statute_article_version")
 
 
+def test_the_reopen_migration_downgrades_to_0008(alembic_config: Config, database_url: str) -> None:
+    def labels() -> set[str]:
+        async def run() -> set[str]:
+            engine = make_engine(database_url)
+            try:
+                async with engine.connect() as conn:
+                    rows = await conn.execute(
+                        text("SELECT unnest(enum_range(NULL::review_decision))::text")
+                    )
+                    return {row[0] for row in rows}
+            finally:
+                await engine.dispose()
+
+        return asyncio.run(run())
+
+    command.upgrade(alembic_config, "head")
+    assert "reopen" in labels()
+    command.downgrade(alembic_config, "0008")
+    assert labels() == {"approve", "edit", "reject"}
+    command.upgrade(alembic_config, "head")
+    assert "reopen" in labels()
+
+
 def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) -> None:
     expected = set(Base.metadata.tables)
 

@@ -2,7 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { expectTableFits, openQueue, openRecord, waitForShortcuts } from "./helpers";
 
-// CONSUMES demo records: Demo 11 (rejected) and Demo 06 (approved). It runs after actions.spec
+// CONSUMES demo records: Demo 11 (rejected) and Demo 06 (approved); the reopen tests at the end
+// take Demo 07 (approved, reopened, rejected) and Demo 08 (rejected, reopened, approved). It runs after actions.spec
 // and bulk.spec (file order), and also relies on them for the "edited" record (Demo 05) and the
 // earlier rejection (Demo 12). Run `make e2e-reset` before running the suite again. The reviewer
 // is the user of E2E_EMAIL; its display name is E2E_NAME (default "E2E", as in e2e/README.md).
@@ -140,4 +141,85 @@ test("every tab's table fits its container at 1280 and 1440 px, with the review 
             await expect(table.getByRole("columnheader", { name: /^Ret notu/ })).toHaveCount(0);
         }
     }
+});
+
+const strip = (page: Page) => page.getByRole("region", { name: "İnceleme sonucu" });
+const actionBar = (page: Page) => page.getByRole("region", { name: "İnceleme işlemleri" });
+
+/** Opens the detail of the record from the row it has in the list of a tab. */
+async function openFromTab(page: Page, slug: string, name: string, record: string) {
+    await openQueue(page, `durum=${slug}`);
+    await rows(page, name).filter({ hasText: record }).getByRole("link").click();
+    await page.waitForURL(/\/kararlar\/[0-9a-f-]{36}/);
+    await waitForShortcuts(page);
+}
+
+async function reopen(page: Page, button: string, note: string) {
+    await strip(page).getByRole("button", { name: button }).click();
+    const dialog = page.getByRole("dialog", { name: "Yeniden incelemeye al" });
+    await expect(dialog).toContainText("Karar bekleyen duruma döner");
+    await dialog.getByLabel("Not (isteğe bağlı)").fill(note);
+    await dialog.getByRole("button", { name: "Yeniden incelemeye al" }).click();
+    await expect(strip(page)).toHaveCount(0);
+    await expect(actionBar(page)).toBeVisible();
+}
+
+test("an approved record is taken back with 'Onaydan çıkar' and can then be rejected", async ({
+    page,
+}) => {
+    await openRecord(page, "Demo 07");
+    await page.keyboard.press("a");
+    await expect(page).toHaveURL((url) => url.pathname === "/");
+
+    await openFromTab(page, "onaylanan", "Onaylanan kararlar", "Demo 07");
+    await expect(strip(page)).toContainText("Onaylandı");
+    await reopen(page, "Onaydan çıkar", "e2e: yanlış onay");
+    // the history card's title is not a heading element; its entries are the list items
+    const entry = page.getByRole("listitem").filter({ hasText: "Yeniden incelemeye aldı" });
+    await expect(entry).toHaveCount(1);
+    await expect(entry).toContainText("E2E Test");
+    await expect(entry).toContainText("e2e: yanlış onay");
+
+    await actionBar(page)
+        .getByRole("button", { name: /^Reddet/ })
+        .click();
+    const dialog = page.getByRole("dialog", { name: "Kararı reddet" });
+    await dialog.getByLabel("Ret notu").fill("e2e: kopya");
+    await dialog.getByRole("button", { name: "Reddet" }).click();
+
+    await openQueue(page, "durum=reddedilen");
+    await expect(rows(page, "Reddedilen kararlar").filter({ hasText: "Demo 07" })).toHaveCount(1);
+    await openQueue(page, "durum=onaylanan");
+    await expect(rows(page, "Onaylanan kararlar").filter({ hasText: "Demo 07" })).toHaveCount(0);
+});
+
+test("a rejection is taken back with 'Reddi geri al', waits marked, and can then be approved", async ({
+    page,
+}) => {
+    await openRecord(page, "Demo 08");
+    await page.keyboard.press("r");
+    const dialog = page.getByRole("dialog", { name: "Kararı reddet" });
+    await dialog.getByLabel("Ret notu").fill("e2e: yanlış ret");
+    await dialog.getByRole("button", { name: "Reddet" }).click();
+    await expect(page).toHaveURL((url) => url.pathname === "/");
+
+    await openFromTab(page, "reddedilen", "Reddedilen kararlar", "Demo 08");
+    await expect(strip(page)).toContainText("Reddedildi");
+    await reopen(page, "Reddi geri al", "e2e: yeniden bakılacak");
+
+    // back in the queue it carries the mark; in "Tümü" it does too
+    await openQueue(page, "q=Demo 08");
+    await expect(rows(page, "Onay bekleyen kararlar")).toContainText("Yeniden incelemede");
+    await openQueue(page, "durum=tumu");
+    await expect(rows(page, "Tüm kararlar").filter({ hasText: "Demo 08" })).toContainText(
+        "Yeniden incelemede",
+    );
+
+    await openRecord(page, "Demo 08");
+    await page.keyboard.press("a");
+    await expect(page).toHaveURL((url) => url.pathname === "/");
+    await openQueue(page, "durum=onaylanan");
+    await expect(rows(page, "Onaylanan kararlar").filter({ hasText: "Demo 08" })).toHaveCount(1);
+    await openQueue(page, "durum=reddedilen");
+    await expect(rows(page, "Reddedilen kararlar").filter({ hasText: "Demo 08" })).toHaveCount(0);
 });

@@ -8,11 +8,16 @@ import { useEnumLabels } from "@/lib/use-enum-labels";
 
 export type QueueItem = components["schemas"]["ReviewListItem"];
 
-/** What a record's badge says: waiting, approved, approved after the reviewer's corrections, or rejected. */
-export type ItemStatus = "pending" | "approved" | "edited" | "rejected";
+/**
+ * What a record's badge says: waiting, waiting again after a reviewer took it back, approved,
+ * approved after the reviewer's corrections, or rejected.
+ */
+export type ItemStatus = "pending" | "reopened" | "approved" | "edited" | "rejected";
 
 export function itemStatus(item: QueueItem): ItemStatus {
-    if (item.source_status === "analyzed") return "pending";
+    if (item.source_status === "analyzed") {
+        return item.review_decision === "reopen" ? "reopened" : "pending";
+    }
     if (item.source_status === "rejected") return "rejected";
     return item.review_decision === "edit" ? "edited" : "approved";
 }

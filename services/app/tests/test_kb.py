@@ -24,6 +24,7 @@ from app.kb import (
     queue,
     reject_extraction,
     reject_statute_article,
+    reopen_extraction,
     statute_article_status,
     statute_is_published,
     statute_queue,
@@ -781,3 +782,95 @@ async def test_the_statute_article_status_names_every_state(
         await session.commit()
     assert await status(statutes_published["18"]) == "superseded"
     assert await status(newer) == "approved"
+
+
+async def _source_status(session: AsyncSession, extraction_id: uuid.UUID) -> RecordStatus:
+    return (
+        await session.execute(
+            select(Source.status)
+            .join(Extraction, Extraction.source_id == Source.id)
+            .where(Extraction.id == extraction_id)
+        )
+    ).scalar_one()
+
+
+async def test_reopening_an_approved_decision_retires_it_and_it_can_be_rejected(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction_id = await _first_high(session)
+        _, decision_id = await approve_extraction(session, extraction_id, reviewer.id)
+        review_id = await reopen_extraction(session, extraction_id, reviewer.id, "yanlış onay")
+        review = await session.get(Review, review_id)
+        assert review is not None
+        assert (review.decision, review.note) == (ReviewDecision.reopen, "yanlış onay")
+        decision = await session.get(Decision, decision_id)
+        assert decision is not None
+        assert decision.superseded_at is not None
+        assert await _source_status(session, extraction_id) is RecordStatus.analyzed
+        await reject_extraction(session, extraction_id, reviewer.id, "kopya")
+        assert await _source_status(session, extraction_id) is RecordStatus.rejected
+        assert await _count(session, Decision) == 1
+        assert await _count(session, Review) == 3
+
+
+async def test_a_reopened_rejection_can_be_approved_and_old_rows_stay(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction_id = await _first_high(session)
+        await reject_extraction(session, extraction_id, reviewer.id, "yanlış")
+        await reopen_extraction(session, extraction_id, reviewer.id, None)
+        assert await _count(session, Decision) == 0
+        await approve_extraction(session, extraction_id, reviewer.id)
+        assert await _source_status(session, extraction_id) is RecordStatus.approved
+        # approve, reopen and approve again: a new live row beside the retired one
+        await reopen_extraction(session, extraction_id, reviewer.id, None)
+        await approve_extraction(session, extraction_id, reviewer.id)
+        live = (
+            await session.execute(select(Decision).where(Decision.superseded_at.is_(None)))
+        ).scalars()
+        assert len(list(live)) == 1
+        assert await _count(session, Decision) == 2
+
+
+async def test_reopening_a_waiting_decision_or_an_older_extraction_is_stale(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction_id = await _first_high(session)
+        with pytest.raises(StaleExtraction, match="no longer in review"):
+            await reopen_extraction(session, extraction_id, reviewer.id, None)
+        await reject_extraction(session, extraction_id, reviewer.id, "n")
+        await session.execute(
+            text(
+                "INSERT INTO extraction (file_id, source_id, parser_name, parser_version, fields, "
+                "confidence, warnings) SELECT file_id, source_id, parser_name, 'next', fields, "
+                "confidence, warnings FROM extraction WHERE id = :id"
+            ),
+            {"id": extraction_id},
+        )
+        with pytest.raises(StaleExtraction, match="newer extraction"):
+            await reopen_extraction(session, extraction_id, reviewer.id, None)
+        assert await _count(session, Review) == 1
+
+
+async def test_a_reopened_decision_is_pending_but_not_in_the_bulk_queue(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction_id = await _first_high(session)
+        # Separate transactions, as through the API: `reviewed_at` is the transaction's now(), so
+        # two reviews in one transaction would tie and the last review would be arbitrary.
+        await reject_extraction(session, extraction_id, reviewer.id, "n")
+        await session.commit()
+        await reopen_extraction(session, extraction_id, reviewer.id, None)
+        await session.commit()
+        pending = (await session.execute(queue("high", ReviewFilters(), "sha256"))).all()
+        bulk = (
+            await session.execute(queue("high", ReviewFilters(), "sha256", exclude_reopened=True))
+        ).all()
+        reopened = next(r for r in pending if r.id == extraction_id)
+        assert reopened.review_decision is ReviewDecision.reopen
+        assert extraction_id not in [r.id for r in bulk]
+        assert len(bulk) == len(pending) - 1

@@ -58,10 +58,16 @@ export function DuplicateIcon({ label }: { label: string }) {
 
 const STATUS_VARIANT = {
     pending: "outline",
+    reopened: "outline",
     approved: "high",
     edited: "medium",
     rejected: "low",
 } as const satisfies Record<ItemStatus, "outline" | "high" | "medium" | "low">;
+
+/** Whether the status badge shows on a record of the queue tab, which has no status column. */
+export function showsReopened(item: QueueItem): boolean {
+    return itemStatus(item) === "reopened";
+}
 
 /** The status of a record as a badge; the "Durum" column tip (or the cards tip) explains them. */
 export function StatusBadge({ item, format }: { item: QueueItem; format: QueueItemFormat }) {
