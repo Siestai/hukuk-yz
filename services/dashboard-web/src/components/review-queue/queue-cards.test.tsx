@@ -45,6 +45,16 @@ describe("QueueCards", () => {
         ).toBeInTheDocument();
     });
 
+    it("marks a waiting record that a reviewer took back, on the pending tab too", () => {
+        const plain = renderCard();
+        expect(within(plain).queryByText(messages.review.queue.table.statuses.reopened)).toBeNull();
+        document.body.innerHTML = "";
+        const reopened = renderCard({ review_decision: "reopen" });
+        expect(
+            within(reopened).getByText(messages.review.queue.table.statuses.reopened),
+        ).toBeInTheDocument();
+    });
+
     it("is one list named like the table, with one link per card", () => {
         renderWithIntl(
             <QueueCards

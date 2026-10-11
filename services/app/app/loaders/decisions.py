@@ -352,13 +352,16 @@ async def approve_band(
     factory: async_sessionmaker[AsyncSession], band: Band, reviewer_id: uuid.UUID
 ) -> ApproveResult:
     """Approve and publish (app.kb) the newest decision extraction of every source that is
-    still `analyzed`, for the records of a band. A live-key collision is listed in `conflicts`
-    (sha256 prefix); any other record `publish_decision` refuses is listed in `publish_failed`
-    (sha256 prefix, reason). Each record has its own savepoint, so neither stops the run.
+    still `analyzed` and was not reopened by a reviewer, for the records of a band. A live-key
+    collision is listed in `conflicts` (sha256 prefix); any other record `publish_decision`
+    refuses is listed in `publish_failed` (sha256 prefix, reason). Each record has its own
+    savepoint, so neither stops the run.
     Development and tests only: bulk approval belongs to the review screen."""
     result = ApproveResult()
     async with factory() as session:
-        queue_rows = (await session.execute(queue(band, ReviewFilters(), "sha256"))).all()
+        queue_rows = (
+            await session.execute(queue(band, ReviewFilters(), "sha256", exclude_reopened=True))
+        ).all()
         sha = {row.id: row.sha256[:12] for row in queue_rows}
         ids = list(sha)
         for start in range(0, len(ids), BATCH):

@@ -9,6 +9,7 @@ import {
     ReasonChips,
     StatusBadge,
     stretchedLink,
+    showsReopened,
 } from "./queue-item-parts";
 
 /** The queue below `lg`: the table's records as cards, one link each, fed by the same formatting. */
@@ -31,7 +32,7 @@ export function QueueCards({ items, params }: { items: QueueItem[]; params: Queu
                     <div className="flex items-center justify-between gap-2">
                         <ConfidenceChip item={item} format={format} />
                         <div className="flex items-center gap-2">
-                            {extras.includes("status") ? (
+                            {extras.includes("status") || showsReopened(item) ? (
                                 <StatusBadge item={item} format={format} />
                             ) : null}
                             {item.duplicate_group ? (

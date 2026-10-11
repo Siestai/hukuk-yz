@@ -184,12 +184,15 @@ def queue(
     sort: Sort = "score_asc",
     after: str | None = None,
     status: ListStatus = "pending",
+    exclude_reopened: bool = False,
 ) -> Select[Any]:
     """The review queue: newest extraction of every decision source in `status` (`pending` =
     `analyzed`; the other tabs come with their last review), filtered and ordered (most
     suspicious first by default, ties by sha256; `reviewed_desc` the newest review first,
     never-reviewed last; `sha256` is the stable order of bulk runs, of which `after` is the
-    cursor: only records with a greater sha256)."""
+    cursor: only records with a greater sha256). A pending record also comes with its last review,
+    which is a `reopen` when a reviewer took it back; `exclude_reopened` leaves those out (bulk
+    approval: a human undid it on purpose, so it is looked at one by one)."""
     newest = newest_extractions()
     score = newest.c.confidence["score"].as_integer()
     conditions: list[ColumnElement[bool]] = [newest.c.status.in_(STATUS_GROUPS[status])]
@@ -216,24 +219,22 @@ def queue(
         newest.c.confidence["band"].as_string().label("band"),
         score.label("score"),
     ]
-    source: Any = newest
-    reviewed = None
-    if status != "pending":
-        reviewed = last_reviews()
-        source = newest.outerjoin(reviewed, reviewed.c.source_id == newest.c.source_id)
-        columns += [
-            reviewed.c.reviewed_at,
-            reviewed.c.reviewer_name,
-            reviewed.c.review_decision,
-            reviewed.c.note,
-        ]
+    reviewed = last_reviews()
+    source: Any = newest.outerjoin(reviewed, reviewed.c.source_id == newest.c.source_id)
+    columns += [
+        reviewed.c.reviewed_at,
+        reviewed.c.reviewer_name,
+        reviewed.c.review_decision,
+        reviewed.c.note,
+    ]
+    if exclude_reopened:
+        conditions.append(reviewed.c.review_decision.is_distinct_from(ReviewDecision.reopen))
     order = {
         "score_asc": (score.asc(), newest.c.sha256),
         "score_desc": (score.desc(), newest.c.sha256),
         "sha256": (newest.c.sha256,),
     }
-    if reviewed is not None:
-        order["reviewed_desc"] = (nulls_last(reviewed.c.reviewed_at.desc()), newest.c.sha256)
+    order["reviewed_desc"] = (nulls_last(reviewed.c.reviewed_at.desc()), newest.c.sha256)
     return select(*columns).select_from(source).where(*conditions).order_by(*order[sort])
 
 
@@ -243,12 +244,15 @@ class StaleExtraction(ValueError):
 
 
 async def lock_pending(
-    session: AsyncSession, extraction_id: uuid.UUID, band: Band | None = None
+    session: AsyncSession,
+    extraction_id: uuid.UUID,
+    band: Band | None = None,
+    statuses: tuple[RecordStatus, ...] = STATUS_GROUPS["pending"],
 ) -> Source:
     """Lock the source of the extraction (the row lock `publish_decision` takes) and check under
-    it that the source is still `analyzed`, that the extraction is still the newest of its
-    source and, if `band` is given, still in that band. Raises StaleExtraction otherwise; the
-    lock lasts to the end of the transaction."""
+    it that the source is still in `statuses` (`analyzed`), that the extraction is still the
+    newest of its source and, if `band` is given, still in that band. Raises StaleExtraction
+    otherwise; the lock lasts to the end of the transaction."""
     source_id = (
         await session.execute(select(Extraction.source_id).where(Extraction.id == extraction_id))
     ).scalar_one_or_none()
@@ -262,7 +266,7 @@ async def lock_pending(
             .execution_options(populate_existing=True)
         )
     ).scalar_one()
-    if source.status is not RecordStatus.analyzed:
+    if source.status not in statuses:
         raise StaleExtraction("source is no longer in review")
     newest = newest_extractions(source_id)
     row = (
@@ -290,6 +294,7 @@ async def _reviewed(
     edits: dict[str, Any] | None,
     note: str | None,
     band: Band | None,
+    statuses: tuple[RecordStatus, ...] = STATUS_GROUPS["pending"],
 ) -> AsyncIterator[tuple[Source, Review]]:
     """The one path of every review: in a savepoint, lock and check the extraction
     (`lock_pending`) and write the `review` row; the body does the rest. An IntegrityError other
@@ -297,7 +302,7 @@ async def _reviewed(
     stays an IntegrityError. On any error the savepoint is rolled back and nothing is left."""
     try:
         async with session.begin_nested():
-            source = await lock_pending(session, extraction_id, band)
+            source = await lock_pending(session, extraction_id, band, statuses)
             review = Review(
                 extraction_id=extraction_id,
                 reviewer_id=reviewer_id,
@@ -343,6 +348,27 @@ async def reject_extraction(
         session, extraction_id, reviewer_id, ReviewDecision.reject, None, note, None
     ) as (source, review):
         source.status = RecordStatus.rejected
+    return review.id
+
+
+async def reopen_extraction(
+    session: AsyncSession, extraction_id: uuid.UUID, reviewer_id: uuid.UUID, note: str | None
+) -> uuid.UUID:
+    """Take an approved, published or rejected decision back to review; returns the review id.
+    Writes a `review` row (reopen), retires the live `decision` of an approved source with
+    `superseded_at` (nothing is deleted; a new approval writes a new row) and moves the source
+    back to `analyzed`. Raises like `approve_extraction` (StaleExtraction when the source is
+    waiting already or the extraction is not its newest); the caller commits."""
+    reviewed = STATUS_GROUPS["approved"] + STATUS_GROUPS["rejected"]
+    async with _reviewed(
+        session, extraction_id, reviewer_id, ReviewDecision.reopen, None, note, None, reviewed
+    ) as (source, review):
+        await session.execute(
+            update(Decision)
+            .where(Decision.source_id == source.id, Decision.superseded_at.is_(None))
+            .values(superseded_at=func.now())
+        )
+        source.status = RecordStatus.analyzed
     return review.id
 
 

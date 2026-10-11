@@ -15,6 +15,7 @@ USERS_MIGRATION = VERSIONS / "0005_users_and_sessions.py"
 REVIEW_FK_MIGRATION = VERSIONS / "0006_review_reviewer_fk.py"
 LOGIN_ATTEMPT_MIGRATION = VERSIONS / "0007_login_attempt.py"
 EVIDENCE_MIGRATION = VERSIONS / "0008_statute_version_evidence.py"
+REOPEN_MIGRATION = VERSIONS / "0009_review_decision_reopen.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
 # 0007: login_attempt).
 LATER_TABLES = {"decision_verification", "app_user", "user_session", "login_attempt"}
@@ -31,7 +32,13 @@ def _load_migration(path: Path = MIGRATION) -> ModuleType:
 def test_enum_labels_match_migration() -> None:
     migration = _load_migration()
     orm = {name: tuple(m.value for m in cls) for name, cls in ENUM_TYPES.items()}
-    assert orm == migration.ENUMS
+    # 0009 added the label 'reopen' to review_decision.
+    expected = {
+        **migration.ENUMS,
+        "review_decision": (*migration.ENUMS["review_decision"], "reopen"),
+    }
+    assert orm == expected
+    assert _load_migration(REOPEN_MIGRATION).OLD_LABELS == migration.ENUMS["review_decision"]
 
 
 def test_user_role_labels_match_migration() -> None:
