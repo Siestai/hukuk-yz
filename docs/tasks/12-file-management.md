@@ -1,6 +1,6 @@
 # Görev 12: dosyalar app'te yönetilir (yükleme, saklama, tarama)
 
-Durum: taslak (Orhan, 2026-10-11: "bütün dosyalar da app üzerinden yönetilsin. Yeni dosyalar da oraya eklensin ve app ten taransın"; saklama: "şimdilik sunucu sonra ayrı bucket alacaz"). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: 12a uygulandı, PR Orhan'ın onayında (2026-10-11); 12b ve 12c bekliyor. Taslak (Orhan, 2026-10-11: "bütün dosyalar da app üzerinden yönetilsin. Yeni dosyalar da oraya eklensin ve app ten taransın"; saklama: "şimdilik sunucu sonra ayrı bucket alacaz"). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/data-model.md` §3 (`ingest_job`, `ingest_file`, `extraction`), `services/app/app/models/common.py` (`IngestJob`, `IngestFile`, `IngestKind.upload`), `services/app/app/worker.py` (şimdilik yalnız heartbeat), `services/app/app/review.py` (PDF uç noktası, `ARCHIVE_ROOT`), `packages/ingest` (`detect`, `extract`, `ocr`, `legacy_doc`; Görev 03 ve 07), `infra/compose/docker-compose.yml`, `docs/deploy.md`, `docs/tasks/08-auth.md` (roller).
 Skill'ler: `db-migration`, `frontend-ui` (bağlayıcı), `task-pr-hygiene`.
 

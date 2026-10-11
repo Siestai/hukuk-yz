@@ -16,6 +16,7 @@ REVIEW_FK_MIGRATION = VERSIONS / "0006_review_reviewer_fk.py"
 LOGIN_ATTEMPT_MIGRATION = VERSIONS / "0007_login_attempt.py"
 EVIDENCE_MIGRATION = VERSIONS / "0008_statute_version_evidence.py"
 REOPEN_MIGRATION = VERSIONS / "0009_review_decision_reopen.py"
+FILE_STORE_MIGRATION = VERSIONS / "0010_ingest_file_store.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
 # 0007: login_attempt).
 LATER_TABLES = {"decision_verification", "app_user", "user_session", "login_attempt"}
@@ -32,10 +33,11 @@ def _load_migration(path: Path = MIGRATION) -> ModuleType:
 def test_enum_labels_match_migration() -> None:
     migration = _load_migration()
     orm = {name: tuple(m.value for m in cls) for name, cls in ENUM_TYPES.items()}
-    # 0009 added the label 'reopen' to review_decision.
+    # 0009 added the label 'reopen' to review_decision; 0010 created document_type and scan_status.
     expected = {
         **migration.ENUMS,
         "review_decision": (*migration.ENUMS["review_decision"], "reopen"),
+        **_load_migration(FILE_STORE_MIGRATION).ENUMS,
     }
     assert orm == expected
     assert _load_migration(REOPEN_MIGRATION).OLD_LABELS == migration.ENUMS["review_decision"]
@@ -164,3 +166,38 @@ def test_statute_version_evidence_columns_are_in_orm_and_migration() -> None:
     for name in ("evidence", "warnings", "footnotes"):
         assert not table.columns[name].nullable, name
     assert table.columns["confidence"].nullable
+
+
+def test_ingest_file_store_columns_and_indexes_are_in_orm_and_migration() -> None:
+    migration = _load_migration(FILE_STORE_MIGRATION)
+    source = FILE_STORE_MIGRATION.read_text()
+    table = Base.metadata.tables["ingest_file"]
+    new = {
+        "storage_key",
+        "original_name",
+        "doc_type",
+        "doc_date",
+        "official_ref",
+        "origin_url",
+        "note",
+        "uploaded_by",
+        "uploaded_at",
+        "supersedes_id",
+        "scan_status",
+        "scan_result",
+        "archived_at",
+    }
+    assert new <= {c.name for c in table.columns}
+    assert all(f'"{name}"' in source for name in new)
+    assert (migration.TABLE, migration.down_revision) == ("ingest_file", "0009")
+    indexes = {i.name for i in table.indexes}
+    for name in (
+        "uq_ingest_file_sha256_stored",
+        "uq_ingest_file_supersedes_id",
+        "ix_ingest_file_scan_pending",
+    ):
+        assert name in indexes
+        assert f'"{name}"' in source
+    # Old rows count as scanned; the ORM and the migration agree on it.
+    assert str(table.columns["scan_status"].server_default.arg) == "'done'"  # type: ignore[union-attr]
+    assert not table.columns["scan_status"].nullable
