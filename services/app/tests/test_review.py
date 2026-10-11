@@ -1312,6 +1312,48 @@ async def test_a_stored_pdf_missing_from_the_store_is_404_and_not_available(
     assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
 
 
+async def test_a_missing_stored_pdf_is_not_taken_from_the_archive_root_in_the_transition(
+    client: httpx.AsyncClient,
+    me: Login,
+    archive: Archive,
+    stored: LocalFileStore,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (blob,) = (tmp_path / "filestore" / "sha256").rglob("*/*/*")
+    blob.unlink()
+    monkeypatch.setattr(
+        "app.review.get_settings",
+        lambda: Settings(
+            database_url="unused", archive_root=archive.root, file_store_root=tmp_path / "filestore"
+        ),
+    )
+    detail = await client.get(f"{BASE}/{archive.extraction_id}", headers=me.headers)
+    assert detail.json()["pdf"] == "missing"
+    response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+
+
+async def test_a_decision_row_without_a_storage_key_reads_the_blob_of_its_sha256(
+    client: httpx.AsyncClient,
+    me: Login,
+    archive: Archive,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The second row of the same content (a reprint) gets no `storage_key`, but the store is
+    addressed by content, so its PDF opens with `ARCHIVE_ROOT` unset."""
+    LocalFileStore(tmp_path / "filestore").put(io.BytesIO(PDF_BYTES))
+    monkeypatch.setattr(
+        "app.review.get_settings",
+        lambda: Settings(database_url="unused", file_store_root=tmp_path / "filestore"),
+    )
+    detail = await client.get(f"{BASE}/{archive.extraction_id}", headers=me.headers)
+    assert detail.json()["pdf"] == "available"
+    response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.content) == (200, PDF_BYTES)
+
+
 async def test_a_decision_without_a_storage_key_still_comes_from_the_archive_root(
     client: httpx.AsyncClient,
     me: Login,

@@ -1,19 +1,24 @@
 """The archive import (task 12c). The database tests are skipped when DATABASE_URL is unset."""
 
+import asyncio
 import io
 import json
 import shutil
 import unicodedata
+import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app import settings, worker
-from app.files.import_dir import Report, doc_type_of, fold, import_dir, main, stem_key
+from app.files import import_dir as import_dir_module
+from app.files.import_dir import Report, _link, doc_type_of, fold, import_dir, main, stem_key
 from app.files.store import LocalFileStore, StoredFile
 from app.loaders.decisions import load, prepare, read_files, read_rows
 from app.loaders.report import LoadCounts
@@ -290,6 +295,61 @@ async def test_an_eskiler_file_with_the_content_of_the_current_one_is_listed(
     assert len(report.unmatched_eskiler) == 1
 
 
+async def test_an_eskiler_file_with_the_content_of_another_current_file_is_listed(
+    kb_factory: Factory, store: LocalFileStore, tmp_path: Path
+) -> None:
+    tree = tmp_path / "tree"
+    write(tree, "Genelge/A.pdf", b"text of a")
+    write(tree, "Genelge/B.pdf", b"text of b")
+    write(tree, "Genelge/Eskiler/A.pdf", b"text of b")  # B's content under A's name
+    report = await import_dir(tree, kb_factory, store)
+    assert (report.linked, report.unmatched_eskiler) == (
+        0,
+        [{"path": "Genelge/Eskiler/A.pdf", "reason": "same content as a current file"}],
+    )
+    assert set((await chain(kb_factory)).values()) == {None}
+
+
+async def test_a_link_that_would_make_a_cycle_is_listed(
+    kb_factory: Factory, store: LocalFileStore, tmp_path: Path
+) -> None:
+    tree = tmp_path / "tree"
+    write(tree, "Genelge/G.pdf", b"current")
+    write(tree, "Genelge/Eskiler/G.pdf", b"old")
+    await import_dir(tree, kb_factory, store)
+    stored = await rows(kb_factory)
+    new, old = stored["Genelge/G.pdf"], stored["Genelge/Eskiler/G.pdf"]
+    async with kb_factory() as db:
+        assert await _link(db, old.id, new.id) == "would make a cycle"
+
+
+async def test_a_failing_link_is_an_error_and_the_run_goes_on_and_writes_its_stats(
+    kb_factory: Factory,
+    store: LocalFileStore,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tree = tmp_path / "tree"
+    write(tree, "Genelge/G.pdf", b"current g")
+    write(tree, "Genelge/Eskiler/G.pdf", b"old g")
+    write(tree, "Kanunlar/K.pdf", b"current k")
+    write(tree, "Kanunlar/Eskiler/K.pdf", b"old k")
+    real = import_dir_module._link
+
+    async def flaky(db: AsyncSession, new_id: uuid.UUID, old_id: uuid.UUID) -> str | None:
+        if (await db.get(IngestFile, old_id)).path.startswith("Genelge"):  # type: ignore[union-attr]
+            raise IntegrityError("update", {}, Exception("unique"))
+        return await real(db, new_id, old_id)
+
+    monkeypatch.setattr(import_dir_module, "_link", flaky)
+    report = await import_dir(tree, kb_factory, store)
+    assert (report.added, report.linked) == (4, 1)
+    assert [e["path"] for e in report.errors] == ["Genelge/Eskiler/G.pdf"]
+    async with kb_factory() as db:
+        (job,) = (await db.execute(select(IngestJob))).scalars().all()
+    assert job.stats and job.stats["linked"] == 1 and len(job.stats["errors"]) == 1
+
+
 # --- scan queue and worker ---
 
 
@@ -312,6 +372,25 @@ async def test_only_new_files_are_queued_and_the_scan_keeps_the_import_path(
     scanned = (await rows(kb_factory))["Mevzuat/Genelge/G.pdf"]
     assert scanned.scan_status is ScanStatus.done
     assert scanned.scan_result and scanned.scan_result["import_path"] == "Mevzuat/Genelge/G.pdf"
+
+
+async def test_requeue_stuck_keeps_the_import_path(
+    kb_factory: Factory, store: LocalFileStore, tmp_path: Path, make_pdf: Callable[..., bytes]
+) -> None:
+    tree = tmp_path / "tree"
+    write(tree, "Mevzuat/Genelge/G.pdf", make_pdf())
+    await import_dir(tree, kb_factory, store)
+    old = (datetime.now(UTC) - worker.STUCK_AFTER - timedelta(minutes=1)).isoformat()
+    for attempts, expected in ((1, ScanStatus.queued), (worker.MAX_ATTEMPTS, ScanStatus.failed)):
+        async with kb_factory() as db:
+            file = (await db.execute(select(IngestFile))).scalar_one()
+            file.scan_status = ScanStatus.running
+            file.scan_result = {**(file.scan_result or {}), "started_at": old, "attempts": attempts}
+            await db.commit()
+        assert await worker.requeue_stuck(kb_factory) == 1
+        handled = (await rows(kb_factory))["Mevzuat/Genelge/G.pdf"]
+        assert handled.scan_status is expected
+        assert (handled.scan_result or {})["import_path"] == "Mevzuat/Genelge/G.pdf"
 
 
 # --- the command line ---
@@ -342,8 +421,6 @@ async def test_the_command_prints_and_writes_the_report(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    import asyncio
-
     tree = tmp_path / "tree"
     write(tree, "a.txt", b"a")
     write(tree, "Kanunlar/Eskiler/old.txt", b"old")

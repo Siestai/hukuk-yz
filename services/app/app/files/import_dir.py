@@ -199,6 +199,7 @@ async def _link_eskiler(
     for entry in entries:
         if not entry.eskiler:
             current.setdefault((entry.folder, stem_key(entry.parts[-1])), []).append(entry)
+    current_ids = {e.file_id for e in entries if not e.eskiler}
     for old in (e for e in entries if e.eskiler):
         rel = "/".join(old.parts)
         candidates = current.get((old.folder, stem_key(old.parts[-1])), [])
@@ -207,9 +208,18 @@ async def _link_eskiler(
             report.unmatched_eskiler.append({"path": rel, "reason": reason})
             continue
         new = candidates[0]
-        async with factory() as db:
-            outcome = await _link(db, new.file_id, old.file_id)
-            await db.commit()
+        if old.file_id in current_ids:  # its content is that of a current file, maybe of another
+            report.unmatched_eskiler.append(
+                {"path": rel, "reason": "same content as a current file"}
+            )
+            continue
+        try:
+            async with factory() as db:
+                outcome = await _link(db, new.file_id, old.file_id)
+                await db.commit()
+        except SQLAlchemyError as exc:
+            report.errors.append({"path": rel, "reason": f"{type(exc).__name__}: {exc}"})
+            continue
         if outcome == "linked":
             report.linked += 1
         elif outcome:
@@ -218,9 +228,16 @@ async def _link_eskiler(
 
 async def _link(db: AsyncSession, new_id: uuid.UUID, old_id: uuid.UUID) -> str | None:
     """Make `old_id` the previous version of `new_id`. Returns `linked`, None when that was
-    already so, else why it cannot be done (the chain never branches)."""
+    already so, else why it cannot be done (the chain never branches and has no cycle)."""
     if new_id == old_id:
         return "same content as the current file"
+    ahead: uuid.UUID | None = old_id
+    while ahead is not None:  # `old` must not lead back to `new`
+        if ahead == new_id:
+            return "would make a cycle"
+        ahead = (
+            await db.execute(select(IngestFile.supersedes_id).where(IngestFile.id == ahead))
+        ).scalar_one_or_none()
     new = await db.get(IngestFile, new_id, with_for_update=True)
     assert new is not None  # the id was just written or read
     if new.supersedes_id == old_id:

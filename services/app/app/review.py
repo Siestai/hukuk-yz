@@ -21,7 +21,7 @@ from sqlalchemy.orm import aliased
 
 from app.auth import Db
 from app.errors import ApiError
-from app.files.store import LocalFileStore
+from app.files.store import LocalFileStore, blob_key
 from app.kb import (
     PARSER_NAME,
     STATUS_GROUPS,
@@ -357,22 +357,30 @@ def _file_store() -> LocalFileStore | None:
     return LocalFileStore(root) if root else None
 
 
-def _stored(ingest_file: IngestFile) -> bool:
-    """Whether the original is in the file store (task 12c). Nothing is read."""
+def _store_location(ingest_file: IngestFile) -> tuple[LocalFileStore, str] | None:
+    """The file store and key of the original (task 12c), None when the store is not the place
+    to look. A record with a `storage_key` is read from the store only; one without (a second
+    row of the same content) is read from the blob its sha256 addresses, if there is one."""
     store = _file_store()
-    return bool(store and ingest_file.storage_key and store.exists(ingest_file.storage_key))
+    if store is None:
+        return None
+    if ingest_file.storage_key:
+        return store, ingest_file.storage_key
+    key = blob_key(ingest_file.sha256)
+    return (store, key) if store.exists(key) else None
 
 
 def _read_original(ingest_file: IngestFile) -> bytes | None:
     """The original of an ingest record, at most `ARCHIVE_MAX_FILE_BYTES`, with the sha256 of the
-    record: from the file store when the record has a `storage_key` (and a store is set), else
-    from `ARCHIVE_ROOT`. None when there is no such file or it is not the recorded content."""
+    record: from the file store when it holds the file (see `_store_location`; no fallback to
+    `ARCHIVE_ROOT` then), else from `ARCHIVE_ROOT`. None when there is no such file or it is
+    not the recorded content."""
     max_bytes = get_settings().archive_max_file_bytes
-    store = _file_store()
+    location = _store_location(ingest_file)
     content: bytes | None
-    if store and ingest_file.storage_key:
+    if location:
         try:
-            with store.open(ingest_file.storage_key) as fh:
+            with location[0].open(location[1]) as fh:
                 content = fh.read(max_bytes + 1)
         except OSError:
             return None
@@ -395,7 +403,9 @@ def _pdf_availability(
     file route still checks size and SHA-256, so a mismatch is only found when the PDF loads."""
     if ingest_file.detected_type != "pdf":
         return "not_previewable"
-    return "available" if _stored(ingest_file) or _archive_path(ingest_file) else "missing"
+    if location := _store_location(ingest_file):
+        return "available" if location[0].exists(location[1]) else "missing"
+    return "available" if _archive_path(ingest_file) else "missing"
 
 
 def _read_archive_file(path: Path, max_bytes: int) -> bytes | None:

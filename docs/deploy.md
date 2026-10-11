@@ -101,9 +101,13 @@ kayıtları için okunur, kaldırılması ayrı küçük iş).
    klasöründe; `/import` salt okunur bağlanır):
 
    ```bash
-   docker compose run --rm -v /srv/arsiv-aktarim:/import:ro app \
-     python -m app.files.import_dir /import --uploaded-by-system
+   docker compose run --rm -v /srv/arsiv-aktarim:/import:ro -v /srv/rapor:/rapor app \
+     python -m app.files.import_dir /import --uploaded-by-system --report /rapor/ozet.json
    ```
+
+   `/import` altındaki dosyalar `app` konteyner kullanıcısı tarafından okunabilir olmalıdır
+   (okunamayan dosya hata olarak listelenir). `--report` yolu o kullanıcı için yazılabilir bir
+   bağ olmalıdır (`/rapor` için `/srv/rapor` yazılabilir olsun); aksi halde özet yazılamaz.
 
    Her dosya dosya deposuna konur. SHA-256'sı 3. adımda yüklenen bir karar kaydınınkiyle aynıysa
    o kayda yalnız `storage_key` ve `original_name` yazılır (yeni kayıt açılmaz); diğerleri yeni
@@ -111,14 +115,24 @@ kayıtları için okunur, kaldırılması ayrı küçük iş).
    tarar). `Eskiler/` altındaki dosya, aynı adlı güncel dosyanın önceki sürümü olarak bağlanır
    (ad kuralı: uzantısız, harf/aksan/büyük-küçük harf farkı yok sayılan ad aynı olmalı); eşleşmeyenler
    özette listelenir. Özet (eklenen, eşleşen, atlanan, bağlanan, hatalı, eşleşmeyen `Eskiler/`
-   dosyaları) ekrana basılır; bir dosyanın hatası çalışmayı durdurmaz. Çıkış kodu 1 hata olduğunu
+   dosyaları) ekrana basılır (Eskiler bağlama hatası da `errors`'a girer, çalışma sürer); bir dosyanın hatası çalışmayı durdurmaz. Çıkış kodu 1 hata olduğunu
    söyler. Komutu ikinci kez çalıştırınca eklenen 0 olmalıdır. Aktarım `FILE_MAX_BYTES` sınırına
    tabi değildir (yönetici sunucuda çalıştırır). İsteğe bağlı `--report YOL` özeti JSON olarak yazar (yol
-   konteynerin içindedir; saklamak için ek bir `-v` ile bağla).
+   konteynerin içindedir; saklamak için ek bir `-v` ile bağla). Aktarımdan sonra dosyası depoya
+   alınmamış karar satırı kalıp kalmadığına bak (özetteki `skipped` bunları göstermez):
+
+   ```sql
+   SELECT count(*) FROM ingest_file WHERE storage_key IS NULL;
+   ```
+
+   Sıfırdan büyük sayı, aynı SHA-256'lı ikinci satırlar (dergi yeniden basımı) olabilir; bunların
+   PDF'i içerik adresli depodan açılır. Sayıyı `SELECT path FROM ingest_file WHERE storage_key IS
+   NULL` ile incele; deponun dışında kalan dosya varsa o satırlar için `ARCHIVE_HOST_DIR` gerekir.
 6. **Aktarım sonrası Drive salt arşivdir.** İki yönlü senkron yoktur; yeni dosyalar dashboard'daki
-   Dosyalar ekranından yüklenir. `ARCHIVE_HOST_DIR` bağı karar PDF'leri için artık gerekmez
-   (PDF uç noktası önce dosya deposundan sunar); aynı SHA-256'lı bir dergi yeniden basımı gibi
-   `storage_key`'i boş kalan kayıtlar için eski yol çalışmaya devam eder.
+   Dosyalar ekranından yüklenir. `ARCHIVE_HOST_DIR` bağı, yukarıdaki kontrolde
+   `storage_key`'i boş satır kalmadıysa ya da kalanların içeriği depoda varsa gerekmez (PDF
+   uç noktası dosya deposundan sunar; `storage_key` doluysa `ARCHIVE_ROOT`'a düşmez). İçeriği
+   depoda olmayan boş `storage_key`'li satırlar için eski yol çalışmaya devam eder.
 7. **Giriş denemesi temizliği** (cron): `login_attempt` tablosu büyür. Dokploy'da Schedules ile
    `app` konteynerinde günlük: `python -m app.users prune-login-attempts` (30 günden eskiyi siler).
 
