@@ -43,9 +43,9 @@ const PDF_FILE_PATH = new RegExp(
 );
 
 /**
- * Framing headers of an `/api` response (pages get theirs from the CSP in proxy.ts). The original
- * PDF of a decision, and the content of a stored file, are shown in an iframe of our own pages, so only that path may be framed, and
- * only by the same origin; everything else may not be framed at all.
+ * Framing headers of an `/api` response (pages get theirs from the CSP in proxy.ts). Two exact
+ * paths are shown in an iframe of our own pages: the original PDF of a decision and the content
+ * of a stored file. Only those may be framed, and only by the same origin; the rest never.
  */
 export function apiFrameHeaders(pathname: string): Record<string, string> {
     const own = PDF_FILE_PATH.test(pathname);

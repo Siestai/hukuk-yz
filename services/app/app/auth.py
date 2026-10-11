@@ -10,14 +10,17 @@ a cross-site `fetch` with it needs a CORS preflight, which this app never grants
 already keeps the cookie off cross-site POSTs. Together that is enough for Phase 1. Requests
 authenticated by Bearer are exempt: the browser never adds that header by itself.
 
-A file upload is `multipart/form-data`, a type a cross-site form can send. By cookie it is
-accepted only with an `X-Requested-With` header, which a page can add to a script request but a
-form cannot, and a cross-site script request with it needs the same CORS preflight.
+A file upload is `multipart/form-data`, a type a cross-site form can send. On the upload routes
+only (`POST /files`, `POST /files/{id}/versions`) it is accepted by cookie with an
+`X-Requested-With` header, which a page can add to a script request but a form cannot, and a
+cross-site script request with it needs the same CORS preflight. Any other route or method keeps
+the JSON rule.
 """
 
 import asyncio
 import hashlib
 import math
+import re
 import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -40,6 +43,7 @@ COOKIE_NAME = "hukuk_session"
 MIN_PASSWORD_LENGTH = 12
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 UPLOAD_HEADER = "x-requested-with"
+UPLOAD_PATH = re.compile(r"/files(/[0-9a-f-]{36}/versions)?", re.IGNORECASE)
 LAST_SEEN_INTERVAL = timedelta(minutes=5)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -99,7 +103,12 @@ def _request_token(request: Request) -> str:
     if not token:
         raise _unauthorized()
     content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
-    upload = content_type == "multipart/form-data" and UPLOAD_HEADER in request.headers
+    upload = (
+        request.method == "POST"
+        and UPLOAD_PATH.fullmatch(request.url.path) is not None
+        and content_type == "multipart/form-data"
+        and UPLOAD_HEADER in request.headers
+    )
     if request.method in UNSAFE_METHODS and content_type != "application/json" and not upload:
         raise ApiError(415, ErrorCode.unsupported_media_type)
     return token

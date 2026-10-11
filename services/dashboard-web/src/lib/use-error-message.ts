@@ -49,6 +49,8 @@ export function useErrorMessage() {
                 return t("scan_in_progress");
             case "invalid_date":
                 return t("invalid_date");
+            case "invalid_response":
+                return t("invalid_response");
             case "upstream_unavailable":
                 return t("upstream_unavailable");
             default:

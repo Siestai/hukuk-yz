@@ -252,6 +252,13 @@ async def test_a_cookie_session_uploads_only_with_the_script_header(
         "/files", data=form, files=files, headers={"X-Requested-With": "XMLHttpRequest"}
     )
     assert allowed.status_code == 201
+    # the exemption is for the upload routes only: other routes and methods stay JSON-only
+    other = await client.post(
+        f"/files/{allowed.json()['id']}/rescan",
+        files=files,
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+    assert (other.status_code, other.json()["error"]["code"]) == (415, "unsupported_media_type")
 
 
 async def test_the_name_is_metadata_only(

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { appApiUrl } from "@/lib/env";
 import { apiFrameHeaders } from "@/lib/security-headers";
 import { upstreamHeaders } from "@/lib/upstream";
+import { UUID } from "@/lib/uuid";
 
 // Browser -> this server -> `app`: `app` is never exposed. Only the prefixes the UI uses pass; under
 // them every method is allowed, and `app` decides (authorization lives there, not here).
@@ -12,10 +13,13 @@ const ALLOWED_PATHS = ["files"];
 const TIMEOUT_MS = 30_000;
 // Requests the UI sends are small JSON; anything larger is refused before it reaches `app`.
 const MAX_BODY_BYTES = 1024 * 1024;
-// Only a file upload is large: `app` allows 50 MB per file (`FILE_MAX_BYTES`, enforced there with
-// its own `file_too_large`); this cap leaves room for the multipart envelope. The wait for the
-// answer includes sending the body, so an upload gets a longer timeout.
-const isFilesPath = (path: string) => path === "files" || path.startsWith("files/");
+// Only a file upload (`POST files`, `POST files/<uuid>/versions`) is large: `app` allows 50 MB per
+// file (`FILE_MAX_BYTES`, enforced there with its own `file_too_large`); this cap leaves room for
+// the multipart envelope. The wait for the answer includes sending the body, so an upload gets a
+// longer timeout. Every other method and path keeps the small limits.
+const UPLOAD_PATH = new RegExp(`^files(?:/${UUID.source}/versions)?$`, "i");
+const isUploadRequest = (method: string, path: string) =>
+    method === "POST" && UPLOAD_PATH.test(path);
 const MAX_FILE_BODY_BYTES = 64 * 1024 * 1024;
 const UPLOAD_TIMEOUT_MS = 5 * 60_000;
 // The only request headers forwarded besides the ones `upstreamHeaders` builds.
@@ -80,7 +84,7 @@ async function forward(
     }
     const url = `${appApiUrl()}/${segments.map(encodeURIComponent).join("/")}${request.nextUrl.search}`;
     const hasBody = request.method !== "GET" && request.method !== "HEAD";
-    const isUpload = hasBody && isFilesPath(path);
+    const isUpload = isUploadRequest(request.method, path);
     const limit = isUpload ? MAX_FILE_BODY_BYTES : MAX_BODY_BYTES;
     if (hasBody && Number(request.headers.get("content-length")) > limit) {
         return errorResponse(413, "payload_too_large", pathname);

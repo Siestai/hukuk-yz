@@ -15,6 +15,8 @@ class FakeRequest {
     onload: (() => void) | null = null;
     onerror: (() => void) | null = null;
     ontimeout: (() => void) | null = null;
+    onabort: (() => void) | null = null;
+    timeout = 0;
     constructor() {
         FakeRequest.last = this;
     }
@@ -95,6 +97,23 @@ describe("uploadFile", () => {
         const second = uploadFile("/api/files", pdf, {}, vi.fn());
         FakeRequest.last.ontimeout?.();
         expect(await second).toMatchObject({ ok: false, code: "upstream_unavailable" });
+    });
+
+    it("settles on an abort and sets a 5 minute timeout", async () => {
+        const done = uploadFile("/api/files", pdf, {}, vi.fn());
+        expect(FakeRequest.last.timeout).toBe(5 * 60_000);
+        FakeRequest.last.onabort?.();
+        expect(await done).toMatchObject({ ok: false, code: "upstream_unavailable" });
+    });
+
+    it.each([
+        [200, { id: "f1" }],
+        [204, null],
+        [201, null],
+    ])("calls a %s answer without a file an invalid response", async (status, body) => {
+        const done = uploadFile("/api/files", pdf, {}, vi.fn());
+        FakeRequest.last.answer(status, body);
+        expect(await done).toEqual({ ok: false, code: "invalid_response", params: {} });
     });
 
     it("has no code for an answer that is not the API's", async () => {

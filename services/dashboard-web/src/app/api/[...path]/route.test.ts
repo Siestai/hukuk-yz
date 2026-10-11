@@ -135,6 +135,32 @@ describe("api proxy", () => {
         expect((await response.json()).error.code).toBe("payload_too_large");
     });
 
+    it.each([
+        ["PATCH", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10"],
+        ["DELETE", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10"],
+        ["POST", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10/text"],
+        ["POST", "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10/rescan"],
+        ["POST", "files/not-a-uuid/versions"],
+        ["PUT", "files"],
+    ])("keeps the 1 MB limit for %s %s", async (method, path) => {
+        const response = await call(POST, path, {
+            method,
+            body: "{}",
+            headers: { "content-length": String(2 * 1024 * 1024) },
+        });
+        expect(response.status).toBe(413);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("keeps the 30 s timeout for a request that is not an upload", async () => {
+        const timeout = vi.spyOn(globalThis, "setTimeout");
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        await call(DELETE, "files/3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10", { method: "DELETE" });
+        await call(POST, "files", { method: "POST", body: "x" });
+        expect(timeout.mock.calls.map(([, ms]) => ms)).toEqual([30_000, 5 * 60_000]);
+        timeout.mockRestore();
+    });
+
     it("lets a file upload past 1 MB through to the files routes, up to 64 MB", async () => {
         fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
             await new Response(init.body).text();

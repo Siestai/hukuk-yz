@@ -163,6 +163,7 @@ describe("UploadPanel", () => {
         ["file_too_large", messages.errors.file_too_large],
         ["unsupported_file_type", messages.errors.unsupported_file_type],
         ["upstream_unavailable", messages.errors.upstream_unavailable],
+        ["invalid_response", messages.errors.invalid_response],
     ])("explains %s in Turkish and lets the file be sent again", async (code, text) => {
         uploadFile.mockResolvedValueOnce(fail(code)).mockResolvedValueOnce(ok(FILE_ID));
         const { input, user } = setup();

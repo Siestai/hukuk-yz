@@ -595,6 +595,7 @@
     "too_many_attempts": "Çok fazla hatalı deneme. {minutes, plural, other {# dakika}} sonra tekrar deneyin.",
     "validation_error": "Girilen bilgiler geçersiz. Alanları kontrol edin.",
     "upstream_unavailable": "Sunucuya ulaşılamıyor. Biraz sonra tekrar deneyin.",
+    "invalid_response": "Sunucudan beklenmeyen bir yanıt geldi. Dosyanın yüklenip yüklenmediğini listeden kontrol edin.",
     "generic": "Beklenmeyen bir hata oluştu. Daha sonra tekrar deneyin.",
     "payload_too_large": "Gönderilen veri çok büyük.",
     "review_conflict": "Bu kaydı az önce başka biri işledi.",

@@ -23,6 +23,17 @@ describe("ScanRefresh", () => {
         expect(refresh).toHaveBeenCalledTimes(23);
     });
 
+    it("skips the tick while the tab is hidden", () => {
+        const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+        render(<ScanRefresh active />);
+        vi.advanceTimersByTime(15_000);
+        expect(refresh).not.toHaveBeenCalled();
+        hidden.mockReturnValue(false);
+        vi.advanceTimersByTime(5_000);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        hidden.mockRestore();
+    });
+
     it("does nothing when no scan is active, and stops once it is over", () => {
         const { rerender } = render(<ScanRefresh active />);
         vi.advanceTimersByTime(5_000);
