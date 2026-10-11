@@ -5,11 +5,11 @@ import asyncio
 import hashlib
 import io
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from filedata import SCAN_PNG, make_pdf
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -58,7 +58,7 @@ async def load(factory: Factory, file_id: uuid.UUID) -> IngestFile:
 
 
 async def test_a_text_pdf_is_scanned_to_done_and_its_text_stored(
-    kb_factory: Factory, store: LocalFileStore
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
 ) -> None:
     file_id, job_id = await enqueue(kb_factory, store, make_pdf())
     assert await worker.scan_next(kb_factory, store) is True
@@ -84,12 +84,12 @@ async def test_a_text_pdf_is_scanned_to_done_and_its_text_stored(
 
 
 async def test_an_image_is_read_by_ocr_when_tesseract_is_present(
-    kb_factory: Factory, store: LocalFileStore
+    kb_factory: Factory, store: LocalFileStore, scan_png: bytes
 ) -> None:
     ocr.default_engine.cache_clear()
     if ocr.default_engine() is None:
         pytest.skip("tesseract with the tur model is not available")
-    file_id, _ = await enqueue(kb_factory, store, SCAN_PNG.read_bytes())
+    file_id, _ = await enqueue(kb_factory, store, scan_png)
     await worker.scan_next(kb_factory, store)
     file = await load(kb_factory, file_id)
     assert file.scan_status is ScanStatus.done
@@ -99,11 +99,11 @@ async def test_an_image_is_read_by_ocr_when_tesseract_is_present(
 
 
 async def test_an_image_without_tesseract_needs_ocr(
-    kb_factory: Factory, store: LocalFileStore, monkeypatch: pytest.MonkeyPatch
+    kb_factory: Factory, store: LocalFileStore, monkeypatch: pytest.MonkeyPatch, scan_png: bytes
 ) -> None:
     monkeypatch.setenv("HUKUK_TESSERACT", "/nonexistent/tesseract")
     ocr.default_engine.cache_clear()
-    file_id, _ = await enqueue(kb_factory, store, SCAN_PNG.read_bytes())
+    file_id, _ = await enqueue(kb_factory, store, scan_png)
     await worker.scan_next(kb_factory, store)
     file = await load(kb_factory, file_id)
     assert file.scan_status is ScanStatus.needs_ocr
@@ -112,7 +112,7 @@ async def test_an_image_without_tesseract_needs_ocr(
 
 
 async def test_a_corrupt_file_fails_and_the_loop_goes_on(
-    kb_factory: Factory, store: LocalFileStore
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
 ) -> None:
     bad_id, job_id = await enqueue(kb_factory, store, b"%PDF-1.4\n" + b"\x00garbage" * 50)
     good_id, _ = await enqueue(kb_factory, store, make_pdf(), job_id=job_id)
@@ -141,7 +141,7 @@ async def test_a_corrupt_file_fails_and_the_loop_goes_on(
 
 
 async def test_a_file_whose_stored_bytes_changed_fails(
-    kb_factory: Factory, store: LocalFileStore, tmp_path: Path
+    kb_factory: Factory, store: LocalFileStore, tmp_path: Path, make_pdf: Callable[..., bytes]
 ) -> None:
     file_id, _ = await enqueue(kb_factory, store, make_pdf())
     file = await load(kb_factory, file_id)
@@ -156,7 +156,7 @@ async def test_a_file_whose_stored_bytes_changed_fails(
 
 
 async def test_a_missing_blob_fails_without_stopping(
-    kb_factory: Factory, store: LocalFileStore, tmp_path: Path
+    kb_factory: Factory, store: LocalFileStore, tmp_path: Path, make_pdf: Callable[..., bytes]
 ) -> None:
     file_id, _ = await enqueue(kb_factory, store, make_pdf())
     file = await load(kb_factory, file_id)
@@ -167,7 +167,7 @@ async def test_a_missing_blob_fails_without_stopping(
 
 
 async def test_a_file_stuck_running_is_queued_again(
-    kb_factory: Factory, store: LocalFileStore
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
 ) -> None:
     stuck, _ = await enqueue(kb_factory, store, make_pdf("a " * 300))
     fresh, _ = await enqueue(kb_factory, store, make_pdf("b " * 300))
@@ -190,8 +190,34 @@ async def test_a_file_stuck_running_is_queued_again(
     assert (await load(kb_factory, fresh)).scan_status is ScanStatus.running
 
 
+async def test_a_file_stuck_too_often_is_marked_failed(
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
+) -> None:
+    file_id, job_id = await enqueue(kb_factory, store, make_pdf())
+    for attempt in range(1, worker.MAX_ATTEMPTS + 1):
+        claimed = await worker.claim(kb_factory)
+        assert claimed is not None
+        assert (await load(kb_factory, file_id)).scan_result["attempts"] == attempt  # type: ignore[index]
+        async with kb_factory() as session:
+            file = await session.get(IngestFile, file_id)
+            assert file is not None
+            old = datetime.now(UTC) - worker.STUCK_AFTER - timedelta(minutes=1)
+            file.scan_result = {**(file.scan_result or {}), "started_at": old.isoformat()}
+            await session.commit()
+        assert await worker.requeue_stuck(kb_factory) == 1
+        expected = ScanStatus.queued if attempt < worker.MAX_ATTEMPTS else ScanStatus.failed
+        assert (await load(kb_factory, file_id)).scan_status is expected
+    failed = await load(kb_factory, file_id)
+    assert (failed.error, (failed.scan_result or {})["error"]) == ("stuck", "stuck")
+    assert await worker.claim(kb_factory) is None
+    async with kb_factory() as session:
+        job = await session.get(IngestJob, job_id)
+        assert job is not None
+        assert (job.status, job.stats["failed"]) == (IngestStatus.failed, 1)
+
+
 async def test_two_claimers_never_take_the_same_file(
-    kb_factory: Factory, store: LocalFileStore
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
 ) -> None:
     ids = {(await enqueue(kb_factory, store, make_pdf(f"{n} " * 300)))[0] for n in range(6)}
     claims = await asyncio.gather(*(worker.claim(kb_factory) for _ in range(6)))
@@ -204,7 +230,7 @@ async def test_two_claimers_never_take_the_same_file(
 
 
 async def test_an_outcome_is_dropped_when_the_file_was_queued_again_meanwhile(
-    kb_factory: Factory, store: LocalFileStore
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
 ) -> None:
     file_id, _ = await enqueue(kb_factory, store, make_pdf())
     claimed = await worker.claim(kb_factory)
@@ -218,7 +244,30 @@ async def test_an_outcome_is_dropped_when_the_file_was_queued_again_meanwhile(
     assert (await load(kb_factory, file_id)).scan_status is ScanStatus.queued
 
 
-async def test_a_rescan_scans_again(kb_factory: Factory, store: LocalFileStore) -> None:
+async def test_an_outcome_of_an_earlier_claim_is_dropped_when_the_file_runs_again(
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
+) -> None:
+    file_id, _ = await enqueue(kb_factory, store, make_pdf())
+    first = await worker.claim(kb_factory)
+    assert first is not None
+    async with kb_factory() as session:  # requeued, then claimed again by another attempt
+        file = await session.get(IngestFile, file_id)
+        assert file is not None
+        file.scan_status = ScanStatus.queued
+        await session.commit()
+    second = await worker.claim(kb_factory)
+    assert second is not None and second.token != first.token
+    await worker.finish(kb_factory, first, await asyncio.to_thread(worker.scan, store, first))
+    running = await load(kb_factory, file_id)
+    assert running.scan_status is ScanStatus.running
+    assert (running.scan_result or {})["claim"] == second.token
+    await worker.finish(kb_factory, second, await asyncio.to_thread(worker.scan, store, second))
+    assert (await load(kb_factory, file_id)).scan_status is ScanStatus.done
+
+
+async def test_a_rescan_scans_again(
+    kb_factory: Factory, store: LocalFileStore, make_pdf: Callable[..., bytes]
+) -> None:
     file_id, _ = await enqueue(kb_factory, store, make_pdf())
     await worker.scan_next(kb_factory, store)
     async with kb_factory() as session:
@@ -231,7 +280,10 @@ async def test_a_rescan_scans_again(kb_factory: Factory, store: LocalFileStore) 
 
 
 async def test_the_loop_stops_on_the_event_and_without_a_store_only_beats(
-    kb_factory: Factory, store: LocalFileStore, caplog: pytest.LogCaptureFixture
+    kb_factory: Factory,
+    store: LocalFileStore,
+    caplog: pytest.LogCaptureFixture,
+    make_pdf: Callable[..., bytes],
 ) -> None:
     file_id, _ = await enqueue(kb_factory, store, make_pdf())
     stop = asyncio.Event()

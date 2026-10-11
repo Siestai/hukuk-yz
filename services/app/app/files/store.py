@@ -9,7 +9,9 @@ record. The calls are synchronous file operations; async code runs them in a thr
 import hashlib
 import os
 import re
+import shutil
 import tempfile
+import uuid
 from pathlib import Path
 from typing import BinaryIO, NamedTuple, Protocol
 
@@ -26,6 +28,10 @@ class StoredFile(NamedTuple):
 class FileStore(Protocol):
     def put(self, stream: BinaryIO) -> StoredFile:
         """Store the stream's content under its sha256 key; content already stored is kept."""
+
+    def put_path(self, path: Path, sha256: str) -> str:
+        """Move the file at `path`, whose content has this sha256, into the store (the file is
+        gone afterwards); returns its key."""
 
     def put_text(self, sha256: str, text: str) -> str:
         """Store the extracted text of the file with this sha256 (replacing an earlier one);
@@ -82,6 +88,22 @@ class LocalFileStore:
                 Path(tmp.name).unlink(missing_ok=True)
                 raise
         return StoredFile(key, digest.hexdigest(), size)
+
+    def put_path(self, path: Path, sha256: str) -> str:
+        key = blob_key(sha256)
+        target = self._path(key)
+        if target.exists():
+            path.unlink()
+            return key
+        self.root.mkdir(parents=True, exist_ok=True)
+        tmp = self.root / f".put-{uuid.uuid4().hex}"
+        try:
+            shutil.move(path, tmp)  # a rename on the same file system, else a copy
+            self._install(str(tmp), target, replace=False)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+        return key
 
     def put_text(self, sha256: str, text: str) -> str:
         key = text_key(sha256)

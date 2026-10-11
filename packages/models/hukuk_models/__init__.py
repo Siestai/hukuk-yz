@@ -44,6 +44,7 @@ class ErrorCode(StrEnum):
     file_store_unavailable = "file_store_unavailable"
     # a new version of a file that has a newer one already, or of an archived file
     file_version_conflict = "file_version_conflict"
+    scan_in_progress = "scan_in_progress"  # a rescan of a file that is being scanned now
     invalid_date = "invalid_date"  # params: field
     http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
     internal_error = "internal_error"

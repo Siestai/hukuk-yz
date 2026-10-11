@@ -1,15 +1,15 @@
 """Files API (task 12a). The database tests are skipped when DATABASE_URL is unset; CI sets it."""
 
 import hashlib
+import re
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
-from filedata import SCAN_PNG, make_pdf
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -93,12 +93,22 @@ async def upload(
     )
 
 
-def pdf(n: int = 0) -> bytes:
-    return bytes(make_pdf(f"belge numara {n} " * 30))
+@pytest.fixture
+def pdf(make_pdf: Callable[..., bytes]) -> Callable[..., bytes]:
+    """A distinct small PDF per number."""
+
+    def build(n: int = 0) -> bytes:
+        return make_pdf(f"belge numara {n} " * 30)
+
+    return build
 
 
 async def test_an_upload_is_stored_by_hash_and_queued(
-    client: httpx.AsyncClient, me: Login, store_root: Path, kb_factory: Factory
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
 ) -> None:
     data = pdf(1)
     response = await upload(
@@ -130,7 +140,7 @@ async def test_an_upload_is_stored_by_hash_and_queued(
 
 
 async def test_the_same_file_again_is_409_with_the_existing_id(
-    client: httpx.AsyncClient, me: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     first = (await upload(client, me, pdf(2))).json()
     again = await upload(client, me, pdf(2), name="baska-ad.pdf")
@@ -140,7 +150,7 @@ async def test_the_same_file_again_is_409_with_the_existing_id(
 
 
 async def test_a_duplicate_of_an_archived_file_says_so(
-    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     first = (await upload(client, me, pdf(3))).json()
     assert (await client.post(f"/files/{first['id']}/archive", headers=boss.headers)).is_success
@@ -152,7 +162,7 @@ async def test_a_duplicate_of_an_archived_file_says_so(
 
 
 async def test_a_file_over_the_limit_is_413(
-    client: httpx.AsyncClient, me: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, store_root: Path, make_pdf: Callable[..., bytes]
 ) -> None:
     big = make_pdf() + b"\n%" + b"x" * (MAX_BYTES + 10)
     response = await upload(client, me, big)
@@ -162,10 +172,45 @@ async def test_a_file_over_the_limit_is_413(
     assert not any(store_root.rglob("*")) or not [p for p in store_root.rglob("*") if p.is_file()]
 
 
-async def test_a_pdf_name_with_other_content_is_415(
+async def test_a_chunked_upload_over_the_limit_is_413_without_content_length(
     client: httpx.AsyncClient, me: Login, store_root: Path
 ) -> None:
-    response = await upload(client, me, SCAN_PNG.read_bytes(), name="karar.pdf")
+    boundary = "xBOUNDARYx"
+    head = (
+        f'--{boundary}\r\nContent-Disposition: form-data; name="doc_type"\r\n\r\ngenelge\r\n'
+        f'--{boundary}\r\nContent-Disposition: form-data; name="file"; '
+        'filename="big.pdf"\r\nContent-Type: application/pdf\r\n\r\n'
+    ).encode()
+    sent = 0
+
+    async def body() -> AsyncIterator[bytes]:
+        nonlocal sent
+        yield head
+        for _ in range(64):  # 4 MB, far over FILE_MAX_BYTES plus the form overhead
+            sent += 1
+            yield b"%PDF-1.4 " + b"x" * 65_000
+        yield f"\r\n--{boundary}--\r\n".encode()
+
+    request = client.build_request(
+        "POST",
+        "/files",
+        headers={**me.headers, "Content-Type": f"multipart/form-data; boundary={boundary}"},
+        content=body(),
+    )
+    assert "content-length" not in request.headers
+    response = await client.send(request)
+    assert response.status_code == 413
+    assert response.json()["error"] == {
+        "code": "file_too_large",
+        "params": {"max_bytes": MAX_BYTES},
+    }
+    assert not [p for p in store_root.rglob("*") if p.is_file()]
+
+
+async def test_a_pdf_name_with_other_content_is_415(
+    client: httpx.AsyncClient, me: Login, store_root: Path, scan_png: bytes
+) -> None:
+    response = await upload(client, me, scan_png, name="karar.pdf")
     assert response.status_code == 415
     assert response.json()["error"]["code"] == "unsupported_file_type"
     other = await upload(client, me, b"MZ\x90\x00 not a document", name="x.exe")
@@ -173,7 +218,7 @@ async def test_a_pdf_name_with_other_content_is_415(
 
 
 async def test_bad_uploads_are_400_or_422(
-    client: httpx.AsyncClient, me: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     empty = await upload(client, me, b"")
     assert (empty.status_code, empty.json()["error"]["code"]) == (400, "invalid_file")
@@ -190,7 +235,7 @@ async def test_bad_uploads_are_400_or_422(
 
 
 async def test_the_name_is_metadata_only(
-    client: httpx.AsyncClient, me: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     response = await upload(client, me, pdf(5), name="../../etc/passwd.pdf")
     assert response.status_code == 201
@@ -200,7 +245,7 @@ async def test_the_name_is_metadata_only(
 
 
 async def test_a_new_version_supersedes_and_the_list_shows_one_row(
-    client: httpx.AsyncClient, me: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     first = (await upload(client, me, pdf(6), official_ref="2020/39", note="eski")).json()
     second = await upload(client, me, pdf(7), path=f"/files/{first['id']}/versions")
@@ -222,7 +267,7 @@ async def test_a_new_version_supersedes_and_the_list_shows_one_row(
 
 
 async def test_the_list_filters_and_pages(
-    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     ids = []
     for n, (doc_type, name) in enumerate(
@@ -243,6 +288,10 @@ async def test_the_list_filters_and_pages(
     assert (await get(scan_status="done")).json()["items"] == []
     page1 = (await get(limit=2)).json()
     assert [i["id"] for i in page1["items"]] == ids[:0:-1]
+    # the cursor survives a URL that is not percent-encoded
+    assert re.fullmatch(r"[A-Za-z0-9_=-]+", page1["next_cursor"])
+    raw = await client.get(f"/files?limit=2&cursor={page1['next_cursor']}", headers=me.headers)
+    assert [i["id"] for i in raw.json()["items"]] == [ids[0]]
     page2 = (await get(limit=2, cursor=page1["next_cursor"])).json()
     assert [i["id"] for i in page2["items"]] == [ids[0]]
     assert page2["next_cursor"] is None
@@ -253,7 +302,11 @@ async def test_the_list_filters_and_pages(
 
 
 async def test_content_and_text_are_served_with_safe_headers(
-    client: httpx.AsyncClient, me: Login, store_root: Path, kb_factory: Factory
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
 ) -> None:
     data = pdf(30)
     uploaded = (await upload(client, me, data, name="Genelge özel 2020.pdf")).json()
@@ -286,7 +339,7 @@ async def test_content_and_text_are_served_with_safe_headers(
 
 
 async def test_content_is_refused_when_the_stored_bytes_do_not_match_the_hash(
-    client: httpx.AsyncClient, me: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     uploaded = (await upload(client, me, pdf(31))).json()
     digest = uploaded["sha256"]
@@ -298,7 +351,7 @@ async def test_content_is_refused_when_the_stored_bytes_do_not_match_the_hash(
 
 
 async def test_archive_and_rescan_are_admin_only(
-    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path
+    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     uploaded = (await upload(client, me, pdf(32))).json()
     fid = uploaded["id"]
@@ -314,8 +367,43 @@ async def test_archive_and_rescan_are_admin_only(
     ).status_code == 404
 
 
+async def test_a_rescan_clears_the_old_outcome_and_a_running_file_is_refused(
+    client: httpx.AsyncClient,
+    me: Login,
+    boss: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
+) -> None:
+    fid = (await upload(client, me, pdf(33))).json()["id"]
+    text_key = LocalFileStore(store_root).put_text("a" * 64, "eski metin")
+
+    async def set_scan(status: ScanStatus, result: dict[str, Any] | None) -> None:
+        async with kb_factory() as session:
+            file = await session.get(IngestFile, uuid.UUID(fid))
+            assert file is not None
+            file.scan_status, file.scan_result = status, result
+            await session.commit()
+
+    text_sha = hashlib.sha256(b"eski metin").hexdigest()
+    await set_scan(ScanStatus.done, {"text_key": text_key, "text_sha256": text_sha})
+    assert (await client.get(f"/files/{fid}/text", headers=me.headers)).status_code == 200
+    rescanned = await client.post(f"/files/{fid}/rescan", headers=boss.headers)
+    assert (rescanned.status_code, rescanned.json()["scan_status"]) == (200, "queued")
+    assert rescanned.json()["scan_result"] is None
+    gone = await client.get(f"/files/{fid}/text", headers=me.headers)
+    assert (gone.status_code, gone.json()["error"]["code"]) == (404, "file_not_found")
+    # already queued: nothing changes
+    assert (await client.post(f"/files/{fid}/rescan", headers=boss.headers)).status_code == 200
+    await set_scan(ScanStatus.running, {"claim": "x", "attempts": 1})
+    busy = await client.post(f"/files/{fid}/rescan", headers=boss.headers)
+    assert (busy.status_code, busy.json()["error"]["code"]) == (409, "scan_in_progress")
+    detail = (await client.get(f"/files/{fid}", headers=me.headers)).json()
+    assert detail["scan_status"] == "running"
+
+
 async def test_an_admin_may_upload_and_nothing_is_open_without_a_login(
-    client: httpx.AsyncClient, boss: Login, store_root: Path
+    client: httpx.AsyncClient, boss: Login, store_root: Path, pdf: Callable[..., bytes]
 ) -> None:
     assert (await upload(client, boss, pdf(40))).status_code == 201
     fid = uuid.uuid4()
@@ -337,7 +425,7 @@ async def test_an_admin_may_upload_and_nothing_is_open_without_a_login(
 
 
 async def test_without_a_file_store_root_the_endpoints_are_503(
-    client: httpx.AsyncClient, me: Login, monkeypatch: pytest.MonkeyPatch
+    client: httpx.AsyncClient, me: Login, monkeypatch: pytest.MonkeyPatch, pdf: Callable[..., bytes]
 ) -> None:
     monkeypatch.setattr("app.files.api.get_settings", lambda: Settings(database_url="unused"))
     response = await upload(client, me, pdf(50))
@@ -371,7 +459,11 @@ async def test_a_loader_row_has_no_content(
 
 
 async def test_concurrent_identical_uploads_make_one_record(
-    client: httpx.AsyncClient, me: Login, store_root: Path, kb_factory: Factory
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
 ) -> None:
     import asyncio
 

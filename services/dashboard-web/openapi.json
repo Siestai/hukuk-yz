@@ -670,6 +670,7 @@
           "unsupported_file_type",
           "file_store_unavailable",
           "file_version_conflict",
+          "scan_in_progress",
           "invalid_date",
           "http_error",
           "internal_error"
@@ -3878,6 +3879,7 @@
     },
     "/files/{file_id}/rescan": {
       "post": {
+        "description": "Queue the file for another scan; its earlier outcome (and text) is cleared. A file that\nis being scanned now is refused, one that is already queued stays as it is.",
         "operationId": "rescan_file_files__file_id__rescan_post",
         "parameters": [
           {

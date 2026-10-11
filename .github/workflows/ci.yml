@@ -67,11 +67,12 @@ jobs:
             echo "$pkg $want / $got"
             test "$want" = "$got"
           done
-      - name: Image is under 300MB
+      # tesseract (task 12a) adds about 93 MB (main: 221.7 MB)
+      - name: Image is under 350MB
         run: |
           size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
           echo "size=$size bytes"
-          test "$size" -lt 300000000
+          test "$size" -lt 350000000
       - run: docker build -f services/dashboard-web/Dockerfile -t hukuk-dashboard-web:ci .
       - name: dashboard-web runs as non-root
         run: |

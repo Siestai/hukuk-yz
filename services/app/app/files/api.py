@@ -9,14 +9,14 @@ The upload is parsed after the role check (a handler that declares no body param
 unauthenticated request is refused before any of its body is read.
 """
 
+import base64
 import hashlib
 import logging
 import re
-import tempfile
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 from typing import Annotated, Any, BinaryIO
 from urllib.parse import quote
 
@@ -25,15 +25,15 @@ from fastapi.concurrency import iterate_in_threadpool, run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
-from sqlalchemy import Select, exists, func, select, tuple_
+from sqlalchemy import Select, exists, func, literal, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
-from starlette.datastructures import FormData, UploadFile
 
-from app.auth import Db, require_role
+from app.auth import CurrentUser, Db, require_role
 from app.errors import ApiError
-from app.files.store import CHUNK_BYTES, FileStore, LocalFileStore, StoredFile
+from app.files.store import CHUNK_BYTES, FileStore, LocalFileStore
+from app.files.upload import Staged, read_upload
 from app.models.common import (
     DocumentType,
     IngestFile,
@@ -42,7 +42,7 @@ from app.models.common import (
     ScanStatus,
 )
 from app.models.user import AppUser
-from app.review_common import Limit, Reviewer, reviewer_check
+from app.review_common import Limit, reviewer_check
 from app.settings import get_settings
 from hukuk_ingest.detect import DetectedType, detect
 from hukuk_models import (
@@ -62,8 +62,6 @@ ALLOWED_SUFFIXES = frozenset(
     {".pdf", ".doc", ".docx", ".udf", ".png", ".jpg", ".jpeg", ".xlsx", ".xlsm", ".txt"}
 )
 MAX_NAME_LENGTH = 255
-# Multipart framing and the form fields on top of the file itself.
-FORM_OVERHEAD_BYTES = 256 * 1024
 FORM_FIELDS = ("doc_type", "doc_date", "official_ref", "origin_url", "note")
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 _UNSAFE_HEADER_CHARS = re.compile(r"[^\x20-\x7e]|[\"\\]")
@@ -144,10 +142,6 @@ async def _load(db: AsyncSession, file_id: uuid.UUID) -> tuple[IngestFile, str |
 # --- upload -----------------------------------------------------------------------------------
 
 
-class _TooLarge(Exception):
-    pass
-
-
 def _safe_name(raw: str | None) -> tuple[str, str]:
     """(display name, lower-case suffix) of an uploaded file name, or an `ApiError`. Only the
     last path segment counts; the name is never used as a path."""
@@ -160,48 +154,21 @@ def _safe_name(raw: str | None) -> tuple[str, str]:
     return name, suffix
 
 
-def _check_and_store(
-    store: FileStore, source: BinaryIO, suffix: str, max_bytes: int
-) -> tuple[DetectedType, StoredFile]:
-    """Copy the upload to a staging file (at most `max_bytes`), check its content against the
-    extension, and store it. Runs in a thread."""
-    with tempfile.TemporaryDirectory(prefix="upload-") as staging:
-        staged = Path(staging) / f"upload{suffix}"
-        size = 0
-        try:
-            with staged.open("wb") as out:
-                while chunk := source.read(CHUNK_BYTES):
-                    size += len(chunk)
-                    if size > max_bytes:
-                        raise _TooLarge
-                    out.write(chunk)
-        except _TooLarge:
-            raise ApiError(413, ErrorCode.file_too_large, {"max_bytes": max_bytes}) from None
-        if size == 0:
-            raise ApiError(400, ErrorCode.invalid_file)
-        detection = detect(staged)
-        if detection.type is DetectedType.UNKNOWN or detection.extension_mismatch:
-            raise ApiError(415, ErrorCode.unsupported_file_type)
-        with staged.open("rb") as fh:
-            return detection.type, store.put(fh)
+def _check_and_store(store: FileStore, staged: Staged, suffix: str) -> tuple[DetectedType, str]:
+    """Check the staged file's content against its extension and move it into the store. Runs in
+    a thread."""
+    assert staged.path is not None  # checked by the caller
+    if staged.size == 0:
+        raise ApiError(400, ErrorCode.invalid_file)
+    detection = detect(staged.path)
+    if detection.type is DetectedType.UNKNOWN or detection.extension_mismatch:
+        raise ApiError(415, ErrorCode.unsupported_file_type)
+    return detection.type, store.put_path(staged.path, staged.sha256)
 
 
-async def _parse_form(request: Request, max_bytes: int) -> FormData:
-    length = request.headers.get("content-length", "")
-    if length.isdigit() and int(length) > max_bytes + FORM_OVERHEAD_BYTES:
-        raise ApiError(413, ErrorCode.file_too_large, {"max_bytes": max_bytes})
-    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
-    if content_type != "multipart/form-data":
-        raise ApiError(415, ErrorCode.unsupported_media_type)
-    # Starlette keeps an upload over 1 MB in a temporary file, not in memory.
-    return await request.form(max_files=1, max_fields=20)
-
-
-def _fields(form: FormData) -> FileFields:
+def _fields(form: dict[str, str]) -> FileFields:
     given = {
-        name: value.strip()
-        for name in FORM_FIELDS
-        if isinstance(value := form.get(name), str) and value.strip()
+        name: value.strip() for name in FORM_FIELDS if (value := form.get(name)) and value.strip()
     }
     try:
         return FileFields.model_validate(given)
@@ -233,14 +200,11 @@ async def _create(
 ) -> FileOut:
     """Check, store and queue an upload; `previous` makes it the next version of that file
     (empty form fields are then copied from it)."""
-    max_bytes = get_settings().file_max_bytes
-    form = await _parse_form(request, max_bytes)
-    try:
-        upload = form.get("file")
-        if not isinstance(upload, UploadFile):
+    async with read_upload(request, get_settings().file_max_bytes) as staged:
+        if staged.path is None:
             raise ApiError(400, ErrorCode.invalid_file)
-        fields = _fields(form)
-        name, suffix = _safe_name(upload.filename)
+        fields = _fields(staged.fields)
+        name, suffix = _safe_name(staged.filename)
         doc_type = fields.doc_type or (
             previous.doc_type.value if previous is not None and previous.doc_type else None
         )
@@ -248,19 +212,16 @@ async def _create(
             raise RequestValidationError(
                 [{"loc": ("body", "doc_type"), "type": "missing", "msg": "Field required"}]
             )
-        detected, stored = await run_in_threadpool(
-            _check_and_store, store, upload.file, suffix, max_bytes
-        )
-    finally:
-        await form.close()
-    if (error := await _duplicate(db, stored.sha256)) is not None:
+        detected, key = await run_in_threadpool(_check_and_store, store, staged, suffix)
+    sha256, size = staged.sha256, staged.size
+    if (error := await _duplicate(db, sha256)) is not None:
         raise error
     file = IngestFile(
-        path=stored.key,
-        sha256=stored.sha256,
-        size=stored.size,
+        path=key,
+        sha256=sha256,
+        size=size,
         detected_type=detected.value,
-        storage_key=stored.key,
+        storage_key=key,
         original_name=name,
         doc_type=DocumentType(doc_type),
         doc_date=fields.doc_date or (previous.doc_date if previous else None),
@@ -281,7 +242,7 @@ async def _create(
     except IntegrityError:
         await db.rollback()
         # Lost a race: the same content was uploaded, or the file got its next version, first.
-        if (error := await _duplicate(db, stored.sha256)) is not None:
+        if (error := await _duplicate(db, sha256)) is not None:
             raise error from None
         if previous is not None:
             raise ApiError(409, ErrorCode.file_version_conflict) from None
@@ -293,7 +254,7 @@ async def _create(
 
 
 @router.post("", status_code=201, openapi_extra=_multipart_body(doc_type_required=True))
-async def upload_file(request: Request, db: Db, store: Store, user: Reviewer) -> FileOut:
+async def upload_file(request: Request, db: Db, store: Store, user: CurrentUser) -> FileOut:
     return await _create(request, db, store, user, None)
 
 
@@ -303,7 +264,7 @@ async def upload_file(request: Request, db: Db, store: Store, user: Reviewer) ->
     openapi_extra=_multipart_body(doc_type_required=False),
 )
 async def upload_version(
-    file_id: uuid.UUID, request: Request, db: Db, store: Store, user: Reviewer
+    file_id: uuid.UUID, request: Request, db: Db, store: Store, user: CurrentUser
 ) -> FileOut:
     previous, _ = await _load(db, file_id)
     has_next = (
@@ -318,14 +279,15 @@ async def upload_version(
 
 
 def _cursor_of(file: IngestFile) -> str:
-    return f"{file.uploaded_at.isoformat()}|{file.id}"
+    raw = f"{file.uploaded_at.isoformat()}|{file.id}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
 
 
 def _parse_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
     try:
-        stamp, _, file_id = cursor.partition("|")
+        stamp, _, file_id = base64.urlsafe_b64decode(cursor).decode().partition("|")
         return datetime.fromisoformat(stamp), uuid.UUID(file_id)
-    except ValueError:
+    except ValueError:  # includes bad base64 and bad UTF-8
         raise ApiError(422, ErrorCode.validation_error, {"fields": ["cursor"]}) from None
 
 
@@ -398,22 +360,34 @@ async def list_files(
 @router.get("/{file_id}")
 async def get_file(file_id: uuid.UUID, db: Db) -> FileDetail:
     this, uploader = await _load(db, file_id)
-    chain = [_out(this, uploader)]
-    previous_id = this.supersedes_id
-    while previous_id is not None:
-        older, name = await _load(db, previous_id)
-        chain.insert(0, _out(older, name))
-        previous_id = older.supersedes_id
-    current = this.id
-    while (
-        row := (
-            await db.execute(_select_files().where(IngestFile.supersedes_id == current))
-        ).one_or_none()
-    ) is not None:
-        newer_file, name = row.tuple()
-        chain.append(_out(newer_file, name))
-        current = newer_file.id
-    return FileDetail(**_out(this, uploader).model_dump(), versions=chain)
+    older = (
+        select(
+            IngestFile.id.label("id"),
+            IngestFile.supersedes_id.label("link"),
+            literal(0).label("depth"),
+        )
+        .where(IngestFile.id == file_id)
+        .cte("older", recursive=True)
+    )
+    older = older.union_all(
+        select(IngestFile.id, IngestFile.supersedes_id, older.c.depth - 1).join(
+            older, IngestFile.id == older.c.link
+        )
+    )
+    newer = (
+        select(IngestFile.id.label("id"), literal(0).label("depth"))
+        .where(IngestFile.id == file_id)
+        .cte("newer", recursive=True)
+    )
+    newer = newer.union_all(
+        select(IngestFile.id, newer.c.depth + 1).join(newer, IngestFile.supersedes_id == newer.c.id)
+    )
+    chain = select(older.c.id, older.c.depth).union(select(newer.c.id, newer.c.depth)).subquery()
+    rows = await db.execute(
+        _select_files().join(chain, chain.c.id == IngestFile.id).order_by(chain.c.depth)
+    )
+    versions = [_out(file, name) for file, name in (row.tuple() for row in rows)]
+    return FileDetail(**_out(this, uploader).model_dump(), versions=versions)
 
 
 # --- content ----------------------------------------------------------------------------------
@@ -536,9 +510,24 @@ async def unarchive_file(file_id: uuid.UUID, db: Db) -> FileOut:
 
 @router.post("/{file_id}/rescan", dependencies=[Depends(admin_check)])
 async def rescan_file(file_id: uuid.UUID, db: Db) -> FileOut:
-    file, uploader = await _load(db, file_id)
+    """Queue the file for another scan; its earlier outcome (and text) is cleared. A file that
+    is being scanned now is refused, one that is already queued stays as it is."""
+    _, uploader = await _load(db, file_id)
+    file = (
+        await db.execute(
+            select(IngestFile)
+            .where(IngestFile.id == file_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
     if file.storage_key is None:  # a row of the archive loaders: nothing stored to scan
         raise ApiError(404, ErrorCode.file_not_found)
-    file.scan_status = ScanStatus.queued
-    await db.commit()
+    if file.scan_status is ScanStatus.running:
+        raise ApiError(409, ErrorCode.scan_in_progress)
+    if file.scan_status is not ScanStatus.queued:
+        file.scan_status = ScanStatus.queued
+        file.scan_result = None
+        file.error = None
+        await db.commit()
     return _out(file, uploader)

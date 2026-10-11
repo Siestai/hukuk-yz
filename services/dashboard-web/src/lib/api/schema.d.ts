@@ -136,7 +136,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rescan File */
+        /**
+         * Rescan File
+         * @description Queue the file for another scan; its earlier outcome (and text) is cleared. A file that
+         *     is being scanned now is refused, one that is already queued stays as it is.
+         */
         post: operations["rescan_file_files__file_id__rescan_post"];
         delete?: never;
         options?: never;
@@ -616,7 +620,7 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "invalid_date" | "http_error" | "internal_error";
+        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "invalid_date" | "http_error" | "internal_error";
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];

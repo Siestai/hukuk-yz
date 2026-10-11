@@ -5,7 +5,7 @@ same row), detects its type, extracts the text and, where Tesseract is installed
 through `hukuk_ingest.pipeline.process_file`. The text goes to the file store; the outcome goes
 to `ingest_file.scan_status` / `scan_result` and the file's `ingest_job`. A file that cannot be
 scanned is marked `failed` with the error and the loop goes on. Files left `running` for more
-than `STUCK_AFTER` (a crashed worker) are queued again.
+than `STUCK_AFTER` (a crashed worker) are queued again, up to `MAX_ATTEMPTS` claims.
 
 Concurrency is 1: the server is shared.
 """
@@ -21,7 +21,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import DateTime, func, or_, select, update
+from sqlalchemy import DateTime, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
@@ -36,6 +36,7 @@ logger = logging.getLogger("app.worker")
 HEARTBEAT_SECONDS = 30
 POLL_SECONDS = 5
 STUCK_AFTER = timedelta(minutes=15)
+MAX_ATTEMPTS = 3
 
 Factory = async_sessionmaker[AsyncSession]
 
@@ -54,6 +55,7 @@ class Claimed:
     id: uuid.UUID
     storage_key: str
     sha256: str
+    token: str
 
 
 @dataclass(frozen=True)
@@ -65,24 +67,47 @@ class Scanned:
 
 
 async def requeue_stuck(factory: Factory) -> int:
-    """Queue again the files that have been `running` for more than `STUCK_AFTER`."""
+    """Queue again the files that have been `running` for more than `STUCK_AFTER`; a file that
+    has been claimed `MAX_ATTEMPTS` times already is marked `failed` (error `stuck`) instead.
+    Returns the number of files handled."""
     started = IngestFile.scan_result["started_at"].astext.cast(DateTime(timezone=True))
     async with factory() as db:
-        ids = (
-            await db.execute(
-                update(IngestFile)
-                .where(
-                    IngestFile.scan_status == ScanStatus.running,
-                    or_(started.is_(None), started < datetime.now(UTC) - STUCK_AFTER),
+        files = (
+            (
+                await db.execute(
+                    select(IngestFile)
+                    .where(
+                        IngestFile.scan_status == ScanStatus.running,
+                        or_(started.is_(None), started < datetime.now(UTC) - STUCK_AFTER),
+                    )
+                    .with_for_update(skip_locked=True)
                 )
-                .values(scan_status=ScanStatus.queued)
-                .returning(IngestFile.id)
             )
-        ).all()
+            .scalars()
+            .all()
+        )
+        now = datetime.now(UTC)
+        for file in files:
+            attempts = int((file.scan_result or {}).get("attempts", 0))
+            if attempts >= MAX_ATTEMPTS:
+                file.scan_status = ScanStatus.failed
+                file.scan_result = {
+                    "error": "stuck",
+                    "attempts": attempts,
+                    "scanned_at": now.isoformat(),
+                }
+                file.error = "stuck"
+                await db.flush()
+                await _refresh_job(db, file, now)
+                logger.error(
+                    "file %s was running too long %d times; marked failed", file.id, attempts
+                )
+            else:
+                file.scan_status = ScanStatus.queued
+                file.scan_result = {"attempts": attempts}
+                logger.warning("file %s was running too long; queued again", file.id)
         await db.commit()
-    for (file_id,) in ids:
-        logger.warning("file %s was running too long; queued again", file_id)
-    return len(ids)
+    return len(files)
 
 
 async def claim(factory: Factory) -> Claimed | None:
@@ -105,14 +130,16 @@ async def claim(factory: Factory) -> Claimed | None:
         assert file.storage_key is not None  # selected as not null
         now = datetime.now(UTC)
         file.scan_status = ScanStatus.running
-        file.scan_result = {"started_at": now.isoformat()}
+        token = uuid.uuid4().hex
+        attempts = int((file.scan_result or {}).get("attempts", 0)) + 1
+        file.scan_result = {"started_at": now.isoformat(), "attempts": attempts, "claim": token}
         job = await db.get(IngestJob, file.job_id)
         assert job is not None  # job_id is a foreign key
         job.status = IngestStatus.running
         job.started_at = job.started_at or now
         job.finished_at = None
         await db.commit()
-        return Claimed(file.id, file.storage_key, file.sha256)
+        return Claimed(file.id, file.storage_key, file.sha256, token)
 
 
 def scan(store: FileStore, claimed: Claimed) -> Scanned:
@@ -156,43 +183,57 @@ def _failed(error: str) -> Scanned:
     return Scanned(ScanStatus.failed, {"error": error}, error=error)
 
 
+async def _refresh_job(db: AsyncSession, file: IngestFile, now: datetime) -> None:
+    """Recompute the counts and the status of the file's job (the file's own row is flushed)."""
+    counts = dict(
+        (
+            await db.execute(
+                select(IngestFile.scan_status, func.count())
+                .where(IngestFile.job_id == file.job_id)
+                .group_by(IngestFile.scan_status)
+            )
+        ).all()
+    )
+    job = await db.get(IngestJob, file.job_id)
+    assert job is not None  # job_id is a foreign key
+    job.stats = {"files": sum(counts.values()), **{s.value: n for s, n in counts.items()}}
+    if counts.get(ScanStatus.queued) or counts.get(ScanStatus.running):
+        job.status = IngestStatus.running
+    else:
+        job.status = (
+            IngestStatus.failed if counts.get(ScanStatus.failed) else IngestStatus.completed
+        )
+        job.finished_at = now
+
+
 async def finish(factory: Factory, claimed: Claimed, scanned: Scanned) -> None:
-    """Write the outcome to the file and refresh the job's status and counts. A file queued
-    again meanwhile (the scan outlived `STUCK_AFTER`) keeps its place: the outcome is dropped."""
+    """Write the outcome to the file and refresh the job's status and counts. Only the attempt
+    that claimed the file may write: a file queued again meanwhile (the scan outlived
+    `STUCK_AFTER`) and perhaps claimed by another attempt keeps its place; the outcome is
+    dropped."""
     async with factory() as db:
         file = (
             await db.execute(
                 select(IngestFile).where(IngestFile.id == claimed.id).with_for_update()
             )
         ).scalar_one()
-        if file.scan_status is not ScanStatus.running:
-            logger.warning("file %s is no longer running; its scan outcome is dropped", file.id)
+        current = file.scan_result or {}
+        if file.scan_status is not ScanStatus.running or current.get("claim") != claimed.token:
+            logger.warning(
+                "file %s was taken from this attempt; its scan outcome is dropped", file.id
+            )
             return
         now = datetime.now(UTC)
         file.scan_status = scanned.status
-        file.scan_result = {**scanned.result, "scanned_at": now.isoformat()}
+        file.scan_result = {
+            **scanned.result,
+            "attempts": current.get("attempts", 1),
+            "scanned_at": now.isoformat(),
+        }
         file.detected_type = scanned.detected_type or file.detected_type
         file.error = scanned.error
         await db.flush()
-        counts = dict(
-            (
-                await db.execute(
-                    select(IngestFile.scan_status, func.count())
-                    .where(IngestFile.job_id == file.job_id)
-                    .group_by(IngestFile.scan_status)
-                )
-            ).all()
-        )
-        job = await db.get(IngestJob, file.job_id)
-        assert job is not None  # job_id is a foreign key
-        job.stats = {"files": sum(counts.values()), **{s.value: n for s, n in counts.items()}}
-        if counts.get(ScanStatus.queued) or counts.get(ScanStatus.running):
-            job.status = IngestStatus.running
-        else:
-            job.status = (
-                IngestStatus.failed if counts.get(ScanStatus.failed) else IngestStatus.completed
-            )
-            job.finished_at = now
+        await _refresh_job(db, file, now)
         await db.commit()
 
 
