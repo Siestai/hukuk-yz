@@ -99,7 +99,7 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "review.queue.subtitles": STATUSES.filter((status) => status !== "pending"),
     "review.queue.empty.byStatus": STATUSES.filter((status) => status !== "pending"),
     "review.queue.table.labels": STATUSES.filter((status) => status !== "pending"),
-    "review.queue.table.statuses": ["pending", "approved", "edited", "rejected"],
+    "review.queue.table.statuses": ["pending", "reopened", "approved", "edited", "rejected"],
     "review.detail.statusStrip": ["approved", "edited", "rejected"],
     "review.queue.flash": FLASHES,
     "review.queue.flashStatute": FLASHES.filter((flash) => flash !== "edited"),

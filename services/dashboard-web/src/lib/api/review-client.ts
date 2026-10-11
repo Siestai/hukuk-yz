@@ -74,6 +74,7 @@ export function postReviewIn(
     if (!isStatuteState(queue)) return postReview(api, extractionId, body);
     const { action, note } = body;
     if (action === "edit") throw new Error("a statute article is not edited");
+    if (action === "reopen") throw new Error("a statute article is not reopened here");
     return postStatuteReview(api, extractionId, { action, note });
 }
 

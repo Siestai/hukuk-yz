@@ -111,6 +111,7 @@ class ReviewDecision(PgEnum):
     approve = "approve"
     edit = "edit"
     reject = "reject"
+    reopen = "reopen"
 
 
 class Court(PgEnum):

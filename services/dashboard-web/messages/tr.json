@@ -92,6 +92,7 @@
         "noteValue": "Ret notu: {note}",
         "statuses": {
           "pending": "Bekliyor",
+          "reopened": "Yeniden incelemede",
           "approved": "Onaylandı",
           "edited": "Düzeltilerek onaylandı",
           "rejected": "Reddedildi"
@@ -328,7 +329,8 @@
         "decision": {
           "approve": "Onayladı",
           "edit": "Düzelterek onayladı",
-          "reject": "Reddetti"
+          "reject": "Reddetti",
+          "reopen": "Yeniden incelemeye aldı"
         }
       },
       "statusStrip": {
@@ -393,6 +395,17 @@
       "cancel": "Vazgeç",
       "titleStatute": "Maddeyi reddet",
       "introStatute": "Reddedilen madde yayınlanmaz. Nedenini yazın; çizelge düzeltmesi için kullanılır."
+    },
+    "reopen": {
+      "fromApproved": "Onaydan çıkar",
+      "fromRejected": "Reddi geri al",
+      "title": "Yeniden incelemeye al",
+      "intro": "Karar bekleyen duruma döner; onaylı kayıt geçmişte saklanır, silinmez.",
+      "note": "Not (isteğe bağlı)",
+      "submit": "Yeniden incelemeye al",
+      "pending": "İşleniyor",
+      "cancel": "Vazgeç",
+      "conflict": "Bu karar başka biri tarafından değiştirildi."
     },
     "statutes": {
       "title": "Mevzuat inceleme kuyruğu",

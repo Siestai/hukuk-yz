@@ -761,6 +761,136 @@ async def test_a_live_key_collision_is_409_with_the_conflicting_decision(
     assert await _status(kb_factory, second) is RecordStatus.analyzed
 
 
+# --- reopen -----------------------------------------------------------------------------------
+
+
+async def test_reopen_returns_an_approved_decision_to_review_and_it_can_be_rejected(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    extraction_id = await _eid(kb_factory, record)
+    url = f"{BASE}/{extraction_id}"
+    approved = await client.post(url, json={"action": "approve"}, headers=me.headers)
+    response = await client.post(
+        url, json={"action": "reopen", "note": "yanlış onay"}, headers=me.headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["decision_id"], body["source_status"]) == (None, "analyzed")
+    async with kb_factory() as session:
+        decision = await session.get(Decision, uuid.UUID(approved.json()["decision_id"]))
+    assert decision is not None
+    assert decision.superseded_at is not None
+    assert await _status(kb_factory, extraction_id) is RecordStatus.analyzed
+    detail = (await client.get(url, headers=me.headers)).json()
+    assert [r["decision"] for r in detail["reviews"]] == ["approve", "reopen"]
+    assert detail["reviews"][1]["note"] == "yanlış onay"
+    rejected = await client.post(url, json={"action": "reject", "note": "n"}, headers=me.headers)
+    assert rejected.json()["source_status"] == "rejected"
+    assert await _status(kb_factory, extraction_id) is RecordStatus.rejected
+
+
+async def test_a_reopened_rejection_can_be_approved_into_a_new_live_decision(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    await client.post(url, json={"action": "approve"}, headers=me.headers)
+    await client.post(url, json={"action": "reopen"}, headers=me.headers)
+    again = await client.post(url, json={"action": "approve"}, headers=me.headers)
+    assert again.status_code == 200
+    async with kb_factory() as session:
+        rows = (await session.execute(select(Decision))).scalars().all()
+    assert len(rows) == 2
+    assert [d.superseded_at is None for d in rows if str(d.id) == again.json()["decision_id"]] == [
+        True
+    ]
+    assert sum(d.superseded_at is None for d in rows) == 1
+
+
+async def test_reopen_of_a_waiting_decision_is_409_and_writes_nothing(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    response = await client.post(url, json={"action": "reopen"}, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (409, "review_conflict")
+    assert await _count(kb_factory, Review) == 0
+
+
+async def test_reopen_of_an_older_extraction_is_409(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    old = await _eid(kb_factory, record)
+    await client.post(f"{BASE}/{old}", json={"action": "reject", "note": "n"}, headers=me.headers)
+    await load(kb_factory, [dataclasses.replace(record, parser_version="6")], LoadCounts())
+    response = await client.post(f"{BASE}/{old}", json={"action": "reopen"}, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (409, "review_conflict")
+
+
+async def test_reopen_of_an_unknown_extraction_is_404_and_edits_are_refused(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    response = await client.post(
+        f"{BASE}/{uuid.uuid4()}", json={"action": "reopen"}, headers=me.headers
+    )
+    assert response.status_code == 404
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    refused = await client.post(
+        url, json={"action": "reopen", "edits": {"chamber": "9. HD"}}, headers=me.headers
+    )
+    assert refused.status_code == 422
+
+
+async def test_two_concurrent_reopens_give_one_success_and_one_409(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    await client.post(url, json={"action": "approve"}, headers=me.headers)
+    responses = await asyncio.gather(
+        *[client.post(url, json={"action": "reopen"}, headers=me.headers) for _ in range(2)]
+    )
+    assert sorted(r.status_code for r in responses) == [200, 409]
+    assert await _count(kb_factory, Review) == 2
+
+
+async def test_an_admin_can_reopen(client: httpx.AsyncClient, kb_factory: Factory) -> None:
+    admin = await _login_as(client, kb_factory, "orhan@x.test", UserRole.admin)
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    await client.post(url, json={"action": "approve"}, headers=admin.headers)
+    response = await client.post(url, json={"action": "reopen"}, headers=admin.headers)
+    assert response.status_code == 200
+
+
+async def test_a_reopened_high_band_decision_stays_out_of_bulk_approval_and_shows_in_the_list(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {}, {})
+    reopened, other, _ = await _ids(kb_factory, prepared, 1, 2, 3)
+    url = f"{BASE}/{reopened}"
+    await client.post(url, json={"action": "approve"}, headers=me.headers)
+    await client.post(url, json={"action": "reopen"}, headers=me.headers)
+    pending = (await client.get(BASE, headers=me.headers)).json()
+    marked = {i["extraction_id"]: i["review_decision"] for i in pending["items"]}
+    assert marked[str(reopened)] == "reopen"
+    assert marked[str(other)] is None
+    assert (await client.get(f"{BASE}/summary", headers=me.headers)).json()["by_band"]["high"] == 3
+    response = await client.post(f"{BASE}/bulk-approve", json=_bulk(2), headers=me.headers)
+    assert response.json()["published"] == 2
+    assert await _status(kb_factory, reopened) is RecordStatus.analyzed
+    for tab in ("approved", "rejected"):
+        listed = (await client.get(BASE, params={"status": tab}, headers=me.headers)).json()
+        assert str(reopened) not in [i["extraction_id"] for i in listed["items"]]
+    everything = (await client.get(BASE, params={"status": "all"}, headers=me.headers)).json()
+    assert {i["extraction_id"]: i["review_decision"] for i in everything["items"]}[
+        str(reopened)
+    ] == "reopen"
+
+
 # --- bulk approval ----------------------------------------------------------------------------
 
 
@@ -946,9 +1076,10 @@ async def test_every_endpoint_needs_a_login(client: httpx.AsyncClient, kb_factor
         client.get(f"{BASE}/{some}"),
         client.post(f"{BASE}/{some}", json={"action": "approve"}),
         client.post(f"{BASE}/bulk-approve", json=_bulk(0)),
+        client.post(f"{BASE}/{some}", json={"action": "reopen"}),
     ]
     responses = await asyncio.gather(*calls)
-    assert [r.status_code for r in responses] == [401] * 5
+    assert [r.status_code for r in responses] == [401] * 6
     assert {r.json()["error"]["code"] for r in responses} == {"unauthorized"}
 
 

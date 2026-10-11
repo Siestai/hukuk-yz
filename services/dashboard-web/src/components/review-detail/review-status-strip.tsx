@@ -1,11 +1,15 @@
 "use client";
 
+import { Button } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
+import { useRef, useState } from "react";
 
 import type { components } from "@/lib/api/schema";
 import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
+import { useErrorMessage } from "@/lib/use-error-message";
+import { ReopenDialog } from "./reopen-dialog";
 import { useReviewSession } from "./review-session";
 
 type Review = components["schemas"]["ReviewOut"];
@@ -13,8 +17,9 @@ type Review = components["schemas"]["ReviewOut"];
 /**
  * The outcome of a record that left the queue, in one block: "Reddedildi · date · reviewer", the
  * rejection note and the sentence that the review actions are unavailable. A record that left
- * the queue without a review (published) shows its status and that sentence. Nothing for a record
- * still waiting. Such a record has no action bar, so the
+ * the queue without a review (published) shows its status and that sentence, and for a decision the
+ * button that reopens it ("Onaydan çıkar" / "Reddi geri al"). Only a failed reopen shows for a
+ * record that is waiting (it may have been reopened by someone else). Such a record has no action bar, so the
  * "no next / previous record" message of the J / K keys is shown here.
  */
 export function ReviewStatusStrip({
@@ -28,7 +33,10 @@ export function ReviewStatusStrip({
     const { dateTime } = useDates();
     const { separator } = useCommon();
     const labels = useEnumLabels();
-    const { edge, canAct } = useReviewSession();
+    const message = useErrorMessage();
+    const { edge, canAct, subject, failure, busy } = useReviewSession();
+    const [reopening, setReopening] = useState(false);
+    const reopenButton = useRef<HTMLButtonElement>(null);
     const last = reviews.at(-1);
     const left = sourceStatus !== "analyzed";
     const outcome =
@@ -71,7 +79,38 @@ export function ReviewStatusStrip({
                         </p>
                     ) : null}
                     <p className="text-ink-2">{t("review.detail.statusStrip.unavailable")}</p>
+                    {subject === "decision" ? (
+                        <>
+                            <Button
+                                ref={reopenButton}
+                                variant="outline"
+                                className="w-full md:w-fit"
+                                onClick={() => setReopening(true)}
+                                disabled={busy}
+                            >
+                                {outcome === "rejected"
+                                    ? t("review.reopen.fromRejected")
+                                    : t("review.reopen.fromApproved")}
+                            </Button>
+                            <ReopenDialog
+                                open={reopening}
+                                onClose={() => setReopening(false)}
+                                returnFocusTo={reopenButton}
+                            />
+                        </>
+                    ) : null}
                 </section>
+            ) : null}
+            {failure?.during === "reopen" ? (
+                <p
+                    role="alert"
+                    className="rounded-md border border-destructive bg-surface p-3 text-sm text-destructive"
+                    data-code={failure.code}
+                >
+                    {failure.code === "review_conflict"
+                        ? t("review.reopen.conflict")
+                        : message(failure.code, failure.params)}
+                </p>
             ) : null}
             {canAct ? null : (
                 <div role="status" className="text-sm text-ink-2">

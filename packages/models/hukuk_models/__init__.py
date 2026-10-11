@@ -150,7 +150,7 @@ class DecisionEdits(BaseModel):
 
 
 class ReviewActionRequest(BaseModel):
-    action: Literal["approve", "edit", "reject"]
+    action: Literal["approve", "edit", "reject", "reopen"]
     edits: DecisionEdits | None = None
     note: str | None = None
 
@@ -197,13 +197,13 @@ class BulkApproveResponse(BaseModel):
 
 
 ListStatus = Literal["pending", "approved", "rejected", "all"]
-ReviewDecisionName = Literal["approve", "edit", "reject"]
+ReviewDecisionName = Literal["approve", "edit", "reject", "reopen"]
 
 
 class ReviewListItem(BaseModel):
     """A queue row. `source_status` is the status of the decision's source. The last-review
-    fields are None for a decision still waiting; `note` is the reason of a rejection and None
-    for any other review."""
+    fields are None for a decision never reviewed (a reopened one carries its `reopen`); `note`
+    is the reason of a rejection and None for any other review."""
 
     extraction_id: uuid.UUID
     source_id: uuid.UUID

@@ -30,6 +30,7 @@ from app.kb import (
     publish_batch,
     queue,
     reject_extraction,
+    reopen_extraction,
 )
 from app.models.common import (
     Court,
@@ -168,7 +169,9 @@ async def bulk_approve(body: BulkApproveRequest, user: Reviewer, db: Db) -> Bulk
         cursor=body.cursor,
         expected_count=body.expected_count,
         limit=body.limit,
-        pending=lambda after: queue(body.band, body.filters, "sha256", after),
+        pending=lambda after: queue(
+            body.band, body.filters, "sha256", after, exclude_reopened=True
+        ),
         cursor_of=lambda row: row.sha256,
         publish=lambda ids: publish_batch(db, ids, user.id, body.band),
     )
@@ -313,6 +316,9 @@ async def act(
             assert body.note  # ReviewActionRequest guarantees it
             review_id = await reject_extraction(db, extraction_id, user.id, body.note)
             decision_id = None
+        elif body.action == "reopen":
+            review_id = await reopen_extraction(db, extraction_id, user.id, body.note)
+            decision_id = None
         else:
             review_id, decision_id = await approve_extraction(
                 db, extraction_id, user.id, ReviewDecision(body.action), edits, body.note
@@ -330,7 +336,7 @@ async def act(
     return ReviewActionResponse(
         review_id=review_id,
         decision_id=decision_id,
-        source_status="rejected" if body.action == "reject" else "approved",
+        source_status={"reject": "rejected", "reopen": "analyzed"}.get(body.action, "approved"),
     )
 
 

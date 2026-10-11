@@ -62,7 +62,7 @@ Her kaynak türü kaydının üst kimliği.
 |---|---|
 | id, extraction_id | |
 | reviewer_id | kim |
-| decision | `approve` / `edit` / `reject` |
+| decision | `approve` / `edit` / `reject` / `reopen` (onayı ya da reddi geri alıp yeniden incelemeye açma, Görev 10h; `reopen`'dan sonra kaynak `analyzed`, onaylı `decision` satırı `superseded_at` ile emekli) |
 | edits jsonb | düzeltilen alanlar (fark) |
 | note | |
 | reviewed_at | |

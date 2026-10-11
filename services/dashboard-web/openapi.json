@@ -826,7 +826,8 @@
             "enum": [
               "approve",
               "edit",
-              "reject"
+              "reject",
+              "reopen"
             ],
             "title": "Action",
             "type": "string"
@@ -1049,7 +1050,7 @@
         "type": "object"
       },
       "ReviewListItem": {
-        "description": "A queue row. `source_status` is the status of the decision's source. The last-review\nfields are None for a decision still waiting; `note` is the reason of a rejection and None\nfor any other review.",
+        "description": "A queue row. `source_status` is the status of the decision's source. The last-review\nfields are None for a decision never reviewed (a reopened one carries its `reopen`); `note`\nis the reason of a rejection and None for any other review.",
         "properties": {
           "band": {
             "enum": [
@@ -1132,7 +1133,8 @@
                 "enum": [
                   "approve",
                   "edit",
-                  "reject"
+                  "reject",
+                  "reopen"
                 ],
                 "type": "string"
               },
@@ -1239,7 +1241,8 @@
             "enum": [
               "approve",
               "edit",
-              "reject"
+              "reject",
+              "reopen"
             ],
             "title": "Decision",
             "type": "string"
