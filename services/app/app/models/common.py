@@ -190,6 +190,29 @@ class ChunkKind(PgEnum):
     editorial_summary = "editorial_summary"
 
 
+class DocumentType(PgEnum):
+    kanun = "kanun"
+    cbk = "cbk"
+    yonetmelik = "yonetmelik"
+    teblig = "teblig"
+    genelge = "genelge"
+    genel_yazi = "genel_yazi"
+    ic_emri = "ic_emri"
+    karar = "karar"
+    kitap = "kitap"
+    hesap_tablosu = "hesap_tablosu"
+    diger = "diger"
+
+
+class ScanStatus(PgEnum):
+    queued = "queued"
+    running = "running"
+    done = "done"
+    needs_ocr = "needs_ocr"
+    unsupported = "unsupported"
+    failed = "failed"
+
+
 # Enum class -> Postgres type name; the migration creates exactly these.
 ENUM_TYPES: dict[str, type[PgEnum]] = {
     "source_category": SourceCategory,
@@ -209,6 +232,8 @@ ENUM_TYPES: dict[str, type[PgEnum]] = {
     "admin_issuer": AdminIssuer,
     "admin_kind": AdminKind,
     "chunk_kind": ChunkKind,
+    "document_type": DocumentType,
+    "scan_status": ScanStatus,
 }
 
 
@@ -305,10 +330,34 @@ class IngestJob(UuidPkMixin, Base):
 
 
 class IngestFile(UuidPkMixin, Base):
-    """data-model.md §3. sha256 is indexed for duplicate-upload detection."""
+    """data-model.md §3. A file managed by the app (task 12) has a `storage_key`; the rows of the
+    archive loaders (task 05) have none until the import of task 12c. sha256 is indexed for
+    duplicate detection and unique among stored files: the loaders may hold the same content
+    twice (journal reprints), the file store holds it once."""
 
     __tablename__ = "ingest_file"
-    __table_args__ = (Index("ix_ingest_file_sha256", "sha256"),)
+    __table_args__ = (
+        Index("ix_ingest_file_sha256", "sha256"),
+        Index(
+            "uq_ingest_file_sha256_stored",
+            "sha256",
+            unique=True,
+            postgresql_where=text("storage_key IS NOT NULL"),
+        ),
+        # A file has at most one next version: the chain never branches.
+        Index(
+            "uq_ingest_file_supersedes_id",
+            "supersedes_id",
+            unique=True,
+            postgresql_where=text("supersedes_id IS NOT NULL"),
+        ),
+        # What the worker claims and requeues; tiny next to the archive rows (all `done`).
+        Index(
+            "ix_ingest_file_scan_pending",
+            "scan_status",
+            postgresql_where=text("scan_status IN ('queued', 'running')"),
+        ),
+    )
 
     job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ingest_job.id"), index=True)
     path: Mapped[str]
@@ -317,6 +366,22 @@ class IngestFile(UuidPkMixin, Base):
     detected_type: Mapped[str | None]
     size: Mapped[int] = mapped_column(BigInteger)
     error: Mapped[str | None]
+    storage_key: Mapped[str | None]
+    original_name: Mapped[str | None]
+    doc_type: Mapped[DocumentType | None] = mapped_column(DocumentType.pg_type("document_type"))
+    doc_date: Mapped[date | None]
+    official_ref: Mapped[str | None]
+    origin_url: Mapped[str | None]
+    note: Mapped[str | None]
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    uploaded_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("ingest_file.id"))
+    # 'done' for the rows the loaders write (they are parsed, not scanned); uploads say 'queued'.
+    scan_status: Mapped[ScanStatus] = mapped_column(
+        ScanStatus.pg_type("scan_status"), server_default=text("'done'")
+    )
+    scan_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    archived_at: Mapped[datetime | None]
 
 
 class Extraction(UuidPkMixin, Base):

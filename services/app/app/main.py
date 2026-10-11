@@ -12,6 +12,7 @@ from app.auth import router as auth_router
 from app.db import make_engine
 from app.errors import ERROR_RESPONSES
 from app.errors import install as install_error_handlers
+from app.files.api import router as files_router
 from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.review_statutes import router as review_statutes_router
@@ -42,6 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="hukuk-agent", lifespan=lifespan, responses=ERROR_RESPONSES)
 install_error_handlers(app)
 app.include_router(auth_router)
+app.include_router(files_router)
 app.include_router(review_router)
 app.include_router(review_statutes_router)
 app.include_router(statutes_router)

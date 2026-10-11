@@ -37,6 +37,13 @@ class ErrorCode(StrEnum):
     file_not_found = "file_not_found"
     file_not_previewable = "file_not_previewable"
     statute_not_found = "statute_not_found"  # params: number
+    invalid_file = "invalid_file"  # an empty upload, a missing file part or a bad file name
+    duplicate_file = "duplicate_file"  # params: file_id, archived
+    file_too_large = "file_too_large"  # params: max_bytes
+    unsupported_file_type = "unsupported_file_type"
+    file_store_unavailable = "file_store_unavailable"
+    # a new version of a file that has a newer one already, or of an archived file
+    file_version_conflict = "file_version_conflict"
     invalid_date = "invalid_date"  # params: field
     http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
     internal_error = "internal_error"
@@ -441,3 +448,67 @@ class StatuteReviewDetail(BaseModel):
     reviews: list[ReviewOut]
     # The extraction whose versions are live for this article, when it is another one.
     live_extraction_id: uuid.UUID | None
+
+
+DocType = Literal[
+    "kanun",
+    "cbk",
+    "yonetmelik",
+    "teblig",
+    "genelge",
+    "genel_yazi",
+    "ic_emri",
+    "karar",
+    "kitap",
+    "hesap_tablosu",
+    "diger",
+]
+ScanState = Literal["queued", "running", "done", "needs_ocr", "unsupported", "failed"]
+
+
+class FileFields(BaseModel):
+    """The form fields of an upload (`POST /files`, `POST /files/{id}/versions`). Empty fields
+    of a form count as absent."""
+
+    doc_type: DocType | None = None
+    doc_date: date | None = None  # publication or signature date of the document
+    official_ref: Annotated[str, StringConstraints(max_length=200)] | None = None  # e.g. "2020/39"
+    origin_url: Annotated[str, StringConstraints(max_length=2000)] | None = None
+    note: Annotated[str, StringConstraints(max_length=2000)] | None = None
+
+
+class FileOut(BaseModel):
+    """A file record. `original_name` is None for the rows of the archive loaders until their
+    import (task 12c). `scan_result` is the worker's outcome: detected type, pages, text length,
+    `ocr_used`, warnings, `error`."""
+
+    id: uuid.UUID
+    original_name: str | None
+    sha256: str
+    size: int
+    detected_type: str | None
+    doc_type: DocType | None
+    doc_date: date | None
+    official_ref: str | None
+    origin_url: str | None
+    note: str | None
+    uploaded_by_id: uuid.UUID | None
+    uploaded_by_name: str | None
+    uploaded_at: datetime
+    supersedes_id: uuid.UUID | None
+    scan_status: ScanState
+    scan_result: dict[str, Any] | None
+    archived_at: datetime | None
+
+
+class FileListItem(FileOut):
+    version_count: int
+
+
+class FileListResponse(BaseModel):
+    items: list[FileListItem]
+    next_cursor: str | None  # None on the last page
+
+
+class FileDetail(FileOut):
+    versions: list[FileOut]  # the whole chain, oldest to newest, this record included

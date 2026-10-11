@@ -50,8 +50,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       # Decision PDFs (GET /review/decisions/{id}/file): the Drive copy, mounted read-only below.
       ARCHIVE_ROOT: /archive
+      # Uploaded files (task 12): the same volume as the worker's, which scans them.
+      FILE_STORE_ROOT: /filestore
     volumes:
       - ${ARCHIVE_HOST_DIR:-../../data/drive}:/archive:ro
+      - filestore:/filestore
     healthcheck:
       test:
         - CMD
@@ -79,6 +82,12 @@ services:
   worker:
     <<: *app
     command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      FILE_STORE_ROOT: /filestore
+    volumes:
+      - filestore:/filestore
 
 volumes:
   pgdata:
+  filestore:

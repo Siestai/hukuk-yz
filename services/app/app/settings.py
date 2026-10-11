@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -30,11 +30,16 @@ class Settings(BaseSettings):
     # Largest decision PDF served; bigger files answer 404 (the file is read into memory).
     archive_max_file_bytes: int = 50 * 1024 * 1024
 
-    @field_validator("archive_root")
+    # The file store of uploaded documents (task 12). Unset: the upload endpoints answer 503
+    # and the worker does not scan.
+    file_store_root: Path | None = None
+    file_max_bytes: int = 50 * 1024 * 1024
+
+    @field_validator("archive_root", "file_store_root")
     @classmethod
-    def _absolute_archive_root(cls, value: Path | None) -> Path | None:
+    def _absolute_root(cls, value: Path | None, info: ValidationInfo) -> Path | None:
         if value is not None and not value.is_absolute():
-            raise ValueError("ARCHIVE_ROOT must be an absolute path")
+            raise ValueError(f"{(info.field_name or '').upper()} must be an absolute path")
         return value
 
 

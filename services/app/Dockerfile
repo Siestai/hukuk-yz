@@ -26,7 +26,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:3.12-slim-bookworm
 # No proxy is trusted for X-Forwarded-For unless FORWARDED_ALLOW_IPS names it (login rate limit).
 ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH" FORWARDED_ALLOW_IPS=""
-RUN useradd --system --uid 10001 --no-create-home app
+# Tesseract (Turkish + orientation data) for the worker's OCR of scans (task 12a).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-tur tesseract-ocr-osd \
+    && rm -rf /var/lib/apt/lists/*
+ENV HUKUK_TESSERACT=/usr/bin/tesseract TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+# A new named volume mounted at /filestore takes this owner, so the non-root user can write to it.
+RUN useradd --system --uid 10001 --no-create-home app && mkdir /filestore && chown app /filestore
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY services/app/alembic.ini services/app/alembic.ini
