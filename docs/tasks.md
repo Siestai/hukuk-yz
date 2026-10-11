@@ -8,7 +8,9 @@
 - [ ] 5434 sayılı Emekli Sandığı Kanunu metnini arşive ekle (4/c eski iştirakçiler için gerekli)
 - [ ] gh + claude CLI kurulumu, test PR (GH_TOKEN + ANTHROPIC_API_KEY bekleniyor)
 - [ ] architecture.md ilk taslak (gereksinim m.4, 25, 28, 29, 33 çapaları)
-- [ ] Görev 12c: mevcut Drive arşivinin içeri alınması + PDF sunumunun saklama katmanına geçişi (12a ve 12b uygulandı, PR'lar Orhan'ın onayında; ayrıntı `docs/tasks/12-file-management.md`)
+- [x] Görev 12c: mevcut Drive arşivinin içeri alınması + PDF sunumunun saklama katmanına geçişi (uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/12-file-management.md`)
+- [ ] Görev 12d (öneri, 12c'nin hemen ardından): `filestore` volume'ünün zamanlanmış yedeği; o zamana kadar tek kopya sunucu diskinde (deploy.md)
+- [ ] 12c sonrası: tam Drive aktarımında 43 `Eskiler/` dosyası güncel dosyayla eşleşmedi; İbrahim'le elle bağlama ya da ad kuralı (decisions.md)
 
 ## Orhan
 - [ ] `.env`'e GH_TOKEN ve ANTHROPIC_API_KEY (Claude Code ile)

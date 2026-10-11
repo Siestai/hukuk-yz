@@ -21,6 +21,7 @@ from sqlalchemy.orm import aliased
 
 from app.auth import Db
 from app.errors import ApiError
+from app.files.store import LocalFileStore
 from app.kb import (
     PARSER_NAME,
     STATUS_GROUPS,
@@ -265,30 +266,26 @@ async def get_file(extraction_id: uuid.UUID, db: Db) -> Response:
     Copyright: the archive PDFs are pages of the journal Çalışma ve Toplum. They are served
     only to a logged-in reviewer, for internal review, never publicly.
 
-    `ingest_file.path` is relative to `ARCHIVE_ROOT` (the loader stores the path under the Drive
-    copy, e.g. `Yargi_Kararlari_Arsivi/...`). The file is served only if it resolves inside the
-    root (no `..`, no symlink out), is within `ARCHIVE_MAX_FILE_BYTES` and its SHA-256 equals
-    `ingest_file.sha256`: no file rather than the wrong one. It is opened once, and the bytes
-    that were hashed are the bytes sent, so the file cannot change in between.
+    The file comes from the file store when the record has a `storage_key` (the import of task
+    12c fills it) and `FILE_STORE_ROOT` is set. Otherwise it comes from `ARCHIVE_ROOT`: there
+    `ingest_file.path` is relative to the root (the loader stores the path under the Drive copy,
+    e.g. `Yargi_Kararlari_Arsivi/...`) and the file is served only if it resolves inside the root
+    (no `..`, no symlink out). Either way it is served only if it is within
+    `ARCHIVE_MAX_FILE_BYTES` and its SHA-256 equals `ingest_file.sha256`: no file rather than
+    the wrong one. It is opened once, and the bytes that were hashed are the bytes sent, so the
+    file cannot change in between.
     """
     extraction, _ = await _decision_extraction(db, extraction_id)
     ingest_file = await db.get(IngestFile, extraction.file_id)
     assert ingest_file is not None  # extraction.file_id is a foreign key
     if ingest_file.detected_type != "pdf":
         raise ApiError(415, ErrorCode.file_not_previewable)
-    path = _archive_path(ingest_file)
-    if path is None:
-        raise ApiError(404, ErrorCode.file_not_found)
-    content = await asyncio.to_thread(
-        _read_archive_file, path, get_settings().archive_max_file_bytes
-    )
+    content = await asyncio.to_thread(_read_original, ingest_file)
     if content is None:
         logger.warning(
-            "archive file unreadable or over the size cap (extraction %s)", extraction_id
+            "original file missing, over the size cap or not matching its sha256 (extraction %s)",
+            extraction_id,
         )
-        raise ApiError(404, ErrorCode.file_not_found)
-    if hashlib.sha256(content).hexdigest() != ingest_file.sha256:
-        logger.warning("archive file does not match its sha256 (extraction %s)", extraction_id)
         raise ApiError(404, ErrorCode.file_not_found)
     return Response(
         content,
@@ -355,6 +352,42 @@ def _archive_path(ingest_file: IngestFile) -> Path | None:
     return path
 
 
+def _file_store() -> LocalFileStore | None:
+    root = get_settings().file_store_root
+    return LocalFileStore(root) if root else None
+
+
+def _stored(ingest_file: IngestFile) -> bool:
+    """Whether the original is in the file store (task 12c). Nothing is read."""
+    store = _file_store()
+    return bool(store and ingest_file.storage_key and store.exists(ingest_file.storage_key))
+
+
+def _read_original(ingest_file: IngestFile) -> bytes | None:
+    """The original of an ingest record, at most `ARCHIVE_MAX_FILE_BYTES`, with the sha256 of the
+    record: from the file store when the record has a `storage_key` (and a store is set), else
+    from `ARCHIVE_ROOT`. None when there is no such file or it is not the recorded content."""
+    max_bytes = get_settings().archive_max_file_bytes
+    store = _file_store()
+    content: bytes | None
+    if store and ingest_file.storage_key:
+        try:
+            with store.open(ingest_file.storage_key) as fh:
+                content = fh.read(max_bytes + 1)
+        except OSError:
+            return None
+    else:
+        path = _archive_path(ingest_file)
+        content = _read_archive_file(path, max_bytes) if path else None
+    if (
+        content is None
+        or len(content) > max_bytes
+        or hashlib.sha256(content).hexdigest() != ingest_file.sha256
+    ):
+        return None
+    return content
+
+
 def _pdf_availability(
     ingest_file: IngestFile,
 ) -> Literal["available", "missing", "not_previewable"]:
@@ -362,7 +395,7 @@ def _pdf_availability(
     file route still checks size and SHA-256, so a mismatch is only found when the PDF loads."""
     if ingest_file.detected_type != "pdf":
         return "not_previewable"
-    return "available" if _archive_path(ingest_file) else "missing"
+    return "available" if _stored(ingest_file) or _archive_path(ingest_file) else "missing"
 
 
 def _read_archive_file(path: Path, max_bytes: int) -> bytes | None:

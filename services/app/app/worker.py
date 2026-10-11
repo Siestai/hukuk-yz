@@ -25,6 +25,7 @@ from sqlalchemy import DateTime, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
+from app.files.scan_result import carry_import_path
 from app.files.store import CHUNK_BYTES, FileStore, LocalFileStore
 from app.logging_setup import configure_logging
 from app.models.common import IngestFile, IngestJob, IngestStatus, ScanStatus
@@ -92,6 +93,7 @@ async def requeue_stuck(factory: Factory) -> int:
             if attempts >= MAX_ATTEMPTS:
                 file.scan_status = ScanStatus.failed
                 file.scan_result = {
+                    **carry_import_path(file.scan_result),
                     "error": "stuck",
                     "attempts": attempts,
                     "scanned_at": now.isoformat(),
@@ -104,7 +106,7 @@ async def requeue_stuck(factory: Factory) -> int:
                 )
             else:
                 file.scan_status = ScanStatus.queued
-                file.scan_result = {"attempts": attempts}
+                file.scan_result = {**carry_import_path(file.scan_result), "attempts": attempts}
                 logger.warning("file %s was running too long; queued again", file.id)
         await db.commit()
     return len(files)
@@ -132,7 +134,12 @@ async def claim(factory: Factory) -> Claimed | None:
         file.scan_status = ScanStatus.running
         token = uuid.uuid4().hex
         attempts = int((file.scan_result or {}).get("attempts", 0)) + 1
-        file.scan_result = {"started_at": now.isoformat(), "attempts": attempts, "claim": token}
+        file.scan_result = {
+            **carry_import_path(file.scan_result),
+            "started_at": now.isoformat(),
+            "attempts": attempts,
+            "claim": token,
+        }
         job = await db.get(IngestJob, file.job_id)
         assert job is not None  # job_id is a foreign key
         job.status = IngestStatus.running
@@ -226,6 +233,7 @@ async def finish(factory: Factory, claimed: Claimed, scanned: Scanned) -> None:
         now = datetime.now(UTC)
         file.scan_status = scanned.status
         file.scan_result = {
+            **carry_import_path(current),
             **scanned.result,
             "attempts": current.get("attempts", 1),
             "scanned_at": now.isoformat(),

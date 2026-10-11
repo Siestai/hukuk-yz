@@ -3,6 +3,7 @@
 import asyncio
 import dataclasses
 import hashlib
+import io
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth import hash_password
 from app.db import make_engine
+from app.files.store import LocalFileStore
 from app.loaders.decisions import load, prepare
 from app.loaders.normalize import OUTCOMES
 from app.loaders.report import LoadCounts, PreparedRecord
@@ -1252,6 +1254,79 @@ async def test_without_an_archive_root_the_pdf_is_404(
     monkeypatch.setattr("app.review.get_settings", lambda: Settings(database_url="unused"))
     response = await client.get(archive.url, headers=me.headers)
     assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+
+
+@pytest.fixture
+async def stored(
+    kb_factory: Factory, archive: Archive, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> LocalFileStore:
+    """The archive decision's PDF moved into the file store (its `storage_key` set, as the
+    import of task 12c does), with `ARCHIVE_ROOT` unset."""
+    store = LocalFileStore(tmp_path / "filestore")
+    stored_file = store.put(io.BytesIO(PDF_BYTES))
+    monkeypatch.setattr(
+        "app.review.get_settings",
+        lambda: Settings(database_url="unused", file_store_root=tmp_path / "filestore"),
+    )
+    async with kb_factory() as session:
+        await session.execute(
+            text(
+                "UPDATE ingest_file SET storage_key = :key "
+                "WHERE id = (SELECT file_id FROM extraction WHERE id = :id)"
+            ),
+            {"key": stored_file.key, "id": archive.extraction_id},
+        )
+        await session.commit()
+    return store
+
+
+async def test_the_pdf_is_served_from_the_file_store_without_an_archive_root(
+    client: httpx.AsyncClient, me: Login, archive: Archive, stored: LocalFileStore
+) -> None:
+    detail = await client.get(f"{BASE}/{archive.extraction_id}", headers=me.headers)
+    assert detail.json()["pdf"] == "available"
+    response = await client.get(archive.url, headers=me.headers)
+    assert response.status_code == 200
+    assert response.content == PDF_BYTES
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["cache-control"] == "private, no-store"
+
+
+async def test_a_stored_pdf_that_is_not_the_recorded_content_is_404(
+    client: httpx.AsyncClient, me: Login, archive: Archive, stored: LocalFileStore, tmp_path: Path
+) -> None:
+    (blob,) = (tmp_path / "filestore" / "sha256").rglob("*/*/*")
+    blob.write_bytes(b"%PDF-1.4 tampered")
+    response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+
+
+async def test_a_stored_pdf_missing_from_the_store_is_404_and_not_available(
+    client: httpx.AsyncClient, me: Login, archive: Archive, stored: LocalFileStore, tmp_path: Path
+) -> None:
+    (blob,) = (tmp_path / "filestore" / "sha256").rglob("*/*/*")
+    blob.unlink()
+    detail = await client.get(f"{BASE}/{archive.extraction_id}", headers=me.headers)
+    assert detail.json()["pdf"] == "missing"
+    response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (404, "file_not_found")
+
+
+async def test_a_decision_without_a_storage_key_still_comes_from_the_archive_root(
+    client: httpx.AsyncClient,
+    me: Login,
+    archive: Archive,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.review.get_settings",
+        lambda: Settings(
+            database_url="unused", archive_root=archive.root, file_store_root=tmp_path / "empty"
+        ),
+    )
+    response = await client.get(archive.url, headers=me.headers)
+    assert (response.status_code, response.content) == (200, PDF_BYTES)
 
 
 async def test_the_pdf_needs_a_login(client: httpx.AsyncClient, archive: Archive) -> None:
