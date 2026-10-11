@@ -316,11 +316,14 @@ export interface paths {
          *     Copyright: the archive PDFs are pages of the journal Çalışma ve Toplum. They are served
          *     only to a logged-in reviewer, for internal review, never publicly.
          *
-         *     `ingest_file.path` is relative to `ARCHIVE_ROOT` (the loader stores the path under the Drive
-         *     copy, e.g. `Yargi_Kararlari_Arsivi/...`). The file is served only if it resolves inside the
-         *     root (no `..`, no symlink out), is within `ARCHIVE_MAX_FILE_BYTES` and its SHA-256 equals
-         *     `ingest_file.sha256`: no file rather than the wrong one. It is opened once, and the bytes
-         *     that were hashed are the bytes sent, so the file cannot change in between.
+         *     The file comes from the file store when the record has a `storage_key` (the import of task
+         *     12c fills it) and `FILE_STORE_ROOT` is set. Otherwise it comes from `ARCHIVE_ROOT`: there
+         *     `ingest_file.path` is relative to the root (the loader stores the path under the Drive copy,
+         *     e.g. `Yargi_Kararlari_Arsivi/...`) and the file is served only if it resolves inside the root
+         *     (no `..`, no symlink out). Either way it is served only if it is within
+         *     `ARCHIVE_MAX_FILE_BYTES` and its SHA-256 equals `ingest_file.sha256`: no file rather than
+         *     the wrong one. It is opened once, and the bytes that were hashed are the bytes sent, so the
+         *     file cannot change in between.
          */
         get: operations["get_file_review_decisions__extraction_id__file_get"];
         put?: never;
