@@ -860,8 +860,12 @@ async def test_a_reopened_decision_is_pending_but_not_in_the_bulk_queue(
 ) -> None:
     async with kb_loaded() as session:
         extraction_id = await _first_high(session)
+        # Separate transactions, as through the API: `reviewed_at` is the transaction's now(), so
+        # two reviews in one transaction would tie and the last review would be arbitrary.
         await reject_extraction(session, extraction_id, reviewer.id, "n")
+        await session.commit()
         await reopen_extraction(session, extraction_id, reviewer.id, None)
+        await session.commit()
         pending = (await session.execute(queue("high", ReviewFilters(), "sha256"))).all()
         bulk = (
             await session.execute(queue("high", ReviewFilters(), "sha256", exclude_reopened=True))
