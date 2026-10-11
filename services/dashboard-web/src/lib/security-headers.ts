@@ -37,11 +37,14 @@ export function staticSecurityHeaders(isDev = dev()): { key: string; value: stri
     ];
 }
 
-const PDF_FILE_PATH = new RegExp(`^/api/review/decisions/${UUID.source}/file$`, "i");
+const PDF_FILE_PATH = new RegExp(
+    `^/api/(?:review/decisions/${UUID.source}/file|files/${UUID.source}/content)$`,
+    "i",
+);
 
 /**
  * Framing headers of an `/api` response (pages get theirs from the CSP in proxy.ts). The original
- * PDF of a decision is shown in an iframe of our own pages, so only that path may be framed, and
+ * PDF of a decision, and the content of a stored file, are shown in an iframe of our own pages, so only that path may be framed, and
  * only by the same origin; everything else may not be framed at all.
  */
 export function apiFrameHeaders(pathname: string): Record<string, string> {

@@ -49,6 +49,10 @@ export function useEnumLabels() {
         changeKind: (value: string) => label("changeKind", value),
         evidenceBasis: (value: string) => label("evidenceBasis", value),
         amendmentKind: (value: string) => label("amendmentKind", value),
+        // Files (task 12): the kind of document and the state of its scan.
+        docType: (value: string) => label("docType", value),
+        scanStatus: (value: string) => label("scanStatus", value),
+        scanWarning: (value: string) => label("scanWarning", value),
         reasonCodes: Object.keys(messages.enums.reason),
     };
 }

@@ -82,6 +82,19 @@ describe("AppShell help", () => {
         );
     });
 
+    it("links the files screen in the side navigation", () => {
+        renderWithIntl(
+            <AppShell user={user} pending={3}>
+                <p>içerik</p>
+            </AppShell>,
+        );
+        const side = within(screen.getByRole("complementary"));
+        expect(side.getByRole("link", { name: messages.nav.files })).toHaveAttribute(
+            "href",
+            "/dosyalar",
+        );
+    });
+
     it("explains the statute review in a tip beside its link, not inside it", () => {
         renderWithIntl(
             <AppShell user={user} pending={3}>

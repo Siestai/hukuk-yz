@@ -9,6 +9,10 @@ CSRF: a state-changing request authenticated by the cookie must declare
 a cross-site `fetch` with it needs a CORS preflight, which this app never grants; SameSite=Lax
 already keeps the cookie off cross-site POSTs. Together that is enough for Phase 1. Requests
 authenticated by Bearer are exempt: the browser never adds that header by itself.
+
+A file upload is `multipart/form-data`, a type a cross-site form can send. By cookie it is
+accepted only with an `X-Requested-With` header, which a page can add to a script request but a
+form cannot, and a cross-site script request with it needs the same CORS preflight.
 """
 
 import asyncio
@@ -35,6 +39,7 @@ from hukuk_models import ErrorCode, LoginRequest, UserOut
 COOKIE_NAME = "hukuk_session"
 MIN_PASSWORD_LENGTH = 12
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+UPLOAD_HEADER = "x-requested-with"
 LAST_SEEN_INTERVAL = timedelta(minutes=5)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -94,7 +99,8 @@ def _request_token(request: Request) -> str:
     if not token:
         raise _unauthorized()
     content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
-    if request.method in UNSAFE_METHODS and content_type != "application/json":
+    upload = content_type == "multipart/form-data" and UPLOAD_HEADER in request.headers
+    if request.method in UNSAFE_METHODS and content_type != "application/json" and not upload:
         raise ApiError(415, ErrorCode.unsupported_media_type)
     return token
 

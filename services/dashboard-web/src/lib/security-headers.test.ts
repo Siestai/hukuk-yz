@@ -70,6 +70,15 @@ describe("apiFrameHeaders", () => {
         });
     });
 
+    it("lets the same origin frame the content of a stored file", () => {
+        expect(apiFrameHeaders(`/api/files/${id}/content`)).toMatchObject({
+            "X-Frame-Options": "SAMEORIGIN",
+        });
+        expect(apiFrameHeaders(`/api/files/${id}/text`)).toMatchObject({
+            "X-Frame-Options": "DENY",
+        });
+    });
+
     it("matches the UUID in upper case", () => {
         expect(apiFrameHeaders(`/api/review/decisions/${id.toUpperCase()}/file`)).toMatchObject({
             "X-Frame-Options": "SAMEORIGIN",
