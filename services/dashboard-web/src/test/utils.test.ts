@@ -11,6 +11,8 @@ describe("cn", () => {
         expect(cn("w-inset", "w-72")).toBe("w-72");
         expect(cn("w-72", "w-inset")).toBe("w-inset");
         expect(cn("h-viewport", "h-11")).toBe("h-11");
+        expect(cn("h-inset", "h-11")).toBe("h-11");
+        expect(cn("h-11", "h-inset")).toBe("h-inset");
         expect(cn("max-h-inset", "max-h-none")).toBe("max-h-none");
     });
 

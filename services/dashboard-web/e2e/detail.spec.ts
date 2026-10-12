@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openQueue, queueRows } from "./helpers";
+import { lengthenText, openQueue, queueRows } from "./helpers";
 
 // Read-only: runs on the untouched demo data (project `chromium`). Demo 01 is a high-band
 // Yargıtay 9. HD record: E. 2031/1001, K. 2031/2001.
@@ -38,6 +38,42 @@ test("the PDF tab holds the original file frame, served as a PDF", async ({ page
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toContain("application/pdf");
     expect((await response.body()).subarray(0, 5).toString()).toBe("%PDF-");
+});
+
+test("the PDF opens large in a window over the page and Escape closes it", async ({ page }) => {
+    await openFirstHigh(page);
+    const opener = page.getByRole("button", { name: "PDF'i büyük aç" });
+    await opener.click();
+    const dialog = page.getByRole("dialog", { name: "Kararın özgün PDF'i" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByTitle("Kararın özgün PDF'i")).toHaveAttribute("src", /\/file$/);
+    await expect(dialog.getByRole("link", { name: "Yeni sekmede aç" })).toHaveAttribute(
+        "target",
+        "_blank",
+    );
+    const box = await dialog.boundingBox();
+    expect(box?.width).toBeGreaterThan(900);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(opener).toBeFocused();
+});
+
+test("at the end of a long text the action bar is in view and Düzelt brings the form up", async ({
+    page,
+}) => {
+    await openFirstHigh(page);
+    await page.getByRole("tab", { name: "Çıkarılmış metin" }).click();
+    await lengthenText(page);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const bar = page.getByRole("region", { name: "İnceleme işlemleri" });
+    await expect(bar).toBeInViewport({ ratio: 1 });
+    await bar.getByRole("button", { name: /^Düzelt ve onayla/ }).click();
+    const first = page.getByLabel("Mahkeme", { exact: true });
+    await expect(first).toBeFocused();
+    await expect(first).toBeInViewport();
+    await expect(bar.getByRole("button", { name: "Vazgeç" })).toBeInViewport({ ratio: 1 });
+    await bar.getByRole("button", { name: "Vazgeç" }).click();
+    await expect(page.getByLabel("Mahkeme", { exact: true })).toHaveCount(0);
 });
 
 test("the text tab shows the extracted text with the editorial summary marked", async ({

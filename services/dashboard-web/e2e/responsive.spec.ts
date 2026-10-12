@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { expectTableFits, openQueue } from "./helpers";
+import { expectTableFits, lengthenText, openQueue } from "./helpers";
 
 // Read-only, project `chromium-mobile` (Pixel 7: touch, so `pointer: coarse`). The viewport is
 // set per block: 360x740 is the small phone, 768x1024 the tablet (`md`, below `xl`: cards in two columns, no table).
@@ -11,7 +11,7 @@ const TABLET = { width: 768, height: 1024 };
 const cards = (page: Page) =>
     // Direct children only: each card holds its own list of reason chips.
     page.getByRole("list", { name: "Onay bekleyen kararlar" }).locator(":scope > li");
-const pdfLink = (page: Page) => page.getByRole("link", { name: "PDF'i yeni sekmede aç" });
+const pdfButton = (page: Page) => page.getByRole("button", { name: "PDF'i aç" });
 const menuButton = (page: Page) => page.getByRole("button", { name: "Menü", exact: true });
 const pdfFrame = (page: Page) => page.getByTitle("Kararın özgün PDF'i");
 
@@ -92,15 +92,13 @@ for (const [name, viewport, phone] of [
             }
         });
 
-        test("the PDF is a link on a phone and a frame from md up", async ({ page }) => {
+        test("the PDF is a button on a phone and a frame from md up", async ({ page }) => {
             await openFirstRecord(page);
             if (phone) {
-                await expect(pdfLink(page)).toBeVisible();
-                await expect(pdfLink(page)).toHaveAttribute("target", "_blank");
-                await expect(pdfLink(page)).toHaveAttribute("href", /\/file$/);
+                await expect(pdfButton(page)).toBeVisible();
                 await expect(pdfFrame(page)).toBeHidden();
             } else {
-                await expect(pdfLink(page)).toBeHidden();
+                await expect(pdfButton(page)).toBeHidden();
                 await expect(pdfFrame(page)).toBeVisible();
             }
         });
@@ -154,11 +152,11 @@ for (const width of [1024, 1280, 1440]) {
 test.describe("phone 360x740", () => {
     test.use({ viewport: PHONE });
 
-    test("the file route is not requested while only the PDF link is shown", async ({ page }) => {
+    test("the file route is not requested while only the PDF button is shown", async ({ page }) => {
         const urls: string[] = [];
         page.on("request", (request) => urls.push(request.url()));
         await openFirstRecord(page);
-        await expect(pdfLink(page)).toBeVisible();
+        await expect(pdfButton(page)).toBeVisible();
         await page.waitForLoadState("networkidle");
         expect(urls.filter((url) => /\/decisions\/[^/]+\/file/.test(url))).toEqual([]);
     });
@@ -259,6 +257,52 @@ test.describe("phone 360x740", () => {
         const last = page.getByRole("tabpanel");
         const [lastBox, barBox] = await Promise.all([last.boundingBox(), bar.boundingBox()]);
         expect((lastBox?.y ?? 0) + (lastBox?.height ?? 0)).toBeLessThanOrEqual(barBox?.y ?? 0);
+        await expectNoHorizontalScroll(page);
+    });
+
+    test("the PDF opens in a window over the page, not a new tab, and Escape returns", async ({
+        page,
+    }) => {
+        await openFirstRecord(page);
+        let popups = 0;
+        page.on("popup", () => popups++);
+        await pdfButton(page).click();
+        const dialog = page.getByRole("dialog", { name: "Kararın özgün PDF'i" });
+        await expect(dialog).toBeVisible();
+        const box = await dialog.boundingBox();
+        expect(box).toMatchObject({ x: 0, y: 0, width: PHONE.width, height: PHONE.height });
+        await expect(dialog.getByTitle("Kararın özgün PDF'i")).toHaveAttribute("src", /\/file$/);
+        const fallback = dialog.getByRole("link", { name: "Yeni sekmede aç" });
+        await expect(fallback).toHaveAttribute("target", "_blank");
+        const close = dialog.getByRole("button", { name: "Kapat" });
+        expect((await close.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+        await expectNoHorizontalScroll(page);
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+        await expect(pdfButton(page)).toBeFocused();
+        expect(popups).toBe(0);
+    });
+
+    test("at the end of a long text the action bar is in view and Düzelt brings the form up", async ({
+        page,
+    }) => {
+        // Demo 01 is a record with extracted text.
+        await openQueue(page, "band=high&q=Demo%2001");
+        await cards(page).first().click();
+        await page.waitForURL(/\/kararlar\/[0-9a-f-]{36}/);
+        await page.getByRole("tab", { name: "Çıkarılmış metin" }).click();
+        await lengthenText(page);
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        const bar = page.getByRole("region", { name: "İnceleme işlemleri" });
+        await expect(bar).toBeInViewport({ ratio: 1 });
+        await bar.getByRole("button", { name: /^Düzelt ve onayla/ }).click();
+        const first = page.getByLabel("Mahkeme", { exact: true });
+        await expect(first).toBeFocused();
+        await expect(first).toBeInViewport();
+        await expect(bar.getByRole("button", { name: "Vazgeç" })).toBeInViewport({ ratio: 1 });
+        await expect(
+            bar.getByRole("button", { name: "Değişiklikleri gözden geçir" }),
+        ).toBeInViewport({ ratio: 1 });
         await expectNoHorizontalScroll(page);
     });
 

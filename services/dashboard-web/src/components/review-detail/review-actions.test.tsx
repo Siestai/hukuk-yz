@@ -360,12 +360,49 @@ describe("ReviewActions", () => {
             expect(screen.getByText("2019/1234")).toBeInTheDocument();
         });
 
+        it("moves the form into view and the cursor into its first field", async () => {
+            const scrollIntoView = vi.fn();
+            Element.prototype.scrollIntoView = scrollIntoView;
+            await startEdit();
+            expect(screen.getByLabelText("Mahkeme")).toHaveFocus();
+            expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+        });
+
+        it("scrolls without animation when the reader asked for less motion", async () => {
+            const scrollIntoView = vi.fn();
+            Element.prototype.scrollIntoView = scrollIntoView;
+            const original = window.matchMedia;
+            window.matchMedia = vi.fn(
+                (query: string) => ({ matches: true, media: query }) as MediaQueryList,
+            );
+            try {
+                await startEdit();
+            } finally {
+                window.matchMedia = original;
+            }
+            expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "auto" });
+        });
+
+        it("keeps Vazgeç and the review button in the action bar, not under the form, while editing", async () => {
+            await startEdit();
+            const bar = screen.getByRole("region", { name: "İnceleme işlemleri" });
+            expect(within(bar).getByRole("button", { name: "Vazgeç" })).toBeInTheDocument();
+            expect(
+                within(bar).getByRole("button", { name: "Değişiklikleri gözden geçir" }),
+            ).toHaveAttribute("form", "decision-edit-form");
+            expect(within(bar).queryByRole("button", { name: /^Onayla/ })).not.toBeInTheDocument();
+            expect(document.getElementById("decision-edit-form")).toContainElement(
+                screen.getByLabelText("Esas no"),
+            );
+        });
+
         it("says there is nothing to send when nothing changed", async () => {
             await startEdit();
             await userEvent.click(
                 screen.getByRole("button", { name: "Değişiklikleri gözden geçir" }),
             );
-            expect(screen.getByText("Değişen alan yok.")).toBeInTheDocument();
+            const note = screen.getByText("Değişen alan yok.");
+            expect(note).toHaveFocus();
             expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
 

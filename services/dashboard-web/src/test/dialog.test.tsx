@@ -28,6 +28,7 @@ function Harness({ dismissible = true, onClose }: { dismissible?: boolean; onClo
 }
 
 const escape = () => new Event("cancel", { cancelable: true });
+const dialogEscape = () => screen.getByRole("dialog").dispatchEvent(escape());
 
 describe("Dialog", () => {
     it("is a labelled modal dialog whose content exists only while open", async () => {
@@ -166,6 +167,29 @@ describe("Dialog drawer variant", () => {
     });
 });
 
+describe("Dialog scroll lock", () => {
+    it("stops the page behind from scrolling while open and restores the previous overflow", async () => {
+        document.body.style.overflow = "scroll";
+        render(<Harness />);
+        await userEvent.click(screen.getByText("open"));
+        expect(document.body.style.overflow).toBe("hidden");
+        dialogEscape();
+        await waitFor(() => expect(document.body.style.overflow).toBe("scroll"));
+        document.body.style.overflow = "";
+    });
+
+    it("restores it when the dialog unmounts open", () => {
+        const { unmount } = render(
+            <Dialog open onClose={() => {}} title="Belge">
+                x
+            </Dialog>,
+        );
+        expect(document.body.style.overflow).toBe("hidden");
+        unmount();
+        expect(document.body.style.overflow).toBe("");
+    });
+});
+
 describe("Dialog (center variant)", () => {
     it("is a bounded, scrollable box inset from the screen edges", async () => {
         render(<Harness />);
@@ -177,5 +201,30 @@ describe("Dialog (center variant)", () => {
             "overflow-y-auto",
             "overscroll-contain",
         );
+    });
+});
+
+describe("Dialog (viewer variant)", () => {
+    it("fills the screen on a phone, is a tall window from md, and closes on Escape and its button", async () => {
+        const onClose = vi.fn();
+        const { rerender } = render(
+            <Dialog open variant="viewer" closeLabel="Kapat" onClose={onClose} title="Belge">
+                <div>içerik</div>
+            </Dialog>,
+        );
+        const dialog = screen.getByRole("dialog", { name: "Belge" });
+        expect(dialog).toHaveClass("h-viewport", "w-full", "rounded-none", "md:h-inset");
+        expect(dialog).not.toHaveClass("max-w-lg");
+        const event = escape();
+        dialog.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+        await userEvent.click(screen.getByRole("button", { name: "Kapat" }));
+        expect(onClose).toHaveBeenCalledTimes(2);
+        rerender(
+            <Dialog open={false} variant="viewer" onClose={onClose} title="Belge">
+                x
+            </Dialog>,
+        );
+        expect(screen.queryByText("içerik")).not.toBeInTheDocument();
     });
 });

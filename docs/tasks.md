@@ -13,6 +13,7 @@
 - [x] Görev 13a: yüklemede otomatik tespit, eşleşme, onay ve silme (backend; PR #62 birleşti; ayrıntı `docs/tasks/13-upload-detect-approve.md`)
 - [ ] Görev 13b: dashboard yükleme + onay ekranı (uygulandı, PR Orhan'ın onayında; canlıda `hukuk-yz-live-verify` ile video çekilecek)
 - [ ] Görev 13c: arşiv kararları "benzer dosya" eşleşmesinde (hata düzeltmesi; uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/13c-similar-archive-text.md`)
+- [ ] Görev 10i: karar detayında PDF penceresi ve hep görünür "Düzelt" (uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/10i-detail-pdf-sticky-edit.md`)
 - [ ] 13a canlıya çıkmadan: LLM sağlayıcısı + bölge + anahtar kararı (Orhan), `FILE_DETECT_LLM_*` ayarları (deploy.md); o zamana kadar tespit yalnız kurallarla çalışır
 - [ ] Görev 12e (öneri, 12c'nin hemen ardından): `filestore` volume'ünün zamanlanmış yedeği; o zamana kadar tek kopya sunucu diskinde (deploy.md)
 - [ ] 12c sonrası: tam Drive aktarımında 43 `Eskiler/` dosyası güncel dosyayla eşleşmedi; İbrahim'le elle bağlama ya da ad kuralı (decisions.md)
