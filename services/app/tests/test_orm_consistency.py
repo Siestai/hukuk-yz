@@ -17,6 +17,7 @@ LOGIN_ATTEMPT_MIGRATION = VERSIONS / "0007_login_attempt.py"
 EVIDENCE_MIGRATION = VERSIONS / "0008_statute_version_evidence.py"
 REOPEN_MIGRATION = VERSIONS / "0009_review_decision_reopen.py"
 FILE_STORE_MIGRATION = VERSIONS / "0010_ingest_file_store.py"
+GORUS_MIGRATION = VERSIONS / "0011_document_type_gorus.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
 # 0007: login_attempt).
 LATER_TABLES = {"decision_verification", "app_user", "user_session", "login_attempt"}
@@ -34,10 +35,15 @@ def test_enum_labels_match_migration() -> None:
     migration = _load_migration()
     orm = {name: tuple(m.value for m in cls) for name, cls in ENUM_TYPES.items()}
     # 0009 added the label 'reopen' to review_decision; 0010 created document_type and scan_status.
+    # 0011 added the label 'gorus' to document_type (before 'diger' in the ORM, for reading).
+    file_enums = _load_migration(FILE_STORE_MIGRATION).ENUMS
+    document_type = tuple(_load_migration(GORUS_MIGRATION).OLD_LABELS)
+    assert document_type == file_enums["document_type"]
     expected = {
         **migration.ENUMS,
         "review_decision": (*migration.ENUMS["review_decision"], "reopen"),
-        **_load_migration(FILE_STORE_MIGRATION).ENUMS,
+        **file_enums,
+        "document_type": (*document_type[:-1], "gorus", "diger"),
     }
     assert orm == expected
     assert _load_migration(REOPEN_MIGRATION).OLD_LABELS == migration.ENUMS["review_decision"]

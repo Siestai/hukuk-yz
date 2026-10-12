@@ -128,6 +128,12 @@ kayıtları için okunur, kaldırılması ayrı küçük iş).
    Sıfırdan büyük sayı, aynı SHA-256'lı ikinci satırlar (dergi yeniden basımı) olabilir; bunların
    PDF'i içerik adresli depodan açılır. Sayıyı `SELECT path FROM ingest_file WHERE storage_key IS
    NULL` ile incele; deponun dışında kalan dosya varsa o satırlar için `ARCHIVE_HOST_DIR` gerekir.
+   **Belge türü düzeltmesi (Görev 12d, bir kez):** 3. adımda yüklenen karar satırlarının `doc_type`'ı
+   NULL'dır; içe aktarma da (yeni sürümle) eşleşen NULL satırları türler, ama eski satırlar için
+   dağıtımdan sonra `app` konteynerinde önce `python -m app.files.backfill_doc_type --dry-run`,
+   sonra `python -m app.files.backfill_doc_type` çalıştırılır (migration 0011 `gorus` türünü
+   ekler, veriye dokunmaz). Çıktıdaki JSON'da tür başına güncellenen ve NULL kalan (yolu boş)
+   satır sayısı görünür; ikinci koşu 0 günceller.
 6. **Aktarım sonrası Drive salt arşivdir.** İki yönlü senkron yoktur; yeni dosyalar dashboard'daki
    Dosyalar ekranından yüklenir. `ARCHIVE_HOST_DIR` bağı, yukarıdaki kontrolde
    `storage_key`'i boş satır kalmadıysa ya da kalanların içeriği depoda varsa gerekmez (PDF
@@ -140,7 +146,7 @@ kayıtları için okunur, kaldırılması ayrı küçük iş).
 
 Yüklenen ve aktarılan tüm dosyalar `filestore` Docker volume'ündedir. **Tek kopya sunucu
 diskindedir**: disk ya da volume giderse dosyalar (ve Drive'dan başka kaynağı olmayan yüklemeler)
-kaybolur; veritabanı yedeği dosyaları kapsamaz. Zamanlanmış yedek bu görevde yoktur; **12d olarak
+kaybolur; veritabanı yedeği dosyaları kapsamaz. Zamanlanmış yedek bu görevde yoktur; **12e olarak
 önerilir ve 12c'nin hemen ardından yapılmalıdır**. O zamana kadar elle yedek (volume adı
 `docker volume ls`'ten bakılır, Dokploy proje adıyla öneklenir):
 

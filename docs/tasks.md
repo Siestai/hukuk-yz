@@ -9,7 +9,8 @@
 - [ ] gh + claude CLI kurulumu, test PR (GH_TOKEN + ANTHROPIC_API_KEY bekleniyor)
 - [ ] architecture.md ilk taslak (gereksinim m.4, 25, 28, 29, 33 çapaları)
 - [x] Görev 12c: mevcut Drive arşivinin içeri alınması + PDF sunumunun saklama katmanına geçişi (uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/12-file-management.md`)
-- [ ] Görev 12d (öneri, 12c'nin hemen ardından): `filestore` volume'ünün zamanlanmış yedeği; o zamana kadar tek kopya sunucu diskinde (deploy.md)
+- [x] Görev 12d: arşiv satırlarının belge türü Drive klasöründen (`gorus` türü, içe aktarma düzeltmesi, `backfill_doc_type` CLI; uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/12-file-management.md`)
+- [ ] Görev 12e (öneri, 12c'nin hemen ardından): `filestore` volume'ünün zamanlanmış yedeği; o zamana kadar tek kopya sunucu diskinde (deploy.md)
 - [ ] 12c sonrası: tam Drive aktarımında 43 `Eskiler/` dosyası güncel dosyayla eşleşmedi; İbrahim'le elle bağlama ya da ad kuralı (decisions.md)
 
 ## Orhan

@@ -77,7 +77,9 @@ def test_fold_ignores_case_accents_and_the_unicode_form() -> None:
         ("Mevzuat/Tebliğ/t.pdf", DocumentType.teblig),
         ("Mevzuat/Yargı Kararları/k.pdf", DocumentType.karar),
         ("Yargi_Kararlari_Arsivi/90. Sayi/k.pdf", DocumentType.karar),
-        ("Mevzuat/Görüş/g.pdf", DocumentType.diger),
+        ("Mevzuat/Görüş/g.pdf", DocumentType.gorus),
+        ("Mevzuat/Görüş/Trafik cezaları itiraz/g.pdf", DocumentType.gorus),
+        ("Mevzuat/Görüş/Eskiler/g.pdf", DocumentType.gorus),
         ("Mevzuat/Diğer mevzuat/d.pdf", DocumentType.diger),
         ("Bordro hesaplama.xlsm", DocumentType.hesap_tablosu),
         ("Net Brüt.XLSX", DocumentType.hesap_tablosu),
@@ -128,13 +130,28 @@ async def test_rows_of_the_decision_load_get_their_file_and_no_new_row(
     for path, row in after.items():
         assert row.storage_key and store.exists(row.storage_key)
         assert row.original_name == path.rsplit("/", 1)[1]
-        assert row.doc_type is None  # only the file is filled in
+        assert row.doc_type is DocumentType.karar  # typed by the folder of its path
         assert row.scan_status is before[path].scan_status is ScanStatus.done
         assert row.scan_result is None
     async with kb_factory() as session:
         assert (await session.execute(select(func.count(IngestJob.id)))).scalar_one() == 1
     again = await import_dir(DEMO / "archive", kb_factory, store)
     assert (again.added, again.matched, again.skipped) == (0, 0, DEMO_FILES)
+
+
+async def test_a_loader_row_keeps_a_type_that_is_set(
+    kb_factory: Factory, store: LocalFileStore
+) -> None:
+    await load_demo(kb_factory)
+    async with kb_factory() as session:
+        row = (await session.execute(select(IngestFile).limit(1))).scalar_one()
+        row.doc_type = DocumentType.kitap  # a user set it on upload
+        path = row.path
+        await session.commit()
+    await import_dir(DEMO / "archive", kb_factory, store)
+    found = await rows(kb_factory)
+    assert found[path].doc_type is DocumentType.kitap
+    assert {r.doc_type for p, r in found.items() if p != path} == {DocumentType.karar}
 
 
 async def test_a_loader_row_keeps_the_original_name_it_has(
@@ -158,6 +175,8 @@ async def test_new_files_get_the_type_of_their_folder_whatever_the_unicode_form(
         "Mevzuat/Tebliğ/a.txt": DocumentType.teblig,
         "Mevzuat/YÖNETMELİK/İSG/b.txt": DocumentType.yonetmelik,
         "Mevzuat/Genel Yazı/c.txt": DocumentType.genel_yazi,
+        "Mevzuat/Görüş/e.txt": DocumentType.gorus,
+        "Mevzuat/Diğer mevzuat/f.txt": DocumentType.diger,
         "Hesap.xlsx": DocumentType.hesap_tablosu,
         "Başka/d.txt": DocumentType.diger,
     }

@@ -55,6 +55,9 @@ _FOLDERS = {
     "teblig": DocumentType.teblig,
     "yargi kararlari": DocumentType.karar,
     "yargi_kararlari_arsivi": DocumentType.karar,
+    "gorus": DocumentType.gorus,
+    "diger mevzuat": DocumentType.diger,
+    "diger": DocumentType.diger,
 }
 
 
@@ -160,6 +163,8 @@ async def _import_one(
             row = rows[0]
             row.storage_key = stored.key
             row.original_name = row.original_name or name
+            if row.doc_type is None:  # never over a type a user set on upload
+                row.doc_type = doc_type_of(parts)
             await db.commit()
             report.matched += 1
             return row.id
