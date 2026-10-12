@@ -462,6 +462,7 @@ DocType = Literal[
     "karar",
     "kitap",
     "hesap_tablosu",
+    "gorus",
     "diger",
 ]
 ScanState = Literal["queued", "running", "done", "needs_ocr", "unsupported", "failed"]

@@ -19,6 +19,7 @@ export const DOC_TYPES = [
     "karar",
     "kitap",
     "hesap_tablosu",
+    "gorus",
     "diger",
 ] as const satisfies readonly DocType[];
 

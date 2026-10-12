@@ -201,6 +201,7 @@ class DocumentType(PgEnum):
     karar = "karar"
     kitap = "kitap"
     hesap_tablosu = "hesap_tablosu"
+    gorus = "gorus"
     diger = "diger"
 
 

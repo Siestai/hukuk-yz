@@ -637,7 +637,7 @@ export interface components {
             /** Doc Date */
             doc_date: string | null;
             /** Doc Type */
-            doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "diger") | null;
+            doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
             /**
              * Id
              * Format: uuid
@@ -687,7 +687,7 @@ export interface components {
             /** Doc Date */
             doc_date: string | null;
             /** Doc Type */
-            doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "diger") | null;
+            doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
             /**
              * Id
              * Format: uuid
@@ -749,7 +749,7 @@ export interface components {
             /** Doc Date */
             doc_date: string | null;
             /** Doc Type */
-            doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "diger") | null;
+            doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
             /**
              * Id
              * Format: uuid
@@ -1617,7 +1617,7 @@ export interface operations {
     list_files_files_get: {
         parameters: {
             query?: {
-                doc_type?: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "diger") | null;
+                doc_type?: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
                 scan_status?: ("queued" | "running" | "done" | "needs_ocr" | "unsupported" | "failed") | null;
                 q?: string | null;
                 archived?: boolean;
@@ -1756,7 +1756,7 @@ export interface operations {
                     /** Doc Date */
                     doc_date?: string | null;
                     /** Doc Type */
-                    doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "diger") | null;
+                    doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
                     /** Format: binary */
                     file: string;
                     /** Note */
@@ -2641,7 +2641,7 @@ export interface operations {
                     /** Doc Date */
                     doc_date?: string | null;
                     /** Doc Type */
-                    doc_type?: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "diger") | null;
+                    doc_type?: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
                     /** Format: binary */
                     file: string;
                     /** Note */

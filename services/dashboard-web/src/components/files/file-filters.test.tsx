@@ -37,10 +37,11 @@ describe("FileFilters", () => {
     it("offers every document type and scan state by its Turkish name", () => {
         setup();
         const types = screen.getByLabelText(filters.docType);
-        expect(types.querySelectorAll("option")).toHaveLength(12);
+        expect(types.querySelectorAll("option")).toHaveLength(13);
         expect(
             screen.getByRole("option", { name: "Cumhurbaşkanlığı kararnamesi" }),
         ).toBeInTheDocument();
+        expect(screen.getByRole("option", { name: "Görüş" })).toBeInTheDocument();
         expect(screen.getByLabelText(filters.scan).querySelectorAll("option")).toHaveLength(7);
         expect(screen.getByRole("option", { name: "Tamamlandı" })).toBeInTheDocument();
     });

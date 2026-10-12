@@ -741,6 +741,7 @@
                   "karar",
                   "kitap",
                   "hesap_tablosu",
+                  "gorus",
                   "diger"
                 ],
                 "type": "string"
@@ -954,6 +955,7 @@
                   "karar",
                   "kitap",
                   "hesap_tablosu",
+                  "gorus",
                   "diger"
                 ],
                 "type": "string"
@@ -1193,6 +1195,7 @@
                   "karar",
                   "kitap",
                   "hesap_tablosu",
+                  "gorus",
                   "diger"
                 ],
                 "type": "string"
@@ -3061,6 +3064,7 @@
                     "karar",
                     "kitap",
                     "hesap_tablosu",
+                    "gorus",
                     "diger"
                   ],
                   "type": "string"
@@ -3302,6 +3306,7 @@
                           "karar",
                           "kitap",
                           "hesap_tablosu",
+                          "gorus",
                           "diger"
                         ],
                         "type": "string"
@@ -4320,6 +4325,7 @@
                           "karar",
                           "kitap",
                           "hesap_tablosu",
+                          "gorus",
                           "diger"
                         ],
                         "type": "string"

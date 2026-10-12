@@ -104,6 +104,39 @@ def test_the_reopen_migration_downgrades_to_0008(alembic_config: Config, databas
     assert "reopen" in labels()
 
 
+def test_the_gorus_migration_downgrades_to_0010(alembic_config: Config, database_url: str) -> None:
+    async def run(sql: str) -> list[str]:
+        engine = make_engine(database_url)
+        try:
+            async with engine.begin() as conn:
+                return [str(row[0]) for row in await conn.execute(text(sql))]
+        finally:
+            await engine.dispose()
+
+    def labels() -> list[str]:
+        return asyncio.run(run("SELECT unnest(enum_range(NULL::document_type))::text"))
+
+    command.upgrade(alembic_config, "head")
+    assert "gorus" in labels()
+    try:
+        asyncio.run(
+            run(
+                "WITH job AS (INSERT INTO ingest_job (kind, status) VALUES ('bulk', 'running') "
+                "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size, doc_type) "
+                "SELECT id, 'Mevzuat/Gorus/a.pdf', 'x', 1, 'gorus' FROM job RETURNING 1"
+            )
+        )
+        command.downgrade(alembic_config, "0010")
+        assert "gorus" not in labels()
+        assert asyncio.run(run("SELECT doc_type::text FROM ingest_file")) == ["diger"]
+        command.upgrade(alembic_config, "head")
+        assert "gorus" in labels()
+    finally:
+        command.upgrade(alembic_config, "head")
+        asyncio.run(run("DELETE FROM ingest_file RETURNING 1"))
+        asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))
+
+
 def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) -> None:
     expected = set(Base.metadata.tables)
 

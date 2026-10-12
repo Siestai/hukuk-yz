@@ -1,6 +1,6 @@
 # Görev 12: dosyalar app'te yönetilir (yükleme, saklama, tarama)
 
-Durum: 12a, 12b ve 12c uygulandı, PR'lar Orhan'ın onayında (2026-10-11); 12d (zamanlanmış yedek) önerildi, onay bekliyor. Taslak (Orhan, 2026-10-11: "bütün dosyalar da app üzerinden yönetilsin. Yeni dosyalar da oraya eklensin ve app ten taransın"; saklama: "şimdilik sunucu sonra ayrı bucket alacaz"). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: 12a, 12b ve 12c uygulandı, PR'lar Orhan'ın onayında (2026-10-11); 12d (belge türü düzeltmesi, Orhan 2026-10-12) uygulandı, PR onayda; 12e (zamanlanmış yedek) önerildi, onay bekliyor. Taslak (Orhan, 2026-10-11: "bütün dosyalar da app üzerinden yönetilsin. Yeni dosyalar da oraya eklensin ve app ten taransın"; saklama: "şimdilik sunucu sonra ayrı bucket alacaz"). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/data-model.md` §3 (`ingest_job`, `ingest_file`, `extraction`), `services/app/app/models/common.py` (`IngestJob`, `IngestFile`, `IngestKind.upload`), `services/app/app/worker.py` (şimdilik yalnız heartbeat), `services/app/app/review.py` (PDF uç noktası, `ARCHIVE_ROOT`), `packages/ingest` (`detect`, `extract`, `ocr`, `legacy_doc`; Görev 03 ve 07), `infra/compose/docker-compose.yml`, `docs/deploy.md`, `docs/tasks/08-auth.md` (roller).
 Skill'ler: `db-migration`, `frontend-ui` (bağlayıcı), `task-pr-hygiene`.
 
@@ -56,11 +56,27 @@ Görev üç PR'a bölünür: **12a** saklama + API + worker taraması, **12b** d
 11. **PDF sunumu saklama katmanına geçer**: karar detayındaki PDF uç noktası önce `storage_key`'den sunar; `storage_key` boşsa eski `ARCHIVE_ROOT` yolu çalışmaya devam eder (geçiş süresince). Aktarım tamamlanınca `ARCHIVE_ROOT` deploy.md'de "isteğe bağlı, eski" olarak işaretlenir; kaldırılması ayrı küçük iş.
 12. **deploy.md**: `FILE_STORE_ROOT`, `filestore` volume, yedek notu (aşağıda), aktarım adımları (arşivin sunucuya kopyalanması, CLI'nin `app` konteynerinde çalıştırılması), Drive'ın aktarım sonrası "salt arşiv" olduğu.
 
+### 12d: belge türü düzeltmesi
+
+Sorun (2026-10-11, 12c sonrası canlıda görüldü): Görev 05 yüklemesinden gelen ~6.320 karar satırı 12c'de yalnız `storage_key` ve `original_name` aldı; `doc_type` NULL kaldı, Dosyalar ekranı "-" gösteriyor. Orhan (2026-10-12): her arşiv satırı Drive klasörüne göre türlensin. Drive kopyası yakında yeni klasörler de getirecek.
+
+Hedef: arşiv satırlarının hepsinin `doc_type`'ı klasöründen dolu; yeni içe aktarımlar da aynısını yapar.
+
+Kapsam:
+
+1. **İçe aktarma:** sha256 ile eşleşen mevcut satırın `doc_type`'ı NULL ise yoldan (`doc_type_of`) doldurulur; dolu bir tür (kullanıcı yüklemede seçmiş olabilir) asla ezilmez.
+2. **Yeni tür `gorus`** (SGK / bakanlık görüşleri ayrı bir kaynak türüdür, md. 28): Alembic 0011 (`ALTER TYPE document_type ADD VALUE`; downgrade `gorus` satırlarını `diger` yapıp tipi eskisiyle değiştirir), `DocumentType`, `DocType`, OpenAPI tipleri, web etiketi "Görüş".
+3. **Klasör eşlemesi** (aksan / büyük-küçük harf / NFC-NFD fark etmez; yolda eşleşen ilk klasör belirler, alt klasörler üstünü izler): Kanunlar → `kanun`; Genelge (+ `... ekleri`, `Eskiler`) → `genelge`; Genel Yazı → `genel_yazi`; Yönetmelik (+ `İSG`) → `yonetmelik`; Tebliğ → `teblig`; Yargı Kararları ve `Yargi_Kararlari_Arsivi` → `karar`; **Görüş (+ `Trafik cezaları itiraz`, `Eskiler`) → `gorus`**; Diğer mevzuat ve Diğer → `diger`; kökteki Excel → `hesap_tablosu`; eşleşmeyen her şey → `diger`. `data/drive/Mevzuat` altındaki sekiz klasörün hepsi karşılanır.
+4. **Tek seferlik düzeltme:** `python -m app.files.backfill_doc_type [--dry-run]` (ayrı modül; içe aktarma CLI'sinin `--uploaded-by-system` ve dosya deposu gereksinimi bunda yok). `doc_type` NULL her satırı `scan_result.import_path`, yoksa `path` üzerinden türler; yolu boş olmayıp klasör eşleşmeyen satır `diger` olur, yolu boş olan NULL kalır ve sayılır. Tekrar çalıştırılabilir (ikincide 0 günceller), toplu güncellenir, JSON özet basar (tür başına güncellenen, NULL kalan). **İkinci geçiş (düzeltme turu):** canlıda 0011 öncesi kodla içe aktarılan Görüş dosyaları `diger` aldı; bu yüzden sistem içe aktarmasından gelen satırlarda (`uploaded_by` NULL ve `scan_result.import_path` dolu) `doc_type = diger` iken `doc_type_of` `gorus` diyorsa `gorus` yapılır. Kullanıcının yüklemede seçtiği tür (`uploaded_by` dolu) ve diğer türler asla değişmez; ikinci koşu 0 günceller. `--dry-run` ve JSON özetinde ayrı sayaç: `retyped`. Alembic'te veri adımı yoktur: migration'lar yalnız şemadır.
+5. **deploy.md:** düzeltmenin dağıtımdan sonra `app` konteynerinde çalıştırılması.
+
+Kabul: eşleşen NULL satır türünü alır, dolu tür korunur; Görüş klasörü (NFC ve NFD) → `gorus`; demo karar satırlarında düzeltme hepsini `karar` yapar, ikinci koşu 0 günceller, sistem içe aktarmasından `diger` olan Görüş satırı `gorus` olur ve kullanıcı yüklemesindeki `diger` kalır (ikinci koşu 0 retype), `--dry-run` hiçbir şey yazmaz, yolu boş satır NULL kalır; migration 0011 ileri / geri test edilir. Kapsam dışı: arayüz yeniden tasarımı, desteklenmeyen dosyaların `scan_status`'ü, yeni türlerin KB'ye ayrıştırılması, zamanlanmış yedek (12e).
+
 ## Kapsam dışı
 
 - **Yeni belge türlerini KB'ye ayrıştırmak** (genelge, genel yazı, yönetmelik → `admin_act`; Çalışma ve Toplum dışı karar biçimleri). 12 dosyayı saklar ve metnini çıkarır; türe özel ayrıştırma ve inceleme kuyruğuna düşürme her tür için ayrı görev. Yeni kanun snapshot'ının Görev 11 zincirine bağlanması da ayrı.
 - S3 / bucket uygulaması (arayüz hazır, uygulama sonra).
-- Otomatik yedekleme işi. Volume'ün düzenli yedeği gerekli; deploy.md'ye elle yedek komutu ve risk notu yazılır, zamanlanmış yedek ayrı görev: **12d olarak önerilir ve 12c'nin hemen ardından yapılmalıdır** (volume tek kopya olarak sunucu diskinde durur).
+- Otomatik yedekleme işi. Volume'ün düzenli yedeği gerekli; deploy.md'ye elle yedek komutu ve risk notu yazılır, zamanlanmış yedek ayrı görev: **12e olarak önerilir ve 12c'nin hemen ardından yapılmalıdır** (volume tek kopya olarak sunucu diskinde durur).
 - mevzuat.gov.tr / Resmî Gazete'den otomatik çekme (ayrı görev; çekilen dosyalar aynı `POST /files` yolunu ya da `FileStore`'u kullanacak).
 - Drive ile senkron ya da Drive'a geri yazma.
 - Kalıcı silme (yalnız arşivleme), toplu arşivleme, klasör hiyerarşisi (tür + filtre yeterli).
