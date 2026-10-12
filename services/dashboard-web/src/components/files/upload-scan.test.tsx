@@ -57,7 +57,20 @@ describe("UploadScan", () => {
         renderWithIntl(<UploadScan fileId={FILE_ID} />);
         await act(() => vi.advanceTimersByTimeAsync(10 * 60_000));
         expect(GET).toHaveBeenCalledTimes(23);
+    });
+
+    it("stops saying Taranıyor after 2 minutes and points to the record", async () => {
+        GET.mockResolvedValue(state("running"));
+        renderWithIntl(<UploadScan fileId={FILE_ID} />);
+        await act(() => vi.advanceTimersByTimeAsync(60_000));
         expect(screen.getByText(upload.scanning)).toBeInTheDocument();
+        await act(() => vi.advanceTimersByTimeAsync(65_000));
+        expect(screen.queryByText(upload.scanning)).toBeNull();
+        expect(screen.getByText(upload.scanTimeout)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: upload.openRecord })).toHaveAttribute(
+            "href",
+            `/dosyalar/${FILE_ID}`,
+        );
     });
 
     it("does not ask while the tab is hidden", async () => {

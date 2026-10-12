@@ -37,7 +37,7 @@ describe("AppShell", () => {
 describe("AppShell pending files", () => {
     it("shows the count next to Dosyalar in the side navigation", () => {
         renderWithIntl(
-            <AppShell user={user} pending={3} pendingFiles={{ count: 7, more: false }}>
+            <AppShell user={user} pending={3} pendingFiles={7}>
                 <p>içerik</p>
             </AppShell>,
         );

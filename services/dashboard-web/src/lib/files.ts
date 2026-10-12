@@ -75,9 +75,6 @@ export function webLink(value: string | null): string | null {
 }
 
 export const FILE_PAGE_SIZE = 25;
-/** The most pending files one request counts; more is shown as "N+" (the API has no total). */
-export const PENDING_COUNT_LIMIT = 100;
-export type PendingFiles = { count: number; more: boolean };
 
 export const fileHref = (id: string) => `/dosyalar/${id}`;
 export const contentUrl = (id: string) => `/api/files/${id}/content`;

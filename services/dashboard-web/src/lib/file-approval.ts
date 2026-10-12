@@ -12,13 +12,17 @@ export const APPROVAL_FIELDS = [
 ] as const;
 export type ApprovalValues = Record<(typeof APPROVAL_FIELDS)[number], string>;
 
-/** What the form starts with: the suggested value of a field, else what the record already holds. */
+/**
+ * What the form starts with: the value the record already holds (an upload form entry, or a
+ * correction kept when an admin withdrew the approval), else the suggested value. A re-approval
+ * therefore never silently reverts what was saved.
+ */
 export function initialValues(file: FileOut, suggestions: Suggestions): ApprovalValues {
     return {
-        doc_type: suggestions.doc_type?.value ?? file.doc_type ?? "",
-        doc_date: suggestions.doc_date?.value ?? file.doc_date ?? "",
-        official_ref: suggestions.official_ref?.value ?? file.official_ref ?? "",
-        title: suggestions.title?.value ?? file.title ?? "",
+        doc_type: file.doc_type ?? suggestions.doc_type?.value ?? "",
+        doc_date: file.doc_date ?? suggestions.doc_date?.value ?? "",
+        official_ref: file.official_ref ?? suggestions.official_ref?.value ?? "",
+        title: file.title ?? suggestions.title?.value ?? "",
         origin_url: file.origin_url ?? "",
         note: file.note ?? "",
     };

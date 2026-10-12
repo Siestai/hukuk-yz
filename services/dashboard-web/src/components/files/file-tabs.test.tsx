@@ -11,7 +11,7 @@ const link = (name: RegExp) =>
 
 describe("FileTabs", () => {
     it("shows Tümü and Onay bekliyor with the number waiting, the open one marked", () => {
-        renderWithIntl(<FileTabs params={{}} pending={{ count: 12, more: false }} />);
+        renderWithIntl(<FileTabs params={{}} pending={12} />);
         expect(link(/Tümü/)).toHaveAttribute("aria-current", "page");
         expect(link(/Onay bekliyor/)).toHaveTextContent("12");
         expect(link(/Onay bekliyor/)).not.toHaveAttribute("aria-current");
@@ -22,11 +22,11 @@ describe("FileTabs", () => {
         renderWithIntl(
             <FileTabs
                 params={{ docType: "genelge", review: "pending", cursor: "abc" }}
-                pending={{ count: 100, more: true }}
+                pending={100}
             />,
         );
         expect(link(/Onay bekliyor/)).toHaveAttribute("aria-current", "page");
-        expect(link(/Onay bekliyor/)).toHaveTextContent("100+");
+        expect(link(/Onay bekliyor/)).toHaveTextContent("100");
         expect(link(/Tümü/)).toHaveAttribute("href", "/dosyalar?tur=genelge");
     });
 

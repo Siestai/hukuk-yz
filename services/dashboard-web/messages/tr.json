@@ -913,8 +913,7 @@
         "label": "Onay durumu",
         "all": "Tümü",
         "pending": "Onay bekliyor"
-      },
-      "pendingMore": "{count, number}+"
+      }
     },
     "filters": {
       "docType": "Belge türü",
@@ -962,6 +961,7 @@
       "detailsToggle": "Bilgileri kendim gireceğim",
       "autoDetect": "Otomatik tespit edilsin",
       "scanning": "Taranıyor",
+      "scanTimeout": "Tarama sürüyor, daha sonra dosya listesinden bakabilirsiniz.",
       "reviewNow": "İncele ve onayla"
     },
     "detail": {

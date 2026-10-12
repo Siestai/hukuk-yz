@@ -33,12 +33,12 @@ const user = {
 };
 const ok = (data: unknown) => ({ response: new Response(null, { status: 200 }), data });
 
-const noFiles = () => ok({ items: [], next_cursor: null });
+const noFiles = () => ok({ count: 0 });
 
 function mockApi(summary: () => unknown, files: () => unknown = noFiles) {
     get.mockImplementation(async (path: string) => {
         if (path === "/auth/me") return ok(user);
-        return path === "/files" ? files() : summary();
+        return path === "/files/count" ? files() : summary();
     });
 }
 
@@ -75,25 +75,14 @@ describe("AppLayout", () => {
     it("shows how many files wait for approval next to Dosyalar", async () => {
         mockApi(
             () => ok({ by_band: {}, by_court: {}, top_reasons: [] }),
-            () => ok({ items: [{}, {}], next_cursor: null }),
+            () => ok({ count: 2 }),
         );
         await renderLayout();
         const files = screen.getByRole("link", { name: new RegExp(messages.nav.files) });
         expect(files).toHaveTextContent(`${messages.nav.pendingFiles}2`);
-        expect(get).toHaveBeenCalledWith("/files", {
-            params: { query: { review_status: "pending", limit: 100 } },
+        expect(get).toHaveBeenCalledWith("/files/count", {
+            params: { query: { review_status: "pending" } },
         });
-    });
-
-    it("shows a count that stopped at its limit as N+", async () => {
-        mockApi(
-            () => ok({ by_band: {}, by_court: {}, top_reasons: [] }),
-            () => ok({ items: Array.from({ length: 100 }, () => ({})), next_cursor: "abc" }),
-        );
-        await renderLayout();
-        expect(
-            screen.getByRole("link", { name: new RegExp(messages.nav.files) }),
-        ).toHaveTextContent("100+");
     });
 
     it("shows no file badge when the pending files cannot be counted", async () => {

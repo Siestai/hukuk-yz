@@ -30,6 +30,11 @@ export function DeleteFileDialog({
     const [busy, setBusy] = useState(false);
     const [failure, setFailure] = useState<string>();
 
+    function close() {
+        setFailure(undefined);
+        onClose();
+    }
+
     async function remove() {
         setBusy(true);
         setFailure(undefined);
@@ -45,10 +50,7 @@ export function DeleteFileDialog({
     return (
         <Dialog
             open={open}
-            onClose={() => {
-                setFailure(undefined);
-                onClose();
-            }}
+            onClose={close}
             title={t("title")}
             dismissible={!busy}
             returnFocusTo={returnFocusTo}
@@ -60,7 +62,7 @@ export function DeleteFileDialog({
                 </p>
             ) : null}
             <DialogActions>
-                <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+                <Button type="button" variant="outline" disabled={busy} onClick={close}>
                     {t("cancel")}
                 </Button>
                 <Button

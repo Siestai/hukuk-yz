@@ -84,6 +84,21 @@ describe("ApprovalPanel fields", () => {
         expect(screen.getByText(approve.detected.replace("{value}", "Karar"))).toBeInTheDocument();
     });
 
+    it("starts a re-approval from the corrections already saved and calls them the user's", () => {
+        setup({ doc_type: "teblig", official_ref: "2024/9" });
+        expect(field(approve.docType)).toHaveValue("teblig");
+        expect(field(approve.officialRef)).toHaveValue("2024/9");
+        expect(screen.getAllByText(messages.enums.suggestionSource.user)).toHaveLength(2);
+    });
+
+    it("calls a value typed where nothing was suggested the user's", async () => {
+        const user = userEvent.setup();
+        setup({ suggestions: null });
+        expect(screen.queryByText(messages.enums.suggestionSource.user)).toBeNull();
+        await user.type(field(approve.officialRef), "2024/6");
+        expect(screen.getByText(messages.enums.suggestionSource.user)).toBeInTheDocument();
+    });
+
     it("starts from the record's own values where nothing was suggested", () => {
         setup({ suggestions: null, doc_type: "kanun", note: "Drive'dan" });
         expect(field(approve.docType)).toHaveValue("kanun");
@@ -228,6 +243,25 @@ describe("ApprovalPanel delete", () => {
         expect(await dialog.findByRole("alert")).toHaveTextContent(text);
         expect(push).not.toHaveBeenCalled();
         expect(dialog.getByRole("button", { name: approve.deleteDialog.confirm })).toBeEnabled();
+    });
+
+    it("forgets the refusal when the question is cancelled and opened again", async () => {
+        DELETE.mockResolvedValue({
+            response: new Response(null, { status: 409 }),
+            ...error("file_processed"),
+        });
+        const user = userEvent.setup();
+        setup();
+        await user.click(screen.getByRole("button", { name: approve.delete }));
+        await user.click(
+            within(screen.getByRole("dialog")).getByRole("button", {
+                name: approve.deleteDialog.confirm,
+            }),
+        );
+        await within(screen.getByRole("dialog")).findByRole("alert");
+        await user.click(screen.getByRole("button", { name: approve.deleteDialog.cancel }));
+        await user.click(screen.getByRole("button", { name: approve.delete }));
+        expect(within(screen.getByRole("dialog")).queryByRole("alert")).toBeNull();
     });
 
     it("has no Sil button for someone who may not delete the file", () => {

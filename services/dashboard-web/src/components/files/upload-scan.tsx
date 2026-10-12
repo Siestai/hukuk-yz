@@ -17,7 +17,8 @@ const linkClass =
 /**
  * Where an uploaded file stands: "Taranıyor" while the worker scans it (asked for again every 5
  * seconds, for at most 2 minutes, not while the tab is hidden), then "Onay bekliyor" with the way
- * to the approval screen. A scan that ends otherwise shows its own state.
+ * to the approval screen. A scan that ends otherwise shows its own state; one still running when
+ * the 2 minutes are over says to look at the file list later instead of spinning on.
  */
 export function UploadScan({ fileId }: { fileId: string }) {
     const t = useTranslations("files.upload");
@@ -25,7 +26,8 @@ export function UploadScan({ fileId }: { fileId: string }) {
         scan: "queued",
         review: "pending",
     });
-    const active = ACTIVE_SCANS.includes(state.scan);
+    const [timedOut, setTimedOut] = useState(false);
+    const active = ACTIVE_SCANS.includes(state.scan) && !timedOut;
 
     useEffect(() => {
         if (!active) return;
@@ -33,6 +35,7 @@ export function UploadScan({ fileId }: { fileId: string }) {
         const timer = setInterval(() => {
             if (Date.now() - started >= SCAN_REFRESH_LIMIT_MS) {
                 clearInterval(timer);
+                setTimedOut(true);
                 return;
             }
             if (document.hidden) return;
@@ -51,6 +54,8 @@ export function UploadScan({ fileId }: { fileId: string }) {
         <>
             {active ? (
                 <Badge>{t("scanning")}</Badge>
+            ) : timedOut && ACTIVE_SCANS.includes(state.scan) ? (
+                <span className="text-sm text-ink-2">{t("scanTimeout")}</span>
             ) : state.scan === "done" ? (
                 <ReviewBadge status={state.review} />
             ) : (

@@ -3,23 +3,17 @@ import "server-only";
 import { cache } from "react";
 
 import { createServerApi } from "./server";
-import { PENDING_COUNT_LIMIT, type PendingFiles } from "@/lib/files";
 
 /**
- * How many files wait for approval, for the menu and the list tab: counted from one page of the
- * list (the API has no total), so `more` says there are at least that many. Null when the list
- * could not be fetched: no count is shown rather than failing the page. One request per render.
+ * How many files wait for approval, for the menu and the list tab. Null when the count could not
+ * be fetched: no count is shown rather than failing the page. One request per render.
  */
-export const getPendingFiles = cache(async (): Promise<PendingFiles | null> => {
+export const getPendingFiles = cache(async (): Promise<number | null> => {
     const api = await createServerApi();
     const answer = await api
-        .GET("/files", {
-            params: { query: { review_status: "pending", limit: PENDING_COUNT_LIMIT } },
-        })
+        .GET("/files/count", { params: { query: { review_status: "pending" } } })
         .catch(() => null);
-    return answer?.data
-        ? { count: answer.data.items.length, more: answer.data.next_cursor !== null }
-        : null;
+    return answer?.data?.count ?? null;
 });
 
 /** The names of the files a pending file matched, by id; a file that cannot be read is left out. */

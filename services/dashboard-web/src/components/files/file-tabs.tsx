@@ -1,28 +1,16 @@
 import { cn } from "@hukuk/ui";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 
-import {
-    changeFileParams,
-    fileListHref,
-    type FileListParams,
-    type PendingFiles,
-} from "@/lib/files";
-import { usePendingCount } from "@/lib/use-pending-count";
+import { changeFileParams, fileListHref, type FileListParams } from "@/lib/files";
 
 /**
  * "Tümü" and "Onay bekliyor" with the number waiting. Links that load another URL, so a navigation
  * landmark with `aria-current="page"` on the open one, like the queue tabs; a tab keeps the filters.
  */
-export function FileTabs({
-    params,
-    pending,
-}: {
-    params: FileListParams;
-    pending: PendingFiles | null;
-}) {
+export function FileTabs({ params, pending }: { params: FileListParams; pending: number | null }) {
     const t = useTranslations("files.list.tabs");
-    const pendingCount = usePendingCount();
+    const format = useFormatter();
     const tabs = [
         { review: undefined, label: t("all"), count: null },
         { review: "pending", label: t("pending"), count: pending },
@@ -45,7 +33,9 @@ export function FileTabs({
                         >
                             {label}
                             {count ? (
-                                <span className="font-mono text-xs">{pendingCount(count)}</span>
+                                <span className="font-mono text-xs">
+                                    {format.number(count, "integer")}
+                                </span>
                             ) : null}
                         </Link>
                     </li>

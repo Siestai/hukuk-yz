@@ -33,7 +33,8 @@ export function ApprovalField({
     const labels = useEnumLabels();
     const { date } = useDates();
     const edited = suggestion !== undefined && value !== suggestion.value;
-    const source = suggestion ? (edited ? "user" : suggestion.source) : undefined;
+    const typed = suggestion === undefined && field !== undefined && value !== "";
+    const source = suggestion ? (edited ? "user" : suggestion.source) : typed ? "user" : undefined;
     const quote = suggestion && !edited ? suggestion.quote : null;
     const detected = suggestion?.detected;
     const show = (text: string) =>
