@@ -552,5 +552,9 @@ class FileListResponse(BaseModel):
     next_cursor: str | None  # None on the last page
 
 
+class FileCount(BaseModel):
+    count: int
+
+
 class FileDetail(FileOut):
     versions: list[FileOut]  # the whole chain, oldest to newest, this record included

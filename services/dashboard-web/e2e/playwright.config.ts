@@ -57,7 +57,13 @@ export default defineConfig({
         // ...then the ones that approve and reject demo records (they consume them).
         {
             name: "chromium-mutating",
-            testMatch: ["actions.spec.ts", "bulk.spec.ts", "statuses.spec.ts", "files.spec.ts"],
+            testMatch: [
+                "actions.spec.ts",
+                "bulk.spec.ts",
+                "statuses.spec.ts",
+                "files.spec.ts",
+                "files-approve.spec.ts",
+            ],
             grepInvert: /@mobile/,
             dependencies: ["chromium", "chromium-mobile"],
             use: browser,
@@ -65,7 +71,7 @@ export default defineConfig({
         // ...and the phone checks of the files screen, on the files the mutating project uploaded.
         {
             name: "chromium-mobile-files",
-            testMatch: ["files.spec.ts"],
+            testMatch: ["files.spec.ts", "files-approve.spec.ts"],
             grep: /@mobile/,
             dependencies: ["chromium-mutating"],
             use: phone,

@@ -3,18 +3,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { ApprovalPanel } from "@/components/files/approval-panel";
 import { FileAdminActions } from "@/components/files/file-admin-actions";
 import { FileDetailsCard } from "@/components/files/file-details-card";
 import { FileText } from "@/components/files/file-text";
 import { FileViewer } from "@/components/files/file-viewer";
 import { NewVersion } from "@/components/files/new-version";
+import { ReviewBadge } from "@/components/files/review-badge";
 import { ScanBadge } from "@/components/files/scan-badge";
 import { ScanRefresh } from "@/components/files/scan-refresh";
 import { ScanResultCard } from "@/components/files/scan-result-card";
 import { VersionHistory } from "@/components/files/version-history";
+import { getFileNames } from "@/lib/api/files";
 import { getMe } from "@/lib/api/me";
 import { createServerApi } from "@/lib/api/server";
 import { settle } from "@/lib/api/settle";
+import { readMatches } from "@/lib/file-suggestions";
 import { ACTIVE_SCANS, fileHref, readScan } from "@/lib/files";
 import { isUuid } from "@/lib/uuid";
 
@@ -38,6 +42,16 @@ export default async function FilePage({ params }: { params: Promise<{ fileId: s
     const newest = file.versions.at(-1);
     const isAdmin = me.role === "admin";
     const canAddVersion = newest?.id === file.id && file.archived_at === null;
+    const pending = file.review_status === "pending";
+    const matches = readMatches(file.matches);
+    const names = pending
+        ? await getFileNames([
+              ...new Set([
+                  ...(matches.previous ? [matches.previous.fileId] : []),
+                  ...matches.similar.map((entry) => entry.fileId),
+              ]),
+          ])
+        : {};
 
     return (
         <main className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:p-8">
@@ -53,6 +67,7 @@ export default async function FilePage({ params }: { params: Promise<{ fileId: s
                     {file.original_name ?? t("unnamed")}
                 </h1>
                 <div className="flex flex-wrap items-center gap-2">
+                    <ReviewBadge status={file.review_status} />
                     <ScanBadge status={file.scan_status} />
                     {file.archived_at ? <Badge variant="outline">{t("archived")}</Badge> : null}
                 </div>
@@ -65,6 +80,14 @@ export default async function FilePage({ params }: { params: Promise<{ fileId: s
                     </p>
                 ) : null}
             </header>
+            {pending ? (
+                <ApprovalPanel
+                    key={file.id}
+                    file={file}
+                    names={names}
+                    canDelete={isAdmin || file.uploaded_by_id === me.id}
+                />
+            ) : null}
             <FileViewer fileId={file.id} pdf={file.detected_type === "pdf"} />
             {readScan(file.scan_result).hasText ? <FileText fileId={file.id} /> : null}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -74,7 +97,11 @@ export default async function FilePage({ params }: { params: Promise<{ fileId: s
             {canAddVersion ? <NewVersion fileId={file.id} isAdmin={isAdmin} /> : null}
             <VersionHistory versions={file.versions} currentId={file.id} />
             {isAdmin ? (
-                <FileAdminActions fileId={file.id} archived={file.archived_at !== null} />
+                <FileAdminActions
+                    fileId={file.id}
+                    archived={file.archived_at !== null}
+                    approved={!pending}
+                />
             ) : null}
         </main>
     );

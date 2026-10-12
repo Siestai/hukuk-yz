@@ -7,6 +7,7 @@ export type FileListResponse = components["schemas"]["FileListResponse"];
 export type FileDetail = components["schemas"]["FileDetail"];
 export type DocType = NonNullable<FileOut["doc_type"]>;
 export type ScanStatus = FileOut["scan_status"];
+export type ReviewStatus = FileOut["review_status"];
 
 export const DOC_TYPES = [
     "kanun",
@@ -31,6 +32,8 @@ export const SCAN_STATUSES = [
     "unsupported",
     "failed",
 ] as const satisfies readonly ScanStatus[];
+
+export const REVIEW_STATUSES = ["pending", "approved"] as const satisfies readonly ReviewStatus[];
 
 /** Scans that are still on their way: the screens refresh themselves while one is in this state. */
 export const ACTIVE_SCANS: readonly ScanStatus[] = ["queued", "running"];
@@ -81,10 +84,13 @@ export const contentUrl = (id: string) => `/api/files/${id}/content`;
 export type FileListParams = {
     docType?: DocType;
     scan?: ScanStatus;
+    /** The "Onay bekliyor" tab; without it every file is listed. */
+    review?: "pending";
     q?: string;
     cursor?: string;
 };
 
+const PENDING_PARAM = "bekliyor";
 const CURSOR = /^[A-Za-z0-9_=-]{1,100}$/;
 
 /** Reads the list state from a URL; anything unknown or malformed is ignored. */
@@ -94,6 +100,7 @@ export function parseFileParams(raw: RawParams): FileListParams {
     return {
         docType: oneOf(DOC_TYPES, pick(raw, "tur")),
         scan: oneOf(SCAN_STATUSES, pick(raw, "durum")),
+        review: pick(raw, "onay") === PENDING_PARAM ? "pending" : undefined,
         q: q || undefined,
         cursor: cursor && CURSOR.test(cursor) ? cursor : undefined,
     };
@@ -103,6 +110,7 @@ export function serializeFileParams(params: FileListParams): URLSearchParams {
     const query = new URLSearchParams();
     if (params.docType) query.set("tur", params.docType);
     if (params.scan) query.set("durum", params.scan);
+    if (params.review) query.set("onay", PENDING_PARAM);
     if (params.q) query.set("q", params.q);
     if (params.cursor) query.set("imlec", params.cursor);
     return query;
@@ -129,6 +137,7 @@ export function fileApiQuery(params: FileListParams) {
     return {
         doc_type: params.docType,
         scan_status: params.scan,
+        review_status: params.review,
         q: params.q,
         cursor: params.cursor,
         limit: FILE_PAGE_SIZE,

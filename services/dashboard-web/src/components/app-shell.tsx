@@ -10,7 +10,7 @@ export function AppShell({ children, ...nav }: AppNavProps & { children: ReactNo
         <div className="min-h-screen lg:flex">
             <SideNav {...nav} />
             <div className="min-w-0 flex-1">
-                <MobileNav user={nav.user} pending={nav.pending} />
+                <MobileNav user={nav.user} pending={nav.pending} pendingFiles={nav.pendingFiles} />
                 <div className="px-safe-0">{children}</div>
             </div>
         </div>

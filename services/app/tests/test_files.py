@@ -730,6 +730,26 @@ async def test_the_list_filters_by_review_status(
     assert (await client.get("/files?review_status=x", headers=me.headers)).status_code == 422
 
 
+async def test_the_count_follows_the_list_filters(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    done = (await bare_upload(client, me, pdf(89)))["id"]
+    await bare_upload(client, me, pdf(90))
+    await approve(client, me, done)
+
+    async def count(query: str) -> int:
+        response = await client.get(f"/files/count{query}", headers=me.headers)
+        assert response.status_code == 200, response.text
+        return int(response.json()["count"])
+
+    assert await count("") == 2
+    assert await count("?review_status=pending") == 1
+    assert await count("?review_status=approved") == 1
+    assert await count("?archived=true") == 0
+    assert (await client.get("/files/count?review_status=x", headers=me.headers)).status_code == 422
+    assert (await client.get("/files/count")).status_code == 401
+
+
 async def test_a_pending_file_is_deleted_with_its_blob_text_job_and_a_trace(
     client: httpx.AsyncClient,
     me: Login,

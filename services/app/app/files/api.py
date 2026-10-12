@@ -58,6 +58,7 @@ from hukuk_models import (
     DocType,
     ErrorCode,
     FileApproval,
+    FileCount,
     FileDetail,
     FileFields,
     FileListItem,
@@ -337,27 +338,19 @@ def _like(text: str) -> str:
     return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 
-@router.get("")
-async def list_files(
-    db: Db,
-    doc_type: DocType | None = None,
-    scan_status: ScanState | None = None,
-    review_status: ReviewState | None = None,
-    q: Annotated[str | None, Query(max_length=200)] = None,
-    archived: bool = False,
-    cursor: Annotated[str | None, Query(max_length=100)] = None,
-    limit: Limit = 50,
-) -> FileListResponse:
-    """The newest version of every document, newest upload first."""
+def _filtered[*Ts](
+    stmt: Select[*Ts],
+    doc_type: DocType | None,
+    scan_status: ScanState | None,
+    review_status: ReviewState | None,
+    q: str | None,
+    archived: bool,
+) -> Select[*Ts]:
+    """The newest version of every document, narrowed by the list filters."""
     newer = aliased(IngestFile)
-    stmt = (
-        _select_files()
-        .where(
-            ~exists().where(newer.supersedes_id == IngestFile.id),
-            IngestFile.archived_at.is_not(None) if archived else IngestFile.archived_at.is_(None),
-        )
-        .order_by(IngestFile.uploaded_at.desc(), IngestFile.id.desc())
-        .limit(limit + 1)
+    stmt = stmt.where(
+        ~exists().where(newer.supersedes_id == IngestFile.id),
+        IngestFile.archived_at.is_not(None) if archived else IngestFile.archived_at.is_(None),
     )
     if doc_type is not None:
         stmt = stmt.where(IngestFile.doc_type == DocumentType(doc_type))
@@ -371,6 +364,26 @@ async def list_files(
             IngestFile.original_name.ilike(pattern, escape="\\")
             | IngestFile.official_ref.ilike(pattern, escape="\\")
         )
+    return stmt
+
+
+@router.get("")
+async def list_files(
+    db: Db,
+    doc_type: DocType | None = None,
+    scan_status: ScanState | None = None,
+    review_status: ReviewState | None = None,
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    archived: bool = False,
+    cursor: Annotated[str | None, Query(max_length=100)] = None,
+    limit: Limit = 50,
+) -> FileListResponse:
+    """The newest version of every document, newest upload first."""
+    stmt = (
+        _filtered(_select_files(), doc_type, scan_status, review_status, q, archived)
+        .order_by(IngestFile.uploaded_at.desc(), IngestFile.id.desc())
+        .limit(limit + 1)
+    )
     if cursor is not None:
         stamp, file_id = _parse_cursor(cursor)
         stmt = stmt.where(tuple_(IngestFile.uploaded_at, IngestFile.id) < (stamp, file_id))
@@ -384,6 +397,27 @@ async def list_files(
         ],
         next_cursor=_cursor_of(page[-1][0]) if len(rows) > limit else None,
     )
+
+
+@router.get("/count")
+async def count_files(
+    db: Db,
+    doc_type: DocType | None = None,
+    scan_status: ScanState | None = None,
+    review_status: ReviewState | None = None,
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    archived: bool = False,
+) -> FileCount:
+    """How many documents the same filters would list."""
+    stmt = _filtered(
+        select(func.count()).select_from(IngestFile),
+        doc_type,
+        scan_status,
+        review_status,
+        q,
+        archived,
+    )
+    return FileCount(count=(await db.execute(stmt)).scalar_one())
 
 
 @router.get("/{file_id}")

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { stretchedLink } from "@/components/review-queue/queue-item-parts";
 import { fileHref, type FileListItem } from "@/lib/files";
 import { useFileFormat } from "./file-format";
+import { ReviewBadge } from "./review-badge";
 import { ScanBadge } from "./scan-badge";
 
 /** The file list below `xl`: the table's files as cards, one link each, fed by the same formatting. */
@@ -19,7 +20,10 @@ export function FileCards({ items }: { items: FileListItem[] }) {
                     className="relative grid gap-2 rounded-md border border-border bg-surface p-4 text-sm"
                 >
                     <div className="flex items-center justify-between gap-2">
-                        <ScanBadge status={item.scan_status} />
+                        <span className="flex flex-wrap items-center gap-1">
+                            <ReviewBadge status={item.review_status} />
+                            <ScanBadge status={item.scan_status} />
+                        </span>
                         <span className="text-xs text-ink-2">
                             {format.versions(item.version_count)}
                         </span>

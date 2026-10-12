@@ -29,7 +29,8 @@
     "closeMenu": "Menüyü kapat",
     "pending": "Onay bekleyen",
     "statutes": "Mevzuat",
-    "files": "Dosyalar"
+    "files": "Dosyalar",
+    "pendingFiles": "onay bekleyen dosya"
   },
   "review": {
     "queue": {
@@ -613,7 +614,12 @@
     "file_store_unavailable": "Dosya depolama şu an kullanılamıyor.",
     "file_version_conflict": "Bu dosyanın daha yeni bir sürümü var ya da arşivde; yeni sürüm eklenemez.",
     "scan_in_progress": "Dosya şu anda taranıyor; bitince yeniden deneyin.",
-    "invalid_date": "Tarih geçersiz."
+    "invalid_date": "Tarih geçersiz.",
+    "file_not_pending": "Bu dosya az önce başka biri tarafından onaylandı. Sayfa yenilendi.",
+    "file_not_approved": "Bu dosyanın onayı zaten kaldırılmış.",
+    "file_approved": "Onaylı dosya silinemez. Önce onayı kaldırın.",
+    "file_has_newer_version": "Bu dosyanın daha yeni bir sürümü var; önce o sürümle ilgilenin.",
+    "file_processed": "Bu dosya bilgi tabanına işlenmiş; silinemez."
   },
   "enums": {
     "role": {
@@ -835,6 +841,20 @@
       "borderline_quality": "Metin kalitesi sınırda",
       "empty_pages": "Metni boş sayfalar var",
       "weak_page_text": "Bazı sayfaların metni zayıf"
+    },
+    "reviewStatus": {
+      "pending": "Onay bekliyor",
+      "approved": "Onaylı"
+    },
+    "suggestionSource": {
+      "rule": "Metinden okundu",
+      "llm": "Yapay zekâ önerisi",
+      "user": "Siz girdiniz"
+    },
+    "matchReason": {
+      "same_ref": "aynı resmî sayı",
+      "same_title": "aynı başlık",
+      "same_name": "aynı dosya adı"
     }
   },
   "errorPage": {
@@ -873,20 +893,26 @@
         "docType": "Tür",
         "docDate": "Belge tarihi",
         "uploaded": "Yükleyen",
-        "scan": "Tarama",
         "versions": "Sürüm",
-        "uploadedBy": "{name} · {date}"
+        "uploadedBy": "{name} · {date}",
+        "status": "Durum"
       },
       "empty": {
         "none": "Henüz yüklenmiş dosya yok.",
         "filtered": "Bu filtrelere uyan dosya yok.",
         "clear": "Filtreleri temizle",
-        "pastEnd": "Bu sayfada dosya kalmadı."
+        "pastEnd": "Bu sayfada dosya kalmadı.",
+        "pending": "Onay bekleyen dosya yok."
       },
       "pagination": {
         "label": "Sayfalar",
         "first": "İlk sayfa",
         "next": "Sonraki"
+      },
+      "tabs": {
+        "label": "Onay durumu",
+        "all": "Tümü",
+        "pending": "Onay bekliyor"
       }
     },
     "filters": {
@@ -912,15 +938,12 @@
       "drop": "Dosyaları buraya sürükleyin ya da seçin",
       "dropVersion": "Yeni sürümün dosyasını buraya sürükleyin ya da seçin",
       "choose": "Dosya seç",
-      "hint": "PDF, Word, UDF, Excel, PNG, JPG ve TXT; her dosya en fazla 50 MB.",
+      "hint": "Dosyayı bırakmanız yeter: türünü, tarihini ve resmî sayısını sistem okur, siz onaylarsınız. PDF, Word, UDF, Excel, PNG, JPG ve TXT; her dosya en fazla 50 MB.",
       "listLabel": "Seçilen dosyalar",
       "remove": "{name} dosyasını listeden kaldır",
       "removeShort": "Kaldır",
-      "docTypeRequired": "Belge türü (zorunlu)",
       "docType": "Belge türü",
-      "chooseType": "Seçin",
       "sameAsPrevious": "Önceki sürümle aynı",
-      "typeMissing": "Belge türünü seçin.",
       "docDate": "Belge tarihi",
       "officialRef": "Resmî sayı",
       "originUrl": "Kaynak adresi",
@@ -934,7 +957,12 @@
       "duplicateArchived": "Bu dosya arşivde.",
       "openExisting": "Mevcut kaydı aç",
       "unarchive": "Arşivden çıkar",
-      "unarchived": "Dosya arşivden çıkarıldı."
+      "unarchived": "Dosya arşivden çıkarıldı.",
+      "detailsToggle": "Bilgileri kendim gireceğim",
+      "autoDetect": "Otomatik tespit edilsin",
+      "scanning": "Taranıyor",
+      "scanTimeout": "Tarama sürüyor, daha sonra dosya listesinden bakabilirsiniz.",
+      "reviewNow": "İncele ve onayla"
     },
     "detail": {
       "back": "Dosyalara dön",
@@ -966,7 +994,8 @@
         "uploader": "Yükleyen",
         "uploadedAt": "Yükleme tarihi",
         "sha256": "SHA-256",
-        "archivedAt": "Arşive alınma tarihi"
+        "archivedAt": "Arşive alınma tarihi",
+        "titleField": "Başlık"
       },
       "scan": {
         "title": "Tarama sonucu",
@@ -989,7 +1018,43 @@
       "actions": {
         "archive": "Arşivle",
         "unarchive": "Arşivden çıkar",
-        "rescan": "Yeniden tara"
+        "rescan": "Yeniden tara",
+        "unapprove": "Onayı kaldır"
+      },
+      "approve": {
+        "title": "Onay bekliyor",
+        "intro": "Sistem dosyayı taradı. Bilgileri kontrol edin, gerekirse düzeltin ve onaylayın. Onaylanmayan dosya kaynak olarak kullanılmaz.",
+        "scanning": "Dosya taranıyor. Öneriler tarama bitince burada görünür.",
+        "noSuggestions": "Dosyadan öneri çıkarılamadı; bilgileri kendiniz girin.",
+        "docType": "Belge türü (zorunlu)",
+        "chooseType": "Seçin",
+        "docDate": "Belge tarihi",
+        "officialRef": "Resmî sayı",
+        "originUrl": "Kaynak adresi",
+        "note": "Not",
+        "evidence": "{page, number}. sayfa: ''{quote}''",
+        "unsupported": "Metinde dayanağı bulunamadı; bu öneriyi dikkatle kontrol edin.",
+        "detected": "Dosyadan okunan: {value}",
+        "matches": {
+          "previous": "Bu, {name} dosyasının yeni sürümü olabilir ({reason}).",
+          "link": "Yeni sürüm olarak bağla",
+          "separate": "Ayrı belge olarak kaydet",
+          "similar": "Şu dosyalara çok benziyor:",
+          "similarItem": "{name} (benzerlik {score, number, percent})",
+          "newTab": "yeni sekmede açılır",
+          "unnamed": "(adsız dosya)"
+        },
+        "approve": "Onayla",
+        "approving": "Onaylanıyor…",
+        "delete": "Sil",
+        "deleteDialog": {
+          "title": "Dosya silinsin mi?",
+          "body": "“{name}” silinecek. Bu işlem geri alınamaz; silinen dosyanın izi denetim kaydında kalır.",
+          "confirm": "Sil",
+          "deleting": "Siliniyor…",
+          "cancel": "Vazgeç"
+        },
+        "titleField": "Başlık"
       }
     }
   }

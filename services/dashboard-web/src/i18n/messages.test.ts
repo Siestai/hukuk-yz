@@ -6,7 +6,8 @@ import messages from "../../messages/tr.json";
 import { BULK_FAILURE_CODES } from "../lib/bulk-approve";
 import { HELP_TOPICS, STATUTE_HELP_TOPICS } from "../lib/help-topics";
 import { FIELD_ERRORS } from "../lib/decision-edits";
-import { DOC_TYPES, SCAN_STATUSES, SCAN_WARNINGS } from "../lib/files";
+import { MATCH_REASONS, SUGGESTION_SOURCES } from "../lib/file-suggestions";
+import { DOC_TYPES, REVIEW_STATUSES, SCAN_STATUSES, SCAN_WARNINGS } from "../lib/files";
 import { BANDS, COURTS, FLASHES, SORTS, STATUSES, UNKNOWN_COURT } from "../lib/queue-params";
 import {
     readRepoFile,
@@ -88,6 +89,9 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.docType": DOC_TYPES,
     "enums.scanStatus": SCAN_STATUSES,
     "enums.scanWarning": SCAN_WARNINGS,
+    "enums.reviewStatus": REVIEW_STATUSES,
+    "enums.suggestionSource": SUGGESTION_SOURCES,
+    "enums.matchReason": MATCH_REASONS,
     "enums.sourceStatus": schemaEnum("ReviewDetail", "source_status"),
     // The fields a reviewer may correct, plus the read-only ones the detail screen shows.
     fields: [...schemaProperties("DecisionEdits"), "journal_issue"],

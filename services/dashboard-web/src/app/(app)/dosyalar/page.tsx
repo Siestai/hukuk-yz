@@ -3,8 +3,10 @@ import { getTranslations } from "next-intl/server";
 
 import { FileFilters } from "@/components/files/file-filters";
 import { FileResults } from "@/components/files/file-results";
+import { FileTabs } from "@/components/files/file-tabs";
 import { UploadPanel } from "@/components/files/upload-panel";
 import { QueueSkeleton } from "@/components/review-queue/queue-skeleton";
+import { getPendingFiles } from "@/lib/api/files";
 import { getMe } from "@/lib/api/me";
 import { createServerApi } from "@/lib/api/server";
 import { settle } from "@/lib/api/settle";
@@ -25,7 +27,7 @@ export default async function FilesPage({
         "GET /files",
     );
     list.catch(() => {});
-    const me = await getMe();
+    const [me, pending] = await Promise.all([getMe(), getPendingFiles()]);
 
     return (
         <main className="grid grid-cols-1 gap-6 p-4 md:p-6 lg:p-8">
@@ -34,6 +36,7 @@ export default async function FilesPage({
                 <p className="mt-1 text-sm text-ink-2">{t("subtitle")}</p>
             </header>
             <UploadPanel target={{ kind: "new" }} isAdmin={me.role === "admin"} />
+            <FileTabs params={params} pending={pending} />
             <FileFilters />
             <Suspense key={serializeFileParams(params).toString()} fallback={<QueueSkeleton />}>
                 <FileResults params={params} list={list} />

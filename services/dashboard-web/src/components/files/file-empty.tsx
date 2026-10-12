@@ -23,10 +23,12 @@ export function FileEmpty({ params }: { params: FileListParams }) {
                             {t("pagination.first")}
                         </Link>
                     </>
+                ) : params.review && activeFileFilters(params) === 0 ? (
+                    <p className="text-ink">{t("empty.pending")}</p>
                 ) : activeFileFilters(params) > 0 ? (
                     <>
                         <p className="text-ink">{t("empty.filtered")}</p>
-                        <Link href={fileListHref({})} className={linkClass}>
+                        <Link href={fileListHref({ review: params.review })} className={linkClass}>
                             {t("empty.clear")}
                         </Link>
                     </>

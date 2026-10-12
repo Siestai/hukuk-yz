@@ -10,8 +10,8 @@
 - [ ] architecture.md ilk taslak (gereksinim m.4, 25, 28, 29, 33 çapaları)
 - [x] Görev 12c: mevcut Drive arşivinin içeri alınması + PDF sunumunun saklama katmanına geçişi (uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/12-file-management.md`)
 - [x] Görev 12d: arşiv satırlarının belge türü Drive klasöründen (`gorus` türü, içe aktarma düzeltmesi, `backfill_doc_type` CLI; uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/12-file-management.md`)
-- [ ] Görev 13a: yüklemede otomatik tespit, eşleşme, onay ve silme (backend; PR #62, review'da; ölçüm tablosu PR'da; ayrıntı `docs/tasks/13-upload-detect-approve.md`)
-- [ ] Görev 13b: dashboard yükleme + onay ekranı (13a'dan sonra)
+- [x] Görev 13a: yüklemede otomatik tespit, eşleşme, onay ve silme (backend; PR #62 birleşti; ayrıntı `docs/tasks/13-upload-detect-approve.md`)
+- [ ] Görev 13b: dashboard yükleme + onay ekranı (uygulandı, PR Orhan'ın onayında; canlıda `hukuk-yz-live-verify` ile video çekilecek)
 - [ ] 13a canlıya çıkmadan: LLM sağlayıcısı + bölge + anahtar kararı (Orhan), `FILE_DETECT_LLM_*` ayarları (deploy.md); o zamana kadar tespit yalnız kurallarla çalışır
 - [ ] Görev 12e (öneri, 12c'nin hemen ardından): `filestore` volume'ünün zamanlanmış yedeği; o zamana kadar tek kopya sunucu diskinde (deploy.md)
 - [ ] 12c sonrası: tam Drive aktarımında 43 `Eskiler/` dosyası güncel dosyayla eşleşmedi; İbrahim'le elle bağlama ya da ad kuralı (decisions.md)

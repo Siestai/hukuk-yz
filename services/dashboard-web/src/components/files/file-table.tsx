@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { stretchedLink } from "@/components/review-queue/queue-item-parts";
 import { fileHref, type FileListItem } from "@/lib/files";
 import { useFileFormat } from "./file-format";
+import { ReviewBadge } from "./review-badge";
 import { ScanBadge } from "./scan-badge";
 
 const cell = "px-2";
@@ -18,7 +19,7 @@ export function FileTable({ items }: { items: FileListItem[] }) {
         t("docType"),
         t("docDate"),
         t("uploaded"),
-        t("scan"),
+        t("status"),
         t("versions"),
     ];
 
@@ -61,7 +62,10 @@ export function FileTable({ items }: { items: FileListItem[] }) {
                             <p>{format.uploadedAt(item)}</p>
                         </TableCell>
                         <TableCell className={cell}>
-                            <ScanBadge status={item.scan_status} />
+                            <div className="flex flex-col items-start gap-1">
+                                <ReviewBadge status={item.review_status} />
+                                <ScanBadge status={item.scan_status} />
+                            </div>
                         </TableCell>
                         <TableCell className={cn(cell, "whitespace-nowrap text-xs text-ink-2")}>
                             {format.versions(item.version_count)}

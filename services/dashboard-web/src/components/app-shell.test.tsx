@@ -16,7 +16,7 @@ const user = { display_name: "Baran Yılmaz", role: "reviewer" } as const;
 describe("AppShell", () => {
     it("has the side navigation, the mobile bar and the page", () => {
         renderWithIntl(
-            <AppShell user={user} pending={3}>
+            <AppShell user={user} pending={3} pendingFiles={null}>
                 <p>içerik</p>
             </AppShell>,
         );
@@ -34,10 +34,24 @@ describe("AppShell", () => {
     });
 });
 
+describe("AppShell pending files", () => {
+    it("shows the count next to Dosyalar in the side navigation", () => {
+        renderWithIntl(
+            <AppShell user={user} pending={3} pendingFiles={7}>
+                <p>içerik</p>
+            </AppShell>,
+        );
+        const side = within(screen.getByRole("complementary"));
+        expect(side.getByRole("link", { name: /Dosyalar/ })).toHaveTextContent(
+            `${messages.nav.pendingFiles}7`,
+        );
+    });
+});
+
 describe("AppShell help", () => {
     it("has tips on the pending count and on the sections that are not ready", () => {
         renderWithIntl(
-            <AppShell user={user} pending={3}>
+            <AppShell user={user} pending={3} pendingFiles={null}>
                 <p>içerik</p>
             </AppShell>,
         );
@@ -57,7 +71,7 @@ describe("AppShell help", () => {
 
     it("keeps the tips out of the navigation link", () => {
         renderWithIntl(
-            <AppShell user={user} pending={3}>
+            <AppShell user={user} pending={3} pendingFiles={null}>
                 <p>içerik</p>
             </AppShell>,
         );
@@ -71,7 +85,7 @@ describe("AppShell help", () => {
 
     it("links the statute review beside the decisions in the side navigation", () => {
         renderWithIntl(
-            <AppShell user={user} pending={3}>
+            <AppShell user={user} pending={3} pendingFiles={null}>
                 <p>içerik</p>
             </AppShell>,
         );
@@ -84,7 +98,7 @@ describe("AppShell help", () => {
 
     it("links the files screen in the side navigation", () => {
         renderWithIntl(
-            <AppShell user={user} pending={3}>
+            <AppShell user={user} pending={3} pendingFiles={null}>
                 <p>içerik</p>
             </AppShell>,
         );
@@ -97,7 +111,7 @@ describe("AppShell help", () => {
 
     it("explains the statute review in a tip beside its link, not inside it", () => {
         renderWithIntl(
-            <AppShell user={user} pending={3}>
+            <AppShell user={user} pending={3} pendingFiles={null}>
                 <p>içerik</p>
             </AppShell>,
         );

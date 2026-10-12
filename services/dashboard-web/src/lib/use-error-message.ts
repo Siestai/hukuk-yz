@@ -47,6 +47,16 @@ export function useErrorMessage() {
                 return t("file_version_conflict");
             case "scan_in_progress":
                 return t("scan_in_progress");
+            case "file_not_pending":
+                return t("file_not_pending");
+            case "file_not_approved":
+                return t("file_not_approved");
+            case "file_approved":
+                return t("file_approved");
+            case "file_has_newer_version":
+                return t("file_has_newer_version");
+            case "file_processed":
+                return t("file_processed");
             case "invalid_date":
                 return t("invalid_date");
             case "invalid_response":

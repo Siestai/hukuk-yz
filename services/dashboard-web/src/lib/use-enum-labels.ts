@@ -53,6 +53,10 @@ export function useEnumLabels() {
         docType: (value: string) => label("docType", value),
         scanStatus: (value: string) => label("scanStatus", value),
         scanWarning: (value: string) => label("scanWarning", value),
+        // Approval (task 13): the review state, where a suggestion came from, why a file matched.
+        reviewStatus: (value: string) => label("reviewStatus", value),
+        suggestionSource: (value: string) => label("suggestionSource", value),
+        matchReason: (value: string) => label("matchReason", value),
         reasonCodes: Object.keys(messages.enums.reason),
     };
 }

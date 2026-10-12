@@ -9,12 +9,14 @@ export type AppNavProps = {
     user: { display_name: string; role: "admin" | "reviewer" };
     /** Pending decisions; null when the count could not be fetched. */
     pending: number | null;
+    /** Files waiting for approval; null when the count could not be fetched. */
+    pendingFiles: number | null;
     /** Called when a link is followed (the drawer closes). */
     onNavigate?: () => void;
 };
 
 /** The navigation links and the signed-in user: the content of the side navigation and of the drawer. */
-export function AppNav({ user, pending, onNavigate }: AppNavProps) {
+export function AppNav({ user, pending, pendingFiles, onNavigate }: AppNavProps) {
     const t = useTranslations();
     const format = useFormatter();
     const comingLater = [
@@ -49,6 +51,12 @@ export function AppNav({ user, pending, onNavigate }: AppNavProps) {
                 </div>
                 <NavLink href="/dosyalar" onNavigate={onNavigate}>
                     {t("nav.files")}
+                    {pendingFiles ? (
+                        <Badge>
+                            <span className="sr-only">{t("nav.pendingFiles")}</span>
+                            {format.number(pendingFiles, "integer")}
+                        </Badge>
+                    ) : null}
                 </NavLink>
                 {comingLater.map(({ key, help, label }) => (
                     <div key={key} className="flex items-center gap-2">

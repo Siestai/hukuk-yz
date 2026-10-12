@@ -33,8 +33,13 @@ const user = {
 };
 const ok = (data: unknown) => ({ response: new Response(null, { status: 200 }), data });
 
-function mockApi(summary: () => unknown) {
-    get.mockImplementation(async (path: string) => (path === "/auth/me" ? ok(user) : summary()));
+const noFiles = () => ok({ count: 0 });
+
+function mockApi(summary: () => unknown, files: () => unknown = noFiles) {
+    get.mockImplementation(async (path: string) => {
+        if (path === "/auth/me") return ok(user);
+        return path === "/files/count" ? files() : summary();
+    });
 }
 
 async function renderLayout() {
@@ -64,6 +69,32 @@ describe("AppLayout", () => {
         const queue = screen.getByRole("link", { name: new RegExp(messages.nav.queue) });
         expect(queue).toHaveAttribute("href", "/");
         expect(queue).toHaveTextContent("1.207");
+        expect(screen.getByText("içerik")).toBeInTheDocument();
+    });
+
+    it("shows how many files wait for approval next to Dosyalar", async () => {
+        mockApi(
+            () => ok({ by_band: {}, by_court: {}, top_reasons: [] }),
+            () => ok({ count: 2 }),
+        );
+        await renderLayout();
+        const files = screen.getByRole("link", { name: new RegExp(messages.nav.files) });
+        expect(files).toHaveTextContent(`${messages.nav.pendingFiles}2`);
+        expect(get).toHaveBeenCalledWith("/files/count", {
+            params: { query: { review_status: "pending" } },
+        });
+    });
+
+    it("shows no file badge when the pending files cannot be counted", async () => {
+        mockApi(
+            () => ok({ by_band: {}, by_court: {}, top_reasons: [] }),
+            () => {
+                throw new TypeError("fetch failed");
+            },
+        );
+        await renderLayout();
+        const files = screen.getByRole("link", { name: new RegExp(messages.nav.files) });
+        expect(files.querySelector('[data-slot="badge"]')).toBeNull();
         expect(screen.getByText("içerik")).toBeInTheDocument();
     });
 

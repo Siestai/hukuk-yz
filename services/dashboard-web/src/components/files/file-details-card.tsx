@@ -11,6 +11,7 @@ export function FileDetailsCard({ file }: { file: FileOut }) {
     const link = webLink(file.origin_url);
     const rows: { label: string; value: string; mono?: boolean }[] = [
         { label: t("docType"), value: format.docType(file) },
+        { label: t("titleField"), value: file.title ?? format.empty },
         { label: t("docDate"), value: format.docDate(file) },
         { label: t("officialRef"), value: format.officialRef(file), mono: true },
         { label: t("note"), value: file.note ?? format.empty },

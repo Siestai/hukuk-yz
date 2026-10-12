@@ -1,5 +1,7 @@
 # Görev 13: Yüklemede otomatik tespit, insan onayı, silme
 
+Durum: 13a uygulandı ve birleşti (PR #62); 13b (dashboard yükleme + onay ekranı) uygulandı, PR Orhan'ın onayında (2026-10-12). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+
 Bağlam: `docs/tasks/12-file-management.md` (dosya deposu, `/files` API, worker taraması, Dosyalar ekranı), `services/app/app/files/` (`api.py`, `upload.py`, `import_dir.py`), `services/app/app/worker.py`, `packages/ingest` (`detect`, `extract`, `decisions/fields.py`, `statutes/split.py`), `docs/architecture.md` (LLM bölgesi, KVKK), `docs/tasks/08-auth.md` (roller).
 
 ## Sorun
