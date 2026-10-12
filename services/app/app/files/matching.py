@@ -198,7 +198,7 @@ async def _decision_texts(db: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.U
             and_(Decision.source_id == Extraction.source_id, Decision.superseded_at.is_(None)),
         )
         .where(Extraction.file_id.in_(ids))
-        .order_by(Extraction.file_id, Extraction.extracted_at.desc())
+        .order_by(Extraction.file_id, Extraction.extracted_at.desc(), Decision.id)
     )
     return {file_id: text for file_id, text in result.all() if text}
 
