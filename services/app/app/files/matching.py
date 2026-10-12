@@ -3,7 +3,8 @@ replace and the files that look like it. A match only suggests; nothing is linke
 
 Candidates are found from the cheap fields (type + reference, title, file name) by a query that
 compares the same normalised keys as `reason_for`; only the candidates are read, and only their
-texts are compared, in Python (`hukuk_ingest.classify.similar`)."""
+texts are compared, in Python (`hukuk_ingest.classify.similar`). A file without a stored text
+(the archive decisions, loaded without a scan) is compared by its decision text."""
 
 import asyncio
 import string
@@ -13,12 +14,14 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.files.import_dir import fold, name_key, stem_key
 from app.files.store import FileStore
-from app.models.common import DocumentType, IngestFile
+from app.models.common import DocumentType, Extraction, IngestFile
+from app.models.decision import Decision
 from hukuk_ingest.classify.similar import SIMILAR_THRESHOLD, containment, shingles
 
 MAX_COMPARED = 20
@@ -158,15 +161,17 @@ def similar_files(
     text: str,
     rows: dict[uuid.UUID, Row],
     reasons: dict[uuid.UUID, str],
+    fallback: dict[uuid.UUID, str],
 ) -> list[dict[str, Any]]:
     """Candidates whose text scores at `SIMILAR_THRESHOLD` or more against `text`, best first.
-    Reads the candidates' texts: runs in a thread."""
+    The text is the stored one, else the `fallback` one. Reads the candidates' texts: runs in
+    a thread."""
     mine = shingles(text)
-    ranked = [rid for rid in _ranked(rows, reasons) if rows[rid].text_key][:MAX_COMPARED]
+    ranked = [rid for rid in _ranked(rows, reasons) if rows[rid].text_key or rid in fallback]
     found: list[dict[str, Any]] = []
-    for rid in ranked:
+    for rid in ranked[:MAX_COMPARED]:
         key = rows[rid].text_key
-        other = _read_text(store, key) if key else None
+        other = _read_text(store, key) if key else fallback.get(rid)
         if other is None:
             continue
         score = containment(mine, shingles(other))
@@ -174,6 +179,28 @@ def similar_files(
             found.append({"file_id": str(rid), "score": round(score, 2), "reason": reasons[rid]})
     found.sort(key=lambda m: -m["score"])
     return found[:MAX_SIMILAR]
+
+
+async def _decision_texts(db: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """The texts of files that have none in the store, in one query: the live decision of the
+    file's source. A decision not yet reviewed exists only in the extraction's `fields`, which
+    is read for those files alone (`coalesce` skips it when the decision has a text)."""
+    if not ids:
+        return {}
+    result = await db.execute(
+        select(
+            Extraction.file_id,
+            func.coalesce(Decision.full_text, Extraction.fields["full_text"].astext),
+        )
+        .ext(distinct_on(Extraction.file_id))
+        .outerjoin(
+            Decision,
+            and_(Decision.source_id == Extraction.source_id, Decision.superseded_at.is_(None)),
+        )
+        .where(Extraction.file_id.in_(ids))
+        .order_by(Extraction.file_id, Extraction.extracted_at.desc())
+    )
+    return {file_id: text for file_id, text in result.all() if text}
 
 
 async def _candidates(
@@ -229,7 +256,9 @@ async def compute_matches(
     own = await _ancestors(db, subject.supersedes_id) | {subject.id}
     rows = await _candidates(db, subject, own)
     reasons = {rid: reason for rid, row in rows.items() if (reason := reason_for(subject, row))}
-    similar = await asyncio.to_thread(similar_files, store, text, rows, reasons)
+    missing = [rid for rid in _ranked(rows, reasons) if not rows[rid].text_key][:MAX_COMPARED]
+    fallback = await _decision_texts(db, missing)
+    similar = await asyncio.to_thread(similar_files, store, text, rows, reasons, fallback)
     return {
         "previous_version": await previous_version(db, subject, rows, reasons),
         "similar": similar,

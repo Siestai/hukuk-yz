@@ -2,6 +2,7 @@
 ranking run on hand-built rows; the candidate query and the version chain need the database."""
 
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -15,16 +16,27 @@ from app.files.matching import (
     Row,
     Subject,
     _candidates,
+    _decision_texts,
     _ranked,
+    compute_matches,
     previous_version,
     reason_for,
     ref_key,
     similar_files,
 )
 from app.files.store import LocalFileStore
-from app.models.common import DocumentType, IngestFile, IngestJob, IngestKind, ReviewStatus
+from app.models.common import (
+    DocumentType,
+    Extraction,
+    IngestFile,
+    IngestJob,
+    IngestKind,
+    ReviewStatus,
+)
+from app.models.decision import Decision
 
 Factory = async_sessionmaker[AsyncSession]
+NewDecision = Callable[..., Awaitable[uuid.UUID]]
 NOW = datetime(2026, 10, 12, tzinfo=UTC)
 
 
@@ -180,7 +192,80 @@ def test_similar_files_are_the_candidates_whose_text_scores_over_the_threshold(
     d = row(4, text_key="text/" + "c" * 64 + ".txt")  # the file is gone
     rows = {r.id: r for r in (a, b, c, d)}
     reasons = {r.id: SAME_NAME for r in rows.values()}
-    found = similar_files(store, text, rows, reasons)
+    found = similar_files(store, text, rows, reasons, {})
     assert [m["file_id"] for m in found] == [str(a.id)]
     assert found[0]["score"] >= 0.9
     assert found[0]["reason"] == SAME_NAME
+
+
+TEXT = " ".join(
+    f"madde {n} gereğince işçi {n} numaralı işyerinde çalışmaya devam eder" for n in range(50)
+)
+
+
+async def archive_file(
+    factory: Factory,
+    new_decision: NewDecision,
+    *,
+    decision_text: str | None,
+    fields_text: str | None = None,
+    **file_fields: Any,
+) -> IngestFile:
+    """A file as the decisions loader leaves it: no scan result, an extraction tied to a source,
+    and (once reviewed) a live decision of that source."""
+    file = await add(factory, **file_fields)
+    async with factory() as session:
+        decision_id = await new_decision(session, full_text=decision_text)
+        source_id = (await session.get(Decision, decision_id)).source_id  # type: ignore[union-attr]
+        session.add(
+            Extraction(
+                file_id=file.id,
+                source_id=source_id,
+                parser_name="decisions",
+                parser_version="1",
+                fields={"full_text": fields_text},
+            )
+        )
+        if decision_text is None:
+            await session.delete(await session.get(Decision, decision_id))
+        await session.commit()
+    return file
+
+
+async def test_an_archive_file_without_a_scan_is_similar_by_its_decision_text(
+    kb_factory: Factory, new_decision: NewDecision, tmp_path: Path
+) -> None:
+    same = await archive_file(
+        kb_factory, new_decision, decision_text=TEXT, original_name="AYRIMCILIK TAZMİNATI.pdf"
+    )
+    await archive_file(
+        kb_factory,
+        new_decision,
+        decision_text=" ".join(f"tamamen farklı {n} sigorta primi borcu {n}" for n in range(50)),
+        original_name="AYRIMCILIK TAZMİNATI.pdf",
+    )
+    wanted = subject(name="AYRIMCILIK TAZMİNATI.txt", doc_type=None)
+    async with kb_factory() as db:
+        found = await compute_matches(db, LocalFileStore(tmp_path), wanted, TEXT)
+    assert [m["file_id"] for m in found["similar"]] == [str(same.id)]
+
+
+async def test_a_decision_not_reviewed_yet_is_read_from_its_extraction(
+    kb_factory: Factory, new_decision: NewDecision, tmp_path: Path
+) -> None:
+    pending = await archive_file(
+        kb_factory, new_decision, decision_text=None, fields_text=TEXT, original_name="a.pdf"
+    )
+    no_text = await add(kb_factory, original_name="a.pdf")
+    async with kb_factory() as db:
+        assert await _decision_texts(db, [pending.id, no_text.id]) == {pending.id: TEXT}
+        found = await compute_matches(db, LocalFileStore(tmp_path), subject(name="a.txt"), TEXT)
+    assert [m["file_id"] for m in found["similar"]] == [str(pending.id)]
+
+
+def test_the_stored_text_wins_over_the_decision_text(tmp_path: Path) -> None:
+    store = LocalFileStore(tmp_path)
+    key = store.put_text("a" * 64, "tamamen farklı sigorta primi borcu " * 40)
+    both = row(1, text_key=key)
+    rows, reasons = {both.id: both}, {both.id: SAME_NAME}
+    assert similar_files(store, TEXT, rows, reasons, {both.id: TEXT}) == []
