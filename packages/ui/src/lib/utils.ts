@@ -14,7 +14,7 @@ const twMerge = extendTailwindMerge({
             pr: [{ "pr-safe": [isInteger] }],
             px: [{ "px-safe": [isInteger] }],
             w: ["w-inset"],
-            h: ["h-viewport"],
+            h: ["h-viewport", "h-inset"],
             "max-h": ["max-h-inset"],
         },
     },

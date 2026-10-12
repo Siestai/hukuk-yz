@@ -28,6 +28,7 @@ function Harness({ dismissible = true, onClose }: { dismissible?: boolean; onClo
 }
 
 const escape = () => new Event("cancel", { cancelable: true });
+const dialogEscape = () => screen.getByRole("dialog").dispatchEvent(escape());
 
 describe("Dialog", () => {
     it("is a labelled modal dialog whose content exists only while open", async () => {
@@ -163,6 +164,29 @@ describe("Dialog drawer variant", () => {
         await userEvent.click(screen.getByRole("button", { name: "Kapat" }));
         expect(onClose).toHaveBeenCalledTimes(1);
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+});
+
+describe("Dialog scroll lock", () => {
+    it("stops the page behind from scrolling while open and restores the previous overflow", async () => {
+        document.body.style.overflow = "scroll";
+        render(<Harness />);
+        await userEvent.click(screen.getByText("open"));
+        expect(document.body.style.overflow).toBe("hidden");
+        dialogEscape();
+        await waitFor(() => expect(document.body.style.overflow).toBe("scroll"));
+        document.body.style.overflow = "";
+    });
+
+    it("restores it when the dialog unmounts open", () => {
+        const { unmount } = render(
+            <Dialog open onClose={() => {}} title="Belge">
+                x
+            </Dialog>,
+        );
+        expect(document.body.style.overflow).toBe("hidden");
+        unmount();
+        expect(document.body.style.overflow).toBe("");
     });
 });
 

@@ -41,7 +41,7 @@ const variantClass = {
  * Escape is not left to the browser: it asks the owner to close through `onClose`, and the dialog
  * closes when `open` turns false. Focus then goes to `returnFocusTo`, or else back to the element
  * that had it when the dialog opened (which is the page itself when a keyboard shortcut opened
- * it). The content is mounted only while open, so a form inside starts fresh every time.
+ * it). The page behind does not scroll while it is open. The content is mounted only while open, so a form inside starts fresh every time.
  */
 function Dialog({
     open,
@@ -65,7 +65,11 @@ function Dialog({
             document.activeElement instanceof HTMLElement ? document.activeElement : null;
         const restore = returnFocusTo?.current ?? opener;
         dialog.showModal();
+        // showModal makes the page inert but does not stop it scrolling (a phone's full-screen viewer).
+        const { overflow } = document.body.style;
+        document.body.style.overflow = "hidden";
         return () => {
+            document.body.style.overflow = overflow;
             if (dialog.open) dialog.close();
             restore?.focus();
         };

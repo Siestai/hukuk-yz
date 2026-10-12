@@ -341,7 +341,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                         </FieldRow>
                     </dl>
                     {noChanges ? (
-                        <p role="status" className="text-sm text-ink-2">
+                        <p role="status" tabIndex={-1} className="text-sm text-ink-2">
                             {t("review.edit.noChanges")}
                         </p>
                     ) : null}

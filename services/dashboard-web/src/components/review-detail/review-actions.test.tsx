@@ -401,7 +401,8 @@ describe("ReviewActions", () => {
             await userEvent.click(
                 screen.getByRole("button", { name: "Değişiklikleri gözden geçir" }),
             );
-            expect(screen.getByText("Değişen alan yok.")).toBeInTheDocument();
+            const note = screen.getByText("Değişen alan yok.");
+            expect(note).toHaveFocus();
             expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
 
