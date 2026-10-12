@@ -17,7 +17,7 @@ const user = { display_name: "Baran Yılmaz", role: "reviewer" } as const;
 const escape = () => new Event("cancel", { cancelable: true });
 
 function setup(pending: number | null = 1207) {
-    renderWithIntl(<MobileNav user={user} pending={pending} />);
+    renderWithIntl(<MobileNav user={user} pending={pending} pendingFiles={null} />);
     return {
         menu: screen.getByRole("button", { name: messages.nav.menu }),
         events: userEvent.setup(),
@@ -125,7 +125,9 @@ describe("MobileNav", () => {
         });
 
         it("stops listening when it unmounts", () => {
-            const { unmount } = renderWithIntl(<MobileNav user={user} pending={null} />);
+            const { unmount } = renderWithIntl(
+                <MobileNav user={user} pending={null} pendingFiles={null} />,
+            );
             expect(query.listeners.size).toBe(1);
             unmount();
             expect(query.listeners.size).toBe(0);

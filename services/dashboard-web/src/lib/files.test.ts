@@ -11,6 +11,7 @@ import {
     fileListHref,
     parseFileParams,
     readScan,
+    REVIEW_STATUSES,
     SCAN_STATUSES,
     webLink,
 } from "./files";
@@ -19,6 +20,7 @@ describe("file constants", () => {
     it("lists the document types and scan states of the API", () => {
         expect([...DOC_TYPES].sort()).toEqual(schemaEnum("FileOut", "doc_type").sort());
         expect([...SCAN_STATUSES].sort()).toEqual(schemaEnum("FileOut", "scan_status").sort());
+        expect([...REVIEW_STATUSES].sort()).toEqual(schemaEnum("FileOut", "review_status").sort());
     });
 
     it("accepts the extensions the API allows", () => {
@@ -41,6 +43,16 @@ describe("file list state", () => {
             q: "2020/39",
             cursor: "abc_-=",
         });
+    });
+
+    it("reads the pending tab, asks the API for it, and does not count it as a filter", () => {
+        const params = parseFileParams(new URLSearchParams("onay=bekliyor&tur=genelge"));
+        expect(params.review).toBe("pending");
+        expect(fileListHref(params)).toBe("/dosyalar?tur=genelge&onay=bekliyor");
+        expect(fileApiQuery(params).review_status).toBe("pending");
+        expect(activeFileFilters(params)).toBe(1);
+        expect(parseFileParams(new URLSearchParams("onay=x")).review).toBeUndefined();
+        expect(fileApiQuery({}).review_status).toBeUndefined();
     });
 
     it("ignores unknown values and a malformed cursor", () => {

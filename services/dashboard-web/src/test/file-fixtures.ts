@@ -38,3 +38,27 @@ export const file: FileOut = {
 };
 
 export const listItem: FileListItem = { ...file, version_count: 2 };
+
+/** A freshly scanned upload waiting for approval, with what the rules read from its text. */
+export const pendingFile: FileOut = {
+    ...file,
+    doc_type: null,
+    doc_date: null,
+    official_ref: null,
+    origin_url: null,
+    review_status: "pending",
+    suggestions: {
+        doc_type: {
+            value: "genelge",
+            source: "rule",
+            evidence: { page: 1, quote: "GENELGE 2024/5" },
+        },
+        doc_date: {
+            value: "2024-03-01",
+            source: "rule",
+            evidence: { page: 1, quote: "Sayı: E-12345 01.03.2024" },
+        },
+        official_ref: { value: "2024/5", source: "llm", evidence: null },
+    },
+    matches: null,
+};

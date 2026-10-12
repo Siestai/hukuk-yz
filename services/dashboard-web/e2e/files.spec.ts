@@ -78,12 +78,12 @@ test.describe("files @files", () => {
         test.setTimeout(SCAN_TIMEOUT + 60_000);
         await page.setViewportSize({ width: 1440, height: 900 });
         await openList(page);
-        await expect(page.getByRole("link", { name: "Dosyalar", exact: true })).toBeVisible();
+        await expect(page.getByRole("link", { name: /^Dosyalar/ })).toBeVisible();
         await pick(page, NAME, RUN);
-        // A type is required: sending without one is refused on the spot.
-        await page.getByRole("button", { name: "Yükle", exact: true }).click();
-        await expect(page.getByText("Belge türünü seçin.")).toBeVisible();
-        await page.getByLabel("Belge türü (zorunlu)").selectOption("genelge");
+        // Nothing has to be typed; what is typed under "Bilgileri kendim gireceğim" is sent as given.
+        await page.getByRole("button", { name: "Bilgileri kendim gireceğim" }).click();
+        const chosen = page.getByRole("list", { name: "Seçilen dosyalar" });
+        await chosen.getByLabel("Belge türü", { exact: true }).selectOption("genelge");
         await page.getByLabel("Resmî sayı", { exact: true }).fill(REF);
         await page.getByLabel("Belge tarihi").fill("2020-06-15");
         await page.getByRole("button", { name: "Yükle", exact: true }).click();
@@ -126,7 +126,6 @@ test.describe("files @files", () => {
     }) => {
         await openList(page);
         await pick(page, `kopya-${NAME}`, RUN);
-        await page.getByLabel("Belge türü (zorunlu)").selectOption("genelge");
         await page.getByRole("button", { name: "Yükle", exact: true }).click();
         const alert = page.getByRole("main").getByRole("alert");
         await expect(alert).toContainText("Bu dosya zaten yüklü.");
@@ -183,6 +182,8 @@ test.describe("files on a phone @mobile", () => {
         const choose = page.getByRole("button", { name: "Dosya seç" });
         expect((await choose.boundingBox())?.height).toBeGreaterThanOrEqual(44);
         await pick(page, `telefon-${NAME}`, `${RUN}-phone`);
+        await expectNoHorizontalScroll(page);
+        await page.getByRole("button", { name: "Bilgileri kendim gireceğim" }).click();
         await expectNoHorizontalScroll(page);
         const small = await page
             .locator("button, select, input:not([type=hidden]):not([type=file]), textarea")

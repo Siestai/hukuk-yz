@@ -33,6 +33,11 @@ function setup(target: UploadTarget = { kind: "new" }, isAdmin = false) {
 }
 
 const items = () => screen.getAllByRole("listitem");
+const openDetails = async (user: ReturnType<typeof userEvent.setup>) => {
+    for (const toggle of screen.getAllByRole("button", { name: upload.detailsToggle })) {
+        await user.click(toggle);
+    }
+};
 
 beforeEach(() => {
     uploadFile.mockReset();
@@ -62,20 +67,33 @@ describe("UploadPanel", () => {
         expect(items()).toHaveLength(3);
     });
 
-    it("does not upload before every file has a document type", async () => {
+    it("folds the optional fields away and asks for nothing before the upload", async () => {
+        uploadFile.mockResolvedValue(ok(FILE_ID));
         const { input, user } = setup();
-        await user.upload(input, [pdf, second]);
-        await user.selectOptions(screen.getAllByLabelText(upload.docTypeRequired)[0]!, "genelge");
+        await user.upload(input, pdf);
+        const toggle = screen.getByRole("button", { name: upload.detailsToggle });
+        expect(toggle).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByLabelText(upload.docType)).not.toBeVisible();
+        await user.click(toggle);
+        expect(toggle).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByLabelText(upload.docType)).toBeVisible();
+        expect(
+            within(screen.getByLabelText(upload.docType)).getByRole("option", {
+                name: upload.autoDetect,
+            }),
+        ).toBeInTheDocument();
+        await user.click(toggle);
         await user.click(screen.getByRole("button", { name: upload.submit }));
-        expect(uploadFile).not.toHaveBeenCalled();
-        expect(screen.getAllByText(upload.typeMissing)).toHaveLength(1);
+        await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
+        expect(uploadFile.mock.calls[0]?.[2]).toEqual({});
     });
 
     it("uploads the files one after another with their fields, and refreshes the list", async () => {
         uploadFile.mockResolvedValueOnce(ok(FILE_ID)).mockResolvedValueOnce(ok(NEXT_FILE_ID));
         const { input, user } = setup();
         await user.upload(input, [pdf, second]);
-        const types = screen.getAllByLabelText(upload.docTypeRequired);
+        await openDetails(user);
+        const types = screen.getAllByLabelText(upload.docType);
         await user.selectOptions(types[0]!, "genelge");
         await user.selectOptions(types[1]!, "teblig");
         await user.type(screen.getAllByLabelText(upload.officialRef)[0]!, "2020/39");
@@ -106,7 +124,6 @@ describe("UploadPanel", () => {
         );
         const { input, user } = setup();
         await user.upload(input, pdf);
-        await user.selectOptions(screen.getByLabelText(upload.docTypeRequired), "karar");
         await user.click(screen.getByRole("button", { name: upload.submit }));
         report(0.4);
         const bar = await screen.findByRole("progressbar", {
@@ -120,7 +137,6 @@ describe("UploadPanel", () => {
         uploadFile.mockResolvedValue(fail("duplicate_file", { file_id: FILE_ID, archived: false }));
         const { input, user } = setup();
         await user.upload(input, pdf);
-        await user.selectOptions(screen.getByLabelText(upload.docTypeRequired), "karar");
         await user.click(screen.getByRole("button", { name: upload.submit }));
         const alert = await screen.findByRole("alert");
         expect(within(alert).getByText(upload.duplicate)).toBeInTheDocument();
@@ -136,7 +152,6 @@ describe("UploadPanel", () => {
         POST.mockResolvedValue({ data: { id: FILE_ID } });
         const reviewer = setup();
         await reviewer.user.upload(reviewer.input, pdf);
-        await reviewer.user.selectOptions(screen.getByLabelText(upload.docTypeRequired), "karar");
         await reviewer.user.click(screen.getByRole("button", { name: upload.submit }));
         const alert = await screen.findByRole("alert");
         expect(within(alert).getByText(upload.duplicateArchived)).toBeInTheDocument();
@@ -148,11 +163,11 @@ describe("UploadPanel", () => {
         POST.mockResolvedValue({ data: { id: FILE_ID } });
         const { input, user } = setup({ kind: "new" }, true);
         await user.upload(input, pdf);
-        await user.selectOptions(screen.getByLabelText(upload.docTypeRequired), "karar");
         await user.click(screen.getByRole("button", { name: upload.submit }));
         await user.click(await screen.findByRole("button", { name: upload.unarchive }));
         expect(POST).toHaveBeenCalledWith("/files/{file_id}/unarchive", {
             params: { path: { file_id: FILE_ID } },
+            headers: { "Content-Type": "application/json" },
         });
         expect(await screen.findByText(upload.unarchived)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: upload.unarchive })).toBeNull();
@@ -168,7 +183,6 @@ describe("UploadPanel", () => {
         uploadFile.mockResolvedValueOnce(fail(code)).mockResolvedValueOnce(ok(FILE_ID));
         const { input, user } = setup();
         await user.upload(input, pdf);
-        await user.selectOptions(screen.getByLabelText(upload.docTypeRequired), "karar");
         await user.click(screen.getByRole("button", { name: upload.submit }));
         expect(await screen.findByRole("alert")).toHaveTextContent(text);
         await user.click(screen.getByRole("button", { name: upload.submit }));
@@ -191,6 +205,7 @@ describe("UploadPanel", () => {
             const { input, user } = setup({ kind: "version", fileId: FILE_ID });
             expect(input.multiple).toBe(false);
             await user.upload(input, pdf);
+            await openDetails(user);
             expect(
                 within(screen.getByLabelText(upload.docType)).getByRole("option", {
                     name: upload.sameAsPrevious,

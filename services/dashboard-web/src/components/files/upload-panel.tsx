@@ -15,9 +15,10 @@ export type UploadTarget = { kind: "new" } | { kind: "version"; fileId: string }
 let counter = 0;
 
 /**
- * Drop zone and file picker, a short form for every chosen file, and the upload one file after
- * another with progress and result for each. A new version takes one file and leaves out what the
- * API copies from the previous version.
+ * Drop zone and file picker, and the upload of the chosen files one after another with progress,
+ * scan and result for each. Nothing has to be typed: the optional fields of a file are folded
+ * away and whatever is typed there counts as the user's own value. A new version takes one file
+ * and leaves out what the API copies from the previous version.
  */
 export function UploadPanel({ target, isAdmin }: { target: UploadTarget; isAdmin: boolean }) {
     const t = useTranslations("files.upload");
@@ -35,7 +36,6 @@ export function UploadPanel({ target, isAdmin }: { target: UploadTarget; isAdmin
             key: `file-${counter++}`,
             file,
             fields: {},
-            missingType: false,
             status: { kind: "ready" },
         }));
         setEntries((current) => (isVersion ? added.slice(0, 1) : [...current, ...added]));
@@ -57,16 +57,10 @@ export function UploadPanel({ target, isAdmin }: { target: UploadTarget; isAdmin
         const waiting = entries.filter(
             (entry) => entry.status.kind === "ready" || entry.status.kind === "failed",
         );
-        const incomplete = !isVersion ? waiting.filter((entry) => !entry.fields.doc_type) : [];
-        if (incomplete.length > 0) {
-            for (const entry of waiting) patch(entry.key, { missingType: !entry.fields.doc_type });
-            return;
-        }
         setBusy(true);
         let created: string | undefined;
         for (const entry of waiting) {
-            const status = (next: UploadStatus) =>
-                patch(entry.key, { missingType: false, status: next });
+            const status = (next: UploadStatus) => patch(entry.key, { status: next });
             status({ kind: "uploading", fraction: 0 });
             const outcome = await uploadFile(url, entry.file, entry.fields, (fraction) =>
                 status({ kind: "uploading", fraction }),
@@ -130,7 +124,7 @@ export function UploadPanel({ target, isAdmin }: { target: UploadTarget; isAdmin
                             <UploadItem
                                 key={entry.key}
                                 entry={entry}
-                                typeRequired={!isVersion}
+                                emptyType={isVersion ? t("sameAsPrevious") : t("autoDetect")}
                                 isAdmin={isAdmin}
                                 onChange={(fields) => patch(entry.key, { fields })}
                                 onRemove={() =>

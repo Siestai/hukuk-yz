@@ -10,15 +10,23 @@ import { postFileAction } from "@/lib/api/files-client";
 import { ApiFailure } from "@/lib/api/review-client";
 import { useErrorMessage } from "@/lib/use-error-message";
 
-/** Archive or restore a file, and queue it for another scan (admin). */
-export function FileAdminActions({ fileId, archived }: { fileId: string; archived: boolean }) {
+/** Archive or restore a file, queue it for another scan, take back its approval (admin). */
+export function FileAdminActions({
+    fileId,
+    archived,
+    approved,
+}: {
+    fileId: string;
+    archived: boolean;
+    approved: boolean;
+}) {
     const t = useTranslations("files.detail.actions");
     const errorMessage = useErrorMessage();
     const router = useRouter();
     const [busy, setBusy] = useState(false);
     const [failure, setFailure] = useState<string>();
 
-    async function run(action: "archive" | "unarchive" | "rescan") {
+    async function run(action: "archive" | "unarchive" | "rescan" | "unapprove") {
         setBusy(true);
         setFailure(undefined);
         try {
@@ -50,6 +58,16 @@ export function FileAdminActions({ fileId, archived }: { fileId: string; archive
                 >
                     {t("rescan")}
                 </Button>
+                {approved ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => void run("unapprove")}
+                    >
+                        {t("unapprove")}
+                    </Button>
+                ) : null}
             </div>
             {failure ? (
                 <p role="alert" className="text-sm text-low">

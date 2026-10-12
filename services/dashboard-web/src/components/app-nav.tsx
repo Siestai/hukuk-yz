@@ -1,6 +1,8 @@
 import { Badge } from "@hukuk/ui";
 import { useFormatter, useTranslations } from "next-intl";
 
+import type { PendingFiles } from "@/lib/files";
+import { usePendingCount } from "@/lib/use-pending-count";
 import { HelpTip } from "./help-tip";
 import { LogoutButton } from "./logout-button";
 import { NavLink } from "./nav-link";
@@ -9,13 +11,16 @@ export type AppNavProps = {
     user: { display_name: string; role: "admin" | "reviewer" };
     /** Pending decisions; null when the count could not be fetched. */
     pending: number | null;
+    /** Files waiting for approval; null when the count could not be fetched. */
+    pendingFiles: PendingFiles | null;
     /** Called when a link is followed (the drawer closes). */
     onNavigate?: () => void;
 };
 
 /** The navigation links and the signed-in user: the content of the side navigation and of the drawer. */
-export function AppNav({ user, pending, onNavigate }: AppNavProps) {
+export function AppNav({ user, pending, pendingFiles, onNavigate }: AppNavProps) {
     const t = useTranslations();
+    const pendingCount = usePendingCount();
     const format = useFormatter();
     const comingLater = [
         { key: "sources", help: "navSources", label: t("nav.sources") },
@@ -49,6 +54,12 @@ export function AppNav({ user, pending, onNavigate }: AppNavProps) {
                 </div>
                 <NavLink href="/dosyalar" onNavigate={onNavigate}>
                     {t("nav.files")}
+                    {pendingFiles ? (
+                        <Badge>
+                            <span className="sr-only">{t("nav.pendingFiles")}</span>
+                            {pendingCount(pendingFiles)}
+                        </Badge>
+                    ) : null}
                 </NavLink>
                 {comingLater.map(({ key, help, label }) => (
                     <div key={key} className="flex items-center gap-2">

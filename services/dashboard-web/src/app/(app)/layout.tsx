@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { UpstreamUnavailableError } from "@/lib/api/errors";
+import { getPendingFiles } from "@/lib/api/files";
 import { getReviewSummary } from "@/lib/api/review";
 import { createServerApi } from "@/lib/api/server";
 
@@ -18,14 +19,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     }
     if (!me.data) throw new Error(`GET /auth/me failed with ${me.response.status}`);
 
-    // The badge is a courtesy: no count is shown rather than failing the page.
-    const summary = await getReviewSummary().catch(() => null);
+    // The badges are a courtesy: no count is shown rather than failing the page.
+    const [summary, pendingFiles] = await Promise.all([
+        getReviewSummary().catch(() => null),
+        getPendingFiles().catch(() => null),
+    ]);
     const pending = summary?.data
         ? Object.values(summary.data.by_band).reduce((sum, n) => sum + n, 0)
         : null;
 
     return (
-        <AppShell user={me.data} pending={pending}>
+        <AppShell user={me.data} pending={pending} pendingFiles={pendingFiles}>
             {children}
         </AppShell>
     );

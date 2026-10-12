@@ -129,7 +129,7 @@ export function FileFilters() {
                     className="text-primary underline"
                     onClick={() => {
                         setText("");
-                        navigate({});
+                        navigate({ review: params.review });
                     }}
                 >
                     {t("clear")}

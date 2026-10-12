@@ -58,6 +58,25 @@ describe("FileResults", () => {
         expect(other.getByText("Sistem")).toBeInTheDocument();
     });
 
+    it("shows the review state of every file in the table and in the cards", async () => {
+        await setup({
+            items: [listItem, { ...second, review_status: "pending" }],
+            next_cursor: null,
+        });
+        const table = within(screen.getByRole("table"));
+        const approved = within(
+            table.getByRole("link", { name: "genelge-2020-39.pdf" }).closest("tr")!,
+        );
+        expect(approved.getByText(messages.enums.reviewStatus.approved)).toBeInTheDocument();
+        const waiting = within(
+            table.getByRole("link", { name: "ucret-tablosu.xlsx" }).closest("tr")!,
+        );
+        expect(waiting.getByText(messages.enums.reviewStatus.pending)).toBeInTheDocument();
+        const cards = within(screen.getByRole("list", { name: list.table.label }));
+        expect(cards.getByText(messages.enums.reviewStatus.pending)).toBeInTheDocument();
+        expect(cards.getByText(messages.enums.reviewStatus.approved)).toBeInTheDocument();
+    });
+
     it("links each file to its detail page", async () => {
         await setup();
         const link = within(screen.getByRole("table")).getByRole("link", {
@@ -98,6 +117,18 @@ describe("FileResults", () => {
         filtered.unmount();
         await setup(empty, { cursor: "abc" });
         expect(screen.getByText(list.empty.pastEnd)).toBeInTheDocument();
+    });
+
+    it("says nothing waits for approval on an empty pending tab, and keeps the tab when filters are cleared", async () => {
+        const empty = { items: [], next_cursor: null };
+        const { unmount } = await setup(empty, { review: "pending" });
+        expect(screen.getByText(list.empty.pending)).toBeInTheDocument();
+        unmount();
+        await setup(empty, { review: "pending", scan: "failed" });
+        expect(screen.getByRole("link", { name: list.empty.clear })).toHaveAttribute(
+            "href",
+            "/dosyalar?onay=bekliyor",
+        );
     });
 
     it("shows the message of the API's error code", async () => {
