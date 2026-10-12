@@ -21,8 +21,11 @@ type DialogProps = Omit<ComponentProps<"dialog">, "open" | "onClose" | "onCancel
     dismissible?: boolean;
     /** Where the focus goes on close; by default the element that had it when the dialog opened. */
     returnFocusTo?: RefObject<HTMLElement | null>;
-    /** `drawer` slides in from the left edge at full height (the mobile navigation). */
-    variant?: "center" | "drawer";
+    /**
+     * `drawer` slides in from the left edge at full height (the mobile navigation); `viewer` fills
+     * the phone screen and is a large, tall window from `md` (a document to read).
+     */
+    variant?: "center" | "drawer" | "viewer";
     /** The accessible name of a close button beside the title; without it there is no button. */
     closeLabel?: string;
 };
@@ -30,6 +33,7 @@ type DialogProps = Omit<ComponentProps<"dialog">, "open" | "onClose" | "onCancel
 const variantClass = {
     center: "m-auto w-inset max-w-lg max-h-inset rounded-md border",
     drawer: "m-0 mr-auto h-viewport max-h-none w-72 max-w-full rounded-none border-y-0 border-l-0 pt-safe-4 pb-safe-4 pl-safe-4 md:pt-safe-5 md:pb-safe-5 md:pl-safe-5",
+    viewer: "m-0 h-viewport max-h-none w-full max-w-none rounded-none border-0 pt-safe-4 pb-safe-4 md:m-auto md:h-inset md:w-inset md:max-w-6xl md:rounded-md md:border md:p-5",
 } as const;
 
 /**
@@ -91,7 +95,11 @@ function Dialog({
         >
             {open ? (
                 <div
-                    className={cn("grid gap-4", variant === "drawer" && "min-h-full content-start")}
+                    className={cn(
+                        "grid gap-4",
+                        variant === "drawer" && "min-h-full content-start",
+                        variant === "viewer" && "flex h-full flex-col",
+                    )}
                 >
                     <div className="flex items-center justify-between gap-2">
                         <h2 id={titleId} className="font-semibold text-ink">

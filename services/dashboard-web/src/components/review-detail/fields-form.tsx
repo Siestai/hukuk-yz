@@ -14,7 +14,7 @@ import {
     Textarea,
 } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import {
     buildEdits,
@@ -30,6 +30,7 @@ import { useCommon } from "@/lib/use-common";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 import { failedArticleEntries, failedFields } from "./action-failure";
 import { CHOICES } from "./edit-choices";
+import { EDIT_FORM_ID } from "./edit-actions";
 import { EditSummary } from "./edit-summary";
 import { FieldRow } from "./field-row";
 import { useReviewSession, type Failure } from "./review-session";
@@ -43,6 +44,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
     const { empty } = useCommon();
     const session = useReviewSession();
     const prefix = useId();
+    const card = useRef<HTMLDivElement>(null);
     const [values, setValues] = useState<FormValues>(() => initialValues(fields));
     const [built, setBuilt] = useState<BuiltEdits | null>(null);
     const [confirming, setConfirming] = useState(false);
@@ -167,16 +169,35 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
         if (!(await session.submitEdit(built.edits, note))) closeConfirm();
     }
 
+    // Pressing "Düzelt" far down the page brings the form into view and puts the cursor in its first field.
+    useEffect(() => {
+        const form = card.current;
+        if (!form) return;
+        form.querySelector<HTMLElement>("input, select, textarea")?.focus({ preventScroll: true });
+        const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        form.scrollIntoView?.({ block: "start", behavior: calm ? "auto" : "smooth" });
+    }, []);
+
+    // The review button is in the action bar, which can be far from the field it found wrong: show that field, or the note.
+    useEffect(() => {
+        const problem = card.current?.querySelector<HTMLElement>(
+            '[aria-invalid="true"], [role="status"]',
+        );
+        if (!built && !noChanges) return;
+        problem?.focus({ preventScroll: true });
+        problem?.scrollIntoView?.({ block: "center", behavior: "auto" });
+    }, [built, noChanges]);
+
     const articleErrorId = `${prefix}-related_articles-message`;
     const articleProps = (key: number) =>
         rowsInvalid.has(key) ? { "aria-invalid": true, "aria-describedby": articleErrorId } : {};
     return (
-        <Card>
+        <Card ref={card} className="scroll-mt-20 lg:scroll-mt-4">
             <CardHeader>
                 <CardTitle>{t("review.detail.fieldsTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
-                <form onSubmit={review} noValidate className="grid gap-4">
+                <form id={EDIT_FORM_ID} onSubmit={review} noValidate className="grid gap-4">
                     <dl>
                         {(
                             [
@@ -324,19 +345,6 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                             {t("review.edit.noChanges")}
                         </p>
                     ) : null}
-                    <DialogActions>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={session.cancelEdit}
-                            disabled={session.busy}
-                        >
-                            {t("review.edit.cancel")}
-                        </Button>
-                        <Button type="submit" disabled={session.busy}>
-                            {t("review.edit.review")}
-                        </Button>
-                    </DialogActions>
                 </form>
             </CardContent>
             <Dialog

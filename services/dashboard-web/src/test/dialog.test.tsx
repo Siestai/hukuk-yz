@@ -179,3 +179,28 @@ describe("Dialog (center variant)", () => {
         );
     });
 });
+
+describe("Dialog (viewer variant)", () => {
+    it("fills the screen on a phone, is a tall window from md, and closes on Escape and its button", async () => {
+        const onClose = vi.fn();
+        const { rerender } = render(
+            <Dialog open variant="viewer" closeLabel="Kapat" onClose={onClose} title="Belge">
+                <div>içerik</div>
+            </Dialog>,
+        );
+        const dialog = screen.getByRole("dialog", { name: "Belge" });
+        expect(dialog).toHaveClass("h-viewport", "w-full", "rounded-none", "md:h-inset");
+        expect(dialog).not.toHaveClass("max-w-lg");
+        const event = escape();
+        dialog.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+        await userEvent.click(screen.getByRole("button", { name: "Kapat" }));
+        expect(onClose).toHaveBeenCalledTimes(2);
+        rerender(
+            <Dialog open={false} variant="viewer" onClose={onClose} title="Belge">
+                x
+            </Dialog>,
+        );
+        expect(screen.queryByText("içerik")).not.toBeInTheDocument();
+    });
+});

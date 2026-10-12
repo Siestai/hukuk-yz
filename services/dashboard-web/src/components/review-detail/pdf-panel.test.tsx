@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import messages from "../../../messages/tr.json";
@@ -6,37 +7,61 @@ import { renderWithIntl } from "@/test/intl";
 import { PdfPanel } from "./pdf-panel";
 
 const SRC = "/api/review/decisions/d1/file";
+const pdf = messages.review.detail.pdf;
 
 describe("PdfPanel", () => {
     it("renders the titled iframe straight away when the PDF is available", () => {
         renderWithIntl(<PdfPanel src={SRC} availability="available" />);
-        expect(screen.getByTitle(messages.review.detail.pdf.title)).toHaveAttribute("src", SRC);
+        expect(screen.getByTitle(pdf.title)).toHaveAttribute("src", SRC);
         expect(screen.queryByRole("status")).toBeNull();
     });
 
     it.each([
-        ["missing", messages.review.detail.pdf.missing],
-        ["not_previewable", messages.review.detail.pdf.not_previewable],
-    ] as const)("shows an empty state and no frame when it is %s", (availability, text) => {
-        renderWithIntl(<PdfPanel src={SRC} availability={availability} />);
-        expect(screen.getByRole("status")).toHaveTextContent(text);
-        expect(screen.queryByTitle(messages.review.detail.pdf.title)).toBeNull();
+        ["missing", pdf.missing],
+        ["not_previewable", pdf.not_previewable],
+    ] as const)(
+        "shows an empty state and no frame or button when it is %s",
+        (availability, text) => {
+            renderWithIntl(<PdfPanel src={SRC} availability={availability} />);
+            expect(screen.getByRole("status")).toHaveTextContent(text);
+            expect(screen.queryByTitle(pdf.title)).toBeNull();
+            expect(screen.queryByRole("button")).toBeNull();
+        },
+    );
+
+    it("keeps the inline frame hidden and not loaded on a phone, with a button instead", () => {
+        renderWithIntl(<PdfPanel src={SRC} availability="available" />);
+        expect(screen.getByRole("button", { name: pdf.open })).toHaveClass("md:hidden");
+        const frame = screen.getByTitle(pdf.title);
+        expect(frame).toHaveClass("hidden", "md:block");
+        expect(frame).toHaveAttribute("loading", "lazy");
+        expect(screen.queryByRole("link")).toBeNull();
     });
 
-    it("offers the file in a new tab on a phone, where the frame is hidden and not loaded", () => {
+    it("opens the file in a window over the page, with a new-tab link as the fallback", async () => {
         renderWithIntl(<PdfPanel src={SRC} availability="available" />);
-        const link = screen.getByRole("link", { name: messages.review.detail.pdf.open });
+        expect(screen.queryByRole("dialog")).toBeNull();
+        await userEvent.click(screen.getByRole("button", { name: pdf.open }));
+        const dialog = screen.getByRole("dialog", { name: pdf.title });
+        expect(within(dialog).getByTitle(pdf.title)).toHaveAttribute("src", SRC);
+        const link = within(dialog).getByRole("link", { name: pdf.newTab });
         expect(link).toHaveAttribute("href", SRC);
         expect(link).toHaveAttribute("target", "_blank");
         expect(link).toHaveAttribute("rel", "noopener");
-        expect(link.closest("a")).toHaveClass("md:hidden");
-        const frame = screen.getByTitle(messages.review.detail.pdf.title);
-        expect(frame).toHaveClass("hidden", "md:block");
-        expect(frame).toHaveAttribute("loading", "lazy");
     });
 
-    it("has no link when there is no file", () => {
-        renderWithIntl(<PdfPanel src={SRC} availability="missing" />);
-        expect(screen.queryByRole("link")).toBeNull();
+    it("opens the same window from the wide-screen button", async () => {
+        renderWithIntl(<PdfPanel src={SRC} availability="available" />);
+        await userEvent.click(screen.getByRole("button", { name: pdf.openLarge }));
+        expect(screen.getByRole("dialog", { name: pdf.title })).toBeInTheDocument();
+    });
+
+    it("closes with the close button and gives the focus back to the button that opened it", async () => {
+        renderWithIntl(<PdfPanel src={SRC} availability="available" />);
+        const opener = screen.getByRole("button", { name: pdf.openLarge });
+        await userEvent.click(opener);
+        await userEvent.click(screen.getByRole("button", { name: pdf.close }));
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(opener).toHaveFocus();
     });
 });

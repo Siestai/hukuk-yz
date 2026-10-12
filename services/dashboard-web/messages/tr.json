@@ -312,7 +312,10 @@
         "title": "Kararın özgün PDF'i",
         "missing": "Bu karar için PDF dosyası bulunamadı.",
         "not_previewable": "Bu kaydın dosyası PDF değil, önizlenemiyor.",
-        "open": "PDF'i yeni sekmede aç"
+        "open": "PDF'i aç",
+        "openLarge": "PDF'i büyük aç",
+        "newTab": "Yeni sekmede aç",
+        "close": "Kapat"
       },
       "text": {
         "title": "Çıkarılmış karar metni",

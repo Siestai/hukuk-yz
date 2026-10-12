@@ -149,6 +149,10 @@
     max-height: calc(100vh - 2rem);
     max-height: calc(100dvh - 2rem);
 }
+@utility h-inset {
+    height: calc(100vh - 2rem);
+    height: calc(100dvh - 2rem);
+}
 /* Modal width: the screen less a small gap on each side. */
 @utility w-inset {
     width: calc(100% - 2rem);

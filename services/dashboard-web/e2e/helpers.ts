@@ -72,3 +72,15 @@ export async function expectTableFits(table: Locator): Promise<void> {
     }));
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 }
+
+/** Makes the extracted text of the open decision long, as a real decision is, so the page needs scrolling. */
+export async function lengthenText(page: Page): Promise<void> {
+    await page.getByRole("article", { name: "Çıkarılmış karar metni" }).evaluate((article) => {
+        for (let i = 0; i < 80; i++) {
+            const paragraph = document.createElement("p");
+            paragraph.textContent =
+                `Uzun karar metni ${i}. ` + "Lorem ipsum dolor sit amet. ".repeat(12);
+            article.append(paragraph);
+        }
+    });
+}

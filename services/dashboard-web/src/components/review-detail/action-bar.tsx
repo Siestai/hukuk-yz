@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { SHORTCUT_KEYS, useReviewShortcuts, type Shortcut } from "@/lib/use-review-shortcuts";
 import { ActionFailure } from "./action-failure";
+import { EditActions } from "./edit-actions";
 import { RejectDialog } from "./reject-dialog";
 import { useReviewSession, type Pending } from "./review-session";
 
@@ -78,52 +79,57 @@ export function ActionBar({
                 {session.edge === "next" ? t("noNext") : null}
                 {session.edge === "previous" ? t("noPrevious") : null}
             </div>
-            <div
-                className={cn(
-                    "grid gap-2 md:flex md:flex-wrap md:items-center md:gap-3",
-                    editable ? "grid-cols-3" : "grid-cols-2",
-                )}
-            >
-                <Button
-                    onClick={() => void session.approve()}
-                    disabled={!idle}
-                    aria-keyshortcuts="A"
-                    className={actionButton}
+            {mode === "edit" ? (
+                // The form is somewhere up the page; its two buttons stay here, where the reviewer is.
+                <EditActions buttonClass={actionButton} />
+            ) : (
+                <div
+                    className={cn(
+                        "grid gap-2 md:flex md:flex-wrap md:items-center md:gap-3",
+                        editable ? "grid-cols-3" : "grid-cols-2",
+                    )}
                 >
-                    {label(t("approve"), "approve")} <Key shortcut="approve" />
-                </Button>
-                {editable ? (
                     <Button
-                        ref={editButton}
-                        variant="outline"
-                        onClick={session.startEdit}
+                        onClick={() => void session.approve()}
                         disabled={!idle}
-                        aria-keyshortcuts="E"
+                        aria-keyshortcuts="A"
                         className={actionButton}
                     >
-                        {label(t("edit"), "edit")} <Key shortcut="edit" />
+                        {label(t("approve"), "approve")} <Key shortcut="approve" />
                     </Button>
-                ) : null}
-                <Button
-                    ref={rejectButton}
-                    variant="destructive"
-                    onClick={() => setRejecting(true)}
-                    disabled={!idle}
-                    aria-keyshortcuts="R"
-                    className={actionButton}
-                >
-                    {label(t("reject"), "reject")} <Key shortcut="reject" />
-                </Button>
-                <p className="ml-auto hidden items-center gap-2 text-xs text-ink-3 md:flex">
-                    <span>{t("legend")}</span>
-                    <span className="flex items-center gap-1">
-                        <Key shortcut="next" /> {t("next")}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <Key shortcut="previous" /> {t("previous")}
-                    </span>
-                </p>
-            </div>
+                    {editable ? (
+                        <Button
+                            ref={editButton}
+                            variant="outline"
+                            onClick={session.startEdit}
+                            disabled={!idle}
+                            aria-keyshortcuts="E"
+                            className={actionButton}
+                        >
+                            {label(t("edit"), "edit")} <Key shortcut="edit" />
+                        </Button>
+                    ) : null}
+                    <Button
+                        ref={rejectButton}
+                        variant="destructive"
+                        onClick={() => setRejecting(true)}
+                        disabled={!idle}
+                        aria-keyshortcuts="R"
+                        className={actionButton}
+                    >
+                        {label(t("reject"), "reject")} <Key shortcut="reject" />
+                    </Button>
+                    <p className="ml-auto hidden items-center gap-2 text-xs text-ink-3 md:flex">
+                        <span>{t("legend")}</span>
+                        <span className="flex items-center gap-1">
+                            <Key shortcut="next" /> {t("next")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <Key shortcut="previous" /> {t("previous")}
+                        </span>
+                    </p>
+                </div>
+            )}
             <RejectDialog
                 open={rejecting}
                 onClose={() => setRejecting(false)}
