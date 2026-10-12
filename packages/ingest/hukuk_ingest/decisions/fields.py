@@ -84,6 +84,14 @@ def parse_date(raw: str) -> tuple[str | None, bool]:
         return None, True
 
 
+def dates_in(raw: str) -> set[str]:
+    """ISO dates of every valid date written in `raw`."""
+    found = (
+        parse_date(m[0])[0] for rx in (_NUMERIC_DATE_RE, _NAMED_DATE_RE) for m in rx.finditer(raw)
+    )
+    return {iso for iso in found if iso}
+
+
 # "...iadesine, 8.6.2004 gününde oybirliğiyle karar verildi." Run on the lower-cased tail of the
 # body; the space before the date may be missing, and OCR may split "oy birliğiyle".
 _CLOSING_TAIL = 1500

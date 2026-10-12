@@ -227,8 +227,9 @@ def test_file_review_columns_indexes_and_deletion_table_are_in_orm_and_migration
     assert (migration.TABLE, migration.down_revision) == ("ingest_file", "0011")
     assert "ix_ingest_file_review_pending" in {i.name for i in table.indexes}
     assert '"ix_ingest_file_review_pending"' in source
-    # Old rows count as approved; the ORM and the migration agree on it.
-    assert str(table.columns["review_status"].server_default.arg) == "'approved'"  # type: ignore[union-attr]
+    # Old rows were set to approved by the migration; no default is left, so a forgotten status
+    # fails instead of passing as approved.
+    assert table.columns["review_status"].server_default is None
     assert not table.columns["review_status"].nullable
     deletion = Base.metadata.tables["file_deletion"]
     assert {c.name for c in deletion.columns} == {

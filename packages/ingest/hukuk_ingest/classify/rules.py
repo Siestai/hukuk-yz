@@ -228,31 +228,6 @@ def genelge(text: str) -> Suggestions:
     return out
 
 
-_IC_EMRI_RE = re.compile(r"^[ \t]*İÇ[ \t]+EMİR[ \t]*$", re.M)
-
-
-def ic_emri(text: str) -> Suggestions:
-    """ "İÇ EMİR" on a line of its own, with the year/number next to it."""
-    heading = _IC_EMRI_RE.search(text[:_HEAD_CHARS])
-    if heading is None:
-        return {}
-    out: Suggestions = {
-        "doc_type": Suggestion(
-            "ic_emri", "rule", span_evidence(text, heading.start(), heading.end())
-        )
-    }
-    if found := _circular_number(text, heading):
-        out["official_ref"] = Suggestion(found[0], "rule", span_evidence(text, *found[1]))
-    if sayi := _SAYI_RE.search(text[:_HEAD_CHARS]):
-        if date_s := _date_after(text, sayi.start()):
-            out["doc_date"] = date_s
-    if title := _konu(text):
-        out["title"] = title
-    if issuer := _issuer(text):
-        out["issuer"] = issuer
-    return out
-
-
 def genel_yazi(text: str) -> Suggestions:
     """A letter with "Sayı:" and "Konu:" lines and no GENELGE heading."""
     head = text[:_HEAD_CHARS]
@@ -301,56 +276,18 @@ def _date_span(text: str, iso: str, after: int) -> tuple[int, int] | None:
     return None
 
 
-# The header of a decision as the Yargıtay site and the legal databases print it:
-# "22. Hukuk Dairesi 2017/5455 E. , 2017/4143 K." / "Hukuk Genel Kurulu 2015/2156 E. , 2019/346 K."
-_COURT_HEADER_RE = re.compile(
-    r"^[ \t]*(?P<unit>(?:\d{1,2}\.[ \t]*)?(?:Hukuk|Ceza)[ \t]+(?:Dairesi|Genel[ \t]+Kurulu))"
-    r"[ \t]+(?P<esas>\d{4}/(?:\d{1,2}-)?\d+)[ \t]*\S?E\.?[ \t]*,"
-    r"[ \t]*(?P<karar>\d{4}/\d+)[ \t]*K\.?",
-    re.M,
-)
-_CLOSING_RE = re.compile(
-    r"(\d{1,2}[ \t]*[./-][ \t]*\d{1,2}[ \t]*[./-][ \t]*\d{4})(?!\d)[ \t]*(?:günü|gününde|tarihinde)"
-    r"[^.]{0,40}karar[ \t]+verildi",
-    re.I,
-)
-_CLOSING_TAIL = 1500
-
-
-def _site_header_karar(text: str) -> Suggestions:
-    m = _COURT_HEADER_RE.search(text[:_HEAD_CHARS])
-    if m is None:
-        return {}
-    span = span_evidence(text, m.start(), m.end())
-    unit = collapse(m["unit"])
-    refs = f"{m['esas']} E., {m['karar']} K."
-    out: Suggestions = {
-        "doc_type": Suggestion("karar", "rule", span),
-        "official_ref": Suggestion(refs, "rule", span),
-        "title": Suggestion(f"Yargıtay {unit} {refs}", "rule", span),
-        "issuer": Suggestion(f"Yargıtay {unit}", "rule", span),
-    }
-    tail_at = max(len(text) - _CLOSING_TAIL, 0)
-    closing = list(_CLOSING_RE.finditer(text, tail_at))
-    if closing and (iso := _iso(closing[-1].group(1))):
-        out["doc_date"] = Suggestion(
-            iso, "rule", span_evidence(text, closing[-1].start(), closing[-1].end())
-        )
-    return out
-
-
 def karar(text: str) -> Suggestions:
     """A court decision, read by the parser of the decision archive: the court from the header
     block, the Esas / Karar numbers and the date from the lines that print them."""
     journal = clean_journal(text)
     fields: DecisionFields = extract_fields(journal, detect_layout(journal))
     if not fields.court or not (fields.esas_no or fields.karar_no):
-        return _site_header_karar(text)
+        return {}
     esas = _label_line(text, "esas") or _case_no_span(text, fields.esas_no)
     kar = _label_line(text, "karar") or _case_no_span(text, fields.karar_no)
     spans = [s for s in (esas, kar) if s]
     if not spans:
-        return _site_header_karar(text)
+        return {}
     ref_span = (min(s[0] for s in spans), max(s[1] for s in spans))
     out: Suggestions = {"doc_type": Suggestion("karar", "rule", span_evidence(text, *spans[0]))}
     refs = [f"{no} {kind}." for no, kind in ((fields.esas_no, "E"), (fields.karar_no, "K")) if no]

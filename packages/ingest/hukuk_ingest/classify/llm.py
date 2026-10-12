@@ -16,12 +16,13 @@ from hukuk_ingest.classify.evidence import (
     collapse,
     locate,
 )
-from hukuk_ingest.decisions.fields import parse_date, tr_lower
+from hukuk_ingest.decisions.fields import dates_in, tr_lower
 from hukuk_ingest.quality import PAGE_BREAK
 
 MAX_PAGES = 2
 MAX_CHARS = 6000
 MAX_VALUE_CHARS = 300
+MAX_QUOTE_CHARS = 2 * MAX_VALUE_CHARS  # a longer quote would contain any value
 
 
 class DetectorError(Exception):
@@ -110,13 +111,14 @@ def _contains(quote: str, value: str) -> bool:
 
 def validate(answer: dict[str, Any], text: str, wanted: tuple[str, ...]) -> Suggestions:
     """The fields of `answer` that hold up against `text`. A `doc_type` without a quote that
-    occurs in the text is kept without evidence (the UI warns); any other field is dropped."""
+    occurs in the text (none given, or an invented one) is kept without evidence (the UI warns);
+    any other field is dropped unless its quote occurs in the text and shows the value."""
     out: Suggestions = {}
     for name in wanted:
         if name not in FIELDS or (entry := _entry(answer.get(name))) is None:
             continue
         value, quote = entry
-        evidence = locate(text, quote)
+        evidence = locate(text, quote) if len(quote) <= MAX_QUOTE_CHARS else None
         if name == "doc_type":
             if value in DOC_TYPES:
                 out[name] = Suggestion(value, "llm", evidence)
@@ -128,9 +130,9 @@ def validate(answer: dict[str, Any], text: str, wanted: tuple[str, ...]) -> Sugg
                 date.fromisoformat(value)
             except ValueError:
                 continue
-            if parse_date(quote)[0] != value:
+            if value not in dates_in(quote):
                 continue
-        elif name in ("official_ref", "issuer") and not _contains(quote, value):
+        elif not _contains(quote, value):
             continue
         out[name] = Suggestion(value, "llm", evidence)
     return out

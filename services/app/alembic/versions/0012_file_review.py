@@ -44,6 +44,8 @@ def upgrade() -> None:
             "review_status", _review_status(), server_default=sa.text("'approved'"), nullable=False
         ),
     )
+    # The default only backfills the rows there are; later inserts must name the status.
+    op.alter_column(TABLE, "review_status", server_default=None)
     op.add_column(TABLE, sa.Column("approved_by", sa.Uuid(), nullable=True))
     op.add_column(TABLE, sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column(TABLE, sa.Column("title", sa.Text(), nullable=True))

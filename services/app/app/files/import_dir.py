@@ -39,6 +39,7 @@ from app.models.common import (
     IngestJob,
     IngestKind,
     IngestStatus,
+    ReviewStatus,
     ScanStatus,
 )
 from app.settings import get_settings
@@ -190,6 +191,7 @@ async def _import_one(
             storage_key=stored.key,
             original_name=name,
             doc_type=doc_type_of(parts),
+            review_status=ReviewStatus.approved,  # a system import: no human step
             scan_status=ScanStatus.queued,
             scan_result={IMPORT_PATH: rel},
         )

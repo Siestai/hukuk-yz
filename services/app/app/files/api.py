@@ -235,6 +235,7 @@ async def _create(
         doc_type = fields.doc_type or (
             previous.doc_type.value if previous is not None and previous.doc_type else None
         )
+        await _lock_content(db, staged.sha256)
         detected, key = await run_in_threadpool(_check_and_store, store, staged, suffix)
     sha256, size = staged.sha256, staged.size
     if (error := await _duplicate(db, sha256)) is not None:
@@ -634,6 +635,23 @@ def _remove_blobs(store: FileStore, sha256: str) -> None:
             logger.exception("could not delete %s from the file store; it is an orphan now", key)
 
 
+async def _lock_content(db: AsyncSession, sha256: str) -> None:
+    """Hold a transaction-long lock on the content `sha256`: an upload of the bytes and the
+    removal of their blob never interleave."""
+    key = int.from_bytes(bytes.fromhex(sha256)[:8], "big", signed=True)
+    await db.execute(select(func.pg_advisory_xact_lock(key)))
+
+
+async def _remove_unused_blobs(db: AsyncSession, store: FileStore, sha256: str) -> None:
+    """Remove the blob and text of `sha256` unless a row uses them. An upload of the same bytes
+    takes the content lock before it stores the blob and keeps it until its row is committed, so
+    under this lock a row is either visible here or its blob is stored after the removal."""
+    await _lock_content(db, sha256)
+    if not (await db.execute(select(exists().where(IngestFile.sha256 == sha256)))).scalar_one():
+        await run_in_threadpool(_remove_blobs, store, sha256)
+    await db.commit()
+
+
 @router.delete("/{file_id}", status_code=204)
 async def delete_file(file_id: uuid.UUID, db: Db, store: Store, user: CurrentUser) -> None:
     """Delete a pending file: its row (kept in `file_deletion`), its job when it was the job's
@@ -644,6 +662,8 @@ async def delete_file(file_id: uuid.UUID, db: Db, store: Store, user: CurrentUse
         raise ApiError(403, ErrorCode.forbidden)
     if file.review_status is ReviewStatus.approved:
         raise ApiError(409, ErrorCode.file_approved)
+    if file.scan_status in (ScanStatus.queued, ScanStatus.running):
+        raise ApiError(409, ErrorCode.scan_in_progress)  # the worker is about to write to it
     if await _has_next(db, file.id):
         raise ApiError(409, ErrorCode.file_has_newer_version)
     if (await db.execute(select(exists().where(Extraction.file_id == file.id)))).scalar_one():
@@ -664,21 +684,10 @@ async def delete_file(file_id: uuid.UUID, db: Db, store: Store, user: CurrentUse
     await db.flush()
     if not (await db.execute(select(exists().where(IngestFile.job_id == job_id)))).scalar_one():
         await db.execute(delete(IngestJob).where(IngestJob.id == job_id))
-    in_use = (
-        await db.execute(
-            select(
-                exists().where(
-                    IngestFile.sha256 == sha256
-                    if key is None
-                    else (IngestFile.sha256 == sha256) | (IngestFile.storage_key == key)
-                )
-            )
-        )
-    ).scalar_one()
     await db.commit()
     logger.info("file %s deleted by %s", file_id, user.id)
-    if key is not None and not in_use:
-        await run_in_threadpool(_remove_blobs, store, sha256)
+    if key is not None:
+        await _remove_unused_blobs(db, store, sha256)
 
 
 # --- admin ------------------------------------------------------------------------------------

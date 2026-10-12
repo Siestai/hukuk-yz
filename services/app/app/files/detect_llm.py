@@ -72,22 +72,28 @@ class AnthropicDetector:
             raise DetectorError(f"HTTP {exc.response.status_code}") from None
         except (httpx.HTTPError, ValueError) as exc:
             raise DetectorError(type(exc).__name__) from None
+        try:
+            return self._result(payload)
+        except (KeyError, TypeError, ValueError, OverflowError):
+            raise DetectorError("malformed answer") from None
+
+    def _result(self, payload: Any) -> DetectResult:
         answer = next(
             (
-                block.get("input")
-                for block in payload.get("content", [])
-                if block.get("type") == "tool_use" and block.get("name") == TOOL_NAME
+                block["input"]
+                for block in payload["content"]
+                if block["type"] == "tool_use" and block["name"] == TOOL_NAME
             ),
             None,
         )
         if not isinstance(answer, dict):
             raise DetectorError("no tool call in the answer")
-        usage = payload.get("usage", {})
+        usage = payload["usage"]
         return DetectResult(
             answer,
-            str(payload.get("model", self.model)),
-            int(usage.get("input_tokens", 0)),
-            int(usage.get("output_tokens", 0)),
+            str(payload.get("model") or self.model),
+            int(usage["input_tokens"]),
+            int(usage["output_tokens"]),
         )
 
 

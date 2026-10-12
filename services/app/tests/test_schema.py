@@ -122,8 +122,9 @@ def test_the_gorus_migration_downgrades_to_0010(alembic_config: Config, database
         asyncio.run(
             run(
                 "WITH job AS (INSERT INTO ingest_job (kind, status) VALUES ('bulk', 'running') "
-                "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size, doc_type) "
-                "SELECT id, 'Mevzuat/Gorus/a.pdf', 'x', 1, 'gorus' FROM job RETURNING 1"
+                "RETURNING id) INSERT INTO ingest_file "
+                "(job_id, path, sha256, size, doc_type, review_status) "
+                "SELECT id, 'Mevzuat/Gorus/a.pdf', 'x', 1, 'gorus', 'approved' FROM job RETURNING 1"
             )
         )
         command.downgrade(alembic_config, "0010")
@@ -153,16 +154,15 @@ def test_the_review_migration_keeps_old_rows_approved_and_downgrades_to_0011(
         "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size) "
         "SELECT id, 'a.pdf', 'x', 1 FROM job RETURNING 1"
     )
-    command.upgrade(alembic_config, "0011")
+    command.downgrade(alembic_config, "0011")  # the fixture migrated to head
     try:
         asyncio.run(run(insert))
         command.upgrade(alembic_config, "head")
-        # A row that existed before the migration, and one written without naming the column.
-        asyncio.run(run(insert))
-        assert asyncio.run(run("SELECT review_status::text FROM ingest_file")) == [
-            "approved",
-            "approved",
-        ]
+        # The row that existed before the migration is approved; an insert that does not name
+        # the status fails (no default).
+        assert asyncio.run(run("SELECT review_status::text FROM ingest_file")) == ["approved"]
+        with pytest.raises(IntegrityError, match="review_status"):
+            asyncio.run(run(insert))
         command.downgrade(alembic_config, "0011")
         assert "file_deletion" not in _tables(database_url)
         command.upgrade(alembic_config, "head")

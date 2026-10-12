@@ -1,25 +1,30 @@
-"""Candidates and ranking of the matches of an uploaded file (task 13a). No database: the rows
-are built by hand; `test_worker.py` covers the queries."""
+"""Candidates and ranking of the matches of an uploaded file (task 13a). The rules and the
+ranking run on hand-built rows; the candidate query and the version chain need the database."""
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.files.matching import (
-    SAME_CASE,
-    SAME_DATE,
     SAME_NAME,
     SAME_REF,
     SAME_TITLE,
     Row,
     Subject,
+    _candidates,
+    _ranked,
     previous_version,
     reason_for,
     ref_key,
     similar_files,
 )
 from app.files.store import LocalFileStore
+from app.models.common import DocumentType, IngestFile, IngestJob, IngestKind, ReviewStatus
 
+Factory = async_sessionmaker[AsyncSession]
 NOW = datetime(2026, 10, 12, tzinfo=UTC)
 
 
@@ -30,25 +35,9 @@ def row(
     title: str | None = None,
     doc_type: str | None = "genelge",
     ref: str | None = None,
-    doc_date: date | None = None,
-    previous: Row | None = None,
-    archived: bool = False,
-    approved: bool = True,
     text_key: str | None = None,
 ) -> Row:
-    return Row(
-        uuid.UUID(int=n),
-        previous.id if previous else None,
-        name,
-        title,
-        doc_type,
-        ref,
-        doc_date,
-        NOW + timedelta(hours=n),
-        archived,
-        approved,
-        text_key,
-    )
+    return Row(uuid.UUID(int=n), name, title, doc_type, ref, NOW + timedelta(hours=n), text_key)
 
 
 def subject(**kwargs: object) -> Subject:
@@ -59,12 +48,32 @@ def subject(**kwargs: object) -> Subject:
         "official_ref": None,
         "title": None,
         "name": None,
-        "doc_date": None,
     }
     if "doc_type" in kwargs:
         kind = kwargs.pop("doc_type")
         values["doc_types"] = frozenset({kind} if kind else ())
     return Subject(**{**values, **kwargs})  # type: ignore[arg-type]
+
+
+async def add(factory: Factory, *, previous: IngestFile | None = None, **fields: Any) -> IngestFile:
+    """A stored file row (with a job of its own)."""
+    async with factory() as session:
+        job = IngestJob(kind=IngestKind.upload)
+        session.add(job)
+        await session.flush()
+        n = uuid.uuid4().hex
+        file = IngestFile(
+            job_id=job.id,
+            path=n,
+            sha256=n * 2,
+            size=1,
+            storage_key=n,
+            supersedes_id=previous.id if previous else None,
+            **{"review_status": ReviewStatus.approved, **fields},
+        )
+        session.add(file)
+        await session.commit()
+        return file
 
 
 def test_references_agree_across_case_spacing_and_punctuation() -> None:
@@ -79,7 +88,6 @@ def test_the_strongest_reason_wins() -> None:
     assert reason_for(subject(title="PRİM DESTEĞİ"), target) == SAME_TITLE
     assert reason_for(subject(name="2024-5 genelge.UDF"), target) == SAME_NAME
     assert reason_for(subject(official_ref="2024/6", name="x.pdf"), target) is None
-    assert reason_for(subject(official_ref="2024/6"), target, same_case=True) == SAME_CASE
 
 
 def test_a_reference_counts_only_within_the_same_type() -> None:
@@ -95,51 +103,33 @@ def test_a_wrong_type_typed_by_the_user_does_not_hide_the_detected_one() -> None
     assert reason_for(typed_only, target) is None
 
 
-def test_type_and_date_make_a_candidate_for_the_text_comparison() -> None:
-    target = row(1, doc_date=date(2024, 5, 1))
-    assert reason_for(subject(doc_date=date(2024, 5, 1)), target) == SAME_DATE
-    assert reason_for(subject(doc_date=date(2024, 5, 2)), target) is None
-    assert reason_for(subject(doc_type=None, doc_date=date(2024, 5, 1)), target) is None
-
-
-def test_the_previous_version_is_the_newest_of_the_chain_not_the_old_candidate() -> None:
-    v1 = row(1, name="a.pdf", ref="2024/5")
-    v2 = row(2, name="a.pdf", ref="2024/5", previous=v1)
-    rows = {r.id: r for r in (v1, v2)}
-    found = previous_version(subject(), rows, {v1.id: SAME_REF})
+async def test_the_previous_version_is_the_newest_of_the_chain_not_the_old_candidate(
+    kb_factory: Factory,
+) -> None:
+    v1 = await add(kb_factory, original_name="a.pdf", doc_type=DocumentType.genelge)
+    v2 = await add(kb_factory, previous=v1, original_name="b.pdf")
+    async with kb_factory() as db:
+        found = await previous_version(db, subject(), {v1.id: row(1)}, {v1.id: SAME_REF})
     assert found == {"file_id": str(v2.id), "reason": SAME_REF}
 
 
-def test_a_chain_whose_head_is_archived_or_pending_falls_back_to_the_newest_usable() -> None:
-    v1 = row(1)
-    v2 = row(2, previous=v1)
-    v3 = row(3, previous=v2, approved=False)
-    rows = {r.id: r for r in (v1, v2, v3)}
-    assert previous_version(subject(), rows, {v1.id: SAME_NAME}) == {
-        "file_id": str(v2.id),
-        "reason": SAME_NAME,
-    }
-    v2_archived = row(2, previous=v1, archived=True)
-    rows = {r.id: r for r in (v1, v2_archived)}
-    assert previous_version(subject(), rows, {v1.id: SAME_NAME}) == {
-        "file_id": str(v1.id),
-        "reason": SAME_NAME,
-    }
-    only_archived = {v1.id: row(1, archived=True)}
-    assert previous_version(subject(), only_archived, {v1.id: SAME_NAME}) is None
+async def test_an_archived_head_of_the_chain_is_skipped(kb_factory: Factory) -> None:
+    v1 = await add(kb_factory)
+    v2 = await add(kb_factory, previous=v1)
+    await add(kb_factory, previous=v2, archived_at=NOW)
+    async with kb_factory() as db:
+        found = await previous_version(db, subject(), {v1.id: row(1)}, {v1.id: SAME_NAME})
+    assert found == {"file_id": str(v2.id), "reason": SAME_NAME}
 
 
-def test_a_pending_file_and_a_date_match_are_never_the_previous_version() -> None:
-    pending = row(1, approved=False)
-    dated = row(2)
-    rows = {r.id: r for r in (pending, dated)}
-    assert previous_version(subject(), rows, {pending.id: SAME_REF, dated.id: SAME_DATE}) is None
-
-
-def test_a_version_the_user_chose_is_not_second_guessed() -> None:
-    target = row(1)
+async def test_a_version_the_user_chose_is_not_second_guessed(kb_factory: Factory) -> None:
+    target = await add(kb_factory)
     chosen = subject(supersedes_id=target.id)
-    assert previous_version(chosen, {target.id: target}, {target.id: SAME_REF}) is None
+    async with kb_factory() as db:
+        assert (
+            await previous_version(db, chosen, {target.id: row(1)}, {target.id: SAME_REF}) is None
+        )
+        assert await previous_version(db, subject(), {}, {}) is None
 
 
 def test_the_stronger_reason_and_then_the_newer_upload_is_offered_first() -> None:
@@ -148,8 +138,29 @@ def test_the_stronger_reason_and_then_the_newer_upload_is_offered_first() -> Non
     newer_ref = row(2, ref="2024/5")
     rows = {r.id: r for r in (by_name, by_ref, newer_ref)}
     reasons = {by_name.id: SAME_NAME, by_ref.id: SAME_REF, newer_ref.id: SAME_REF}
-    found = previous_version(subject(), rows, reasons)
-    assert found == {"file_id": str(newer_ref.id), "reason": SAME_REF}
+    assert _ranked(rows, reasons) == [newer_ref.id, by_ref.id, by_name.id]
+
+
+async def test_candidates_come_from_the_database_by_ref_title_and_name(
+    kb_factory: Factory,
+) -> None:
+    ref = await add(kb_factory, doc_type=DocumentType.genelge, official_ref="2024-5")
+    wrong_type = await add(kb_factory, doc_type=DocumentType.kanun, official_ref="2024/5")
+    title = await add(kb_factory, title="Prim Desteği ve Sigorta")
+    name = await add(kb_factory, original_name="Ödeme  Genelgesi.PDF")
+    archived = await add(kb_factory, original_name="Ödeme Genelgesi.pdf", archived_at=NOW)
+    await add(kb_factory, doc_type=DocumentType.genelge, official_ref="2024/6", title="Başka")
+    wanted = subject(
+        official_ref="2024/5", title="PRİM DESTEĞİ ve sigorta", name="ödeme genelgesi.udf"
+    )
+    async with kb_factory() as db:
+        found = await _candidates(db, wanted, set())
+        assert set(found) == {ref.id, title.id, name.id}
+        assert wrong_type.id not in found and archived.id not in found
+        assert (await _candidates(db, wanted, {ref.id})).keys() == {title.id, name.id}
+        assert await _candidates(db, subject(), set()) == {}
+    reasons = {rid: reason_for(wanted, r) for rid, r in found.items()}
+    assert reasons == {ref.id: SAME_REF, title.id: SAME_TITLE, name.id: SAME_NAME}
 
 
 def test_similar_files_are_the_candidates_whose_text_scores_over_the_threshold(
@@ -169,8 +180,7 @@ def test_similar_files_are_the_candidates_whose_text_scores_over_the_threshold(
     d = row(4, text_key="text/" + "c" * 64 + ".txt")  # the file is gone
     rows = {r.id: r for r in (a, b, c, d)}
     reasons = {r.id: SAME_NAME for r in rows.values()}
-    found = similar_files(store, text, rows, reasons, set())
+    found = similar_files(store, text, rows, reasons)
     assert [m["file_id"] for m in found] == [str(a.id)]
     assert found[0]["score"] >= 0.9
     assert found[0]["reason"] == SAME_NAME
-    assert similar_files(store, text, rows, reasons, {a.id}) == []

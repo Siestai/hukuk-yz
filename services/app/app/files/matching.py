@@ -1,44 +1,53 @@
 """Matches of an uploaded file with the files already there (task 13a): the version it may
 replace and the files that look like it. A match only suggests; nothing is linked here.
 
-Candidates are found from the cheap fields (type + reference, title, file name, type + date, and
-for decisions the Esas / Karar numbers of the archive), the text is compared only for them, in
-Python (`hukuk_ingest.classify.similar`)."""
+Candidates are found from the cheap fields (type + reference, title, file name) by a query that
+compares the same normalised keys as `reason_for`; only the candidates are read, and only their
+texts are compared, in Python (`hukuk_ingest.classify.similar`)."""
 
 import asyncio
-import re
+import string
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.files.import_dir import fold, name_key, stem_key
 from app.files.store import FileStore
-from app.kb import PARSER_NAME
-from app.models.common import Extraction, IngestFile, ReviewStatus
+from app.models.common import DocumentType, IngestFile
 from hukuk_ingest.classify.similar import SIMILAR_THRESHOLD, containment, shingles
 
 MAX_COMPARED = 20
 MAX_SIMILAR = 5
 # Reasons a file became a candidate, strongest first (they are the wire format of `matches`).
-SAME_CASE, SAME_REF, SAME_TITLE, SAME_NAME, SAME_DATE = (
-    "same_case",
-    "same_ref",
-    "same_title",
-    "same_name",
-    "same_date",
-)
-_ORDER = (SAME_CASE, SAME_REF, SAME_TITLE, SAME_NAME, SAME_DATE)
-_VERSION_REASONS = frozenset(_ORDER[:4])
-_CASE_RE = re.compile(r"(\d{4}/\d+)\s*E\.?.*?(\d{4}/\d+)\s*K\.?")
+SAME_REF, SAME_TITLE, SAME_NAME = "same_ref", "same_title", "same_name"
+_ORDER = (SAME_REF, SAME_TITLE, SAME_NAME)
+# The letters `fold` maps, for the same folding in SQL.
+Column = ColumnElement[Any] | InstrumentedAttribute[str | None]
+_FROM = string.ascii_uppercase + "çğıöşüâîûÇĞİÖŞÜÂÎÛ"
+_TO = string.ascii_lowercase + "cgiosuaiucgiosuaiu"
 
 
 def ref_key(ref: str | None) -> str:
     """A reference without case, accents, spaces and punctuation: `2024/5` and `2024-5` agree."""
     return "".join(c for c in fold(ref or "") if c.isalnum())
+
+
+def _sql_fold(column: Column) -> ColumnElement[str]:
+    """`fold` in SQL, for the letters of Turkish text: no combining marks, no case, no accents."""
+    return func.translate(func.regexp_replace(column, "[\\u0300-\\u036f]", "", "g"), _FROM, _TO)
+
+
+def _sql_name_key(column: Column) -> ColumnElement[str]:
+    return func.trim(func.regexp_replace(_sql_fold(column), "[^a-z0-9]+", " ", "g"))
+
+
+def _sql_stem_key(column: Column) -> ColumnElement[str]:
+    return _sql_name_key(func.regexp_replace(column, "\\.[^./]*$", ""))
 
 
 @dataclass(frozen=True)
@@ -53,28 +62,21 @@ class Subject:
     official_ref: str | None
     title: str | None
     name: str | None
-    doc_date: date | None
 
 
 @dataclass(frozen=True)
 class Row:
     id: uuid.UUID
-    supersedes_id: uuid.UUID | None
     original_name: str | None
     title: str | None
     doc_type: str | None
     official_ref: str | None
-    doc_date: date | None
     uploaded_at: datetime
-    archived: bool
-    approved: bool
     text_key: str | None
 
 
-def reason_for(subject: Subject, row: Row, same_case: bool = False) -> str | None:
+def reason_for(subject: Subject, row: Row) -> str | None:
     """Why `row` is a candidate for `subject`, the strongest reason, or None."""
-    if same_case:
-        return SAME_CASE
     same_type = row.doc_type is not None and row.doc_type in subject.doc_types
     if same_type and (key := ref_key(subject.official_ref)) and key == ref_key(row.official_ref):
         return SAME_REF
@@ -88,52 +90,59 @@ def reason_for(subject: Subject, row: Row, same_case: bool = False) -> str | Non
         name_key(row.title or ""),
     ):
         return SAME_NAME
-    if same_type and subject.doc_date is not None and subject.doc_date == row.doc_date:
-        return SAME_DATE
     return None
 
 
-def _chain_ids(rows: dict[uuid.UUID, Row], start: uuid.UUID | None) -> set[uuid.UUID]:
+async def _ancestors(db: AsyncSession, start: uuid.UUID | None) -> set[uuid.UUID]:
+    """`start` and the files it supersedes, one lookup per step."""
     seen: set[uuid.UUID] = set()
-    while start is not None and start in rows and start not in seen:
+    while start is not None and start not in seen:
         seen.add(start)
-        start = rows[start].supersedes_id
+        start = (
+            await db.execute(select(IngestFile.supersedes_id).where(IngestFile.id == start))
+        ).scalar_one_or_none()
     return seen
 
 
-def newest_version(rows: dict[uuid.UUID, Row], first: Row) -> Row | None:
-    """The newest approved, not archived file of the chain `first` belongs to."""
-    next_of = {r.supersedes_id: r for r in rows.values() if r.supersedes_id is not None}
-    best = first if first.approved and not first.archived else None
-    current, seen = first, {first.id}
-    while (successor := next_of.get(current.id)) is not None and successor.id not in seen:
-        seen.add(successor.id)
-        current = successor
-        if current.approved and not current.archived:
+async def _newest_version(db: AsyncSession, first: uuid.UUID) -> uuid.UUID:
+    """The newest not archived file of the chain `first` belongs to (`first` itself when no
+    newer one is usable), one lookup per step."""
+    best, current, seen = first, first, {first}
+    while (
+        step := (
+            await db.execute(
+                select(IngestFile.id, IngestFile.archived_at).where(
+                    IngestFile.supersedes_id == current
+                )
+            )
+        ).first()
+    ) is not None and step[0] not in seen:
+        current = step[0]
+        seen.add(current)
+        if step[1] is None:
             best = current
     return best
 
 
-def previous_version(
-    subject: Subject, rows: dict[uuid.UUID, Row], reasons: dict[uuid.UUID, str]
+def _ranked(rows: dict[uuid.UUID, Row], reasons: dict[uuid.UUID, str]) -> list[uuid.UUID]:
+    """Candidates by the strongest reason, then the newest upload."""
+    return sorted(
+        reasons, key=lambda rid: (_ORDER.index(reasons[rid]), -rows[rid].uploaded_at.timestamp())
+    )
+
+
+async def previous_version(
+    db: AsyncSession,
+    subject: Subject,
+    rows: dict[uuid.UUID, Row],
+    reasons: dict[uuid.UUID, str],
 ) -> dict[str, Any] | None:
     """The file `subject` may be the next version of: the strongest candidate, then the newest
     of its chain. None when the user already chose a previous version."""
-    if subject.supersedes_id is not None:
+    if subject.supersedes_id is not None or not reasons:
         return None
-    own = _chain_ids(rows, subject.id)
-    ranked = sorted(
-        (
-            (_ORDER.index(reason), -row.uploaded_at.timestamp(), row)
-            for rid, reason in reasons.items()
-            if reason in _VERSION_REASONS and rid not in own and (row := rows[rid]).approved
-        ),
-        key=lambda item: item[:2],
-    )
-    for _, _, row in ranked:
-        if (newest := newest_version(rows, row)) is not None:
-            return {"file_id": str(newest.id), "reason": reasons[row.id]}
-    return None
+    first = _ranked(rows, reasons)[0]
+    return {"file_id": str(await _newest_version(db, first)), "reason": reasons[first]}
 
 
 def _read_text(store: FileStore, key: str) -> str | None:
@@ -149,15 +158,11 @@ def similar_files(
     text: str,
     rows: dict[uuid.UUID, Row],
     reasons: dict[uuid.UUID, str],
-    exclude: set[uuid.UUID],
 ) -> list[dict[str, Any]]:
     """Candidates whose text scores at `SIMILAR_THRESHOLD` or more against `text`, best first.
     Reads the candidates' texts: runs in a thread."""
     mine = shingles(text)
-    ranked = sorted(
-        (rid for rid in reasons if rid not in exclude and rows[rid].text_key),
-        key=lambda rid: (_ORDER.index(reasons[rid]), -rows[rid].uploaded_at.timestamp()),
-    )[:MAX_COMPARED]
+    ranked = [rid for rid in _ranked(rows, reasons) if rows[rid].text_key][:MAX_COMPARED]
     found: list[dict[str, Any]] = []
     for rid in ranked:
         key = rows[rid].text_key
@@ -171,54 +176,49 @@ def similar_files(
     return found[:MAX_SIMILAR]
 
 
-async def _load_rows(db: AsyncSession) -> dict[uuid.UUID, Row]:
+async def _candidates(
+    db: AsyncSession, subject: Subject, exclude: set[uuid.UUID]
+) -> dict[uuid.UUID, Row]:
+    """The stored, not archived files that may share type + reference, title or name with
+    `subject`: a query on the same keys as `reason_for` (a superset of its matches for the
+    letters of Turkish text), then `reason_for` decides."""
+    keys = {k for k in (name_key(subject.title or ""), stem_key(subject.name or "")) if k}
+    conditions: list[ColumnElement[bool]] = []
+    if keys:
+        conditions += [
+            _sql_name_key(IngestFile.title).in_(keys),
+            _sql_stem_key(IngestFile.original_name).in_(keys),
+        ]
+    if (ref := ref_key(subject.official_ref)) and subject.doc_types:
+        conditions.append(
+            and_(
+                IngestFile.doc_type.in_([DocumentType(t) for t in subject.doc_types]),
+                func.regexp_replace(_sql_fold(IngestFile.official_ref), "[^a-z0-9]+", "", "g")
+                == ref,
+            )
+        )
+    if not conditions:
+        return {}
     result = await db.execute(
         select(
             IngestFile.id,
-            IngestFile.supersedes_id,
             IngestFile.original_name,
             IngestFile.title,
             IngestFile.doc_type,
             IngestFile.official_ref,
-            IngestFile.doc_date,
             IngestFile.uploaded_at,
-            IngestFile.archived_at,
-            IngestFile.review_status,
             IngestFile.scan_result["text_key"].astext,
-        ).where(IngestFile.storage_key.is_not(None))
-    )
-    return {
-        r[0]: Row(
-            r[0],
-            r[1],
-            r[2],
-            r[3],
-            r[4].value if r[4] else None,
-            r[5],
-            r[6],
-            r[7],
-            r[8] is not None,
-            r[9] is ReviewStatus.approved,
-            r[10],
-        )  # fmt: skip
-        for r in result.all()
-    }
-
-
-async def _same_case(db: AsyncSession, ref: str | None) -> set[uuid.UUID]:
-    """Files of the decision archive with the Esas and Karar numbers of `ref`
-    ("2020/123 E., 2021/456 K.")."""
-    m = _CASE_RE.search(ref or "")
-    if m is None:
-        return set()
-    result = await db.execute(
-        select(Extraction.file_id).where(
-            Extraction.parser_name == PARSER_NAME,
-            Extraction.fields["esas_no"].astext == m[1],
-            Extraction.fields["karar_no"].astext == m[2],
+        ).where(
+            IngestFile.storage_key.is_not(None),
+            IngestFile.archived_at.is_(None),
+            IngestFile.id.not_in(exclude),
+            or_(*conditions),
         )
     )
-    return set(result.scalars())
+    return {
+        r[0]: Row(r[0], r[1], r[2], r[3].value if r[3] else None, r[4], r[5], r[6])
+        for r in result.all()
+    }
 
 
 async def compute_matches(
@@ -226,14 +226,11 @@ async def compute_matches(
 ) -> dict[str, Any]:
     """`{"previous_version": {...} | None, "similar": [...]}` for `subject`, whose extracted
     text is `text`."""
-    rows = await _load_rows(db)
-    own = _chain_ids(rows, subject.supersedes_id) | {subject.id}
-    cases = await _same_case(db, subject.official_ref)
-    reasons: dict[uuid.UUID, str] = {}
-    for rid, row in rows.items():
-        if rid in own or row.archived:
-            continue
-        if reason := reason_for(subject, row, rid in cases):
-            reasons[rid] = reason
-    similar = await asyncio.to_thread(similar_files, store, text, rows, reasons, own)
-    return {"previous_version": previous_version(subject, rows, reasons), "similar": similar}
+    own = await _ancestors(db, subject.supersedes_id) | {subject.id}
+    rows = await _candidates(db, subject, own)
+    reasons = {rid: reason for rid, row in rows.items() if (reason := reason_for(subject, row))}
+    similar = await asyncio.to_thread(similar_files, store, text, rows, reasons)
+    return {
+        "previous_version": await previous_version(db, subject, rows, reasons),
+        "similar": similar,
+    }

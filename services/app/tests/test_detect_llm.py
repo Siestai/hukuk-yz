@@ -2,6 +2,7 @@
 calls the network."""
 
 import json
+import logging
 from typing import Any
 
 import httpx
@@ -9,6 +10,7 @@ import pytest
 
 from app.files.detect_llm import TOOL_NAME, AnthropicDetector, make_detector
 from app.settings import Settings
+from hukuk_ingest.classify import classify
 from hukuk_ingest.classify.llm import DetectorError, DetectRequest
 
 REQUEST = DetectRequest("belge.pdf", "Kanun Numarası : 4857", ("doc_type", "title"))
@@ -71,6 +73,48 @@ def test_the_request_names_the_tool_and_carries_only_the_excerpt_and_the_file_na
 def test_a_failed_call_is_a_detector_error(response: httpx.Response) -> None:
     with pytest.raises(DetectorError):
         detector(lambda request: response).detect(REQUEST)
+
+
+def _tool(**over: Any) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "content": [{"type": "tool_use", "name": TOOL_NAME, "input": {"title": {"value": "x"}}}],
+        "usage": {"input_tokens": 1, "output_tokens": 1},
+    }
+    return {**body, **over}
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        _tool(usage={"input_tokens": None, "output_tokens": 1}),
+        _tool(usage={"input_tokens": "many", "output_tokens": 1}),
+        _tool(usage={"input_tokens": 1}),
+        _tool(usage=None),
+        {"content": _tool()["content"]},
+        _tool(content=["text"]),
+        _tool(content=[{"name": TOOL_NAME}]),
+        _tool(content=[{"type": "tool_use", "name": TOOL_NAME}]),
+        _tool(content=[{"type": "tool_use", "name": TOOL_NAME, "input": "{}"}]),
+        _tool(content="none"),
+        ["not", "an", "object"],
+    ],
+)
+def test_a_malformed_body_is_a_detector_error(body: Any) -> None:
+    with pytest.raises(DetectorError):
+        detector(lambda request: httpx.Response(200, json=body)).detect(REQUEST)
+
+
+def test_the_text_is_never_logged(caplog: pytest.LogCaptureFixture) -> None:
+    secret = "Kanun Numarası : 4857 GİZLİ-METİN"
+    fake = detector(lambda request: httpx.Response(200, json=_tool(usage={"input_tokens": "x"})))
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(DetectorError):
+            fake.detect(DetectRequest("belge.pdf", secret, ("title",)))
+        classify(secret, "pdf", "belge.pdf", fake)
+        ok = detector(lambda request: httpx.Response(200, json=_tool()))
+        classify(secret, "pdf", "belge.pdf", ok)
+    assert caplog.records
+    assert "GİZLİ-METİN" not in caplog.text and "4857" not in caplog.text
 
 
 def test_a_timeout_is_a_detector_error() -> None:

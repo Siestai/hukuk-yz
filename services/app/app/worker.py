@@ -20,7 +20,7 @@ import signal
 import tempfile
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -74,7 +74,6 @@ class Scanned:
     error: str | None = None
     # `Suggestion.to_dict()` per field; None when the file was not classified (a failed scan).
     suggestions: dict[str, dict[str, Any]] | None = None
-    text_key: str | None = None
 
 
 async def requeue_stuck(factory: Factory) -> int:
@@ -199,7 +198,6 @@ def scan(store: FileStore, claimed: Claimed, detector: Detector | None = None) -
                 scan_result,
                 result.detected_type,
                 suggestions={k: v.to_dict() for k, v in classified.suggestions.items()},
-                text_key=scan_result.get("text_key"),
             )
     except Exception as exc:
         logger.exception("scanning file %s failed", claimed.id)
@@ -233,45 +231,49 @@ async def _refresh_job(db: AsyncSession, file: IngestFile, now: datetime) -> Non
         job.finished_at = now
 
 
-def _best(own: Any, suggestions: dict[str, dict[str, Any]], name: str) -> str | None:
-    """The value a field has: the file's own (typed by the user), else the suggestion."""
-    if own is not None:
-        return str(getattr(own, "value", own))
+def _suggested(suggestions: dict[str, dict[str, Any]], name: str) -> str | None:
     value = (suggestions.get(name) or {}).get("value")
     return str(value) if value is not None else None
+
+
+def _user_suggestions(file: IngestFile) -> dict[str, dict[str, Any]]:
+    """What the user typed at the upload, as the suggestions the detection left alone."""
+    return {
+        k: {f: x for f, x in v.items() if f != "detected"}
+        for k, v in (file.suggestions or {}).items()
+        if v.get("source") == "user"
+    }
 
 
 async def _detect(db: AsyncSession, store: FileStore, file: IngestFile, scanned: Scanned) -> None:
     """Write the suggestions of the scan and the matches with other files. What the user typed
     at the upload stays as it is, marked as the user's; the file's own fields are not touched."""
     assert scanned.suggestions is not None
-    typed = {k: v for k, v in (file.suggestions or {}).items() if v.get("source") == "user"}
+    typed = _user_suggestions(file)
     # A value the user typed is shown; what the detection found for the field, when it differs,
     # rides along as `detected` so the reviewer sees the disagreement.
     for name, entry in typed.items():
         found = scanned.suggestions.get(name)
         typed[name] = {
-            **{k: v for k, v in entry.items() if k != "detected"},
+            **entry,
             **({"detected": found} if found and found["value"] != entry["value"] else {}),
         }
     file.suggestions = {**scanned.suggestions, **typed}
     text = ""
-    if scanned.text_key:
-        text = await asyncio.to_thread(_read_text, store, scanned.text_key)
+    if text_key := file.scan_result and file.scan_result.get("text_key"):
+        text = await asyncio.to_thread(_read_text, store, text_key)
     suggestions = file.suggestions
-    iso = _best(file.doc_date, suggestions, "doc_date")
     subject = Subject(
         file.id,
         file.supersedes_id,
         frozenset(
             t
-            for t in (file.doc_type and file.doc_type.value, _best(None, suggestions, "doc_type"))
+            for t in (file.doc_type and file.doc_type.value, _suggested(suggestions, "doc_type"))
             if t
         ),
-        file.official_ref or _best(None, suggestions, "official_ref"),
-        file.title or _best(None, suggestions, "title"),
+        file.official_ref or _suggested(suggestions, "official_ref"),
+        file.title or _suggested(suggestions, "title"),
         file.original_name,
-        date.fromisoformat(iso) if iso else None,
     )
     file.matches = await compute_matches(db, store, subject, text)
 
@@ -310,6 +312,9 @@ async def finish(factory: Factory, store: FileStore, claimed: Claimed, scanned: 
         file.error = scanned.error
         if scanned.suggestions is not None:
             await _detect(db, store, file, scanned)
+        else:  # a failed scan: nothing computed from an earlier scan stays
+            file.suggestions = _user_suggestions(file) or None
+            file.matches = None
         await db.flush()
         await _refresh_job(db, file, now)
         await db.commit()

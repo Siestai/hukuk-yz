@@ -398,11 +398,10 @@ class IngestFile(UuidPkMixin, Base):
     scan_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     archived_at: Mapped[datetime | None]
     # Task 13. The rows that existed before it came from the folder tree of the system import and
-    # count as approved (`approved_by` NULL); an upload says 'pending' explicitly. A pending file
-    # is never a source (data-model.md).
-    review_status: Mapped[ReviewStatus] = mapped_column(
-        ReviewStatus.pg_type("review_status"), server_default=text("'approved'")
-    )
+    # were set to approved (`approved_by` NULL) by the migration; every insert names the status
+    # (no default: a forgotten one fails instead of passing as approved). A pending file is never
+    # a source (data-model.md).
+    review_status: Mapped[ReviewStatus] = mapped_column(ReviewStatus.pg_type("review_status"))
     approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     approved_at: Mapped[datetime | None]
     title: Mapped[str | None]

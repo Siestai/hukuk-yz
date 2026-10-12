@@ -25,7 +25,6 @@ _TEXT_RULES = (
     rules.kanun,
     rules.karar,
     rules.genelge,
-    rules.ic_emri,
     rules.regulation,
     rules.genel_yazi,
 )

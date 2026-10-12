@@ -18,7 +18,6 @@ from app import worker
 from app.files.store import LocalFileStore
 from app.models.common import (
     DocumentType,
-    Extraction,
     IngestFile,
     IngestJob,
     IngestKind,
@@ -60,7 +59,7 @@ async def enqueue(
             size=stored.size,
             storage_key=stored.key,
             scan_status=ScanStatus.queued,
-            **fields,
+            **{"review_status": ReviewStatus.approved, **fields},
         )
         session.add(file)
         await session.commit()
@@ -449,6 +448,32 @@ async def test_what_the_user_typed_survives_the_detection_and_a_rescan_detects_a
     assert again == first  # detected again: the stale title is gone, the user's type stays
 
 
+async def test_a_failed_rescan_clears_the_suggestions_and_matches_but_keeps_what_the_user_typed(
+    kb_factory: Factory, store: LocalFileStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    typed = {"doc_type": {"value": "kanun", "source": "user", "evidence": None}}
+    file_id, _ = await enqueue(kb_factory, store, GENELGE.encode(), suggestions=typed)
+    await worker.scan_next(kb_factory, store)
+    first = await load(kb_factory, file_id)
+    assert first.suggestions is not None and "official_ref" in first.suggestions
+    assert first.matches is not None
+    async with kb_factory() as session:
+        file = await session.get(IngestFile, file_id)
+        assert file is not None
+        file.scan_status = ScanStatus.queued
+        await session.commit()
+
+    def boom(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("unreadable")
+
+    monkeypatch.setattr(worker, "process_file", boom)
+    await worker.scan_next(kb_factory, store)
+    file = await load(kb_factory, file_id)
+    assert file.scan_status is ScanStatus.failed
+    assert file.matches is None
+    assert file.suggestions == {"doc_type": {"value": "kanun", "source": "user", "evidence": None}}
+
+
 async def test_the_previous_version_is_found_by_the_reference_and_by_the_name(
     kb_factory: Factory, store: LocalFileStore
 ) -> None:
@@ -484,60 +509,14 @@ async def test_the_previous_version_is_found_by_the_reference_and_by_the_name(
     assert ((await load(kb_factory, by_name)).matches or {})["previous_version"] is None
 
 
-async def archive_decision(
-    factory: Factory, store: LocalFileStore, name: str, body: str = DECISION_BODY
-) -> uuid.UUID:
-    """A decision of the archive as the import of task 12c leaves it: typed by its folder, with
-    the extraction the loader wrote, scanned."""
-    file_id, _ = await enqueue(
-        factory, store, decision(body), doc_type=DocumentType.karar, original_name=name
-    )
-    async with factory() as session:
-        session.add(
-            Extraction(
-                file_id=file_id,
-                parser_name="decisions",
-                parser_version="1",
-                fields={"esas_no": "2021/5329", "karar_no": "2021/9588"},
-            )
-        )
-        await session.commit()
-    await worker.scan_next(factory, store)
-    return file_id
-
-
 OTHER_RENDERING = DECISION_BODY.replace(" davacı ", "\ndavacı\n").replace("etmiştir", "etmistir")
 
 
-async def test_the_same_decision_as_another_pdf_is_similar_under_another_name(
+async def test_the_same_decision_as_another_pdf_is_similar(
     kb_factory: Factory, store: LocalFileStore
 ) -> None:
     """Orhan's case (2026-10-12): the archive has the decision; another file of it, with other
-    layout and a few other characters, comes in with a different name. The Esas / Karar numbers
-    of the text find the archive row."""
-    archive = await archive_decision(kb_factory, store, "HİZMET TESPİTİ.pdf")
-    new, _ = await enqueue(
-        kb_factory,
-        store,
-        decision(OTHER_RENDERING, "Karar özeti\n"),
-        review_status=ReviewStatus.pending,
-        original_name="indirilen.txt",
-        doc_type=DocumentType.kanun,  # Orhan typed "kanun"; the text says karar
-    )
-    await worker.scan_next(kb_factory, store)
-    file = await load(kb_factory, new)
-    assert (file.suggestions or {})["doc_type"]["value"] == "karar"
-    assert file.doc_type is DocumentType.kanun  # the detection does not touch the field
-    matches = file.matches or {}
-    assert [m["file_id"] for m in matches["similar"]] == [str(archive)]
-    assert matches["similar"][0]["score"] >= 0.5  # every sentence has a changed word
-    assert matches["similar"][0]["reason"] == "same_case"
-    assert matches["previous_version"] == {"file_id": str(archive), "reason": "same_case"}
-
-
-async def test_the_same_decision_under_the_same_name_is_found_by_the_name(
-    kb_factory: Factory, store: LocalFileStore
-) -> None:
+    layout and a few other characters, comes in under the same name."""
     archive, _ = await enqueue(
         kb_factory,
         store,
@@ -549,29 +528,22 @@ async def test_the_same_decision_under_the_same_name_is_found_by_the_name(
     new, _ = await enqueue(
         kb_factory,
         store,
-        decision(OTHER_RENDERING),
+        decision(OTHER_RENDERING, "Karar özeti\n"),
         review_status=ReviewStatus.pending,
         original_name="hizmet tespiti.txt",
+        doc_type=DocumentType.kanun,  # Orhan typed "kanun"; the text says karar
     )
     await worker.scan_next(kb_factory, store)
-    matches = (await load(kb_factory, new)).matches or {}
-    assert matches["previous_version"] == {"file_id": str(archive), "reason": "same_name"}
+    file = await load(kb_factory, new)
+    assert (file.suggestions or {})["doc_type"]["value"] == "karar"
+    assert file.doc_type is DocumentType.kanun  # the detection does not touch the field
+    matches = file.matches or {}
     assert [m["file_id"] for m in matches["similar"]] == [str(archive)]
+    assert matches["similar"][0]["score"] >= 0.5  # every sentence has a changed word
+    assert matches["previous_version"] == {"file_id": str(archive), "reason": "same_name"}
 
 
-async def test_another_decision_with_the_same_numbers_is_not_similar(
-    kb_factory: Factory, store: LocalFileStore
-) -> None:
-    await archive_decision(kb_factory, store, "A.pdf")
-    stranger = " ".join(f"başka {n} tamamen farklı gerekçe {n} sigorta" for n in range(80))
-    new, _ = await enqueue(kb_factory, store, decision(stranger), original_name="b.txt")
-    await worker.scan_next(kb_factory, store)
-    matches = (await load(kb_factory, new)).matches or {}
-    assert matches["similar"] == []
-    assert matches["previous_version"] is not None  # same E/K: offered as a version, not "similar"
-
-
-async def test_pending_and_archived_files_are_never_offered_as_the_previous_version(
+async def test_an_archived_file_is_never_offered_but_a_pending_one_is(
     kb_factory: Factory, store: LocalFileStore
 ) -> None:
     pending, _ = await enqueue(
@@ -590,5 +562,8 @@ async def test_pending_and_archived_files_are_never_offered_as_the_previous_vers
     new, _ = await enqueue(kb_factory, store, b"uc " * 40, original_name="aynı ad.docx")
     for _ in range(3):
         await worker.scan_next(kb_factory, store)
-    assert ((await load(kb_factory, new)).matches or {})["previous_version"] is None
-    assert pending  # the pending one only counts for the text comparison
+    assert ((await load(kb_factory, new)).matches or {})["previous_version"] == {
+        "file_id": str(pending),
+        "reason": "same_name",
+    }
+    assert archived

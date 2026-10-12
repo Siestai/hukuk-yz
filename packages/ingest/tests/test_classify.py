@@ -9,6 +9,7 @@ from hukuk_ingest.classify import Suggestions, classify
 from hukuk_ingest.classify.evidence import DOC_TYPES, collapse, locate
 from hukuk_ingest.classify.llm import (
     MAX_CHARS,
+    MAX_QUOTE_CHARS,
     DetectorError,
     DetectRequest,
     DetectResult,
@@ -16,6 +17,7 @@ from hukuk_ingest.classify.llm import (
     excerpt,
 )
 from hukuk_ingest.classify.similar import containment, shingles
+from hukuk_ingest.decisions.fields import dates_in
 
 KANUN = """DENEME KANUNU
 (ESKİ KANUN ADI VE DİĞER KANUNLAR)
@@ -79,15 +81,6 @@ HAKKINDA GENELGE
 (2/9/2025 tarihli ve 2025/15 sayılı Genelge İşlenmiş Haliyle)
 """
 
-IC_EMRI = """T.C.
-SOSYAL GÜVENLİK KURUMU
-Rehberlik ve Teftiş Başkanlığı
-2014/04
-İÇ EMİR
-Sayı : 16747942-19623529 30/12/2014
-Konu : İş Kazası ve Meslek Hastalığı Soruşturmaları.
-"""
-
 GENEL_YAZI = """T.C.
 SOSYAL GÜVENLİK KURUMU BAŞKANLIĞI
 Hukuk Müşavirliği
@@ -125,14 +118,6 @@ Tarihi:
 6100 S.HMK/107
 ÖZETİ Davacının talepleri aynı dilekçede ileri sürülmüştür.
 DAVA: Davacı alacaklarını istemiştir.
-"""
-
-KARAR_SITE = """22. Hukuk Dairesi         2017/5455 E.  ,  2017/4143 K.
-"İçtihat Metni"
-MAHKEMESİ :İş Mahkemesi
-Taraflar arasında görülen dava sonucunda verilen kararın temyizen incelenmesi istenilmiştir.
-Y A R G I T A Y K A R A R I
-Gereği düşünüldü. 12.04.2017 gününde oy birliğiyle karar verildi.
 """
 
 
@@ -203,16 +188,6 @@ def test_a_genelge_heading_may_carry_the_number_in_the_title_line() -> None:
     assert (result["doc_type"], result["official_ref"]) == ("genelge", "2013/11")
 
 
-def test_an_ic_emri_is_not_taken_for_a_genel_yazi() -> None:
-    assert found(IC_EMRI) == {
-        "doc_type": "ic_emri",
-        "official_ref": "2014/04",
-        "doc_date": "2014-12-30",
-        "title": "İş Kazası ve Meslek Hastalığı Soruşturmaları.",
-        "issuer": "SOSYAL GÜVENLİK KURUMU",
-    }
-
-
 def test_a_letter_with_sayi_and_konu_but_no_genelge_heading_is_a_genel_yazi() -> None:
     assert found(GENEL_YAZI) == {
         "doc_type": "genel_yazi",
@@ -252,16 +227,6 @@ def test_a_decision_with_the_labels_apart_from_the_values_still_has_evidence() -
     assert result["official_ref"].evidence is not None
     assert "2013/10344" in result["official_ref"].evidence["quote"]
     assert result["doc_date"].evidence == {"page": 1, "quote": "06.11.2013"}
-
-
-def test_a_decision_in_the_header_of_the_court_site_is_found_with_its_closing_date() -> None:
-    assert found(KARAR_SITE) == {
-        "doc_type": "karar",
-        "official_ref": "2017/5455 E., 2017/4143 K.",
-        "title": "Yargıtay 22. Hukuk Dairesi 2017/5455 E., 2017/4143 K.",
-        "issuer": "Yargıtay 22. Hukuk Dairesi",
-        "doc_date": "2017-04-12",
-    }
 
 
 def test_the_page_of_a_quote_counts_form_feeds() -> None:
@@ -342,7 +307,7 @@ def test_the_model_fills_the_missing_fields_with_evidence_from_the_text() -> Non
             "doc_type": {"value": "diger", "quote": "kurul"},
             "doc_date": {"value": "2021-03-15", "quote": "15 Mart 2021"},
             "official_ref": {"value": "2021/7", "quote": "2021/7 sayılı kararı"},
-            "title": {"value": "Kurul kararı", "quote": "Başlıksız belge"},
+            "title": {"value": "Başlıksız belge", "quote": "Başlıksız belge"},
         }
     )
     suggestions, warnings = run(detector)
@@ -359,7 +324,7 @@ def test_the_model_fills_the_missing_fields_with_evidence_from_the_text() -> Non
         "doc_type": ("diger", "llm"),
         "doc_date": ("2021-03-15", "llm"),
         "official_ref": ("2021/7", "llm"),
-        "title": ("Kurul kararı", "llm"),
+        "title": ("Başlıksız belge", "llm"),
     }
     assert suggestions["doc_date"].evidence == {"page": 1, "quote": "15 Mart 2021"}
 
@@ -385,6 +350,30 @@ def test_a_date_that_its_quote_does_not_show_is_dropped() -> None:
     assert run(detector)[0] == {}
     bad = FakeDetector({"doc_date": {"value": "2021-13-45", "quote": "15 Mart 2021"}})
     assert run(bad)[0] == {}
+
+
+def test_a_title_or_issuer_that_its_quote_does_not_show_is_dropped() -> None:
+    detector = FakeDetector(
+        {
+            "title": {"value": "Uydurma başlık", "quote": "Kurul kararı"},
+            "issuer": {"value": "Yargıtay", "quote": "Kurul kararı"},
+        }
+    )
+    assert run(detector)[0] == {}
+
+
+def test_a_quote_longer_than_the_cap_is_no_evidence() -> None:
+    quote = "Başlıksız belge " * 50
+    assert len(quote) > MAX_QUOTE_CHARS
+    detector = FakeDetector({"title": {"value": "Başlıksız belge", "quote": quote}})
+    assert run(detector)[0] == {}
+
+
+def test_a_date_is_kept_when_any_date_of_its_quote_shows_it() -> None:
+    detector = FakeDetector({"doc_date": {"value": "2021-03-15", "quote": "15 Mart 2021"}})
+    assert run(detector)[0]["doc_date"].value == "2021-03-15"
+    two = dates_in("10.01.2020 tarihli yazı, 15 Mart 2021")
+    assert two == {"2020-01-10", "2021-03-15"}
 
 
 def test_a_ref_that_is_not_in_its_quote_is_dropped() -> None:

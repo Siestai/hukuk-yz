@@ -1,5 +1,6 @@
 """Files API (task 12a). The database tests are skipped when DATABASE_URL is unset; CI sets it."""
 
+import asyncio
 import hashlib
 import re
 import uuid
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth import hash_password
 from app.db import make_engine
+from app.files.api import _lock_content
 from app.files.store import LocalFileStore
 from app.main import app
 from app.models.common import (
@@ -76,6 +78,16 @@ def store_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         lambda: Settings(database_url="unused", file_store_root=root, file_max_bytes=MAX_BYTES),
     )
     return root
+
+
+async def scanned(factory: Factory, *ids: str) -> None:
+    """Mark files as scanned: the worker is done with them, so they may be deleted."""
+    async with factory() as session:
+        for fid in ids:
+            file = await session.get(IngestFile, uuid.UUID(fid))
+            assert file is not None
+            file.scan_status = ScanStatus.done
+        await session.commit()
 
 
 @pytest.fixture
@@ -483,7 +495,12 @@ async def test_a_loader_row_has_no_content(
         session.add(job)
         await session.flush()
         row = IngestFile(
-            job_id=job.id, path="Yargi/1.pdf", sha256="1" * 64, size=3, detected_type="pdf"
+            job_id=job.id,
+            path="Yargi/1.pdf",
+            sha256="1" * 64,
+            size=3,
+            detected_type="pdf",
+            review_status=ReviewStatus.approved,
         )
         session.add(row)
         await session.commit()
@@ -671,7 +688,12 @@ async def test_a_version_upload_keeps_its_link_unless_the_approval_says_otherwis
 
 
 async def test_only_an_admin_takes_an_approval_back_and_not_while_a_newer_version_exists(
-    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
+    client: httpx.AsyncClient,
+    me: Login,
+    boss: Login,
+    store_root: Path,
+    pdf: Callable[..., bytes],
+    kb_factory: Factory,
 ) -> None:
     fid = (await bare_upload(client, me, pdf(84)))["id"]
     pending = await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
@@ -682,6 +704,7 @@ async def test_only_an_admin_takes_an_approval_back_and_not_while_a_newer_versio
     newer = (await upload(client, me, pdf(85), path=f"/files/{fid}/versions")).json()["id"]
     blocked = await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
     assert (blocked.status_code, blocked.json()["error"]["code"]) == (409, "file_has_newer_version")
+    await scanned(kb_factory, newer)
     assert (await client.delete(f"/files/{newer}", headers=me.headers)).status_code == 204
     back = await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
     assert back.status_code == 200, back.text
@@ -725,6 +748,7 @@ async def test_a_pending_file_is_deleted_with_its_blob_text_job_and_a_trace(
         job_id = file.job_id
         file.doc_type = DocumentType.karar
         await session.commit()
+    await scanned(kb_factory, fid)
     response = await client.delete(f"/files/{fid}", headers=me.headers)
     assert response.status_code == 204
     assert (await client.get(f"/files/{fid}", headers=me.headers)).status_code == 404
@@ -746,18 +770,24 @@ async def test_a_pending_file_is_deleted_with_its_blob_text_job_and_a_trace(
     assert trace.deleted_at is not None
     assert trace.snapshot["id"] == fid
     assert trace.snapshot["review_status"] == "pending"
-    assert trace.snapshot["scan_status"] == "queued"
+    assert trace.snapshot["scan_status"] == "done"
     assert trace.snapshot["uploaded_by"] == str(me.id)
     assert (await client.delete(f"/files/{fid}", headers=me.headers)).status_code == 404
 
 
 async def test_an_approved_file_is_deleted_only_after_its_approval_is_taken_back(
-    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
+    client: httpx.AsyncClient,
+    me: Login,
+    boss: Login,
+    store_root: Path,
+    pdf: Callable[..., bytes],
+    kb_factory: Factory,
 ) -> None:
     fid = (await bare_upload(client, me, pdf(89)))["id"]
     await approve(client, me, fid)
     refused = await client.delete(f"/files/{fid}", headers=boss.headers)
     assert (refused.status_code, refused.json()["error"]["code"]) == (409, "file_approved")
+    await scanned(kb_factory, fid)
     await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
     assert (await client.delete(f"/files/{fid}", headers=boss.headers)).status_code == 204
 
@@ -775,6 +805,7 @@ async def test_a_reviewer_deletes_only_their_own_files_and_an_admin_any(
     denied = await client.delete(f"/files/{mine}", headers=other.headers)
     assert (denied.status_code, denied.json()["error"]["code"]) == (403, "forbidden")
     assert (await client.get(f"/files/{mine}", headers=me.headers)).status_code == 200
+    await scanned(kb_factory, mine)
     assert (await client.delete(f"/files/{mine}", headers=boss.headers)).status_code == 204
     assert (await client.delete(f"/files/{uuid.uuid4()}", headers=boss.headers)).status_code == 404
     assert (await client.delete(f"/files/{mine}")).status_code == 401
@@ -789,6 +820,7 @@ async def test_a_file_with_a_next_version_or_with_extractions_is_not_deleted(
 ) -> None:
     first = (await bare_upload(client, me, pdf(91)))["id"]
     second = (await upload(client, me, pdf(92), path=f"/files/{first}/versions")).json()["id"]
+    await scanned(kb_factory, first, second)
     blocked = await client.delete(f"/files/{first}", headers=me.headers)
     assert (blocked.status_code, blocked.json()["error"]["code"]) == (409, "file_has_newer_version")
     async with kb_factory() as session:
@@ -803,10 +835,15 @@ async def test_a_file_with_a_next_version_or_with_extractions_is_not_deleted(
 
 
 async def test_deleting_the_newest_version_makes_the_older_one_the_head_again(
-    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    pdf: Callable[..., bytes],
+    kb_factory: Factory,
 ) -> None:
     first = (await bare_upload(client, me, pdf(93)))["id"]
     second = (await upload(client, me, pdf(94), path=f"/files/{first}/versions")).json()["id"]
+    await scanned(kb_factory, second)
     assert (await client.delete(f"/files/{second}", headers=me.headers)).status_code == 204
     listing = (await client.get("/files", headers=me.headers)).json()
     assert [(i["id"], i["version_count"]) for i in listing["items"]] == [(first, 1)]
@@ -828,9 +865,72 @@ async def test_the_blob_stays_when_another_row_uses_the_content(
         session.add(job)
         await session.flush()
         # a row of the archive loaders with the same content and no stored file of its own
-        session.add(IngestFile(job_id=job.id, path="Yargi/1.pdf", sha256=digest, size=3))
+        session.add(
+            IngestFile(
+                job_id=job.id,
+                path="Yargi/1.pdf",
+                sha256=digest,
+                size=3,
+                review_status=ReviewStatus.approved,
+            )
+        )
         await session.commit()
+    await scanned(kb_factory, body["id"])
     store = LocalFileStore(store_root)
     key = f"sha256/{digest[:2]}/{digest[2:4]}/{digest}"
     assert (await client.delete(f"/files/{body['id']}", headers=me.headers)).status_code == 204
     assert store.exists(key)
+
+
+async def test_a_file_that_is_queued_or_running_is_not_deleted(
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
+) -> None:
+    fid = (await bare_upload(client, me, pdf(97)))["id"]
+    for status in (ScanStatus.queued, ScanStatus.running):
+        async with kb_factory() as session:
+            file = await session.get(IngestFile, uuid.UUID(fid))
+            assert file is not None
+            file.scan_status = status
+            await session.commit()
+        refused = await client.delete(f"/files/{fid}", headers=me.headers)
+        assert (refused.status_code, refused.json()["error"]["code"]) == (409, "scan_in_progress")
+    await scanned(kb_factory, fid)
+    assert (await client.delete(f"/files/{fid}", headers=me.headers)).status_code == 204
+
+
+async def test_an_upload_of_the_same_bytes_in_flight_keeps_the_blob_of_a_deleted_file(
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
+) -> None:
+    body = await bare_upload(client, me, pdf(98))
+    digest = body["sha256"]
+    await scanned(kb_factory, body["id"])
+    key = f"sha256/{digest[:2]}/{digest[2:4]}/{digest}"
+    async with kb_factory() as session:
+        # an upload of the same bytes that holds the content lock and has not committed its row
+        await _lock_content(session, digest)
+        deleting = asyncio.create_task(client.delete(f"/files/{body['id']}", headers=me.headers))
+        await asyncio.sleep(0.5)
+        assert not deleting.done()  # the delete waits for the lock before it removes the blob
+        job = IngestJob(kind=IngestKind.upload)
+        session.add(job)
+        await session.flush()
+        session.add(
+            IngestFile(
+                job_id=job.id,
+                path="x.pdf",
+                sha256=digest,
+                size=3,
+                review_status=ReviewStatus.approved,
+            )
+        )
+        await session.commit()
+    assert (await deleting).status_code == 204
+    assert LocalFileStore(store_root).exists(key)
