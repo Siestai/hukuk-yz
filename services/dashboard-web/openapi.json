@@ -671,6 +671,11 @@
           "file_store_unavailable",
           "file_version_conflict",
           "scan_in_progress",
+          "file_not_pending",
+          "file_not_approved",
+          "file_approved",
+          "file_has_newer_version",
+          "file_processed",
           "invalid_date",
           "http_error",
           "internal_error"
@@ -690,8 +695,132 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "FileApproval": {
+        "description": "The final fields of a file, from the approval screen. `doc_type` is required. Every other\nfield is written as sent (left out = empty), except `supersedes_id`: left out keeps the\nversion the file was uploaded as, null makes it a document of its own.",
+        "properties": {
+          "doc_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Date"
+          },
+          "doc_type": {
+            "enum": [
+              "kanun",
+              "cbk",
+              "yonetmelik",
+              "teblig",
+              "genelge",
+              "genel_yazi",
+              "ic_emri",
+              "karar",
+              "kitap",
+              "hesap_tablosu",
+              "gorus",
+              "diger"
+            ],
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "official_ref": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Ref"
+          },
+          "origin_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Url"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "doc_type"
+        ],
+        "title": "FileApproval",
+        "type": "object"
+      },
       "FileDetail": {
         "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Id"
+          },
           "archived_at": {
             "anyOf": [
               {
@@ -757,6 +886,18 @@
             "title": "Id",
             "type": "string"
           },
+          "matches": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matches"
+          },
           "note": {
             "anyOf": [
               {
@@ -801,6 +942,14 @@
             ],
             "title": "Original Name"
           },
+          "review_status": {
+            "enum": [
+              "pending",
+              "approved"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
           "scan_result": {
             "anyOf": [
               {
@@ -833,6 +982,18 @@
             "title": "Size",
             "type": "integer"
           },
+          "suggestions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestions"
+          },
           "supersedes_id": {
             "anyOf": [
               {
@@ -844,6 +1005,17 @@
               }
             ],
             "title": "Supersedes Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           },
           "uploaded_at": {
             "format": "date-time",
@@ -899,6 +1071,12 @@
           "scan_status",
           "scan_result",
           "archived_at",
+          "review_status",
+          "approved_by_id",
+          "approved_at",
+          "title",
+          "suggestions",
+          "matches",
           "versions"
         ],
         "title": "FileDetail",
@@ -906,6 +1084,30 @@
       },
       "FileListItem": {
         "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Id"
+          },
           "archived_at": {
             "anyOf": [
               {
@@ -971,6 +1173,18 @@
             "title": "Id",
             "type": "string"
           },
+          "matches": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matches"
+          },
           "note": {
             "anyOf": [
               {
@@ -1015,6 +1229,14 @@
             ],
             "title": "Original Name"
           },
+          "review_status": {
+            "enum": [
+              "pending",
+              "approved"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
           "scan_result": {
             "anyOf": [
               {
@@ -1047,6 +1269,18 @@
             "title": "Size",
             "type": "integer"
           },
+          "suggestions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestions"
+          },
           "supersedes_id": {
             "anyOf": [
               {
@@ -1058,6 +1292,17 @@
               }
             ],
             "title": "Supersedes Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           },
           "uploaded_at": {
             "format": "date-time",
@@ -1110,6 +1355,12 @@
           "scan_status",
           "scan_result",
           "archived_at",
+          "review_status",
+          "approved_by_id",
+          "approved_at",
+          "title",
+          "suggestions",
+          "matches",
           "version_count"
         ],
         "title": "FileListItem",
@@ -1146,6 +1397,30 @@
       "FileOut": {
         "description": "A file record. `original_name` is None for the rows of the archive loaders until their\nimport (task 12c). `scan_result` is the worker's outcome: detected type, pages, text length,\n`ocr_used`, warnings, `error`.",
         "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Id"
+          },
           "archived_at": {
             "anyOf": [
               {
@@ -1211,6 +1486,18 @@
             "title": "Id",
             "type": "string"
           },
+          "matches": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matches"
+          },
           "note": {
             "anyOf": [
               {
@@ -1255,6 +1542,14 @@
             ],
             "title": "Original Name"
           },
+          "review_status": {
+            "enum": [
+              "pending",
+              "approved"
+            ],
+            "title": "Review Status",
+            "type": "string"
+          },
           "scan_result": {
             "anyOf": [
               {
@@ -1287,6 +1582,18 @@
             "title": "Size",
             "type": "integer"
           },
+          "suggestions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestions"
+          },
           "supersedes_id": {
             "anyOf": [
               {
@@ -1298,6 +1605,17 @@
               }
             ],
             "title": "Supersedes Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           },
           "uploaded_at": {
             "format": "date-time",
@@ -1345,7 +1663,13 @@
           "supersedes_id",
           "scan_status",
           "scan_result",
-          "archived_at"
+          "archived_at",
+          "review_status",
+          "approved_by_id",
+          "approved_at",
+          "title",
+          "suggestions",
+          "matches"
         ],
         "title": "FileOut",
         "type": "object"
@@ -3102,6 +3426,26 @@
           },
           {
             "in": "query",
+            "name": "review_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "approved"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Review Status"
+            }
+          },
+          {
+            "in": "query",
             "name": "q",
             "required": false,
             "schema": {
@@ -3359,8 +3703,7 @@
                   }
                 },
                 "required": [
-                  "file",
-                  "doc_type"
+                  "file"
                 ],
                 "type": "object"
               }
@@ -3486,6 +3829,130 @@
       }
     },
     "/files/{file_id}": {
+      "delete": {
+        "description": "Delete a pending file: its row (kept in `file_deletion`), its job when it was the job's\nonly file, and its blob and text unless another row uses the content. The uploader deletes\ntheir own files, an admin any.",
+        "operationId": "delete_file_files__file_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Delete File",
+        "tags": [
+          "files"
+        ]
+      },
       "get": {
         "operationId": "get_file_files__file_id__get",
         "parameters": [
@@ -3612,6 +4079,149 @@
           }
         },
         "summary": "Get File",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/files/{file_id}/approve": {
+      "post": {
+        "description": "Write the final type and fields of a pending file and mark it approved. The uploader may\napprove their own file.",
+        "operationId": "approve_file_files__file_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileApproval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Approve File",
         "tags": [
           "files"
         ]
@@ -4142,6 +4752,139 @@
           }
         },
         "summary": "Get Text",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/files/{file_id}/unapprove": {
+      "post": {
+        "description": "Take the approval back: the file is pending again (and can be deleted). Refused when the\nfile has a next version; that one is dealt with first.",
+        "operationId": "unapprove_file_files__file_id__unapprove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Unapprove File",
         "tags": [
           "files"
         ]

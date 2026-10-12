@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import ValidationInfo, field_validator
+from pydantic import SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     # and the worker does not scan.
     file_store_root: Path | None = None
     file_max_bytes: int = 50 * 1024 * 1024
+
+    # The language-model fallback of the upload detection (task 13a). The provider is "none" until
+    # Orhan decides on provider and region (docs/architecture.md); the key is a secret and the base
+    # URL is how a region is chosen. Without a key the step is skipped, silently.
+    file_detect_llm_provider: Literal["anthropic", "none"] = "none"
+    file_detect_llm_model: str = "claude-haiku-4-5-20251001"
+    file_detect_llm_api_key: SecretStr | None = None
+    file_detect_llm_base_url: str = "https://api.anthropic.com"
+    file_detect_llm_timeout_seconds: float = 30.0
 
     @field_validator("archive_root", "file_store_root")
     @classmethod

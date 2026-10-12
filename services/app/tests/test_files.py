@@ -17,7 +17,16 @@ from app.auth import hash_password
 from app.db import make_engine
 from app.files.store import LocalFileStore
 from app.main import app
-from app.models.common import IngestFile, IngestJob, IngestKind, ScanStatus
+from app.models.common import (
+    DocumentType,
+    Extraction,
+    FileDeletion,
+    IngestFile,
+    IngestJob,
+    IngestKind,
+    ReviewStatus,
+    ScanStatus,
+)
 from app.models.user import AppUser, UserRole
 from app.settings import Settings
 
@@ -87,7 +96,8 @@ async def upload(
     path: str = "/files",
     **fields: str,
 ) -> httpx.Response:
-    form = {"doc_type": "genelge", **fields}
+    form = fields if "bare" in fields else {"doc_type": "genelge", **fields}
+    form.pop("bare", None)
     return await client.post(
         path, headers=login.headers, data=form, files={"file": (name, data, "application/pdf")}
     )
@@ -224,10 +234,6 @@ async def test_bad_uploads_are_400_or_422(
     assert (empty.status_code, empty.json()["error"]["code"]) == (400, "invalid_file")
     no_file = await client.post("/files", headers=me.headers, files={"doc_type": (None, "genelge")})
     assert (no_file.status_code, no_file.json()["error"]["code"]) == (400, "invalid_file")
-    no_type = await client.post(
-        "/files", headers=me.headers, files={"file": ("a.pdf", pdf(4), "application/pdf")}
-    )
-    assert no_type.status_code == 422
     bad_type = await upload(client, me, pdf(4), doc_type="sozlesme")
     assert bad_type.status_code == 422
     not_form = await client.post("/files", headers=me.headers, json={})
@@ -506,3 +512,325 @@ async def test_concurrent_identical_uploads_make_one_record(
             await session.execute(select(func.count()).select_from(IngestFile))
         ).scalar_one()
     assert count == 1
+
+
+# --- review: upload without fields, approval, deletion (task 13a) ---------------------------------
+
+
+async def approve(
+    client: httpx.AsyncClient, login: Login, file_id: str, **body: Any
+) -> httpx.Response:
+    return await client.post(
+        f"/files/{file_id}/approve", headers=login.headers, json={"doc_type": "genelge", **body}
+    )
+
+
+async def bare_upload(
+    client: httpx.AsyncClient, login: Login, data: bytes, name: str = "belge.pdf"
+) -> dict[str, Any]:
+    response = await upload(client, login, data, name=name, bare="1")
+    assert response.status_code == 201, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+async def test_an_upload_with_nothing_but_the_file_is_pending_and_has_no_type(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    body = await bare_upload(client, me, pdf(70))
+    assert (body["review_status"], body["doc_type"], body["doc_date"]) == ("pending", None, None)
+    assert (body["suggestions"], body["matches"], body["approved_by_id"]) == (None, None, None)
+    assert body["title"] is None and body["approved_at"] is None
+
+
+async def test_what_the_user_typed_is_a_suggestion_of_the_source_user(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    body = (
+        await upload(client, me, pdf(71), doc_type="kanun", doc_date="2026-10-01", note="n")
+    ).json()
+    assert body["review_status"] == "pending"
+    assert body["suggestions"] == {
+        "doc_type": {"value": "kanun", "source": "user", "evidence": None},
+        "doc_date": {"value": "2026-10-01", "source": "user", "evidence": None},
+    }
+
+
+async def test_approving_writes_the_final_fields_and_who_approved(
+    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    fid = (await bare_upload(client, me, pdf(72)))["id"]
+    response = await approve(
+        client,
+        me,  # the uploader approves their own file
+        fid,
+        doc_type="yonetmelik",
+        doc_date="2024-05-01",
+        official_ref=" RG 29983 ",
+        title="Alt İşverenlik Yönetmeliği",
+        origin_url="https://example.test/y",
+        note="",
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["review_status"], body["approved_by_id"]) == ("approved", str(me.id))
+    assert body["approved_at"] is not None
+    assert (body["doc_type"], body["doc_date"], body["official_ref"], body["title"]) == (
+        "yonetmelik",
+        "2024-05-01",
+        "RG 29983",
+        "Alt İşverenlik Yönetmeliği",
+    )
+    assert (body["origin_url"], body["note"]) == ("https://example.test/y", None)
+    again = await approve(client, boss, fid)
+    assert (again.status_code, again.json()["error"]["code"]) == (409, "file_not_pending")
+
+
+async def test_an_approval_needs_a_valid_type_and_a_login(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    fid = (await bare_upload(client, me, pdf(73)))["id"]
+    url = f"/files/{fid}/approve"
+    assert (await client.post(url, headers=me.headers, json={})).status_code == 422
+    for body in (
+        {"doc_type": "sozlesme"},
+        {"doc_type": None},
+        {"doc_type": "kanun", "doc_date": "x"},
+    ):
+        assert (await client.post(url, headers=me.headers, json=body)).status_code == 422
+    assert (await client.post(url, json={"doc_type": "kanun"})).status_code == 401
+    assert (await approve(client, me, str(uuid.uuid4()))).status_code == 404
+    detail = (await client.get(f"/files/{fid}", headers=me.headers)).json()
+    assert detail["review_status"] == "pending"
+
+
+async def test_an_approval_can_link_the_file_as_the_next_version(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    old = (await bare_upload(client, me, pdf(74), "eski.pdf"))["id"]
+    assert (await approve(client, me, old)).status_code == 200
+    new = (await bare_upload(client, me, pdf(75), "yeni.pdf"))["id"]
+    linked = await approve(client, me, new, supersedes_id=old)
+    assert (linked.status_code, linked.json()["supersedes_id"]) == (200, old)
+    listing = (await client.get("/files", headers=me.headers)).json()
+    assert [(i["id"], i["version_count"]) for i in listing["items"]] == [(new, 2)]
+
+
+async def test_the_version_rules_hold_at_approval(
+    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    a = (await bare_upload(client, me, pdf(76)))["id"]
+    b = (await bare_upload(client, me, pdf(77)))["id"]
+    c = (await bare_upload(client, me, pdf(78)))["id"]
+    assert (await approve(client, me, a)).status_code == 200
+    assert (await approve(client, me, b, supersedes_id=a)).status_code == 200
+    # the chain does not branch
+    branch = await approve(client, me, c, supersedes_id=a)
+    assert (branch.status_code, branch.json()["error"]["code"]) == (409, "file_version_conflict")
+    # an archived file gets no next version
+    assert (await client.post(f"/files/{b}/archive", headers=boss.headers)).status_code == 200
+    archived = await approve(client, me, c, supersedes_id=b)
+    assert (archived.status_code, archived.json()["error"]["code"]) == (
+        409,
+        "file_version_conflict",
+    )
+    # nor does a file link to itself, or to a file that does not exist
+    own = await approve(client, me, c, supersedes_id=c)
+    assert own.json()["error"]["code"] == "file_version_conflict"
+    assert (await approve(client, me, c, supersedes_id=str(uuid.uuid4()))).status_code == 404
+    # the failed attempts changed nothing
+    assert (await client.get(f"/files/{c}", headers=me.headers)).json()[
+        "review_status"
+    ] == "pending"
+
+
+async def test_an_approval_cannot_close_a_loop_of_versions(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    first = (await bare_upload(client, me, pdf(79)))["id"]
+    version = (await upload(client, me, pdf(80), path=f"/files/{first}/versions", bare="1")).json()[
+        "id"
+    ]
+    # `first` is pending and has a next version; linking it behind that version is a loop
+    loop = await approve(client, me, first, supersedes_id=version)
+    assert (loop.status_code, loop.json()["error"]["code"]) == (409, "file_version_conflict")
+
+
+async def test_a_version_upload_keeps_its_link_unless_the_approval_says_otherwise(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    first = (await bare_upload(client, me, pdf(81)))["id"]
+    assert (await approve(client, me, first)).status_code == 200
+    second = (await upload(client, me, pdf(82), path=f"/files/{first}/versions")).json()
+    assert second["review_status"] == "pending"
+    kept = await approve(client, me, second["id"])
+    assert kept.json()["supersedes_id"] == first
+    third = (await upload(client, me, pdf(83), path=f"/files/{second['id']}/versions")).json()
+    apart = await approve(client, me, third["id"], supersedes_id=None)
+    assert apart.json()["supersedes_id"] is None
+
+
+async def test_only_an_admin_takes_an_approval_back_and_not_while_a_newer_version_exists(
+    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    fid = (await bare_upload(client, me, pdf(84)))["id"]
+    pending = await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
+    assert (pending.status_code, pending.json()["error"]["code"]) == (409, "file_not_approved")
+    assert (await approve(client, me, fid)).status_code == 200
+    denied = await client.post(f"/files/{fid}/unapprove", headers=me.headers)
+    assert (denied.status_code, denied.json()["error"]["code"]) == (403, "forbidden")
+    newer = (await upload(client, me, pdf(85), path=f"/files/{fid}/versions")).json()["id"]
+    blocked = await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
+    assert (blocked.status_code, blocked.json()["error"]["code"]) == (409, "file_has_newer_version")
+    assert (await client.delete(f"/files/{newer}", headers=me.headers)).status_code == 204
+    back = await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
+    assert back.status_code == 200, back.text
+    assert (back.json()["review_status"], back.json()["approved_by_id"]) == ("pending", None)
+    assert back.json()["approved_at"] is None
+    assert back.json()["doc_type"] == "genelge"  # the fields stay for the next approval
+
+
+async def test_the_list_filters_by_review_status(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    done = (await bare_upload(client, me, pdf(86)))["id"]
+    waiting = (await bare_upload(client, me, pdf(87)))["id"]
+    await approve(client, me, done)
+
+    async def ids(query: str) -> set[str]:
+        response = await client.get(f"/files{query}", headers=me.headers)
+        return {i["id"] for i in response.json()["items"]}
+
+    assert await ids("") == {done, waiting}
+    assert await ids("?review_status=pending") == {waiting}
+    assert await ids("?review_status=approved") == {done}
+    assert (await client.get("/files?review_status=x", headers=me.headers)).status_code == 422
+
+
+async def test_a_pending_file_is_deleted_with_its_blob_text_job_and_a_trace(
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
+) -> None:
+    data = pdf(88)
+    body = await bare_upload(client, me, data, "silinecek.pdf")
+    fid, digest = body["id"], body["sha256"]
+    store = LocalFileStore(store_root)
+    text = store.put_text(digest, "metin")
+    async with kb_factory() as session:
+        file = await session.get(IngestFile, uuid.UUID(fid))
+        assert file is not None
+        job_id = file.job_id
+        file.doc_type = DocumentType.karar
+        await session.commit()
+    response = await client.delete(f"/files/{fid}", headers=me.headers)
+    assert response.status_code == 204
+    assert (await client.get(f"/files/{fid}", headers=me.headers)).status_code == 404
+    assert not (store_root / f"sha256/{digest[:2]}/{digest[2:4]}/{digest}").exists()
+    assert not store.exists(text)
+    async with kb_factory() as session:
+        assert await session.get(IngestJob, job_id) is None
+        trace = (await session.execute(select(FileDeletion))).scalar_one()
+    assert (trace.file_id, trace.sha256, trace.original_name) == (
+        uuid.UUID(fid),
+        digest,
+        "silinecek.pdf",
+    )
+    assert (trace.doc_type, trace.review_status, trace.deleted_by) == (
+        DocumentType.karar,
+        ReviewStatus.pending,
+        me.id,
+    )
+    assert trace.deleted_at is not None
+    assert trace.snapshot["id"] == fid
+    assert trace.snapshot["review_status"] == "pending"
+    assert trace.snapshot["scan_status"] == "queued"
+    assert trace.snapshot["uploaded_by"] == str(me.id)
+    assert (await client.delete(f"/files/{fid}", headers=me.headers)).status_code == 404
+
+
+async def test_an_approved_file_is_deleted_only_after_its_approval_is_taken_back(
+    client: httpx.AsyncClient, me: Login, boss: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    fid = (await bare_upload(client, me, pdf(89)))["id"]
+    await approve(client, me, fid)
+    refused = await client.delete(f"/files/{fid}", headers=boss.headers)
+    assert (refused.status_code, refused.json()["error"]["code"]) == (409, "file_approved")
+    await client.post(f"/files/{fid}/unapprove", headers=boss.headers)
+    assert (await client.delete(f"/files/{fid}", headers=boss.headers)).status_code == 204
+
+
+async def test_a_reviewer_deletes_only_their_own_files_and_an_admin_any(
+    client: httpx.AsyncClient,
+    me: Login,
+    boss: Login,
+    kb_factory: Factory,
+    store_root: Path,
+    pdf: Callable[..., bytes],
+) -> None:
+    other = await _login_as(client, kb_factory, "ibrahim@x.test", UserRole.reviewer)
+    mine = (await bare_upload(client, me, pdf(90)))["id"]
+    denied = await client.delete(f"/files/{mine}", headers=other.headers)
+    assert (denied.status_code, denied.json()["error"]["code"]) == (403, "forbidden")
+    assert (await client.get(f"/files/{mine}", headers=me.headers)).status_code == 200
+    assert (await client.delete(f"/files/{mine}", headers=boss.headers)).status_code == 204
+    assert (await client.delete(f"/files/{uuid.uuid4()}", headers=boss.headers)).status_code == 404
+    assert (await client.delete(f"/files/{mine}")).status_code == 401
+
+
+async def test_a_file_with_a_next_version_or_with_extractions_is_not_deleted(
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
+) -> None:
+    first = (await bare_upload(client, me, pdf(91)))["id"]
+    second = (await upload(client, me, pdf(92), path=f"/files/{first}/versions")).json()["id"]
+    blocked = await client.delete(f"/files/{first}", headers=me.headers)
+    assert (blocked.status_code, blocked.json()["error"]["code"]) == (409, "file_has_newer_version")
+    async with kb_factory() as session:
+        session.add(
+            Extraction(file_id=uuid.UUID(second), parser_name="decisions", parser_version="1")
+        )
+        await session.commit()
+    processed = await client.delete(f"/files/{second}", headers=me.headers)
+    assert (processed.status_code, processed.json()["error"]["code"]) == (409, "file_processed")
+    for fid in (first, second):
+        assert (await client.get(f"/files/{fid}", headers=me.headers)).status_code == 200
+
+
+async def test_deleting_the_newest_version_makes_the_older_one_the_head_again(
+    client: httpx.AsyncClient, me: Login, store_root: Path, pdf: Callable[..., bytes]
+) -> None:
+    first = (await bare_upload(client, me, pdf(93)))["id"]
+    second = (await upload(client, me, pdf(94), path=f"/files/{first}/versions")).json()["id"]
+    assert (await client.delete(f"/files/{second}", headers=me.headers)).status_code == 204
+    listing = (await client.get("/files", headers=me.headers)).json()
+    assert [(i["id"], i["version_count"]) for i in listing["items"]] == [(first, 1)]
+    again = await upload(client, me, pdf(95), path=f"/files/{first}/versions")
+    assert again.status_code == 201  # the chain can grow again
+
+
+async def test_the_blob_stays_when_another_row_uses_the_content(
+    client: httpx.AsyncClient,
+    me: Login,
+    store_root: Path,
+    kb_factory: Factory,
+    pdf: Callable[..., bytes],
+) -> None:
+    body = await bare_upload(client, me, pdf(96))
+    digest = body["sha256"]
+    async with kb_factory() as session:
+        job = IngestJob(kind=IngestKind.upload)
+        session.add(job)
+        await session.flush()
+        # a row of the archive loaders with the same content and no stored file of its own
+        session.add(IngestFile(job_id=job.id, path="Yargi/1.pdf", sha256=digest, size=3))
+        await session.commit()
+    store = LocalFileStore(store_root)
+    key = f"sha256/{digest[:2]}/{digest[2:4]}/{digest}"
+    assert (await client.delete(f"/files/{body['id']}", headers=me.headers)).status_code == 204
+    assert store.exists(key)

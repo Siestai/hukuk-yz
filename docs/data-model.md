@@ -55,6 +55,8 @@ Her kaynak türü kaydının üst kimliği.
 
 `ingest_file.path` arşiv köküne göre **göreli** tutulur (karar yükleyicisi `source_path`'i olduğu gibi yazar, örn. `Yargi_Kararlari_Arsivi/...`; kök Drive kopyası `data/drive`). `app` orijinal PDF'i `ARCHIVE_ROOT` + `path` ile sunar (Görev 10a).
 
+**Dosya onayı (Görev 13a).** `ingest_file.review_status` (`pending` / `approved`, NOT NULL) bir insanın dosyanın türünü ve künyesini onaylayıp onaylamadığını söyler; `approved_by` / `approved_at` kimin ne zaman onayladığıdır (`approved_by` NULL = sistem içe aktarması: 12c'den gelen satırlar ve 13'ten önceki yüklemeler `approved` sayılır). `suggestions` tespitin alan başına önerisidir (`{alan: {value, source: rule|llm|user, evidence}}`), `matches` önceki sürüm adayı ile benzer dosyalardır; ikisi de yalnız öneridir, asıl alanları (`doc_type`, `doc_date`, `official_ref`, `title`, ...) yalnız onay yazar. `title` belgenin başlığıdır (kanun adı, genelge konusu, karar için mahkeme + daire + E/K). **Onaylanmamış (`pending`) dosya hiçbir KB, arama ya da ajan akışında kaynak olarak kullanılmaz:** `ingest_file`'ı okuyacak her kod `review_status = 'approved'` süzer. Silinen yükleme `file_deletion` tablosunda iz bırakır (`file_id` FK'sızdır; `snapshot` satırın tamamıdır, md. 25 izi).
+
 `extraction.fields` parser'ın çıkardığı ham alanlar; onaydan sonra tipli tabloya kopyalanır. Böylece parser değişince yeniden çıkarma eski onayı bozmaz.
 
 ### `review`

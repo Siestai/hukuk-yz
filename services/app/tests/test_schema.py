@@ -137,6 +137,42 @@ def test_the_gorus_migration_downgrades_to_0010(alembic_config: Config, database
         asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))
 
 
+def test_the_review_migration_keeps_old_rows_approved_and_downgrades_to_0011(
+    alembic_config: Config, database_url: str
+) -> None:
+    async def run(sql: str) -> list[str]:
+        engine = make_engine(database_url)
+        try:
+            async with engine.begin() as conn:
+                return [str(row[0]) for row in await conn.execute(text(sql))]
+        finally:
+            await engine.dispose()
+
+    insert = (
+        "WITH job AS (INSERT INTO ingest_job (kind, status) VALUES ('bulk', 'running') "
+        "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size) "
+        "SELECT id, 'a.pdf', 'x', 1 FROM job RETURNING 1"
+    )
+    command.upgrade(alembic_config, "0011")
+    try:
+        asyncio.run(run(insert))
+        command.upgrade(alembic_config, "head")
+        # A row that existed before the migration, and one written without naming the column.
+        asyncio.run(run(insert))
+        assert asyncio.run(run("SELECT review_status::text FROM ingest_file")) == [
+            "approved",
+            "approved",
+        ]
+        command.downgrade(alembic_config, "0011")
+        assert "file_deletion" not in _tables(database_url)
+        command.upgrade(alembic_config, "head")
+        assert "file_deletion" in _tables(database_url)
+    finally:
+        command.upgrade(alembic_config, "head")
+        asyncio.run(run("DELETE FROM ingest_file RETURNING 1"))
+        asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))
+
+
 def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) -> None:
     expected = set(Base.metadata.tables)
 

@@ -18,9 +18,16 @@ EVIDENCE_MIGRATION = VERSIONS / "0008_statute_version_evidence.py"
 REOPEN_MIGRATION = VERSIONS / "0009_review_decision_reopen.py"
 FILE_STORE_MIGRATION = VERSIONS / "0010_ingest_file_store.py"
 GORUS_MIGRATION = VERSIONS / "0011_document_type_gorus.py"
+REVIEW_MIGRATION = VERSIONS / "0012_file_review.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
 # 0007: login_attempt).
-LATER_TABLES = {"decision_verification", "app_user", "user_session", "login_attempt"}
+LATER_TABLES = {
+    "decision_verification",
+    "app_user",
+    "user_session",
+    "login_attempt",
+    "file_deletion",
+}
 
 
 def _load_migration(path: Path = MIGRATION) -> ModuleType:
@@ -44,6 +51,7 @@ def test_enum_labels_match_migration() -> None:
         "review_decision": (*migration.ENUMS["review_decision"], "reopen"),
         **file_enums,
         "document_type": (*document_type[:-1], "gorus", "diger"),
+        "review_status": _load_migration(REVIEW_MIGRATION).REVIEW_STATUS,
     }
     assert orm == expected
     assert _load_migration(REOPEN_MIGRATION).OLD_LABELS == migration.ENUMS["review_decision"]
@@ -207,3 +215,39 @@ def test_ingest_file_store_columns_and_indexes_are_in_orm_and_migration() -> Non
     # Old rows count as scanned; the ORM and the migration agree on it.
     assert str(table.columns["scan_status"].server_default.arg) == "'done'"  # type: ignore[union-attr]
     assert not table.columns["scan_status"].nullable
+
+
+def test_file_review_columns_indexes_and_deletion_table_are_in_orm_and_migration() -> None:
+    migration = _load_migration(REVIEW_MIGRATION)
+    source = REVIEW_MIGRATION.read_text()
+    table = Base.metadata.tables["ingest_file"]
+    new = {"review_status", "approved_by", "approved_at", "title", "suggestions", "matches"}
+    assert new <= {c.name for c in table.columns}
+    assert all(f'"{name}"' in source for name in new)
+    assert (migration.TABLE, migration.down_revision) == ("ingest_file", "0011")
+    assert "ix_ingest_file_review_pending" in {i.name for i in table.indexes}
+    assert '"ix_ingest_file_review_pending"' in source
+    # Old rows count as approved; the ORM and the migration agree on it.
+    assert str(table.columns["review_status"].server_default.arg) == "'approved'"  # type: ignore[union-attr]
+    assert not table.columns["review_status"].nullable
+    deletion = Base.metadata.tables["file_deletion"]
+    assert {c.name for c in deletion.columns} == {
+        "id",
+        "file_id",
+        "sha256",
+        "original_name",
+        "doc_type",
+        "review_status",
+        "deleted_by",
+        "deleted_at",
+        "snapshot",
+    }
+    assert not deletion.c.file_id.foreign_keys
+    assert 'create_table(\n        "file_deletion"' in source
+
+
+def test_the_detector_knows_the_document_types_of_the_enum() -> None:
+    from app.models.common import DocumentType
+    from hukuk_ingest.classify.evidence import DOC_TYPES
+
+    assert DOC_TYPES == tuple(m.value for m in DocumentType)

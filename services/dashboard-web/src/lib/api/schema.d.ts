@@ -87,6 +87,33 @@ export interface paths {
         get: operations["get_file_files__file_id__get"];
         put?: never;
         post?: never;
+        /**
+         * Delete File
+         * @description Delete a pending file: its row (kept in `file_deletion`), its job when it was the job's
+         *     only file, and its blob and text unless another row uses the content. The uploader deletes
+         *     their own files, an admin any.
+         */
+        delete: operations["delete_file_files__file_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{file_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve File
+         * @description Write the final type and fields of a pending file and mark it approved. The uploader may
+         *     approve their own file.
+         */
+        post: operations["approve_file_files__file_id__approve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -159,6 +186,27 @@ export interface paths {
         get: operations["get_text_files__file_id__text_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{file_id}/unapprove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unapprove File
+         * @description Take the approval back: the file is pending again (and can be deleted). Refused when the
+         *     file has a next version; that one is dealt with first.
+         */
+        post: operations["unapprove_file_files__file_id__unapprove_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -623,13 +671,42 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "invalid_date" | "http_error" | "internal_error";
+        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "http_error" | "internal_error";
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
         };
+        /**
+         * FileApproval
+         * @description The final fields of a file, from the approval screen. `doc_type` is required. Every other
+         *     field is written as sent (left out = empty), except `supersedes_id`: left out keeps the
+         *     version the file was uploaded as, null makes it a document of its own.
+         */
+        FileApproval: {
+            /** Doc Date */
+            doc_date?: string | null;
+            /**
+             * Doc Type
+             * @enum {string}
+             */
+            doc_type: "kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger";
+            /** Note */
+            note?: string | null;
+            /** Official Ref */
+            official_ref?: string | null;
+            /** Origin Url */
+            origin_url?: string | null;
+            /** Supersedes Id */
+            supersedes_id?: string | null;
+            /** Title */
+            title?: string | null;
+        };
         /** FileDetail */
         FileDetail: {
+            /** Approved At */
+            approved_at: string | null;
+            /** Approved By Id */
+            approved_by_id: string | null;
             /** Archived At */
             archived_at: string | null;
             /** Detected Type */
@@ -643,6 +720,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Matches */
+            matches: {
+                [key: string]: unknown;
+            } | null;
             /** Note */
             note: string | null;
             /** Official Ref */
@@ -651,6 +732,11 @@ export interface components {
             origin_url: string | null;
             /** Original Name */
             original_name: string | null;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "pending" | "approved";
             /** Scan Result */
             scan_result: {
                 [key: string]: unknown;
@@ -664,8 +750,14 @@ export interface components {
             sha256: string;
             /** Size */
             size: number;
+            /** Suggestions */
+            suggestions: {
+                [key: string]: unknown;
+            } | null;
             /** Supersedes Id */
             supersedes_id: string | null;
+            /** Title */
+            title: string | null;
             /**
              * Uploaded At
              * Format: date-time
@@ -680,6 +772,10 @@ export interface components {
         };
         /** FileListItem */
         FileListItem: {
+            /** Approved At */
+            approved_at: string | null;
+            /** Approved By Id */
+            approved_by_id: string | null;
             /** Archived At */
             archived_at: string | null;
             /** Detected Type */
@@ -693,6 +789,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Matches */
+            matches: {
+                [key: string]: unknown;
+            } | null;
             /** Note */
             note: string | null;
             /** Official Ref */
@@ -701,6 +801,11 @@ export interface components {
             origin_url: string | null;
             /** Original Name */
             original_name: string | null;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "pending" | "approved";
             /** Scan Result */
             scan_result: {
                 [key: string]: unknown;
@@ -714,8 +819,14 @@ export interface components {
             sha256: string;
             /** Size */
             size: number;
+            /** Suggestions */
+            suggestions: {
+                [key: string]: unknown;
+            } | null;
             /** Supersedes Id */
             supersedes_id: string | null;
+            /** Title */
+            title: string | null;
             /**
              * Uploaded At
              * Format: date-time
@@ -742,6 +853,10 @@ export interface components {
          *     `ocr_used`, warnings, `error`.
          */
         FileOut: {
+            /** Approved At */
+            approved_at: string | null;
+            /** Approved By Id */
+            approved_by_id: string | null;
             /** Archived At */
             archived_at: string | null;
             /** Detected Type */
@@ -755,6 +870,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Matches */
+            matches: {
+                [key: string]: unknown;
+            } | null;
             /** Note */
             note: string | null;
             /** Official Ref */
@@ -763,6 +882,11 @@ export interface components {
             origin_url: string | null;
             /** Original Name */
             original_name: string | null;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "pending" | "approved";
             /** Scan Result */
             scan_result: {
                 [key: string]: unknown;
@@ -776,8 +900,14 @@ export interface components {
             sha256: string;
             /** Size */
             size: number;
+            /** Suggestions */
+            suggestions: {
+                [key: string]: unknown;
+            } | null;
             /** Supersedes Id */
             supersedes_id: string | null;
+            /** Title */
+            title: string | null;
             /**
              * Uploaded At
              * Format: date-time
@@ -1619,6 +1749,7 @@ export interface operations {
             query?: {
                 doc_type?: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
                 scan_status?: ("queued" | "running" | "done" | "needs_ocr" | "unsupported" | "failed") | null;
+                review_status?: ("pending" | "approved") | null;
                 q?: string | null;
                 archived?: boolean;
                 cursor?: string | null;
@@ -1756,7 +1887,7 @@ export interface operations {
                     /** Doc Date */
                     doc_date?: string | null;
                     /** Doc Type */
-                    doc_type: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
+                    doc_type?: ("kanun" | "cbk" | "yonetmelik" | "teblig" | "genelge" | "genel_yazi" | "ic_emri" | "karar" | "kitap" | "hesap_tablosu" | "gorus" | "diger") | null;
                     /** Format: binary */
                     file: string;
                     /** Note */
@@ -1900,6 +2031,256 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_file_files__file_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    approve_file_files__file_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileApproval"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileOut"];
                 };
             };
             /** @description Bad Request */
@@ -2396,6 +2777,130 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unapprove_file_files__file_id__unapprove_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileOut"];
                 };
             };
             /** @description Bad Request */
