@@ -118,20 +118,23 @@ def test_the_gorus_migration_downgrades_to_0010(alembic_config: Config, database
 
     command.upgrade(alembic_config, "head")
     assert "gorus" in labels()
-    asyncio.run(
-        run(
-            "WITH job AS (INSERT INTO ingest_job (kind, status) VALUES ('bulk', 'running') "
-            "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size, doc_type) "
-            "SELECT id, 'Mevzuat/Gorus/a.pdf', 'x', 1, 'gorus' FROM job RETURNING 1"
+    try:
+        asyncio.run(
+            run(
+                "WITH job AS (INSERT INTO ingest_job (kind, status) VALUES ('bulk', 'running') "
+                "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size, doc_type) "
+                "SELECT id, 'Mevzuat/Gorus/a.pdf', 'x', 1, 'gorus' FROM job RETURNING 1"
+            )
         )
-    )
-    command.downgrade(alembic_config, "0010")
-    assert "gorus" not in labels()
-    assert asyncio.run(run("SELECT doc_type::text FROM ingest_file")) == ["diger"]
-    command.upgrade(alembic_config, "head")
-    assert "gorus" in labels()
-    asyncio.run(run("DELETE FROM ingest_file RETURNING 1"))
-    asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))
+        command.downgrade(alembic_config, "0010")
+        assert "gorus" not in labels()
+        assert asyncio.run(run("SELECT doc_type::text FROM ingest_file")) == ["diger"]
+        command.upgrade(alembic_config, "head")
+        assert "gorus" in labels()
+    finally:
+        command.upgrade(alembic_config, "head")
+        asyncio.run(run("DELETE FROM ingest_file RETURNING 1"))
+        asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))
 
 
 def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) -> None:

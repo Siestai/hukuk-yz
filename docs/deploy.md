@@ -132,8 +132,13 @@ kayıtları için okunur, kaldırılması ayrı küçük iş).
    NULL'dır; içe aktarma da (yeni sürümle) eşleşen NULL satırları türler, ama eski satırlar için
    dağıtımdan sonra `app` konteynerinde önce `python -m app.files.backfill_doc_type --dry-run`,
    sonra `python -m app.files.backfill_doc_type` çalıştırılır (migration 0011 `gorus` türünü
-   ekler, veriye dokunmaz). Çıktıdaki JSON'da tür başına güncellenen ve NULL kalan (yolu boş)
-   satır sayısı görünür; ikinci koşu 0 günceller.
+   ekler, veriye dokunmaz; `ALTER TYPE ... ADD VALUE` migration'ın transaction'ı içinde çalışır,
+   bu Postgres >= 12 ister). 0011 öncesi kodla içe aktarılan Görüş dosyaları `diger` almıştı:
+   düzeltme ikinci bir geçişle bunlardan yalnız sistem içe aktarması satırlarını (`uploaded_by`
+   NULL, `scan_result.import_path` dolu) `gorus` yapar; kullanıcının seçtiği türe dokunmaz.
+   Çıktıdaki JSON'da tür başına güncellenen (`updated`), `diger`'den `gorus`'a çevrilen
+   (`retyped`) ve NULL kalan (yolu boş) satır sayısı görünür; `--dry-run` ikisini de sayar;
+   ikinci koşu 0 günceller ve 0 çevirir.
 6. **Aktarım sonrası Drive salt arşivdir.** İki yönlü senkron yoktur; yeni dosyalar dashboard'daki
    Dosyalar ekranından yüklenir. `ARCHIVE_HOST_DIR` bağı, yukarıdaki kontrolde
    `storage_key`'i boş satır kalmadıysa ya da kalanların içeriği depoda varsa gerekmez (PDF

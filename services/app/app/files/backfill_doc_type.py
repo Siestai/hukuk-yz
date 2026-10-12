@@ -7,9 +7,12 @@ as new rows. Every `ingest_file` with a NULL `doc_type` gets the type of its Dri
 the same rule as the import (`doc_type_of`), from `scan_result.import_path` when there is one,
 else from `path` (relative to the Drive copy, e.g. `Yargi_Kararlari_Arsivi/...`). A path that
 matches no folder is `diger`; a row with an empty path stays NULL and is counted. A type that is
-set is never touched, so the run can be repeated (a second run updates 0) and does not race
-with an upload. `--dry-run` counts and writes nothing. This is a command and not an Alembic
-step: migrations are schema only (docs/decisions.md). Prints a JSON summary.
+set is never touched by that pass. A second pass retypes `diger` to `gorus` on rows of the system
+import (`uploaded_by` NULL and `scan_result.import_path` set) whose folder is Görüş: the import
+before migration 0011 had no such folder and typed them `diger`. A `diger` chosen on an upload
+(`uploaded_by` set) is never touched. The run can be repeated (a second run updates and retypes
+0) and does not race with an upload. `--dry-run` counts and writes nothing. This is a command
+and not an Alembic step: migrations are schema only (docs/decisions.md). Prints a JSON summary.
 """
 
 import argparse
@@ -18,15 +21,16 @@ import json
 import sys
 import uuid
 from collections import defaultdict
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
 from app.files.import_dir import doc_type_of
 from app.files.scan_result import IMPORT_PATH
-from app.models.common import IngestFile
+from app.models.common import DocumentType, IngestFile
 from app.settings import get_settings
 
 BATCH = 1000
@@ -68,10 +72,44 @@ async def backfill(factory: async_sessionmaker[AsyncSession], *, dry_run: bool) 
                     )
                     .values(doc_type=value)
                 )
-                count += result.rowcount  # type: ignore[attr-defined]
+                count += cast(CursorResult[Any], result).rowcount
             updated[value] = count
+        retyped = await _retype_gorus(db, dry_run=dry_run)
         await db.commit()
-    return {"dry_run": dry_run, "updated": updated, "left_null": left_null}
+    return {"dry_run": dry_run, "updated": updated, "retyped": retyped, "left_null": left_null}
+
+
+async def _retype_gorus(db: AsyncSession, *, dry_run: bool) -> dict[str, int]:
+    """`diger` -> `gorus` on system-imported rows under a Görüş folder; {} when none."""
+    found = await db.execute(
+        select(IngestFile.id, IngestFile.scan_result).where(
+            IngestFile.doc_type == DocumentType.diger, IngestFile.uploaded_by.is_(None)
+        )
+    )
+    gorus_ids: list[uuid.UUID] = []
+    for file_id, scan_result in found:
+        imported = (scan_result or {}).get(IMPORT_PATH)
+        if not isinstance(imported, str):
+            continue
+        parts = tuple(p for p in imported.split("/") if p.strip())
+        if parts and doc_type_of(parts) is DocumentType.gorus:
+            gorus_ids.append(file_id)
+    if dry_run:
+        count = len(gorus_ids)
+    else:
+        count = 0
+        for start in range(0, len(gorus_ids), BATCH):
+            result = await db.execute(
+                update(IngestFile)
+                .where(
+                    IngestFile.id.in_(gorus_ids[start : start + BATCH]),
+                    IngestFile.doc_type == DocumentType.diger,
+                    IngestFile.uploaded_by.is_(None),
+                )
+                .values(doc_type=DocumentType.gorus)
+            )
+            count += cast(CursorResult[Any], result).rowcount
+    return {"gorus": count} if count else {}
 
 
 def main(argv: list[str] | None = None) -> int:
