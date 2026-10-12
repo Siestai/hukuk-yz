@@ -3,7 +3,10 @@
 It claims one `queued` file at a time (`FOR UPDATE SKIP LOCKED`, so two workers never take the
 same row), detects its type, extracts the text and, where Tesseract is installed, runs OCR, all
 through `hukuk_ingest.pipeline.process_file`. The text goes to the file store; the outcome goes
-to `ingest_file.scan_status` / `scan_result` and the file's `ingest_job`. A file that cannot be
+to `ingest_file.scan_status` / `scan_result` and the file's `ingest_job`. Then the text is
+classified (rules, and for the fields they leave empty a language model, task 13a) and matched
+with the files already there; both land in `ingest_file.suggestions` / `matches`, never in the
+file's own fields. A file that cannot be
 scanned is marked `failed` with the error and the loop goes on. Files left `running` for more
 than `STUCK_AFTER` (a crashed worker) are queued again, up to `MAX_ATTEMPTS` claims.
 
@@ -25,11 +28,14 @@ from sqlalchemy import DateTime, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
+from app.files.detect_llm import make_detector
+from app.files.matching import Subject, compute_matches
 from app.files.scan_result import carry_import_path
 from app.files.store import CHUNK_BYTES, FileStore, LocalFileStore
 from app.logging_setup import configure_logging
 from app.models.common import IngestFile, IngestJob, IngestStatus, ScanStatus
 from app.settings import get_settings
+from hukuk_ingest.classify import Detector, classify
 from hukuk_ingest.pipeline import process_file
 
 logger = logging.getLogger("app.worker")
@@ -57,6 +63,7 @@ class Claimed:
     storage_key: str
     sha256: str
     token: str
+    name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +72,8 @@ class Scanned:
     result: dict[str, Any]
     detected_type: str | None = None
     error: str | None = None
+    # `Suggestion.to_dict()` per field; None when the file was not classified (a failed scan).
+    suggestions: dict[str, dict[str, Any]] | None = None
 
 
 async def requeue_stuck(factory: Factory) -> int:
@@ -146,12 +155,12 @@ async def claim(factory: Factory) -> Claimed | None:
         job.started_at = job.started_at or now
         job.finished_at = None
         await db.commit()
-        return Claimed(file.id, file.storage_key, file.sha256, token)
+        return Claimed(file.id, file.storage_key, file.sha256, token, file.original_name)
 
 
-def scan(store: FileStore, claimed: Claimed) -> Scanned:
-    """Detect, extract and (with Tesseract) OCR one stored file. Runs in a thread; a failure of
-    any kind is the outcome `failed`, not an exception."""
+def scan(store: FileStore, claimed: Claimed, detector: Detector | None = None) -> Scanned:
+    """Detect, extract, (with Tesseract) OCR and classify one stored file. Runs in a thread; a
+    failure of any kind is the outcome `failed`, not an exception."""
     try:
         with tempfile.TemporaryDirectory(prefix="scan-") as tmp:
             root = Path(tmp)
@@ -173,6 +182,7 @@ def scan(store: FileStore, claimed: Claimed) -> Scanned:
                 "reason": result.reason,
                 "extractor": result.extractor,
             }
+            text = ""
             if result.text_ref:
                 text = (root / "cache" / result.text_ref).read_bytes().decode("utf-8")
                 scan_result["text_key"] = store.put_text(claimed.sha256, text)
@@ -180,7 +190,15 @@ def scan(store: FileStore, claimed: Claimed) -> Scanned:
             status = _SCAN_STATUS.get(result.status, ScanStatus.failed)
             if status is ScanStatus.failed:
                 scan_result["error"] = result.error or result.reason
-            return Scanned(status, scan_result, result.detected_type, scan_result.get("error"))
+                return Scanned(status, scan_result, result.detected_type, scan_result["error"])
+            classified = classify(text, result.detected_type, claimed.name or "", detector)
+            scan_result["warnings"] = [*result.warnings, *classified.warnings]
+            return Scanned(
+                status,
+                scan_result,
+                result.detected_type,
+                suggestions={k: v.to_dict() for k, v in classified.suggestions.items()},
+            )
     except Exception as exc:
         logger.exception("scanning file %s failed", claimed.id)
         return _failed(f"{type(exc).__name__}: {exc}")
@@ -213,7 +231,59 @@ async def _refresh_job(db: AsyncSession, file: IngestFile, now: datetime) -> Non
         job.finished_at = now
 
 
-async def finish(factory: Factory, claimed: Claimed, scanned: Scanned) -> None:
+def _suggested(suggestions: dict[str, dict[str, Any]], name: str) -> str | None:
+    value = (suggestions.get(name) or {}).get("value")
+    return str(value) if value is not None else None
+
+
+def _user_suggestions(file: IngestFile) -> dict[str, dict[str, Any]]:
+    """What the user typed at the upload, as the suggestions the detection left alone."""
+    return {
+        k: {f: x for f, x in v.items() if f != "detected"}
+        for k, v in (file.suggestions or {}).items()
+        if v.get("source") == "user"
+    }
+
+
+async def _detect(db: AsyncSession, store: FileStore, file: IngestFile, scanned: Scanned) -> None:
+    """Write the suggestions of the scan and the matches with other files. What the user typed
+    at the upload stays as it is, marked as the user's; the file's own fields are not touched."""
+    assert scanned.suggestions is not None
+    typed = _user_suggestions(file)
+    # A value the user typed is shown; what the detection found for the field, when it differs,
+    # rides along as `detected` so the reviewer sees the disagreement.
+    for name, entry in typed.items():
+        found = scanned.suggestions.get(name)
+        typed[name] = {
+            **entry,
+            **({"detected": found} if found and found["value"] != entry["value"] else {}),
+        }
+    file.suggestions = {**scanned.suggestions, **typed}
+    text = ""
+    if text_key := file.scan_result and file.scan_result.get("text_key"):
+        text = await asyncio.to_thread(_read_text, store, text_key)
+    suggestions = file.suggestions
+    subject = Subject(
+        file.id,
+        file.supersedes_id,
+        frozenset(
+            t
+            for t in (file.doc_type and file.doc_type.value, _suggested(suggestions, "doc_type"))
+            if t
+        ),
+        file.official_ref or _suggested(suggestions, "official_ref"),
+        file.title or _suggested(suggestions, "title"),
+        file.original_name,
+    )
+    file.matches = await compute_matches(db, store, subject, text)
+
+
+def _read_text(store: FileStore, key: str) -> str:
+    with store.open(key) as fh:
+        return fh.read().decode("utf-8", errors="replace")
+
+
+async def finish(factory: Factory, store: FileStore, claimed: Claimed, scanned: Scanned) -> None:
     """Write the outcome to the file and refresh the job's status and counts. Only the attempt
     that claimed the file may write: a file queued again meanwhile (the scan outlived
     `STUCK_AFTER`) and perhaps claimed by another attempt keeps its place; the outcome is
@@ -240,23 +310,33 @@ async def finish(factory: Factory, claimed: Claimed, scanned: Scanned) -> None:
         }
         file.detected_type = scanned.detected_type or file.detected_type
         file.error = scanned.error
+        if scanned.suggestions is not None:
+            await _detect(db, store, file, scanned)
+        else:  # a failed scan: nothing computed from an earlier scan stays
+            file.suggestions = _user_suggestions(file) or None
+            file.matches = None
         await db.flush()
         await _refresh_job(db, file, now)
         await db.commit()
 
 
-async def scan_next(factory: Factory, store: FileStore) -> bool:
+async def scan_next(factory: Factory, store: FileStore, detector: Detector | None = None) -> bool:
     """Scan the oldest queued file; False when there is none."""
     claimed = await claim(factory)
     if claimed is None:
         return False
-    scanned = await asyncio.to_thread(scan, store, claimed)
-    await finish(factory, claimed, scanned)
+    scanned = await asyncio.to_thread(scan, store, claimed, detector)
+    await finish(factory, store, claimed, scanned)
     logger.info("file %s scanned: %s", claimed.id, scanned.status.value)
     return True
 
 
-async def run(stop: asyncio.Event, factory: Factory, store: FileStore | None) -> None:
+async def run(
+    stop: asyncio.Event,
+    factory: Factory,
+    store: FileStore | None,
+    detector: Detector | None = None,
+) -> None:
     """Scan until `stop` is set, logging a heartbeat every `HEARTBEAT_SECONDS`. Without a store
     (`FILE_STORE_ROOT` unset) there is nothing to scan: only the heartbeat runs."""
     if store is None:
@@ -271,7 +351,7 @@ async def run(stop: asyncio.Event, factory: Factory, store: FileStore | None) ->
         if store is not None:
             try:
                 await requeue_stuck(factory)
-                scanned_one = await scan_next(factory, store)
+                scanned_one = await scan_next(factory, store, detector)
             except Exception:
                 logger.exception("scan loop error")
         if not scanned_one:
@@ -293,7 +373,7 @@ async def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, stop.set)
     try:
-        await run(stop, make_session_factory(engine), store)
+        await run(stop, make_session_factory(engine), store, make_detector(settings))
     finally:
         await engine.dispose()
 

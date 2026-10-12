@@ -83,3 +83,16 @@ def test_a_missing_key_does_not_exist(tmp_path: Path) -> None:
     assert not store.exists(blob_key("0" * 64))
     with pytest.raises(FileNotFoundError):
         store.open(blob_key("0" * 64))
+
+
+def test_delete_removes_a_stored_file_and_a_missing_one_is_not_an_error(tmp_path: Path) -> None:
+    store = LocalFileStore(tmp_path)
+    stored = store.put(io.BytesIO(b"abc"))
+    text = store.put_text(stored.sha256, "abc")
+    store.delete(stored.key)
+    store.delete(text)
+    store.delete(stored.key)
+    assert not store.exists(stored.key)
+    assert not store.exists(text)
+    with pytest.raises(ValueError, match="not a file store key"):
+        store.delete("../outside")

@@ -39,6 +39,7 @@ from app.models.common import (
     IngestJob,
     IngestKind,
     IngestStatus,
+    ReviewStatus,
     ScanStatus,
 )
 from app.settings import get_settings
@@ -69,12 +70,18 @@ def fold(name: str) -> str:
     return plain.lower().replace("ı", "i")
 
 
+def name_key(text: str) -> str:
+    """`text` folded, with every run of other characters than letters and digits as one space:
+    what makes two titles or file stems the same name."""
+    folded = fold(text)
+    return " ".join("".join(c if c.isalnum() else " " for c in folded).split())
+
+
 def stem_key(name: str) -> str:
     """What makes two file names the same name for the `Eskiler/` link: the stem without the
     extension, folded, with every run of other characters than letters and digits as one
     space. `Kanun.pdf` and `KANUN.udf` agree; `5510 tarih 17.07.2024` does not match `5510`."""
-    stem = fold(PurePosixPath(name).stem)
-    return " ".join("".join(c if c.isalnum() else " " for c in stem).split())
+    return name_key(PurePosixPath(name).stem)
 
 
 def doc_type_of(parts: tuple[str, ...]) -> DocumentType:
@@ -184,6 +191,7 @@ async def _import_one(
             storage_key=stored.key,
             original_name=name,
             doc_type=doc_type_of(parts),
+            review_status=ReviewStatus.approved,  # a system import: no human step
             scan_status=ScanStatus.queued,
             scan_result={IMPORT_PATH: rel},
         )

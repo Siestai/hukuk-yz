@@ -1,9 +1,14 @@
-"""Files API (task 12a): upload, versions, list, detail, content and text, archive, rescan.
+"""Files API (task 12a, 13a): upload, versions, list, detail, content and text, approval,
+deletion, archive, rescan.
 
 Files are kept by content in a `FileStore`; `ingest_file` is the record. An upload is checked
 (size, extension, content type), stored, and queued for the worker, which scans it
 (`app.worker`). `original_name` is metadata only: no path of the file system or the store is
 ever built from it.
+
+An upload is `pending` until a reviewer approves it (`/approve`) with the final type and fields; the
+worker's suggestions and matches only help them decide. A pending file can be deleted, an
+approved one only after its approval is taken back (`/unapprove`, admin).
 
 The upload is parsed after the role check (a handler that declares no body parameters), so an
 unauthenticated request is refused before any of its body is read.
@@ -15,7 +20,7 @@ import logging
 import re
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import PurePosixPath
 from typing import Annotated, Any, BinaryIO
 from urllib.parse import quote
@@ -25,7 +30,7 @@ from fastapi.concurrency import iterate_in_threadpool, run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
-from sqlalchemy import Select, exists, func, literal, select, tuple_
+from sqlalchemy import Select, delete, exists, func, inspect, literal, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -33,27 +38,32 @@ from sqlalchemy.orm import aliased
 from app.auth import CurrentUser, Db, require_role
 from app.errors import ApiError
 from app.files.scan_result import carry_import_path
-from app.files.store import CHUNK_BYTES, FileStore, LocalFileStore
+from app.files.store import CHUNK_BYTES, FileStore, LocalFileStore, blob_key, text_key
 from app.files.upload import Staged, read_upload
 from app.models.common import (
     DocumentType,
+    Extraction,
+    FileDeletion,
     IngestFile,
     IngestJob,
     IngestKind,
+    ReviewStatus,
     ScanStatus,
 )
-from app.models.user import AppUser
+from app.models.user import AppUser, UserRole
 from app.review_common import Limit, reviewer_check
 from app.settings import get_settings
 from hukuk_ingest.detect import DetectedType, detect
 from hukuk_models import (
     DocType,
     ErrorCode,
+    FileApproval,
     FileDetail,
     FileFields,
     FileListItem,
     FileListResponse,
     FileOut,
+    ReviewState,
     ScanState,
 )
 
@@ -86,18 +96,17 @@ def get_store() -> FileStore:
 Store = Annotated[FileStore, Depends(get_store)]
 
 
-def _multipart_body(*, doc_type_required: bool) -> dict[str, Any]:
+def _multipart_body() -> dict[str, Any]:
     properties: dict[str, Any] = {"file": {"type": "string", "format": "binary"}}
     schema = FileFields.model_json_schema()
     for name in FORM_FIELDS:
         properties[name] = schema["properties"][name]
-    required = ["file", "doc_type"] if doc_type_required else ["file"]
     return {
         "requestBody": {
             "required": True,
             "content": {
                 "multipart/form-data": {
-                    "schema": {"type": "object", "properties": properties, "required": required}
+                    "schema": {"type": "object", "properties": properties, "required": ["file"]}
                 }
             },
         }
@@ -129,6 +138,12 @@ def _out(file: IngestFile, uploader_name: str | None) -> FileOut:
         scan_status=file.scan_status.value,
         scan_result=file.scan_result,
         archived_at=file.archived_at,
+        review_status=file.review_status.value,
+        approved_by_id=file.approved_by,
+        approved_at=file.approved_at,
+        title=file.title,
+        suggestions=file.suggestions,
+        matches=file.matches,
     )
 
 
@@ -179,6 +194,17 @@ def _fields(form: dict[str, str]) -> FileFields:
         ) from None
 
 
+def _typed_suggestions(fields: FileFields) -> dict[str, Any] | None:
+    """What the user typed in the form, as suggestions of the source `user`: the detection that
+    follows the scan leaves them as they are."""
+    typed = {
+        name: {"value": str(value), "source": "user", "evidence": None}
+        for name in ("doc_type", "doc_date", "official_ref")
+        if (value := getattr(fields, name)) is not None
+    }
+    return typed or None
+
+
 async def _duplicate(db: AsyncSession, sha256: str) -> ApiError | None:
     existing = (
         await db.execute(
@@ -209,10 +235,7 @@ async def _create(
         doc_type = fields.doc_type or (
             previous.doc_type.value if previous is not None and previous.doc_type else None
         )
-        if doc_type is None:
-            raise RequestValidationError(
-                [{"loc": ("body", "doc_type"), "type": "missing", "msg": "Field required"}]
-            )
+        await _lock_content(db, staged.sha256)
         detected, key = await run_in_threadpool(_check_and_store, store, staged, suffix)
     sha256, size = staged.sha256, staged.size
     if (error := await _duplicate(db, sha256)) is not None:
@@ -224,7 +247,7 @@ async def _create(
         detected_type=detected.value,
         storage_key=key,
         original_name=name,
-        doc_type=DocumentType(doc_type),
+        doc_type=DocumentType(doc_type) if doc_type else None,
         doc_date=fields.doc_date or (previous.doc_date if previous else None),
         official_ref=fields.official_ref or (previous.official_ref if previous else None),
         origin_url=fields.origin_url or (previous.origin_url if previous else None),
@@ -232,6 +255,8 @@ async def _create(
         uploaded_by=user.id,
         supersedes_id=previous.id if previous else None,
         scan_status=ScanStatus.queued,
+        review_status=ReviewStatus.pending,
+        suggestions=_typed_suggestions(fields),
     )
     job = IngestJob(created_by=user.id, kind=IngestKind.upload, stats={"files": 1})
     db.add(job)
@@ -254,7 +279,7 @@ async def _create(
     return _out(file, user.display_name)
 
 
-@router.post("", status_code=201, openapi_extra=_multipart_body(doc_type_required=True))
+@router.post("", status_code=201, openapi_extra=_multipart_body())
 async def upload_file(request: Request, db: Db, store: Store, user: CurrentUser) -> FileOut:
     return await _create(request, db, store, user, None)
 
@@ -262,7 +287,7 @@ async def upload_file(request: Request, db: Db, store: Store, user: CurrentUser)
 @router.post(
     "/{file_id}/versions",
     status_code=201,
-    openapi_extra=_multipart_body(doc_type_required=False),
+    openapi_extra=_multipart_body(),
 )
 async def upload_version(
     file_id: uuid.UUID, request: Request, db: Db, store: Store, user: CurrentUser
@@ -317,6 +342,7 @@ async def list_files(
     db: Db,
     doc_type: DocType | None = None,
     scan_status: ScanState | None = None,
+    review_status: ReviewState | None = None,
     q: Annotated[str | None, Query(max_length=200)] = None,
     archived: bool = False,
     cursor: Annotated[str | None, Query(max_length=100)] = None,
@@ -337,6 +363,8 @@ async def list_files(
         stmt = stmt.where(IngestFile.doc_type == DocumentType(doc_type))
     if scan_status is not None:
         stmt = stmt.where(IngestFile.scan_status == ScanStatus(scan_status))
+    if review_status is not None:
+        stmt = stmt.where(IngestFile.review_status == ReviewStatus(review_status))
     if q is not None and q.strip():
         pattern = _like(q.strip())
         stmt = stmt.where(
@@ -487,6 +515,179 @@ async def get_text(file_id: uuid.UUID, db: Db, store: Store) -> StreamingRespons
         disposition="inline",
         name=f"{file.original_name or file.sha256}.txt",
     )
+
+
+# --- approval and deletion ----------------------------------------------------------------------
+
+
+async def _lock(db: AsyncSession, file_id: uuid.UUID) -> IngestFile:
+    """The file, locked for the rest of the transaction and read fresh."""
+    file = (
+        await db.execute(
+            select(IngestFile)
+            .where(IngestFile.id == file_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none()
+    if file is None:
+        raise ApiError(404, ErrorCode.file_not_found)
+    return file
+
+
+async def _has_next(db: AsyncSession, file_id: uuid.UUID) -> bool:
+    return (
+        await db.execute(select(exists().where(IngestFile.supersedes_id == file_id)))
+    ).scalar_one()
+
+
+async def _check_link(db: AsyncSession, file: IngestFile, target_id: uuid.UUID) -> None:
+    """The rules of a version link (12a): the chain does not branch, an archived file gets no
+    next version; and the link may not close a loop."""
+    target = await db.get(IngestFile, target_id)
+    if target is None:
+        raise ApiError(404, ErrorCode.file_not_found)
+    conflict = ApiError(409, ErrorCode.file_version_conflict)
+    if target.id == file.id or target.archived_at is not None or await _has_next(db, target.id):
+        raise conflict
+    ancestor = target.supersedes_id
+    while ancestor is not None:  # `file` may not already be an ancestor of its own previous version
+        if ancestor == file.id:
+            raise conflict
+        ancestor = (
+            await db.execute(select(IngestFile.supersedes_id).where(IngestFile.id == ancestor))
+        ).scalar_one_or_none()
+
+
+@router.post("/{file_id}/approve")
+async def approve_file(
+    file_id: uuid.UUID, body: FileApproval, db: Db, user: CurrentUser
+) -> FileOut:
+    """Write the final type and fields of a pending file and mark it approved. The uploader may
+    approve their own file."""
+    file = await _lock(db, file_id)
+    if file.review_status is not ReviewStatus.pending:
+        raise ApiError(409, ErrorCode.file_not_pending)
+    if "supersedes_id" in body.model_fields_set and body.supersedes_id != file.supersedes_id:
+        if body.supersedes_id is not None:
+            await _check_link(db, file, body.supersedes_id)
+        file.supersedes_id = body.supersedes_id
+    file.doc_type = DocumentType(body.doc_type)
+    file.doc_date = body.doc_date
+    file.official_ref = body.official_ref
+    file.title = body.title
+    file.origin_url = body.origin_url
+    file.note = body.note
+    file.review_status = ReviewStatus.approved
+    file.approved_by = user.id
+    file.approved_at = datetime.now(UTC)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # Lost a race: the file we link to got its next version first.
+        raise ApiError(409, ErrorCode.file_version_conflict) from None
+    logger.info("file %s approved by %s", file.id, user.id)
+    return await _load_out(db, file_id)
+
+
+async def _load_out(db: AsyncSession, file_id: uuid.UUID) -> FileOut:
+    file, uploader = await _load(db, file_id)
+    return _out(file, uploader)
+
+
+@router.post("/{file_id}/unapprove", dependencies=[Depends(admin_check)])
+async def unapprove_file(file_id: uuid.UUID, db: Db) -> FileOut:
+    """Take the approval back: the file is pending again (and can be deleted). Refused when the
+    file has a next version; that one is dealt with first."""
+    file = await _lock(db, file_id)
+    if file.review_status is not ReviewStatus.approved:
+        raise ApiError(409, ErrorCode.file_not_approved)
+    if await _has_next(db, file.id):
+        raise ApiError(409, ErrorCode.file_has_newer_version)
+    file.review_status = ReviewStatus.pending
+    file.approved_by = None
+    file.approved_at = None
+    await db.commit()
+    return await _load_out(db, file_id)
+
+
+def _snapshot(file: IngestFile) -> dict[str, Any]:
+    """The whole row as JSON, for the `file_deletion` trace."""
+
+    def plain(value: Any) -> Any:
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return getattr(value, "value", value)
+
+    return {c.key: plain(getattr(file, c.key)) for c in inspect(IngestFile).column_attrs}
+
+
+def _remove_blobs(store: FileStore, sha256: str) -> None:
+    """Delete the blob and the text of a deleted file; a failure leaves an orphan for the next
+    clean-up (nothing refers to it any more)."""
+    for key in (blob_key(sha256), text_key(sha256)):
+        try:
+            store.delete(key)
+        except OSError:
+            logger.exception("could not delete %s from the file store; it is an orphan now", key)
+
+
+async def _lock_content(db: AsyncSession, sha256: str) -> None:
+    """Hold a transaction-long lock on the content `sha256`: an upload of the bytes and the
+    removal of their blob never interleave."""
+    key = int.from_bytes(bytes.fromhex(sha256)[:8], "big", signed=True)
+    await db.execute(select(func.pg_advisory_xact_lock(key)))
+
+
+async def _remove_unused_blobs(db: AsyncSession, store: FileStore, sha256: str) -> None:
+    """Remove the blob and text of `sha256` unless a row uses them. An upload of the same bytes
+    takes the content lock before it stores the blob and keeps it until its row is committed, so
+    under this lock a row is either visible here or its blob is stored after the removal."""
+    await _lock_content(db, sha256)
+    if not (await db.execute(select(exists().where(IngestFile.sha256 == sha256)))).scalar_one():
+        await run_in_threadpool(_remove_blobs, store, sha256)
+    await db.commit()
+
+
+@router.delete("/{file_id}", status_code=204)
+async def delete_file(file_id: uuid.UUID, db: Db, store: Store, user: CurrentUser) -> None:
+    """Delete a pending file: its row (kept in `file_deletion`), its job when it was the job's
+    only file, and its blob and text unless another row uses the content. The uploader deletes
+    their own files, an admin any."""
+    file = await _lock(db, file_id)
+    if file.uploaded_by != user.id and user.role is not UserRole.admin:
+        raise ApiError(403, ErrorCode.forbidden)
+    if file.review_status is ReviewStatus.approved:
+        raise ApiError(409, ErrorCode.file_approved)
+    if file.scan_status in (ScanStatus.queued, ScanStatus.running):
+        raise ApiError(409, ErrorCode.scan_in_progress)  # the worker is about to write to it
+    if await _has_next(db, file.id):
+        raise ApiError(409, ErrorCode.file_has_newer_version)
+    if (await db.execute(select(exists().where(Extraction.file_id == file.id)))).scalar_one():
+        raise ApiError(409, ErrorCode.file_processed)
+    sha256, job_id, key = file.sha256, file.job_id, file.storage_key
+    db.add(
+        FileDeletion(
+            file_id=file.id,
+            sha256=sha256,
+            original_name=file.original_name,
+            doc_type=file.doc_type,
+            review_status=file.review_status,
+            deleted_by=user.id,
+            snapshot=_snapshot(file),
+        )
+    )
+    await db.delete(file)
+    await db.flush()
+    if not (await db.execute(select(exists().where(IngestFile.job_id == job_id)))).scalar_one():
+        await db.execute(delete(IngestJob).where(IngestJob.id == job_id))
+    await db.commit()
+    logger.info("file %s deleted by %s", file_id, user.id)
+    if key is not None:
+        await _remove_unused_blobs(db, store, sha256)
 
 
 # --- admin ------------------------------------------------------------------------------------

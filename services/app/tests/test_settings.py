@@ -28,3 +28,15 @@ def test_empty_env_values_count_as_unset(monkeypatch: pytest.MonkeyPatch) -> Non
     settings = Settings()
     assert settings.archive_root is None
     assert settings.login_window_minutes == 15
+
+
+def test_the_llm_detection_is_off_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("FILE_DETECT_LLM_PROVIDER", "FILE_DETECT_LLM_MODEL", "FILE_DETECT_LLM_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
+    settings = Settings()
+    assert settings.file_detect_llm_provider == "none"
+    assert settings.file_detect_llm_api_key is None
+    assert settings.file_detect_llm_model.startswith("claude-haiku")
+    monkeypatch.setenv("FILE_DETECT_LLM_API_KEY", "secret-key")
+    assert "secret-key" not in repr(Settings())

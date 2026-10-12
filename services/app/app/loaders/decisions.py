@@ -43,6 +43,7 @@ from app.models.common import (
     IngestStatus,
     License,
     RecordStatus,
+    ReviewStatus,
     Source,
     SourceCategory,
     SourceRank,
@@ -252,6 +253,7 @@ async def _write(
                     "sha256": p.sha256,
                     "detected_type": p.detected_type,
                     "size": p.size,
+                    "review_status": ReviewStatus.approved,  # a system import: no human step
                 }
             )
         extractions.append(

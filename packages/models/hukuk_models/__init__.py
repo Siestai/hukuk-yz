@@ -45,6 +45,13 @@ class ErrorCode(StrEnum):
     # a new version of a file that has a newer one already, or of an archived file
     file_version_conflict = "file_version_conflict"
     scan_in_progress = "scan_in_progress"  # a rescan of a file that is being scanned now
+    file_not_pending = "file_not_pending"  # approving a file that is approved already
+    file_not_approved = "file_not_approved"  # taking the approval from a pending file
+    file_approved = "file_approved"  # deleting an approved file: its approval goes first
+    file_has_newer_version = (
+        "file_has_newer_version"  # un-approving / deleting a file with a next version
+    )
+    file_processed = "file_processed"  # deleting a file the knowledge base has been built from
     invalid_date = "invalid_date"  # params: field
     http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
     internal_error = "internal_error"
@@ -466,11 +473,13 @@ DocType = Literal[
     "diger",
 ]
 ScanState = Literal["queued", "running", "done", "needs_ocr", "unsupported", "failed"]
+ReviewState = Literal["pending", "approved"]
 
 
 class FileFields(BaseModel):
-    """The form fields of an upload (`POST /files`, `POST /files/{id}/versions`). Empty fields
-    of a form count as absent."""
+    """The form fields of an upload (`POST /files`, `POST /files/{id}/versions`), all optional:
+    what is left out is detected and confirmed at the approval. Empty fields of a form count as
+    absent."""
 
     doc_type: DocType | None = None
     doc_date: date | None = None  # publication or signature date of the document
@@ -501,6 +510,37 @@ class FileOut(BaseModel):
     scan_status: ScanState
     scan_result: dict[str, Any] | None
     archived_at: datetime | None
+    review_status: ReviewState
+    approved_by_id: uuid.UUID | None  # None on an approved file: the system import
+    approved_at: datetime | None
+    title: str | None
+    # Per field `{"value", "source": "rule" | "llm" | "user", "evidence": {...} | None}`; a field
+    # nothing was found for is absent. A `user` entry whose value differs from what the detection
+    # found carries that entry beside it as `detected`.
+    suggestions: dict[str, Any] | None
+    # `{"previous_version": {"file_id", "reason"} | None, "similar": [{file_id, score, reason}]}`
+    matches: dict[str, Any] | None
+
+
+class FileApproval(BaseModel):
+    """The final fields of a file, from the approval screen. `doc_type` is required. Every other
+    field is written as sent (left out = empty), except `supersedes_id`: left out keeps the
+    version the file was uploaded as, null makes it a document of its own."""
+
+    doc_type: DocType
+    doc_date: date | None = None
+    official_ref: Annotated[str, StringConstraints(max_length=200)] | None = None
+    title: Annotated[str, StringConstraints(max_length=500)] | None = None
+    origin_url: Annotated[str, StringConstraints(max_length=2000)] | None = None
+    note: Annotated[str, StringConstraints(max_length=2000)] | None = None
+    supersedes_id: uuid.UUID | None = None
+
+    @field_validator("official_ref", "title", "origin_url", "note", mode="before")
+    @classmethod
+    def _blank_is_empty(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
 
 class FileListItem(FileOut):

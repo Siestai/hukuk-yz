@@ -39,6 +39,9 @@ class FileStore(Protocol):
 
     def open(self, key: str) -> BinaryIO: ...
 
+    def delete(self, key: str) -> None:
+        """Remove the stored file; one that is not there is not an error."""
+
     def exists(self, key: str) -> bool: ...
 
 
@@ -122,6 +125,9 @@ class LocalFileStore:
 
     def open(self, key: str) -> BinaryIO:
         return self._path(key).open("rb")
+
+    def delete(self, key: str) -> None:
+        self._path(key).unlink(missing_ok=True)
 
     def exists(self, key: str) -> bool:
         return self._path(key).is_file()

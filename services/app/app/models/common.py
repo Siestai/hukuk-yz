@@ -214,6 +214,13 @@ class ScanStatus(PgEnum):
     failed = "failed"
 
 
+class ReviewStatus(PgEnum):
+    """A human has not yet / has confirmed the type and fields of an uploaded file (task 13)."""
+
+    pending = "pending"
+    approved = "approved"
+
+
 # Enum class -> Postgres type name; the migration creates exactly these.
 ENUM_TYPES: dict[str, type[PgEnum]] = {
     "source_category": SourceCategory,
@@ -235,6 +242,7 @@ ENUM_TYPES: dict[str, type[PgEnum]] = {
     "chunk_kind": ChunkKind,
     "document_type": DocumentType,
     "scan_status": ScanStatus,
+    "review_status": ReviewStatus,
 }
 
 
@@ -358,6 +366,12 @@ class IngestFile(UuidPkMixin, Base):
             "scan_status",
             postgresql_where=text("scan_status IN ('queued', 'running')"),
         ),
+        # The "waiting for approval" list and its count; the archive rows are all approved.
+        Index(
+            "ix_ingest_file_review_pending",
+            "review_status",
+            postgresql_where=text("review_status = 'pending'"),
+        ),
     )
 
     job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ingest_job.id"), index=True)
@@ -383,6 +397,33 @@ class IngestFile(UuidPkMixin, Base):
     )
     scan_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     archived_at: Mapped[datetime | None]
+    # Task 13. The rows that existed before it came from the folder tree of the system import and
+    # were set to approved (`approved_by` NULL) by the migration; every insert names the status
+    # (no default: a forgotten one fails instead of passing as approved). A pending file is never
+    # a source (data-model.md).
+    review_status: Mapped[ReviewStatus] = mapped_column(ReviewStatus.pg_type("review_status"))
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    approved_at: Mapped[datetime | None]
+    title: Mapped[str | None]
+    # Detected values per field with source and evidence; detection never writes the real fields.
+    suggestions: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    matches: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+class FileDeletion(UuidPkMixin, Base):
+    """The trace of a deleted upload (task 13, md. 25): the row as it was, kept after the file
+    is gone. `file_id` has no foreign key on purpose."""
+
+    __tablename__ = "file_deletion"
+
+    file_id: Mapped[uuid.UUID]
+    sha256: Mapped[str]
+    original_name: Mapped[str | None]
+    doc_type: Mapped[DocumentType | None] = mapped_column(DocumentType.pg_type("document_type"))
+    review_status: Mapped[ReviewStatus] = mapped_column(ReviewStatus.pg_type("review_status"))
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    deleted_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
 
 
 class Extraction(UuidPkMixin, Base):

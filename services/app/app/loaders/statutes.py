@@ -58,6 +58,7 @@ from app.models.common import (
     IngestStatus,
     License,
     RecordStatus,
+    ReviewStatus,
     Source,
     SourceCategory,
     SourceRank,
@@ -220,6 +221,7 @@ async def _write_statute(
                     "sha256": snap["sha256"],
                     "detected_type": meta.get("detected_type"),
                     "size": meta.get("size", 0),
+                    "review_status": ReviewStatus.approved,  # a system import: no human step
                 },
             )
             counts.files_new += 1

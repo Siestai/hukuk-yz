@@ -122,8 +122,9 @@ def test_the_gorus_migration_downgrades_to_0010(alembic_config: Config, database
         asyncio.run(
             run(
                 "WITH job AS (INSERT INTO ingest_job (kind, status) VALUES ('bulk', 'running') "
-                "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size, doc_type) "
-                "SELECT id, 'Mevzuat/Gorus/a.pdf', 'x', 1, 'gorus' FROM job RETURNING 1"
+                "RETURNING id) INSERT INTO ingest_file "
+                "(job_id, path, sha256, size, doc_type, review_status) "
+                "SELECT id, 'Mevzuat/Gorus/a.pdf', 'x', 1, 'gorus', 'approved' FROM job RETURNING 1"
             )
         )
         command.downgrade(alembic_config, "0010")
@@ -131,6 +132,41 @@ def test_the_gorus_migration_downgrades_to_0010(alembic_config: Config, database
         assert asyncio.run(run("SELECT doc_type::text FROM ingest_file")) == ["diger"]
         command.upgrade(alembic_config, "head")
         assert "gorus" in labels()
+    finally:
+        command.upgrade(alembic_config, "head")
+        asyncio.run(run("DELETE FROM ingest_file RETURNING 1"))
+        asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))
+
+
+def test_the_review_migration_keeps_old_rows_approved_and_downgrades_to_0011(
+    alembic_config: Config, database_url: str
+) -> None:
+    async def run(sql: str) -> list[str]:
+        engine = make_engine(database_url)
+        try:
+            async with engine.begin() as conn:
+                return [str(row[0]) for row in await conn.execute(text(sql))]
+        finally:
+            await engine.dispose()
+
+    insert = (
+        "WITH job AS (INSERT INTO ingest_job (kind, status) VALUES ('bulk', 'running') "
+        "RETURNING id) INSERT INTO ingest_file (job_id, path, sha256, size) "
+        "SELECT id, 'a.pdf', 'x', 1 FROM job RETURNING 1"
+    )
+    command.downgrade(alembic_config, "0011")  # the fixture migrated to head
+    try:
+        asyncio.run(run(insert))
+        command.upgrade(alembic_config, "head")
+        # The row that existed before the migration is approved; an insert that does not name
+        # the status fails (no default).
+        assert asyncio.run(run("SELECT review_status::text FROM ingest_file")) == ["approved"]
+        with pytest.raises(IntegrityError, match="review_status"):
+            asyncio.run(run(insert))
+        command.downgrade(alembic_config, "0011")
+        assert "file_deletion" not in _tables(database_url)
+        command.upgrade(alembic_config, "head")
+        assert "file_deletion" in _tables(database_url)
     finally:
         command.upgrade(alembic_config, "head")
         asyncio.run(run("DELETE FROM ingest_file RETURNING 1"))

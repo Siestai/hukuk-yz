@@ -29,6 +29,12 @@ export const file: FileOut = {
         text_key: "text/aaa.txt",
     },
     archived_at: null,
+    review_status: "approved",
+    approved_by_id: null,
+    approved_at: null,
+    title: null,
+    suggestions: null,
+    matches: null,
 };
 
 export const listItem: FileListItem = { ...file, version_count: 2 };
