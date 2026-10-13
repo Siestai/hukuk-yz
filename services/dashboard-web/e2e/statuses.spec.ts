@@ -177,7 +177,7 @@ test("an approved record is taken back with 'Onaydan çıkar' and can then be re
     // the history card's title is not a heading element; its entries are the list items
     const entry = page.getByRole("listitem").filter({ hasText: "Yeniden incelemeye aldı" });
     await expect(entry).toHaveCount(1);
-    await expect(entry).toContainText("E2E Test");
+    await expect(entry).toContainText(REVIEWER);
     await expect(entry).toContainText("e2e: yanlış onay");
 
     await actionBar(page)
