@@ -169,9 +169,7 @@ test.describe("phone 360x740", () => {
         await expect(page.getByRole("dialog")).toBeVisible();
         await page.setViewportSize({ width: 1280, height: 800 });
         await expect(page.getByRole("dialog")).toHaveCount(0);
-        const link = page
-            .getByRole("complementary")
-            .getByRole("link", { name: /Kararlar/ });
+        const link = page.getByRole("complementary").getByRole("link", { name: /Kararlar/ });
         await expect(link).toBeVisible();
         await link.click();
         await expect(page).toHaveURL(/\/$/);

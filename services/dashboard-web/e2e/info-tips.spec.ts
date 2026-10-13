@@ -5,7 +5,8 @@ import { openQueue } from "./helpers";
 // Read-only, projects `chromium` (mouse and keyboard) and `chromium-mobile` (touch). Every test
 // starts in a fresh browser context, so the welcome card has not been closed yet.
 
-const titleTip = (page: Page) => page.getByRole("button", { name: "Bilgi: Karar inceleme kuyruğu" });
+const titleTip = (page: Page) =>
+    page.getByRole("button", { name: "Bilgi: Karar inceleme kuyruğu" });
 const tipBox = (page: Page) => page.locator('[data-slot="info-tip-content"]');
 const welcome = (page: Page) => page.getByRole("region", { name: "Libria nedir?" });
 
@@ -148,7 +149,9 @@ test("the welcome card closes with 'Anladım', stays closed after a reload and c
     await expect(welcome(page)).toHaveCount(0);
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Karar inceleme kuyruğu", level: 1 })).toBeVisible();
+    await expect(
+        page.getByRole("heading", { name: "Karar inceleme kuyruğu", level: 1 }),
+    ).toBeVisible();
     // Hydration has run by the time the toggle is interactive; the card must not have come back.
     await expect(page.getByRole("button", { name: "Bu ekran nedir?" })).toHaveAttribute(
         "aria-expanded",
