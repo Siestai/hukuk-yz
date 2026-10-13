@@ -169,9 +169,7 @@ test.describe("phone 360x740", () => {
         await expect(page.getByRole("dialog")).toBeVisible();
         await page.setViewportSize({ width: 1280, height: 800 });
         await expect(page.getByRole("dialog")).toHaveCount(0);
-        const link = page
-            .getByRole("complementary")
-            .getByRole("link", { name: /İnceleme kuyruğu/ });
+        const link = page.getByRole("complementary").getByRole("link", { name: /Kararlar/ });
         await expect(link).toBeVisible();
         await link.click();
         await expect(page).toHaveURL(/\/$/);
@@ -194,11 +192,11 @@ test.describe("phone 360x740", () => {
         const drawer = page.getByRole("dialog", { name: "Menü" });
         await expect(drawer).toBeVisible();
         await expect(menu).toHaveAttribute("aria-expanded", "true");
-        await drawer.getByRole("link", { name: /İnceleme kuyruğu/ }).click();
+        await drawer.getByRole("link", { name: /Kararlar/ }).click();
         await expect(page).toHaveURL(/\/$/);
         await expect(drawer).toBeHidden();
         await expect(
-            page.getByRole("heading", { name: "İnceleme kuyruğu", level: 1 }),
+            page.getByRole("heading", { name: "Karar inceleme kuyruğu", level: 1 }),
         ).toBeVisible();
     });
 

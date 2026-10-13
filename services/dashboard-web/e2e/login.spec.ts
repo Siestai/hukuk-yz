@@ -30,7 +30,9 @@ test("a wrong password shows the Turkish error, the right one signs in", async (
     await page.getByLabel("Parola").fill(password);
     await page.getByRole("button", { name: "Giriş yap" }).click();
     await expect(page).toHaveURL((url) => url.pathname === "/");
-    await expect(page.getByRole("heading", { name: "İnceleme kuyruğu", level: 1 })).toBeVisible();
+    await expect(
+        page.getByRole("heading", { name: "Karar inceleme kuyruğu", level: 1 }),
+    ).toBeVisible();
 });
 
 test("empty fields are asked for before anything is sent", async ({ page }) => {
@@ -47,7 +49,9 @@ test("signing out returns to the login page and closes the session", async ({ pa
     await page.getByLabel("E-posta").fill(email);
     await page.getByLabel("Parola").fill(password);
     await page.getByRole("button", { name: "Giriş yap" }).click();
-    await expect(page.getByRole("heading", { name: "İnceleme kuyruğu", level: 1 })).toBeVisible();
+    await expect(
+        page.getByRole("heading", { name: "Karar inceleme kuyruğu", level: 1 }),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "Çıkış yap" }).click();
     await expect(page).toHaveURL(/\/giris/);

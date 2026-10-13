@@ -29,7 +29,7 @@ const TAB_HEADINGS: Record<string, string> = {
 export async function openQueue(page: Page, query = ""): Promise<void> {
     await page.goto(query ? `/?${query}` : "/");
     const tab = new URLSearchParams(query).get("durum") ?? "";
-    const heading = TAB_HEADINGS[tab] ?? "İnceleme kuyruğu";
+    const heading = TAB_HEADINGS[tab] ?? "Karar inceleme kuyruğu";
     await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
 }
 
