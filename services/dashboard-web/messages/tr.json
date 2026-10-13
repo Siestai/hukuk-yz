@@ -20,7 +20,7 @@
   },
   "nav": {
     "label": "Ana menü",
-    "queue": "İnceleme kuyruğu",
+    "queue": "Kararlar",
     "sources": "Kaynaklar",
     "knowledgeBase": "Bilgi tabanı",
     "comingSoon": "Yakında",
@@ -34,7 +34,7 @@
   },
   "review": {
     "queue": {
-      "title": "İnceleme kuyruğu",
+      "title": "Karar inceleme kuyruğu",
       "subtitle": "{total, number} karar onay bekliyor",
       "sort": {
         "label": "Sıralama",
@@ -164,7 +164,7 @@
         "colReasons": "Kaydın neden işaretlendiği. İlk sebep adıyla görünür, kalanı \"+sayı\" olarak. Hepsini kayıt açılınca görürsünüz.",
         "cards": "Her kart bir karardır. Üstte güven bandı ve puan, altında karar başlığı, mahkeme ve daire, esas / karar numarası ve tarih, dergi sayısı, işaretlenme sebepleri. Mükerrer işareti, aynı kararın başka bir kayıtta da bulunduğunu gösterir. Karta dokununca kayıt açılır. İncelenmiş kararlarda ayrıca durum, inceleme tarihi ve inceleyen, reddedilende ret notu görünür.",
         "pagination": "Liste sayfalara bölünmüştür. Soldaki sayılar bu sayfadaki kayıtların sırasını ve toplamı gösterir.",
-        "navPending": "Onay bekleyen karar sayısı, yani inceleme kuyruğundaki kayıtlar.",
+        "navPending": "Onay bekleyen karar sayısı, yani incelenmeyi bekleyen kayıtlar.",
         "navSources": "Bu bölüm henüz hazır değil. Hazır olunca kaynakları burada göreceksiniz.",
         "navKnowledgeBase": "Bu bölüm henüz hazır değil. Onaylanan kayıtlar hazır olunca burada bilgi tabanı olarak görünecek.",
         "reason": {
