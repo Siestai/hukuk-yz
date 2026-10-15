@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../../messages/tr.json";
 import { renderWithIntl } from "@/test/intl";
@@ -8,6 +8,10 @@ import { PdfPanel } from "./pdf-panel";
 
 const SRC = "/api/review/decisions/d1/file";
 const pdf = messages.review.detail.pdf;
+
+vi.mock("@/components/pdf-viewer/pdf-viewer", () => ({
+    PdfViewer: ({ src }: { src: string }) => <div data-testid="pdf-viewer" data-src={src} />,
+}));
 
 describe("PdfPanel", () => {
     it("renders the titled iframe straight away when the PDF is available", () => {
@@ -63,5 +67,26 @@ describe("PdfPanel", () => {
         await userEvent.click(screen.getByRole("button", { name: pdf.close }));
         expect(screen.queryByRole("dialog")).toBeNull();
         expect(opener).toHaveFocus();
+    });
+
+    describe("on a phone", () => {
+        const original = window.matchMedia;
+        afterEach(() => {
+            window.matchMedia = original;
+        });
+
+        it("draws the pages with PDF.js in the window instead of a frame", async () => {
+            window.matchMedia = ((query: string) => ({
+                matches: true,
+                media: query,
+                addEventListener: () => {},
+                removeEventListener: () => {},
+            })) as unknown as typeof window.matchMedia;
+            renderWithIntl(<PdfPanel src={SRC} availability="available" />);
+            await userEvent.click(screen.getByRole("button", { name: pdf.open }));
+            const dialog = screen.getByRole("dialog", { name: pdf.title });
+            expect(within(dialog).getByTestId("pdf-viewer")).toHaveAttribute("data-src", SRC);
+            expect(within(dialog).queryByTitle(pdf.title)).toBeNull();
+        });
     });
 });

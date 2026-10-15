@@ -16,6 +16,7 @@
 - [ ] Görev 10i: karar detayında PDF penceresi ve hep görünür "Düzelt" (uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/10i-detail-pdf-sticky-edit.md`)
 - [ ] Görev 10j: statuses e2e "Onaydan çıkar" testi sabit inceleyen adı yüzünden düşüyordu (uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/10j-e2e-statuses-fix.md`)
 - [ ] Görev 10l: AYM bireysel başvuru kararları Başvuru No + tarihle gösterilir, Karar no yüzünden düşük banda düşmez (uygulandı, PR Orhan'ın onayında; ayrıntı `docs/tasks/10l-aym-application-no.md`). Canlıda mevcut kayıtlar için: migrasyon sonrası `python -m app.loaders.rescore`
+- [ ] Görev 10k: telefonda PDF görüntüleyici, PDF.js ile sayfalar canvas'a çizilir (uygulandı, PR Orhan'ın onayında; merge sonrası gerçek Android Chrome'da doğrulanacak; ayrıntı `docs/tasks/10k-mobile-pdf-viewer.md`)
 - [ ] 13a canlıya çıkmadan: LLM sağlayıcısı + bölge + anahtar kararı (Orhan), `FILE_DETECT_LLM_*` ayarları (deploy.md); o zamana kadar tespit yalnız kurallarla çalışır
 - [ ] Görev 12e (öneri, 12c'nin hemen ardından): `filestore` volume'ünün zamanlanmış yedeği; o zamana kadar tek kopya sunucu diskinde (deploy.md)
 - [ ] 12c sonrası: tam Drive aktarımında 43 `Eskiler/` dosyası güncel dosyayla eşleşmedi; İbrahim'le elle bağlama ya da ad kuralı (decisions.md)

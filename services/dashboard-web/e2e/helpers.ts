@@ -84,3 +84,64 @@ export async function lengthenText(page: Page): Promise<void> {
         }
     });
 }
+
+/** A PDF with `count` pages of large text ("SAYFA n"), so a drawn page is not blank. */
+export function pdfOfPages(count: number): Buffer {
+    const fonts = 3;
+    const objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        `<< /Type /Pages /Kids [${Array.from({ length: count }, (_, i) => `${fonts + 1 + 2 * i} 0 R`).join(" ")}] /Count ${count} >>`,
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ];
+    for (let i = 0; i < count; i++) {
+        const stream = `BT /F1 48 Tf 50 700 Td (SAYFA ${i + 1}) Tj ET`;
+        objects.push(
+            `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents ${fonts + 2 + 2 * i} 0 R /Resources << /Font << /F1 3 0 R >> >> >>`,
+            `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+        );
+    }
+    let body = "%PDF-1.4\n";
+    const offsets = objects.map((object, i) => {
+        const at = body.length;
+        body += `${i + 1} 0 obj\n${object}\nendobj\n`;
+        return at;
+    });
+    const xref = body.length;
+    body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    body += offsets.map((at) => `${String(at).padStart(10, "0")} 00000 n \n`).join("");
+    body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    return Buffer.from(body, "latin1");
+}
+
+/**
+ * The PDF.js viewer in `dialog` has drawn `count` pages: one canvas each, with ink on it. A phone
+ * emulated in Chromium still has the desktop PDF viewer, so an iframe proves nothing here; the
+ * canvases do. A cleared canvas is transparent black, so only opaque pixels count: dark ink and a
+ * light page background.
+ */
+export async function expectPagesDrawn(dialog: Locator, count: number): Promise<void> {
+    const canvases = dialog.locator("canvas");
+    await expect(canvases).toHaveCount(count);
+    await expect
+        .poll(() =>
+            canvases.evaluateAll((all) =>
+                all.map((element) => {
+                    const canvas = element as HTMLCanvasElement;
+                    const context = canvas.getContext("2d");
+                    if (!context || canvas.width === 0) return false;
+                    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+                    let ink = false;
+                    let paper = false;
+                    for (let i = 0; i < data.length; i += 4) {
+                        if (data[i + 3]! <= 200) continue;
+                        if (data[i]! < 128 && data[i + 1]! < 128 && data[i + 2]! < 128) ink = true;
+                        else if (data[i]! > 200 && data[i + 1]! > 200 && data[i + 2]! > 200) {
+                            paper = true;
+                        }
+                    }
+                    return ink && paper;
+                }),
+            ),
+        )
+        .toEqual(Array<boolean>(count).fill(true));
+}

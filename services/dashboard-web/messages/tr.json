@@ -889,6 +889,15 @@
     "text_completeness": "Metin kapsamı",
     "journal_issue": "Dergi sayısı"
   },
+  "pdfViewer": {
+    "pages": "PDF sayfaları",
+    "loading": "PDF yükleniyor…",
+    "failed": "PDF bu pencerede gösterilemedi. Yeni sekmede açmayı deneyin.",
+    "newTab": "Yeni sekmede aç",
+    "zoom": "Yakınlaştırma",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır"
+  },
   "files": {
     "list": {
       "title": "Dosyalar",
@@ -979,7 +988,8 @@
       "newVersion": "Yeni sürüm yükle",
       "viewer": {
         "open": "Dosyayı aç",
-        "title": "Dosyanın içeriği"
+        "title": "Dosyanın içeriği",
+        "close": "Kapat"
       },
       "text": {
         "show": "Metni gör",

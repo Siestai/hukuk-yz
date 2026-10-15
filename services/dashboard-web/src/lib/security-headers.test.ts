@@ -20,6 +20,7 @@ describe("contentSecurityPolicy", () => {
         ["font-src", "font-src 'self'"],
         ["connect-src", "connect-src 'self'"],
         ["frame-src", "frame-src 'self'"],
+        ["worker-src", "worker-src 'self'"],
         ["object-src", "object-src 'none'"],
         ["frame-ancestors", "frame-ancestors 'none'"],
         ["base-uri", "base-uri 'self'"],
