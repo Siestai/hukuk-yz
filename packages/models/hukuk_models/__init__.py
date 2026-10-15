@@ -228,6 +228,7 @@ class ReviewListItem(BaseModel):
     chamber: str
     esas_no: str
     karar_no: str
+    decision_kind: str
     decision_date: str
     journal_issue: int | None
     band: Band

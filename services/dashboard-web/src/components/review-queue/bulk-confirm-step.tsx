@@ -15,6 +15,8 @@ export type BulkSample = {
     title: string;
     esasNo: string;
     kararNo: string;
+    /** An AYM individual application: `esasNo` holds its Başvuru No. */
+    application?: boolean;
     note?: string;
 };
 
@@ -45,12 +47,14 @@ export function BulkConfirmStep({ params, total, sample, onStart, onCancel }: Pr
     ].filter((filter) => filter !== null);
     const numbers = (item: BulkSample) =>
         item.note ??
-        ([
-            item.esasNo && t("esas", { value: item.esasNo }),
-            item.kararNo && t("karar", { value: item.kararNo }),
-        ]
-            .filter(Boolean)
-            .join(separator) ||
+        ((item.application
+            ? t("applicationNo", { value: item.esasNo })
+            : [
+                  item.esasNo && t("esas", { value: item.esasNo }),
+                  item.kararNo && t("karar", { value: item.kararNo }),
+              ]
+                  .filter(Boolean)
+                  .join(separator)) ||
             empty);
 
     return (

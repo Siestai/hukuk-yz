@@ -63,6 +63,14 @@ export function readFields(fields: Record<string, unknown>): DecisionFields {
     };
 }
 
+/** An AYM individual application has a Başvuru No (kept as esas_no) and no Esas or Karar no. */
+export function isApplication({
+    court,
+    decisionKind,
+}: Pick<DecisionFields, "court" | "decisionKind">) {
+    return court === "aym" && decisionKind === "bireysel_basvuru";
+}
+
 /** An HGK esas number carries the chamber it came from: "2019/1234" and chamber "9" read "2019/9-1234". */
 export function esasDisplay({ esasNo, sourceChamber }: DecisionFields): string {
     const parts = /^(\d{4})\/(.+)$/.exec(esasNo);

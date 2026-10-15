@@ -144,6 +144,7 @@ def newest_extractions(source_id: uuid.UUID | None = None) -> Subquery:
             Extraction.chamber,
             Extraction.esas_no,
             Extraction.karar_no,
+            Extraction.decision_kind,
             Extraction.decision_date,
             Extraction.journal_issue,
             Extraction.duplicate_group,

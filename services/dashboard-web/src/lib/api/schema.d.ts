@@ -1094,6 +1094,8 @@ export interface components {
             court: string;
             /** Decision Date */
             decision_date: string;
+            /** Decision Kind */
+            decision_kind: string;
             /** Duplicate Group */
             duplicate_group: {
                 [key: string]: unknown;

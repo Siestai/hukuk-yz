@@ -90,6 +90,7 @@ def _list_item(row: Any) -> ReviewListItem:
         chamber=row.chamber,
         esas_no=row.esas_no,
         karar_no=row.karar_no,
+        decision_kind=row.decision_kind,
         decision_date=row.decision_date,
         journal_issue=row.journal_issue,
         band=row.band,

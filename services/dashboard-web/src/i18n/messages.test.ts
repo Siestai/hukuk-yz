@@ -93,8 +93,9 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.suggestionSource": SUGGESTION_SOURCES,
     "enums.matchReason": MATCH_REASONS,
     "enums.sourceStatus": schemaEnum("ReviewDetail", "source_status"),
-    // The fields a reviewer may correct, plus the read-only ones the detail screen shows.
-    fields: [...schemaProperties("DecisionEdits"), "journal_issue"],
+    // The fields a reviewer may correct, plus the read-only ones the detail screen shows and the
+    // label an AYM individual application gives its esas_no.
+    fields: [...schemaProperties("DecisionEdits"), "journal_issue", "application_no"],
     // "available" shows the frame; the other two values are the empty-state texts.
     "review.detail.pdf": schemaEnum("ReviewDetail", "pdf").filter((v) => v !== "available"),
     "review.detail.history.decision": schemaEnum("ReviewOut", "decision"),

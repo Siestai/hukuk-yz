@@ -5,7 +5,12 @@ import { useTranslations } from "next-intl";
 import { HelpTip } from "@/components/help-tip";
 import type { HelpName } from "@/lib/help-topics";
 import { detailHref, PAGE_SIZE, statusOf, type QueueParams } from "@/lib/queue-params";
-import { EXTRAS, useQueueItemFormat, type QueueItem } from "./queue-item-format";
+import {
+    EXTRAS,
+    isQueueApplication,
+    useQueueItemFormat,
+    type QueueItem,
+} from "./queue-item-format";
 import {
     ConfidenceChip,
     DuplicateIcon,
@@ -87,16 +92,24 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
                         <TableCell className={cn(cell, "font-mono text-xs")}>
                             {item.esas_no || item.karar_no ? (
                                 <>
-                                    {item.esas_no ? (
+                                    {isQueueApplication(item) ? (
                                         <p className="whitespace-nowrap">
-                                            {t("esas", { value: item.esas_no })}
+                                            {t("applicationNo", { value: item.esas_no })}
                                         </p>
-                                    ) : null}
-                                    {item.karar_no ? (
-                                        <p className="whitespace-nowrap">
-                                            {t("karar", { value: item.karar_no })}
-                                        </p>
-                                    ) : null}
+                                    ) : (
+                                        <>
+                                            {item.esas_no ? (
+                                                <p className="whitespace-nowrap">
+                                                    {t("esas", { value: item.esas_no })}
+                                                </p>
+                                            ) : null}
+                                            {item.karar_no ? (
+                                                <p className="whitespace-nowrap">
+                                                    {t("karar", { value: item.karar_no })}
+                                                </p>
+                                            ) : null}
+                                        </>
+                                    )}
                                 </>
                             ) : (
                                 format.empty

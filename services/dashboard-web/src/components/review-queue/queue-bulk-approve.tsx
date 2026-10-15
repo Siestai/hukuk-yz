@@ -2,6 +2,7 @@ import type { components } from "@/lib/api/schema";
 import type { Settled } from "@/lib/api/settle";
 import type { QueueParams } from "@/lib/queue-params";
 import { BulkApproveButton } from "./bulk-approve-button";
+import { isQueueApplication } from "./queue-item-format";
 
 /** How many records the dialog shows as examples. */
 const SAMPLE_SIZE = 5;
@@ -29,6 +30,7 @@ export async function QueueBulkApprove({
                 title: item.title,
                 esasNo: item.esas_no,
                 kararNo: item.karar_no,
+                application: isQueueApplication(item),
             }))}
         />
     );

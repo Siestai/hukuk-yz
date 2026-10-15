@@ -107,6 +107,49 @@ def test_no_court_is_exempt_from_the_critical_fields(overrides: dict[str, Any]) 
     assert confidence(abad, [])["band"] == "low"
 
 
+AYM_APPLICATION = {
+    "court": "aym",
+    "court_level": "aym",
+    "chamber": "",
+    "decision_kind": "bireysel_basvuru",
+    "esas_no": "2014/19081",
+    "karar_no": "",
+}
+
+
+def test_an_aym_individual_application_needs_no_karar_no() -> None:
+    assert confidence(_fields(**AYM_APPLICATION), []) == {
+        "score": 100,
+        "band": "high",
+        "reasons": [],
+    }
+
+
+@pytest.mark.parametrize(
+    ("overrides", "reasons"),
+    [
+        ({"esas_no": ""}, ["missing_esas_no"]),
+        ({"decision_date": ""}, ["missing_decision_date"]),
+    ],
+)
+def test_an_aym_individual_application_still_needs_its_number_and_date(
+    overrides: dict[str, Any], reasons: list[str]
+) -> None:
+    result = confidence(_fields(**{**AYM_APPLICATION, **overrides}), [])
+    assert (result["band"], result["reasons"]) == ("low", reasons)
+
+
+def test_an_aym_norm_review_without_a_karar_no_is_still_low() -> None:
+    norm = _fields(**{**AYM_APPLICATION, "decision_kind": "norm_denetimi", "esas_no": "2015/12"})
+    result = confidence(norm, [])
+    assert (result["band"], result["reasons"]) == ("low", ["missing_karar_no"])
+
+
+def test_only_an_aym_application_is_exempt_from_the_karar_no() -> None:
+    other = _fields(**{**AYM_APPLICATION, "court": "yargitay", "court_level": "daire"})
+    assert "missing_karar_no" in reasons_of(other, [])
+
+
 def test_a_court_without_a_level_is_low() -> None:
     result = confidence(_fields(court_level=""), [])
     assert (result["band"], result["reasons"]) == ("low", ["court_level_missing"])

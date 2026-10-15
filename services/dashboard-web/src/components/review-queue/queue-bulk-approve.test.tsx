@@ -13,6 +13,8 @@ const item = (n: number) =>
         title: `T${n}`,
         esas_no: `2020/${n}`,
         karar_no: `2021/${n}`,
+        court: "yargitay",
+        decision_kind: "karar",
     }) as Item;
 
 describe("QueueBulkApprove", () => {
@@ -24,13 +26,30 @@ describe("QueueBulkApprove", () => {
         })) as ReactElement<Record<string, unknown>>;
         expect(element.props).toMatchObject({ params, total: 130, unavailable: false });
         expect(element.props.sample).toEqual([
-            { id: "e1", title: "T1", esasNo: "2020/1", kararNo: "2021/1" },
+            { id: "e1", title: "T1", esasNo: "2020/1", kararNo: "2021/1", application: false },
             ...[2, 3, 4, 5].map((n) => ({
                 id: `e${n}`,
                 title: `T${n}`,
                 esasNo: `2020/${n}`,
                 kararNo: `2021/${n}`,
+                application: false,
             })),
+        ]);
+    });
+
+    it("marks an AYM individual application in the sample", async () => {
+        const application = {
+            ...item(1),
+            court: "aym",
+            decision_kind: "bireysel_basvuru",
+            karar_no: "",
+        };
+        const element = (await QueueBulkApprove({
+            params,
+            list: Promise.resolve({ data: { total: 1, items: [application] } }),
+        })) as ReactElement<Record<string, unknown>>;
+        expect(element.props.sample).toEqual([
+            { id: "e1", title: "T1", esasNo: "2020/1", kararNo: "", application: true },
         ]);
     });
 

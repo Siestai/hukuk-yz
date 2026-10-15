@@ -450,6 +450,9 @@ class Extraction(UuidPkMixin, Base):
     chamber: Mapped[str | None] = mapped_column(Computed("fields ->> 'chamber'", persisted=True))
     esas_no: Mapped[str | None] = mapped_column(Computed("fields ->> 'esas_no'", persisted=True))
     karar_no: Mapped[str | None] = mapped_column(Computed("fields ->> 'karar_no'", persisted=True))
+    decision_kind: Mapped[str | None] = mapped_column(
+        Computed("fields ->> 'decision_kind'", persisted=True)
+    )
     decision_date: Mapped[str | None] = mapped_column(
         Computed("fields ->> 'decision_date'", persisted=True)
     )

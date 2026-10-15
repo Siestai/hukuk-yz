@@ -2077,6 +2077,10 @@
             "title": "Decision Date",
             "type": "string"
           },
+          "decision_kind": {
+            "title": "Decision Kind",
+            "type": "string"
+          },
           "duplicate_group": {
             "anyOf": [
               {
@@ -2208,6 +2212,7 @@
           "chamber",
           "esas_no",
           "karar_no",
+          "decision_kind",
           "decision_date",
           "journal_issue",
           "band",

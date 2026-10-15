@@ -16,6 +16,7 @@ const item: QueueItem = {
     chamber: "9. HD",
     esas_no: "2019/1234",
     karar_no: "2021/567",
+    decision_kind: "karar",
     decision_date: "2021-03-05",
     journal_issue: 61,
     band: "medium",
@@ -31,6 +32,17 @@ function renderCard(overrides: Partial<QueueItem> = {}, params: QueueParams = qu
 }
 
 describe("QueueCards", () => {
+    it("shows an AYM individual application by its Başvuru No", () => {
+        const card = renderCard({
+            court: "aym",
+            esas_no: "2014/19081",
+            karar_no: "",
+            decision_kind: "bireysel_basvuru",
+        });
+        expect(within(card).getByText(/B\. No: 2014\/19081/)).toBeInTheDocument();
+        expect(within(card).queryByText(/E\. 2014/)).toBeNull();
+    });
+
     it("shows the same fields as a table row", () => {
         const card = renderCard();
         expect(within(card).getByText(messages.enums.band.medium)).toBeInTheDocument();
