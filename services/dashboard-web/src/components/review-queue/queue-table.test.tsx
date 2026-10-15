@@ -16,6 +16,7 @@ const item: QueueItem = {
     chamber: "9. HD",
     esas_no: "2019/1234",
     karar_no: "2021/567",
+    decision_kind: "karar",
     decision_date: "2021-03-05",
     journal_issue: 61,
     band: "medium",
@@ -31,7 +32,35 @@ function renderRow(overrides: Partial<QueueItem> = {}) {
     return screen.getAllByRole("row")[1] as HTMLElement;
 }
 
+const application: Partial<QueueItem> = {
+    court: "aym",
+    chamber: "",
+    esas_no: "2014/19081",
+    karar_no: "",
+    decision_kind: "bireysel_basvuru",
+    decision_date: "2017-02-01",
+};
+
 describe("QueueTable", () => {
+    it("shows an AYM individual application by its Başvuru No", () => {
+        const row = renderRow(application);
+        expect(within(row).getByText("B. No: 2014/19081")).toBeInTheDocument();
+        expect(within(row).queryByText(/^E\. /)).toBeNull();
+        expect(within(row).queryByText(/^K\. /)).toBeNull();
+    });
+
+    it("keeps E. and K. for an AYM norm review", () => {
+        const row = renderRow({
+            ...application,
+            esas_no: "2015/12",
+            karar_no: "2016/34",
+            decision_kind: "norm_denetimi",
+        });
+        expect(within(row).getByText("E. 2015/12")).toBeInTheDocument();
+        expect(within(row).getByText("K. 2016/34")).toBeInTheDocument();
+        expect(within(row).queryByText(/B\. No/)).toBeNull();
+    });
+
     it("renders the fields of a decision", () => {
         const row = renderRow();
         expect(within(row).getByText(messages.enums.band.medium)).toBeInTheDocument();

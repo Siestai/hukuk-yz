@@ -235,6 +235,27 @@ async def test_the_list_filters_and_sorts(
     assert await listed(band="medium", reason="body_start_approximate", court="yargitay") == of(4)
 
 
+async def test_the_list_names_an_aym_individual_application_by_its_kind(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    application = {
+        "court": "aym",
+        "court_level": "aym",
+        "chamber": "",
+        "decision_kind": "bireysel_basvuru",
+        "esas_no": "2014/19081",
+        "karar_no": "",
+    }
+    await _seed(kb_factory, application)
+    (item,) = (await client.get(BASE, headers=me.headers)).json()["items"]
+    assert (item["decision_kind"], item["esas_no"], item["karar_no"]) == (
+        "bireysel_basvuru",
+        "2014/19081",
+        "",
+    )
+    assert (item["band"], item["reasons"]) == ("high", [])
+
+
 async def test_the_list_pages_with_a_total_and_describes_each_item(
     client: httpx.AsyncClient, kb_factory: Factory, me: Login
 ) -> None:
@@ -251,6 +272,7 @@ async def test_the_list_pages_with_a_total_and_describes_each_item(
         "chamber": "9. HD",
         "esas_no": "2018/777",
         "karar_no": "2019/4",
+        "decision_kind": "karar",
         "decision_date": "2019-03-12",
         "journal_issue": 3,
         "band": "medium",

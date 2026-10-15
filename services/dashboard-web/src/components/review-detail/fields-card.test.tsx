@@ -30,7 +30,46 @@ const row = (label: string) =>
         .find((element) => element.tagName === "DT")
         ?.closest("div") as HTMLElement;
 
+const application = {
+    ...full,
+    court: "aym",
+    court_level: "aym",
+    chamber: "",
+    decision_kind: "bireysel_basvuru",
+    esas_no: "2014/19081",
+    karar_no: "",
+    decision_date: "2017-02-01",
+};
+
 describe("FieldsCard", () => {
+    it("shows an AYM individual application with one Başvuru No row and the date", () => {
+        renderWithIntl(<FieldsCard fields={readFields(application)} />);
+        expect(within(row(messages.fields.application_no)).getByText("2014/19081")).toHaveClass(
+            "font-mono",
+        );
+        expect(
+            within(row(messages.fields.decision_date)).getByText("01.02.2017"),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(messages.fields.esas_no)).toBeNull();
+        expect(screen.queryByText(messages.fields.karar_no)).toBeNull();
+    });
+
+    it("keeps Esas no and Karar no for an AYM norm review", () => {
+        renderWithIntl(
+            <FieldsCard
+                fields={readFields({
+                    ...application,
+                    decision_kind: "norm_denetimi",
+                    esas_no: "2015/12",
+                    karar_no: "2016/34",
+                })}
+            />,
+        );
+        expect(within(row(messages.fields.esas_no)).getByText("2015/12")).toBeInTheDocument();
+        expect(within(row(messages.fields.karar_no)).getByText("2016/34")).toBeInTheDocument();
+        expect(screen.queryByText(messages.fields.application_no)).toBeNull();
+    });
+
     it("shows every field with its label and formatting", () => {
         renderWithIntl(<FieldsCard fields={readFields(full)} />);
         expect(within(row(messages.fields.court)).getByText("Yargıtay")).toBeInTheDocument();

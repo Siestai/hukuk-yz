@@ -25,7 +25,7 @@ import {
     type FormValues,
     type ScalarField,
 } from "@/lib/decision-edits";
-import type { DecisionFields } from "@/lib/decision-fields";
+import { isApplication, type DecisionFields } from "@/lib/decision-fields";
 import { useCommon } from "@/lib/use-common";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 import { failedArticleEntries, failedFields } from "./action-failure";
@@ -60,6 +60,7 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
         failedFields(session.failure).filter((name) => !dismissedNames.includes(name)),
     );
     const errors = built?.errors ?? {};
+    const application = isApplication(fields);
     const hint = (name: EditField) => built?.ignored.includes(name);
 
     const set = (change: Partial<FormValues>) => {
@@ -141,7 +142,14 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
 
     function row(name: ScalarField) {
         return (
-            <FieldRow key={name} label={<Label htmlFor={`${prefix}-${name}`}>{field(name)}</Label>}>
+            <FieldRow
+                key={name}
+                label={
+                    <Label htmlFor={`${prefix}-${name}`}>
+                        {field(application && name === "esas_no" ? "application_no" : name)}
+                    </Label>
+                }
+            >
                 {control(name)}
                 <p id={`${prefix}-${name}-message`} className="mt-1 text-xs">
                     {message(name)}
@@ -212,7 +220,9 @@ export function FieldsForm({ fields }: { fields: DecisionFields }) {
                                 "decision_date",
                                 "jurisdiction",
                             ] as const
-                        ).map(row)}
+                        )
+                            .filter((name) => !(application && name === "karar_no"))
+                            .map(row)}
                         <FieldRow label={field("related_articles")}>
                             <ul className="grid gap-2">
                                 {values.related_articles.map((entry, index) => (

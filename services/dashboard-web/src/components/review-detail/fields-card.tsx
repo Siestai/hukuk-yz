@@ -1,7 +1,12 @@
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 
-import { type DecisionFields, esasDisplay, type RelatedArticle } from "@/lib/decision-fields";
+import {
+    type DecisionFields,
+    esasDisplay,
+    isApplication,
+    type RelatedArticle,
+} from "@/lib/decision-fields";
 import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
@@ -47,12 +52,20 @@ export function FieldsCard({ fields }: { fields: DecisionFields }) {
                     {fields.bamRegion ? (
                         <FieldRow label={field("bam_region")}>{fields.bamRegion}</FieldRow>
                     ) : null}
-                    <FieldRow label={field("esas_no")}>
-                        <Mono value={esasDisplay(fields)} />
-                    </FieldRow>
-                    <FieldRow label={field("karar_no")}>
-                        <Mono value={fields.kararNo} />
-                    </FieldRow>
+                    {isApplication(fields) ? (
+                        <FieldRow label={field("application_no")}>
+                            <Mono value={fields.esasNo} />
+                        </FieldRow>
+                    ) : (
+                        <>
+                            <FieldRow label={field("esas_no")}>
+                                <Mono value={esasDisplay(fields)} />
+                            </FieldRow>
+                            <FieldRow label={field("karar_no")}>
+                                <Mono value={fields.kararNo} />
+                            </FieldRow>
+                        </>
+                    )}
                     <FieldRow label={field("decision_date")}>{date(fields.decisionDate)}</FieldRow>
                     <FieldRow label={field("related_articles")}>
                         {fields.relatedArticles.length > 0 ? (

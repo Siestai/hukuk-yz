@@ -25,6 +25,11 @@ MAX_YEAR_GAP = 3
 _FOREIGN_COURTS = {"foreign", "abad", "aihm"}
 
 
+def is_individual_application(record: dict[str, Any]) -> bool:
+    """An AYM individual application: identified by Başvuru No (esas_no) and date, no Karar No."""
+    return record["court"] == "aym" and record.get("decision_kind") == "bireysel_basvuru"
+
+
 def applies(name: str, record: dict[str, Any]) -> bool:
     """Whether the field is expected for this kind of decision. Foreign-court articles carry no
     Esas/Karar numbers, statutes, keywords or ruling; an AYM individual application prints a
@@ -34,7 +39,7 @@ def applies(name: str, record: dict[str, Any]) -> bool:
     if name in ("esas_no", "karar_no", "related_articles", "keywords", "outcome"):
         if record["court"] in _FOREIGN_COURTS:
             return False
-        return not (name == "karar_no" and record["decision_kind"] == "bireysel_basvuru")
+        return not (name == "karar_no" and is_individual_application(record))
     return True
 
 

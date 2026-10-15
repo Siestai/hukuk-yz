@@ -9,8 +9,10 @@ approval of the `high` band; nothing here approves anything.
 Why each rule:
 - low: a record whose identity (court, esas, karar, date, and chamber where the court has
   chambers) cannot be established cannot be matched against the official source later; this holds
-  for every court, so a record without E/K (foreign courts, AYM individual applications) is low
-  and never covered by bulk approval. A court the schema does not know (`court_unmapped`,
+  for every court, so a record without E/K (foreign courts) is low and never covered by bulk
+  approval. An AYM individual application has no Karar No by nature: it is identified by its
+  Başvuru No (kept as `esas_no`) and the date, so only those two are required of it and a missing
+  Başvuru No still fires `missing_esas_no`. A court the schema does not know (`court_unmapped`,
   `court_level_unmapped`) or a court without a level cannot be published at all. No body or
   summary-only text means there is nothing to cite; a layout the parser does not know means its
   fields are unreliable; duplicate groups whose texts differ or whose dates disagree need a human
@@ -61,7 +63,13 @@ _BAND_ORDER: tuple[Band, ...] = ("low", "medium", "high")
 def reasons_of(fields: dict[str, Any], warnings: list[str]) -> list[str]:
     """Rule-table reasons that fire for a normalized record (`fields` as stored on the
     extraction, `warnings` parser + loader warnings), in table order."""
-    fired = {f"missing_{name}" for name in qa.CRITICAL_FIELDS if not fields[name]}
+    # Not `qa.applies`: that also exempts foreign courts, which stay low here (no identity).
+    individual_application = qa.is_individual_application(fields)
+    fired = {
+        f"missing_{name}"
+        for name in qa.CRITICAL_FIELDS
+        if not fields[name] and not (name == "karar_no" and individual_application)
+    }
     if qa.applies("chamber", fields) and not fields["chamber"]:
         fired.add("missing_chamber")  # the only exemption: courts without chambers
     if fields["court"] and not fields["court_level"]:

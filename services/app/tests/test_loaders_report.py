@@ -5,7 +5,7 @@ from app.loaders.decisions import prepare, read_rows
 from app.loaders.report import LoadCounts, build_summary, render_markdown, write_report
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
-BANDS = {"high": 7, "medium": 4, "low": 13}
+BANDS = {"high": 8, "medium": 5, "low": 11}  # two AYM individual applications need no Karar no
 
 
 def _summary() -> dict[str, Any]:

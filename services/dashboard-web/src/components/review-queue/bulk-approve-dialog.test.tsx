@@ -75,6 +75,27 @@ describe("BulkApproveDialog confirmation", () => {
         expect(within(dialog()).getByText("E. 2020/1 · K. 2021/1")).toBeInTheDocument();
     });
 
+    it("shows an AYM individual application by its Başvuru No", () => {
+        renderWithIntl(
+            <BulkApproveDialog
+                onClose={vi.fn()}
+                returnFocusTo={{ current: null }}
+                params={params}
+                total={1}
+                sample={[
+                    {
+                        id: ID(1),
+                        title: "BAŞVURU",
+                        esasNo: "2014/19081",
+                        kararNo: "",
+                        application: true,
+                    },
+                ]}
+            />,
+        );
+        expect(within(dialog()).getByText("B. No: 2014/19081")).toBeInTheDocument();
+    });
+
     it("keeps start disabled until the reviewer takes the exact count on as their own step", async () => {
         const { user } = setup(250);
         expect(start()).toBeDisabled();

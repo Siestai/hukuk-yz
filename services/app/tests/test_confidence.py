@@ -107,6 +107,49 @@ def test_no_court_is_exempt_from_the_critical_fields(overrides: dict[str, Any]) 
     assert confidence(abad, [])["band"] == "low"
 
 
+AYM_APPLICATION = {
+    "court": "aym",
+    "court_level": "aym",
+    "chamber": "",
+    "decision_kind": "bireysel_basvuru",
+    "esas_no": "2014/19081",
+    "karar_no": "",
+}
+
+
+def test_an_aym_individual_application_needs_no_karar_no() -> None:
+    assert confidence(_fields(**AYM_APPLICATION), []) == {
+        "score": 100,
+        "band": "high",
+        "reasons": [],
+    }
+
+
+@pytest.mark.parametrize(
+    ("overrides", "reasons"),
+    [
+        ({"esas_no": ""}, ["missing_esas_no"]),
+        ({"decision_date": ""}, ["missing_decision_date"]),
+    ],
+)
+def test_an_aym_individual_application_still_needs_its_number_and_date(
+    overrides: dict[str, Any], reasons: list[str]
+) -> None:
+    result = confidence(_fields(**{**AYM_APPLICATION, **overrides}), [])
+    assert (result["band"], result["reasons"]) == ("low", reasons)
+
+
+def test_an_aym_norm_review_without_a_karar_no_is_still_low() -> None:
+    norm = _fields(**{**AYM_APPLICATION, "decision_kind": "norm_denetimi", "esas_no": "2015/12"})
+    result = confidence(norm, [])
+    assert (result["band"], result["reasons"]) == ("low", ["missing_karar_no"])
+
+
+def test_only_an_aym_application_is_exempt_from_the_karar_no() -> None:
+    other = _fields(**{**AYM_APPLICATION, "court": "yargitay", "court_level": "daire"})
+    assert "missing_karar_no" in reasons_of(other, [])
+
+
 def test_a_court_without_a_level_is_low() -> None:
     result = confidence(_fields(court_level=""), [])
     assert (result["band"], result["reasons"]) == ("low", ["court_level_missing"])
@@ -123,3 +166,15 @@ def test_warnings_outside_the_table_are_ignored() -> None:
 
 def test_every_rule_is_low_or_medium() -> None:
     assert {band for band, _ in RULES.values()} == {"low", "medium"}
+
+
+def test_a_foreign_court_record_without_numbers_stays_low() -> None:
+    foreign = _fields(court="abad", court_level="foreign", chamber="", esas_no="", karar_no="")
+    result = confidence(foreign, [])
+    assert (result["band"], result["reasons"]) == ("low", ["missing_esas_no", "missing_karar_no"])
+
+
+def test_a_record_stored_without_decision_kind_is_scored() -> None:
+    fields = _fields(**AYM_APPLICATION)
+    del fields["decision_kind"]
+    assert "missing_karar_no" in reasons_of(fields, [])

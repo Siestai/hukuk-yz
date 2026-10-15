@@ -33,11 +33,15 @@ const fields = readFields({
 const queue = { band: "low", sort: "score_asc", page: 1 } as const;
 const done = { data: { review_id: "r1", decision_id: "d1", source_status: "approved" } };
 
-function setup({ canAct = true, pos = 4 }: { canAct?: boolean; pos?: number } = {}) {
+function setup({
+    canAct = true,
+    pos = 4,
+    shown = fields,
+}: { canAct?: boolean; pos?: number; shown?: typeof fields } = {}) {
     return renderWithIntl(
         <ReviewProvider extractionId={ID} queue={queue} pos={pos} canAct={canAct}>
             <ActionBar />
-            <FieldsPanel fields={fields} />
+            <FieldsPanel fields={shown} />
         </ReviewProvider>,
     );
 }
@@ -340,6 +344,23 @@ describe("ReviewActions", () => {
             setup();
             await userEvent.click(screen.getByRole("button", { name: /^Düzelt ve onayla/ }));
         }
+
+        it("edits an AYM individual application by its Başvuru No, with no Karar no", async () => {
+            setup({
+                shown: readFields({
+                    court: "aym",
+                    court_level: "aym",
+                    decision_kind: "bireysel_basvuru",
+                    esas_no: "2014/19081",
+                    karar_no: "",
+                    decision_date: "2017-02-01",
+                }),
+            });
+            await userEvent.click(screen.getByRole("button", { name: /^Düzelt ve onayla/ }));
+            expect(screen.getByLabelText("Başvuru No")).toHaveValue("2014/19081");
+            expect(screen.queryByLabelText("Esas no")).toBeNull();
+            expect(screen.queryByLabelText("Karar no")).toBeNull();
+        });
 
         it("turns the fields card into a form with the same labels and cancels back to the read view", async () => {
             await startEdit();

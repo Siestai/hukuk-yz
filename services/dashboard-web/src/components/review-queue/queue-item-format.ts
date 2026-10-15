@@ -2,11 +2,15 @@ import { useFormatter, useTranslations } from "next-intl";
 
 import type { components } from "@/lib/api/schema";
 import type { QueueStatus } from "@/lib/queue-params";
+import { isApplication } from "@/lib/decision-fields";
 import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 
 export type QueueItem = components["schemas"]["ReviewListItem"];
+
+export const isQueueApplication = (item: QueueItem) =>
+    isApplication({ court: item.court, decisionKind: item.decision_kind ?? "" });
 
 /**
  * What a record's badge says: waiting, waiting again after a reviewer took it back, approved,
@@ -55,12 +59,14 @@ export function useQueueItemFormat() {
         score: (item: QueueItem) => format.number(item.score, "score"),
         count: (value: number) => format.number(value, "integer"),
         numbers: (item: QueueItem) =>
-            [
-                item.esas_no && t("esas", { value: item.esas_no }),
-                item.karar_no && t("karar", { value: item.karar_no }),
-            ]
-                .filter(Boolean)
-                .join(separator) || empty,
+            (isQueueApplication(item)
+                ? t("applicationNo", { value: item.esas_no })
+                : [
+                      item.esas_no && t("esas", { value: item.esas_no }),
+                      item.karar_no && t("karar", { value: item.karar_no }),
+                  ]
+                      .filter(Boolean)
+                      .join(separator)) || empty,
         date: (item: QueueItem) => date(item.decision_date),
         issue: (item: QueueItem) => item.journal_issue ?? empty,
         status: (item: QueueItem) => t(`statuses.${itemStatus(item)}`),
