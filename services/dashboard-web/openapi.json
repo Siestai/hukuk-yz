@@ -2078,8 +2078,15 @@
             "type": "string"
           },
           "decision_kind": {
-            "title": "Decision Kind",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Kind"
           },
           "duplicate_group": {
             "anyOf": [

@@ -166,3 +166,15 @@ def test_warnings_outside_the_table_are_ignored() -> None:
 
 def test_every_rule_is_low_or_medium() -> None:
     assert {band for band, _ in RULES.values()} == {"low", "medium"}
+
+
+def test_a_foreign_court_record_without_numbers_stays_low() -> None:
+    foreign = _fields(court="abad", court_level="foreign", chamber="", esas_no="", karar_no="")
+    result = confidence(foreign, [])
+    assert (result["band"], result["reasons"]) == ("low", ["missing_esas_no", "missing_karar_no"])
+
+
+def test_a_record_stored_without_decision_kind_is_scored() -> None:
+    fields = _fields(**AYM_APPLICATION)
+    del fields["decision_kind"]
+    assert "missing_karar_no" in reasons_of(fields, [])

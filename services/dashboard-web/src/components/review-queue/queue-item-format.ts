@@ -10,7 +10,7 @@ import { useEnumLabels } from "@/lib/use-enum-labels";
 export type QueueItem = components["schemas"]["ReviewListItem"];
 
 export const isQueueApplication = (item: QueueItem) =>
-    isApplication({ court: item.court, decisionKind: item.decision_kind });
+    isApplication({ court: item.court, decisionKind: item.decision_kind ?? "" });
 
 /**
  * What a record's badge says: waiting, waiting again after a reviewer took it back, approved,

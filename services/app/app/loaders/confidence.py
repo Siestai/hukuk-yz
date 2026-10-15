@@ -63,9 +63,8 @@ _BAND_ORDER: tuple[Band, ...] = ("low", "medium", "high")
 def reasons_of(fields: dict[str, Any], warnings: list[str]) -> list[str]:
     """Rule-table reasons that fire for a normalized record (`fields` as stored on the
     extraction, `warnings` parser + loader warnings), in table order."""
-    individual_application = (
-        fields["court"] == "aym" and fields["decision_kind"] == "bireysel_basvuru"
-    )
+    # Not `qa.applies`: that also exempts foreign courts, which stay low here (no identity).
+    individual_application = qa.is_individual_application(fields)
     fired = {
         f"missing_{name}"
         for name in qa.CRITICAL_FIELDS

@@ -1095,7 +1095,7 @@ export interface components {
             /** Decision Date */
             decision_date: string;
             /** Decision Kind */
-            decision_kind: string;
+            decision_kind: string | null;
             /** Duplicate Group */
             duplicate_group: {
                 [key: string]: unknown;
