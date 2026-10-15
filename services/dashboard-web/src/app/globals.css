@@ -43,6 +43,3 @@
     inset: 100% 0 0;
     user-select: none;
 }
-.textLayer.selecting .endOfContent {
-    top: 0;
-}

@@ -116,7 +116,8 @@ export function pdfOfPages(count: number): Buffer {
 /**
  * The PDF.js viewer in `dialog` has drawn `count` pages: one canvas each, with ink on it. A phone
  * emulated in Chromium still has the desktop PDF viewer, so an iframe proves nothing here; the
- * canvases do.
+ * canvases do. A cleared canvas is transparent black, so only opaque pixels count: dark ink and a
+ * light page background.
  */
 export async function expectPagesDrawn(dialog: Locator, count: number): Promise<void> {
     const canvases = dialog.locator("canvas");
@@ -129,7 +130,16 @@ export async function expectPagesDrawn(dialog: Locator, count: number): Promise<
                     const context = canvas.getContext("2d");
                     if (!context || canvas.width === 0) return false;
                     const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-                    return data.some((value, i) => i % 4 !== 3 && value < 128);
+                    let ink = false;
+                    let paper = false;
+                    for (let i = 0; i < data.length; i += 4) {
+                        if (data[i + 3]! <= 200) continue;
+                        if (data[i]! < 128 && data[i + 1]! < 128 && data[i + 2]! < 128) ink = true;
+                        else if (data[i]! > 200 && data[i + 1]! > 200 && data[i + 2]! > 200) {
+                            paper = true;
+                        }
+                    }
+                    return ink && paper;
                 }),
             ),
         )

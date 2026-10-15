@@ -1,6 +1,6 @@
 # Görev 10k: telefonda PDF görüntüleyici (PDF.js)
 
-Durum: uygulandı, PR Orhan'ın onayında; gerçek Android Chrome doğrulaması merge sonrası (Themis, 2026-10-15). Yakınlaştırma: +/- düğmeleri (adımlar %100-300; sayfa zoom'u canvas'ı yeniden çizmediği için parmakla yakınlaştırma yerine). Issue: #68. Onay: Orhan ("PDF olayını merge et", 2026-10-15, Telegram).
+Durum: uygulandı, PR Orhan'ın onayında; gerçek Android Chrome doğrulaması merge sonrası (Themis, 2026-10-15). Yakınlaştırma: +/- düğmeleri (adımlar %100-300; sayfa zoom'u canvas'ı yeniden çizmediği için parmakla yakınlaştırma yerine). Issue: #68. Bilinen sınırlama: PDF.js yazı tipi/cMap/wasm dosyalarını kendi origin'imizden vermiyor (`standardFontDataUrl`, `cMapUrl`, `wasmUrl` yok; ~4 MB ek varlık, build/standalone kopyalama adımı ve CSP kontrolü gerektirir, bu görevin kapsamını aşar); gömülü olmayan standart yazı tipli, CJK cMap'li veya JPEG2000/JBIG2 görüntülü PDF'lerde eksik/boş çizim olursa yeni sekme bağlantısı çıkış yolu olarak kalır. Ayrı görev önerilir. Onay: Orhan ("PDF olayını merge et", 2026-10-15, Telegram).
 Bağlam: `services/dashboard-web/src/components/review-detail/pdf-panel.tsx` (#65, görev 10i), `src/components/files/file-viewer.tsx`, `src/lib/security-headers.ts`.
 Skill'ler: `frontend-ui` (bağlayıcı), `task-pr-hygiene`.
 

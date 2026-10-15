@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -134,6 +134,37 @@ describe("PdfViewer", () => {
         }));
         renderWithIntl(<PdfViewer src={SRC} />);
         expect(await screen.findByRole("alert")).toHaveTextContent(pdf.failed);
+    });
+
+    it("releases a page far from the box and draws it again when it returns", async () => {
+        const { render } = document(1);
+        const release: ((entries: { isIntersecting: boolean }[]) => void)[] = [];
+        vi.stubGlobal(
+            "IntersectionObserver",
+            class {
+                constructor(
+                    private readonly callback: (entries: { isIntersecting: boolean }[]) => void,
+                    private readonly options: { rootMargin: string },
+                ) {}
+                observe() {
+                    if (this.options.rootMargin.startsWith("300%")) release.push(this.callback);
+                    else this.callback([{ isIntersecting: true }]);
+                }
+                disconnect() {}
+            },
+        );
+        const { container } = renderWithIntl(<PdfViewer src={SRC} />);
+        await waitFor(() => expect(render).toHaveBeenCalledTimes(1));
+        const canvas = container.querySelector("canvas")!;
+        const layer = container.querySelector(".textLayer")!;
+        layer.append("text");
+        canvas.width = 300;
+        canvas.height = 400;
+        act(() => release.forEach((callback) => callback([{ isIntersecting: false }])));
+        expect(canvas.width).toBe(0);
+        expect(canvas.height).toBe(0);
+        expect(layer).toBeEmptyDOMElement();
+        expect(container.querySelector<HTMLElement>("[data-page]")!.style.height).not.toBe("");
     });
 
     it("gives the document back to PDF.js when it closes", async () => {

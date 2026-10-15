@@ -8,6 +8,15 @@ import type { Pdfjs } from "./load-pdfjs";
 /** A canvas is capped at twice the CSS pixels: sharp on a phone, without a huge bitmap on a 3x screen. */
 const MAX_PIXEL_RATIO = 2;
 
+/** Canvas area cap in device pixels: iOS draws nothing past ~16.7M, and a phone has little memory. */
+const MAX_CANVAS_PIXELS = 8_000_000;
+
+/** The canvas pixels per CSS pixel: the screen's ratio, capped, and lowered until the area fits. */
+export function outputScale(width: number, height: number, devicePixelRatio: number): number {
+    const sharp = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);
+    return Math.min(sharp, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
+}
+
 type PdfPageProps = {
     pdfjs: Pdfjs;
     doc: PDFDocumentProxy;
@@ -22,7 +31,8 @@ type PdfPageProps = {
 /**
  * One page: a placeholder of the right size until it comes near the scrolling box, then the page
  * on a canvas with the selectable text layer over it. Redrawn when the width changes (zoom or a
- * rotated phone). The element is sized in an effect, because the lint rules forbid inline styles.
+ * rotated phone). A page far from the box gives its bitmap and text back, keeping its height, and
+ * is drawn again when it returns. The element is sized in an effect, because the lint rules forbid inline styles.
  */
 export function PdfPage({ pdfjs, doc, number, width, ratio, root, onError }: PdfPageProps) {
     const box = useRef<HTMLDivElement>(null);
@@ -39,15 +49,34 @@ export function PdfPage({ pdfjs, doc, number, width, ratio, root, onError }: Pdf
     useEffect(() => {
         const element = box.current;
         if (!element || !root) return;
-        const observer = new IntersectionObserver(
+        const draw = new IntersectionObserver(
             (entries) => {
                 if (entries.some((entry) => entry.isIntersecting)) setNear(true);
             },
             { root, rootMargin: "100% 0px" },
         );
-        observer.observe(element);
-        return () => observer.disconnect();
+        const release = new IntersectionObserver(
+            (entries) => {
+                if (entries.every((entry) => !entry.isIntersecting)) setNear(false);
+            },
+            { root, rootMargin: "300% 0px" },
+        );
+        draw.observe(element);
+        release.observe(element);
+        return () => {
+            draw.disconnect();
+            release.disconnect();
+        };
     }, [root]);
+
+    useEffect(() => {
+        if (near) return;
+        if (canvas.current) {
+            canvas.current.width = 0;
+            canvas.current.height = 0;
+        }
+        text.current?.replaceChildren();
+    }, [near]);
 
     useEffect(() => {
         const element = box.current;
@@ -63,7 +92,11 @@ export function PdfPage({ pdfjs, doc, number, width, ratio, root, onError }: Pdf
             const page = await doc.getPage(number);
             const scale = width / page.getViewport({ scale: 1 }).width;
             const viewport = page.getViewport({ scale });
-            const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+            const pixelRatio = outputScale(
+                viewport.width,
+                viewport.height,
+                window.devicePixelRatio,
+            );
             surface.width = Math.floor(viewport.width * pixelRatio);
             surface.height = Math.floor(viewport.height * pixelRatio);
             surface.style.width = `${viewport.width}px`;
