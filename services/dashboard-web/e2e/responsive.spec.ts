@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { expectTableFits, lengthenText, openQueue } from "./helpers";
+import { expectPagesDrawn, expectTableFits, lengthenText, openQueue, pdfOfPages } from "./helpers";
 
 // Read-only, project `chromium-mobile` (Pixel 7: touch, so `pointer: coarse`). The viewport is
 // set per block: 360x740 is the small phone, 768x1024 the tablet (`md`, below `xl`: cards in two columns, no table).
@@ -269,7 +269,7 @@ test.describe("phone 360x740", () => {
         await expect(dialog).toBeVisible();
         const box = await dialog.boundingBox();
         expect(box).toMatchObject({ x: 0, y: 0, width: PHONE.width, height: PHONE.height });
-        await expect(dialog.getByTitle("Kararın özgün PDF'i")).toHaveAttribute("src", /\/file$/);
+        await expect(dialog.getByRole("region", { name: "PDF sayfaları" })).toBeVisible();
         const fallback = dialog.getByRole("link", { name: "Yeni sekmede aç" });
         await expect(fallback).toHaveAttribute("target", "_blank");
         const close = dialog.getByRole("button", { name: "Kapat" });
@@ -279,6 +279,51 @@ test.describe("phone 360x740", () => {
         await expect(dialog).toBeHidden();
         await expect(pdfButton(page)).toBeFocused();
         expect(popups).toBe(0);
+    });
+
+    test("the PDF window draws the real file as a PDF.js canvas, not a frame", async ({ page }) => {
+        // Chromium's phone emulation keeps the desktop PDF viewer, so the canvas is the check.
+        const blocked: string[] = [];
+        page.on("console", (message) => {
+            if (/content security policy/i.test(message.text())) blocked.push(message.text());
+        });
+        await openFirstRecord(page);
+        await pdfButton(page).click();
+        const dialog = page.getByRole("dialog", { name: "Kararın özgün PDF'i" });
+        await expect(dialog.getByRole("region", { name: "PDF sayfaları" })).toBeVisible();
+        await expect(dialog.locator("iframe")).toHaveCount(0);
+        await expectPagesDrawn(dialog, 1);
+        await expect(dialog.locator(".textLayer span").first()).toBeAttached();
+        await expectNoHorizontalScroll(page);
+        expect(blocked).toEqual([]);
+    });
+
+    test("every page of a long PDF is reachable by scrolling, and the zoom buttons widen it", async ({
+        page,
+    }) => {
+        await page.route(/\/api\/review\/decisions\/[0-9a-f-]{36}\/file$/, (route) =>
+            route.fulfill({ contentType: "application/pdf", body: pdfOfPages(3) }),
+        );
+        await openFirstRecord(page);
+        await pdfButton(page).click();
+        const dialog = page.getByRole("dialog", { name: "Kararın özgün PDF'i" });
+        await expectPagesDrawn(dialog, 3);
+        const region = dialog.getByRole("region", { name: "PDF sayfaları" });
+        const third = dialog.locator("[data-page='3']");
+        await third.scrollIntoViewIfNeeded();
+        expect(await region.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+        await expect(third).toBeInViewport();
+
+        const first = dialog.locator("[data-page='1']");
+        const before = (await first.boundingBox())?.width ?? 0;
+        const zoomIn = dialog.getByRole("button", { name: "Yakınlaştır" });
+        expect((await zoomIn.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+        await zoomIn.click();
+        await expect(dialog.getByLabel("Yakınlaştırma")).toHaveText("125%");
+        await expect
+            .poll(async () => (await first.boundingBox())?.width ?? 0)
+            .toBeGreaterThan(before);
+        await expectNoHorizontalScroll(page);
     });
 
     test("at the end of a long text the action bar is in view and Düzelt brings the form up", async ({

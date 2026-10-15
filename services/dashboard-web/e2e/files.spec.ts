@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { expectPagesDrawn, pdfOfPages } from "./helpers";
+
 // Needs the worker next to the app (`make dev` starts it) and FILE_STORE_ROOT set for both. Each run
 // uploads PDFs with a text of its own (a duplicate is refused), so the spec can run again on the
 // same database without a reset. Project `chromium-mutating` (data changing), phone checks in
@@ -108,6 +110,8 @@ test.describe("files @files", () => {
         await expect(frame).toBeVisible();
         const src = (await frame.getAttribute("src")) ?? "";
         expect(src).toMatch(/^\/api\/files\/[0-9a-f-]{36}\/content$/);
+        // At 1440 px the browser's viewer is used; PDF.js is for phones.
+        await expect(page.locator("canvas")).toHaveCount(0);
         const content = await page.request.get(src);
         expect(content.headers()["content-type"]).toContain("application/pdf");
         expect((await content.body()).subarray(0, 5).toString()).toBe("%PDF-");
@@ -204,12 +208,46 @@ test.describe("files on a phone @mobile", () => {
         expect(small).toEqual([]);
     });
 
-    test("the detail offers a link instead of the embedded PDF", async ({ page }) => {
+    async function openFirstDetail(page: Page) {
         await openList(page, "?q=e2e-genelge-");
         await page.getByRole("list", { name: "Dosyalar" }).getByRole("link").first().click();
         await page.waitForURL(/\/dosyalar\/[0-9a-f-]{36}$/);
-        await expect(page.getByRole("link", { name: "Dosyayı aç" })).toBeVisible();
+    }
+
+    test("the detail offers a button instead of the embedded PDF", async ({ page }) => {
+        await openFirstDetail(page);
+        await expect(page.getByRole("button", { name: "Dosyayı aç" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Dosyayı aç" })).toBeHidden();
         await expect(page.locator("iframe[title='Dosyanın içeriği']")).toBeHidden();
         await expectNoHorizontalScroll(page);
+    });
+
+    test("the button draws the PDF as PDF.js canvases in a window, and Escape returns", async ({
+        page,
+    }) => {
+        // Chromium's phone emulation keeps the desktop PDF viewer, so the canvas is the check.
+        await page.route(/\/api\/files\/[0-9a-f-]{36}\/content$/, (route) =>
+            route.fulfill({ contentType: "application/pdf", body: pdfOfPages(2) }),
+        );
+        let popups = 0;
+        page.on("popup", () => popups++);
+        await openFirstDetail(page);
+        const opener = page.getByRole("button", { name: "Dosyayı aç" });
+        await opener.click();
+        const dialog = page.getByRole("dialog", { name: "Dosyanın içeriği" });
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator("iframe")).toHaveCount(0);
+        await expectPagesDrawn(dialog, 2);
+        await dialog.locator("[data-page='2']").scrollIntoViewIfNeeded();
+        await expect(dialog.locator("[data-page='2']")).toBeInViewport();
+        await expect(dialog.getByRole("link", { name: "Yeni sekmede aç" })).toHaveAttribute(
+            "target",
+            "_blank",
+        );
+        await expectNoHorizontalScroll(page);
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+        await expect(opener).toBeFocused();
+        expect(popups).toBe(0);
     });
 });

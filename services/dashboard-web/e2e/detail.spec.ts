@@ -51,6 +51,8 @@ test("the PDF opens large in a window over the page and Escape closes it", async
         "target",
         "_blank",
     );
+    // From md the window keeps the browser's own viewer: no PDF.js canvas.
+    await expect(dialog.locator("canvas")).toHaveCount(0);
     const box = await dialog.boundingBox();
     expect(box?.width).toBeGreaterThan(900);
     await page.keyboard.press("Escape");

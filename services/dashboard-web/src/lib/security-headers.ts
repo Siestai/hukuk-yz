@@ -5,7 +5,9 @@ const dev = () => process.env.NODE_ENV === "development";
 /**
  * Content-Security-Policy for one response. Scripts run only with the per-request nonce
  * (Next applies it to its own scripts); styles allow 'unsafe-inline' because Next and the UI
- * components emit inline style. Development adds what HMR and React's debug eval need.
+ * components emit inline style. The PDF.js viewer runs its worker from our own origin, which
+ * `worker-src` must name: without it a worker falls back to `script-src`, where 'strict-dynamic'
+ * ignores 'self'. Development adds what HMR and React's debug eval need.
  */
 export function contentSecurityPolicy(nonce: string, isDev = dev()): string {
     return [
@@ -16,6 +18,7 @@ export function contentSecurityPolicy(nonce: string, isDev = dev()): string {
         "font-src 'self'",
         `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
         "frame-src 'self'",
+        "worker-src 'self'",
         "object-src 'none'",
         "frame-ancestors 'none'",
         "base-uri 'self'",
