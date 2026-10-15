@@ -46,7 +46,7 @@ Every UI works from a 360 px phone to a wide desktop; mobile is part of the work
 - **Navigation:** side column from `lg`; below it a sticky top bar and a drawer built on the shared `Dialog` (`variant="drawer"`), which keeps the focus trap, Escape and focus return. The side column and the drawer render the same component.
 - **Bars pinned to the screen bottom** are `sticky bottom-0`, pad with `pb-safe-3` for the home indicator, and the page leaves room so they cover no content at the end.
 - **Dialogs** are inset from the screen edges, scroll inside (`max-h-inset`, `overscroll-contain`) and stack full-width buttons on a phone (`DialogActions`).
-- **Embedded PDFs:** phone browsers mostly cannot show them, so below `md` the UI offers an "open in a new tab" link and the `iframe` stays hidden and `loading="lazy"`.
+- **Embedded PDFs:** phone browsers mostly cannot show them (Android Chrome has no viewer, iOS shows one page), so below `md` the `iframe` stays hidden and `loading="lazy"`, and a button opens a window in which `PdfViewer` (PDF.js, loaded only then) draws the pages; "open in a new tab" stays as the fallback. An e2e check of a phone PDF asserts a drawn canvas: Playwright's phone emulation still has the desktop PDF viewer.
 - **Every UI PR shows screenshots at 360, 768 and 1440 px** (the PR description says so), and the e2e suite has a phone project that checks for horizontal scroll.
 
 ## Structure and quality
