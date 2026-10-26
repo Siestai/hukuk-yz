@@ -1563,3 +1563,31 @@ async def test_statute_extractions_stay_out_of_the_decision_review(
             404,
             "extraction_not_found",
         )
+
+
+async def test_the_detail_of_an_approved_source_shows_the_reviews_of_its_older_extraction(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    old = await _eid(kb_factory, record)
+    edit = {"action": "edit", "edits": {"chamber": "22. HD"}}
+    assert (await client.post(f"{BASE}/{old}", json=edit, headers=me.headers)).status_code == 200
+    # a parser fix adds a newer extraction with another text; nobody reviewed it
+    fixed = {**record.fields, "full_text": "yeni metin"}
+    await load(
+        kb_factory,
+        [dataclasses.replace(record, parser_version="6", fields=fixed)],
+        LoadCounts(),
+    )
+    new = await _eid(kb_factory, record, "6")
+
+    body = (await client.get(f"{BASE}/{new}", headers=me.headers)).json()
+
+    assert (body["source_status"], body["fields"]["full_text"]) == ("approved", "yeni metin")
+    (review,) = body["reviews"]
+    assert (review["decision"], review["reviewer_name"]) == ("edit", "baran@x.test")
+    assert review["edits"] == {"chamber": "22. HD"}
+    (item,) = (await client.get(BASE, params={"status": "approved"}, headers=me.headers)).json()[
+        "items"
+    ]
+    assert (item["extraction_id"], item["review_decision"]) == (str(new), "edit")

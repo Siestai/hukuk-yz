@@ -69,6 +69,7 @@
 ### 2026-10-26
 
 - **Karar gövdesi işaretleri 04b** (Themis, uygulayan Claude Code; Orhan onayına tabi): gövde başlangıcını bulan yeni açılış kalıpları iki kademeye ayrıldı: güçlü olanlar `_BODY_RE`'ye, zayıf olanlar (taraf başlığı, "Bölge Adliye Mahkemesi kararı ... temyiz edilmekle", "İlk derece mahkemesince verilen karara karşı") yalnız başka işaret yoksa devreye giren `_FORMULA_RE`'ye girdi; böylece zaten bulunmuş gövdelerin başlangıcı kaymaz. Numaralı "1-Dosyadaki yazılara" maddesi, öncesinde temyiz formülü olan açılış paragrafını kesmesin diye ayrı bir kademede. İşareti olmayan 3 karar (özetin gövdeyi aynen tekrarladığı ya da gövdenin işaretsiz başladığı) `summary_only` kalır; sezgisel "özet nerede biter" tahmini kullanılmadı, çünkü yanlış kesim "tam metin" etiketiyle kirli veri üretir.
+- **Onaylı kararların metni parser düzeltmesinden sonra yenilenir** (Orhan onayı, 2026-10-26; Themis uyguladı): onaylı kararlarda yalnız metin alanları (`full_text`, `text_completeness`, `outcome` yalnız boşsa) yeni parser çıktısından yenilenir; `review.edits` içindeki alanlara dokunulmaz. Onay, düzenlemeler ve doğrulama durumu aynı kalır. Eski `decision` satırı silinmez, `superseded_at` ile kapatılır; reddedilen kararlara dokunulmaz. Komut: `python -m app.loaders.refresh_text [--dry-run]` (Görev 04b).
 
 ## Açık öneriler (karar bekliyor)
 

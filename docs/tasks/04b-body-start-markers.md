@@ -30,6 +30,11 @@ Parser bu kararlarda gövdenin başlangıcını bulsun; kalıcı düzeltme parse
    - 53 kararın kaçı `summary_only`'den çıktı (beklenen 50), 3 yalnız-özet kararı `summary_only` kaldı mı,
    - 53 dışında `text_completeness`, `full_text` başlangıcı, `editorial_summary`, `outcome` alanı değişen kayıt sayısı ve her değişen sınıftan elle okunmuş örnekler. Beklenmedik değişiklik (önceden doğru bulunan gövdenin yer değiştirmesi) olmamalı; varsa açıklanır ya da düzeltilir.
    - Karşılaştırma betiği repo'ya girmez (scratch'te kalır); komut ve özet PR'da.
+6. **Onaylı kararların metin yenilemesi** (Orhan onayı, 2026-10-26): yükleyici yalnız yeni extraction ekler, onaylı kararın `decision` satırını yazmaz. `python -m app.loaders.refresh_text [--dry-run]` (`services/app/app/loaders/refresh_text.py`) kaynağı `approved` olan ve canlı `decision` satırı daha eski parser sürümünün extraction'ından yayımlanmış her karar için en yeni extraction'dan yalnız `full_text`, `text_completeness` ve (canlı satırda boşsa) `outcome` alanlarını yeniler:
+   - `review.edits` içinde olan alan hiç değişmez; onay, düzenlemeler, `review_id`, `recorded_by` ve doğrulama sütunları aynen kalır.
+   - Eski satır silinmez, `superseded_at` ile kapatılır; yeni satır kopyadır (aynı işlemde). Yeni satırın `extraction_id`'si en yeni extraction'dır (metnin kaynağı); `review_id` onay review'ında kalır (o eski extraction'a aittir). `decision_verification` geçmişi kapalı satırda kalır.
+   - Yeni extraction'da metin boşsa mevcut metin silinmez. İkinci çalıştırma 0 değişiklik yapar. `--dry-run` yazmaz; `refreshed`, `skipped_same`, `skipped_edits` ve `summary_only->full` sayılarını basar.
+   - Reddedilen ve bekleyen kararlara dokunulmaz. İnceleme listesi zaten kaynak bazlı çalışır; ayrıntı ekranı artık kaynağın tüm review'larını gösterir (yeni extraction onaylayanı ve düzenlemeleri kaybetmesin).
 
 ## Kapsam dışı
 
@@ -46,8 +51,9 @@ Parser bu kararlarda gövdenin başlangıcını bulsun; kalıcı düzeltme parse
 ## Canlıya alma (merge sonrası, Themis)
 
 1. Yeni parser'la `decisions.jsonl` üret; yalnız `text_completeness` ya da `full_text`'i değişen ve canlıda **henüz incelenmemiş** (kaynak durumu `analyzed`, review'sız) kayıtları içeren bir alt küme çıkar.
-2. Alt kümeyi app konteynerine taşı, `python -m app.loaders.decisions <alt küme> --files ... --dry-run`, sonra gerçek yükleme. Yeni parser sürümü yeni extraction ekler; eski extraction ve onaylı kayıtlar değişmez.
-3. Panelde 50 kararın "Yalnız özet" etiketinin kalktığını ve güven bandının yeniden hesaplandığını kontrol et.
+2. Alt kümeyi app konteynerine taşı, `python -m app.loaders.decisions <alt küme> --files ... --dry-run`, sonra gerçek yükleme. Yeni parser sürümü yeni extraction ekler; eski extraction ve onaylı kayıtlar değişmez. Onaylı kararların da (39 beklenir) v6 extraction'ı alt kümede olmalı.
+3. `python -m app.loaders.refresh_text --dry-run`: `refreshed` ≈ 39 (düzenlemesi tüm değişiklikleri kapsayanlar `skipped_edits`), `summary_only->full` beklenen sayıda mı kontrol et; sonra `python -m app.loaders.refresh_text` ve ikinci çalıştırmanın boş olduğunu doğrula. Doğrulama yükleyicisi (`app.verification`) çalışırken çalıştırma.
+4. Panelde 50 kararın "Yalnız özet" etiketinin kalktığını ve güven bandının yeniden hesaplandığını kontrol et.
 
 ## Notlar Claude Code için
 
