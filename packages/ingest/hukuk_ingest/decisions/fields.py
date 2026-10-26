@@ -720,6 +720,26 @@ def _body_start(text: str, lines: list[str], search_from: int, foreign: bool) ->
     return text.count("\n", 0, match.start()), approximate
 
 
+# The journal wraps its summary at one column width; a decision body printed without any opening
+# marker is wider. Rarely a page header glued into a line makes one long too.
+_WRAP_MARGIN = 8
+_MIN_SUMMARY_LINES = 4
+_PAGE_HEADER_RE = re.compile(r"Çalışma ve Toplum, \d{4}/\d")
+
+
+def _wide_line_start(lines: list[str], summary: int) -> int:
+    """Line index of the first line clearly wider than the wrapped summary above it, or -1."""
+    widest = 0
+    for i in range(summary, len(lines)):
+        width = len(lines[i])
+        if _PAGE_HEADER_RE.search(lines[i]):
+            continue
+        if i - summary >= _MIN_SUMMARY_LINES and width > widest + _WRAP_MARGIN:
+            return i
+        widest = max(widest, width)
+    return -1
+
+
 def _other_esas(meta: _Meta, lines: list[str], head_end: int, chosen: str) -> list[str]:
     """Esas numbers that differ from the chosen one: repeated labels inside the block and
     further Esas lines before the body."""
@@ -769,6 +789,8 @@ def extract_fields(journal: JournalText, layout: Layout) -> DecisionFields:
     else:
         search_from = meta_end if summary is None else summary + 1
         body_line, approximate = _body_start(text, lines, search_from, foreign)
+        if body_line < 0 and summary is not None and not foreign:
+            body_line, approximate = _wide_line_start(lines, summary), True
     if approximate:
         f.warnings.append("body_start_approximate")
     has_body = body_line >= 0
