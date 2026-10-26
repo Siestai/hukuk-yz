@@ -511,16 +511,38 @@ def test_party_heading_opens_the_body_only_without_a_stronger_marker() -> None:
     assert f.full_text.startswith("Davacı vekili")  # a decision already found keeps its start
 
 
-def test_phrases_inside_the_summary_do_not_open_the_body() -> None:
-    summary = (
-        "ÖZETİ: Karar TÜRK MİLLETİ ADINA verilmiştir. Ayrıca\n"
-        "II. Hukuk Dairesinin kararı ile Taraflar arasındaki\n"
-        "uyuşmazlık, 1-Dosyadaki yazılara göre çözülmüştür.\n"
-    )
-    text = _summary_head().replace("ÖZETİ: Örnek özet birinci satır\nikinci satır özet.\n", summary)
+@pytest.mark.parametrize(
+    "trap",
+    [
+        "II. HUKUK DAİRESİ kararı ile birlikte değerlendirilmelidir.",
+        "V. CEZA DAİRESİ içtihadına göre",
+        "II. HUKUK DAİRESİ",
+        "Davacı iddiası doğrultusunda işe iade talebi kabul edilmelidir.",
+        "Davaya konu uyuşmazlık işe iade talebine ilişkindir.",
+        "Yukarıda tarih ve numarası yazılı karar hatalıdır.",
+        "Mahalli mahkemesinden verilen karar yerindedir.",
+        "A-5521 sayılı Kanun uyarınca görevlidir.",
+        "Başvurucu (davacı) vekili temyiz yoluna gitmelidir.",
+        "TARAFLARIN İDDİA ve savunmalarına göre karar verilmelidir.",
+        "Bölge Adliye Mahkemesi kararı davalı tarafından temyiz edilmekle yetinilmemelidir.",
+        "İlk derece mahkemesince verilen karara karşı istinaf yerindedir.",
+        "1. Taraflar arasında akdedilen sözleşme geçerlidir.",
+    ],
+)
+def test_prose_at_the_start_of_a_wrapped_summary_line_does_not_open_the_body(trap: str) -> None:
+    # The summary line before the trap has no sentence end, as in a summary wrapped mid-sentence.
+    text = _summary_head().replace("ikinci satır özet.\n", f"ikinci satır özet ve\n{trap}\n")
+    assert trap in text
     f = parse(text)
     assert f.text_completeness == "summary_only"
-    assert f.editorial_summary.endswith("çözülmüştür.")
+    assert trap in f.editorial_summary
+
+
+def test_strong_opening_formula_inside_the_summary_is_not_a_trap_for_mid_line_text() -> None:
+    text = _summary_head().replace(
+        "ikinci satır özet.\n", "ikinci satır TÜRK MİLLETİ ADINA verilmiştir. II. Hukuk Dairesi\n"
+    )
+    assert parse(text).text_completeness == "summary_only"
 
 
 # --- related articles -----------------------------------------------------------------------

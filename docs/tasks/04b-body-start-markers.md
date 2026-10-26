@@ -33,13 +33,13 @@ Parser bu kararlarda gövdenin başlangıcını bulsun; kalıcı düzeltme parse
 6. **Onaylı kararların metin yenilemesi** (Orhan onayı, 2026-10-26): yükleyici yalnız yeni extraction ekler, onaylı kararın `decision` satırını yazmaz. `python -m app.loaders.refresh_text [--dry-run]` (`services/app/app/loaders/refresh_text.py`) kaynağı `approved` olan ve canlı `decision` satırı daha eski parser sürümünün extraction'ından yayımlanmış her karar için en yeni extraction'dan yalnız `full_text`, `text_completeness` ve (canlı satırda boşsa) `outcome` alanlarını yeniler:
    - `review.edits` içinde olan alan hiç değişmez; onay, düzenlemeler, `review_id`, `recorded_by` ve doğrulama sütunları aynen kalır.
    - Eski satır silinmez, `superseded_at` ile kapatılır; yeni satır kopyadır (aynı işlemde). Yeni satırın `extraction_id`'si en yeni extraction'dır (metnin kaynağı); `review_id` onay review'ında kalır (o eski extraction'a aittir). `decision_verification` geçmişi kapalı satırda kalır.
-   - Yeni extraction'da metin boşsa mevcut metin silinmez. İkinci çalıştırma 0 değişiklik yapar. `--dry-run` yazmaz; `refreshed`, `skipped_same`, `skipped_edits` ve `summary_only->full` sayılarını basar.
+   - Yeni extraction'da metin boşsa mevcut metin silinmez. İkinci çalıştırmada `refreshed` 0 olur; satırlar değişmez (`skipped_same` / `skipped_edits` olanlar eski `extraction_id`'lerini korudukları için her çalıştırmada yeniden sayılır). Canlı satırın `extraction_id`'si boşsa (elle yayımlanmış) en eski sayılır ve yenilenir. Tek bir kaynak hata verirse (`IntegrityError`, geçersiz tamlık değeri) yalnız o kaynak geri alınır, `failed` olarak sayılıp stderr'e yazılır, diğerleri sürer ve çıkış kodu 1 olur. `--dry-run` yazmaz; `refreshed`, `skipped_same`, `skipped_edits` ve `summary_only->full` sayılarını basar.
    - Reddedilen ve bekleyen kararlara dokunulmaz. İnceleme listesi zaten kaynak bazlı çalışır; ayrıntı ekranı artık kaynağın tüm review'larını gösterir (yeni extraction onaylayanı ve düzenlemeleri kaybetmesin).
 
 ## Kapsam dışı
 
 - Canlı veritabanına yükleme (Themis merge sonrası yapar, aşağıda).
-- Yükleyici, güven kuralı veya panel değişikliği.
+- Yükleyici ve güven kuralı değişikliği. Panel: yalnız Kapsam 6'nın istediği `services/app/app/review.py` değişikliği (ayrıntı ekranı kaynağın tüm review'larını gösterir) kapsamdadır; başka panel değişikliği yok.
 - 3 yalnız-özet kararın tam metnini dış kaynaktan tamamlama (Yargıtay/UYAP teyidi ayrı iş).
 
 ## Kabul kriterleri
@@ -52,7 +52,7 @@ Parser bu kararlarda gövdenin başlangıcını bulsun; kalıcı düzeltme parse
 
 1. Yeni parser'la `decisions.jsonl` üret; yalnız `text_completeness` ya da `full_text`'i değişen ve canlıda **henüz incelenmemiş** (kaynak durumu `analyzed`, review'sız) kayıtları içeren bir alt küme çıkar.
 2. Alt kümeyi app konteynerine taşı, `python -m app.loaders.decisions <alt küme> --files ... --dry-run`, sonra gerçek yükleme. Yeni parser sürümü yeni extraction ekler; eski extraction ve onaylı kayıtlar değişmez. Onaylı kararların da (39 beklenir) v6 extraction'ı alt kümede olmalı.
-3. `python -m app.loaders.refresh_text --dry-run`: `refreshed` ≈ 39 (düzenlemesi tüm değişiklikleri kapsayanlar `skipped_edits`), `summary_only->full` beklenen sayıda mı kontrol et; sonra `python -m app.loaders.refresh_text` ve ikinci çalıştırmanın boş olduğunu doğrula. Doğrulama yükleyicisi (`app.verification`) çalışırken çalıştırma.
+3. `python -m app.loaders.refresh_text --dry-run`: `refreshed` ≈ 39 (düzenlemesi tüm değişiklikleri kapsayanlar `skipped_edits`), `summary_only->full` beklenen sayıda mı kontrol et; sonra `python -m app.loaders.refresh_text` ve ikinci çalıştırmada `refreshed` 0 olduğunu doğrula (`skipped_*` yeniden sayılır, `failed` 0 olmalı). Doğrulama yükleyicisi (`app.verification`) çalışırken çalıştırma.
 4. Panelde 50 kararın "Yalnız özet" etiketinin kalktığını ve güven bandının yeniden hesaplandığını kontrol et.
 
 ## Notlar Claude Code için
@@ -67,10 +67,15 @@ Kök neden: 48 hedefin (50'den ikisi main'de zaten `full`) hepsinde özetten son
 - Yargıtay diğer: "1. Taraflar arasındaki ... davasından dolayı" 2, "Davaya konu uyuşmazlık" 2, "A-5521 sayılı", "Başvurucu (davacı) vekili", "Yukarıda tarih ve numarası yazılı", "Bölge Adliye Mahkemesi kararı ... temyiz edilmekle" 1'er: **8**.
 - İşaretsiz, `summary_only` kalan: **3** (aşağıda).
 
-Eklenen kalıplar: `_BODY_RE`'ye güçlü açılışlar (yukarıdaki sınıfların başlık / formül biçimleri; romen başlık I. ötesine ve tireye genişletildi). `_ITEM_RE`: numaralı temyiz maddesi; kendinden önce temyiz formülü olan açılış paragrafı varsa o paragraf korunur (formül kazanır, `body_start_approximate`). `_FORMULA_RE`'ye zayıf açılışlar (TARAFLARIN İDDİA, "Bölge Adliye Mahkemesi kararı ... temyiz edilmekle", "İlk derece mahkemesince verilen karara karşı"): yalnız başka işaret yokken devreye girer, böylece zaten bulunmuş gövdelerin başlangıcı kaymaz. Özetin son kelimesine yapışık "1-Dosyadaki" için metin, eşleşmeden önce o noktada satıra bölünür.
+Eklenen kalıplar: `_BODY_RE`'ye güçlü açılışlar (yukarıdaki sınıfların başlık / formül biçimleri; romen başlık I. ötesine ve tireye genişletildi). `_ITEM_RE`: numaralı temyiz maddesi; kendinden önce temyiz formülü olan açılış paragrafı varsa o paragraf korunur (formül kazanır, `body_start_approximate`). Özetin sarılmış bir satırı da düzyazı cümlesiyle ya da "II. HUKUK DAİRESİ" ile başlayabilir; bu yüzden kalıplar üç katmana ayrıldı (review bulgusu, 2026-10-26):
+- Güçlü, sabit başlık / formüller `_BODY_RE`'de: TÜRK MİLLETİ ADINA, İTİRAZ YOLUNA BAŞVURAN, İTİRAZIN KONUSU, İSTEMİN_KONUSU. Özet cümlesi bunlarla satır başlamaz.
+- Romen başlıklar `_ROMAN_HEADING_RE`'de: satırın tamamı büyük harfli başlık olmalı ve DAİRESİ / KURULU içermemeli. "II. HUKUK DAİRESİ kararı ile ..." küçük harf içerir, "II. HUKUK DAİRESİ" tek başına da mahkeme adıdır; ikisi de eşleşmez.
+- Düzyazı açılışlar (`Davacı iddiası`, `Davaya konu uyuşmazlık`, `Yukarıda tarih ve ...`, `Mahalli mahkemesinden verilen`, `A-5521 sayılı`, `1. Taraflar arasında`, `Başvurucu (davacı) vekili` ve `_FORMULA_RE` katmanındaki TARAFLARIN İDDİA / Bölge Adliye Mahkemesi kararı ... temyiz edilmekle / İlk derece mahkemesince verilen karara karşı) yalnız kendinden önceki boş olmayan satır cümleyi bitiriyorsa (`. : ; ? ! )` ya da tırnak) gövde başlangıcı sayılır. Özet cümlenin ortasında sarılıyorsa önceki satır cümle bitirmez, tuzak kapanır. Bedeli: noktasız biten özetten sonra gelen 5 gerçek gövde (Davaya konu uyuşmazlık 2, A-5521 1, Başvurucu (davacı) vekili 1, İlk derece mahkemesince 1) `summary_only` kaldı. Kalan risk: özet bir cümleyi satır sonunda bitirip bir sonraki satırı bu kalıplardan biriyle başlatırsa yanlış başlangıç olur; bu daha dar, bilinen bir sınırdır.
+- Zayıf `_FORMULA_RE`/`_SENTENCE_FORMULA_RE` yalnız başka işaret yokken devreye girer, böylece zaten bulunmuş gövdelerin başlangıcı kaymaz. Özetin son kelimesine yapışık "1-Dosyadaki" için metin, eşleşmeden önce o noktada satıra bölünür.
 
 Bilinen sınırlar:
 
+- Sıkılaştırılmış kuralla `summary_only` kalan hedef sayısı 6'dan 11'e çıktı (yukarıdaki 5 karar + eskiden bilinen 6); tam arşivde 53 dışı değişiklik 51'den 44'e düştü, hepsi gövdeyi daha erkene taşıyor.
 - `summary_only` kalan 3 tam-metinli karar: 9. HD E.2012/2995 K.2012/30457 (arşivde iki kopya) ve 18. CD E.2015/16631. Özet gövdeyi aynen tekrarlıyor ve gövde açık işaret olmadan sürüyor; güvenilir kalıp yok. "Noktasız biten özet" sezgisi, yanlış kesimle "full" etiketli kirli veri üreteceği için eklenmedi.
 - 5 yeni şablonlu karar gövdeyi II.–IV. başlıkta başlatır: ilk bölümlerin (I. başvuru / dava) başlığı çıkarılmış metinde yok, bu bölümler gövdeye girmez.
 - Zayıf kalıplar `body_start_approximate` uyarısı verir (başlangıç satırı kesin, ama işaret zayıf).

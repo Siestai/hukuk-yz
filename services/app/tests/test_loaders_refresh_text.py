@@ -5,7 +5,7 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import JSON, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.kb import approve_extraction, queue, reject_extraction
@@ -21,7 +21,7 @@ from app.models.common import (
     TextCompleteness,
     Verification,
 )
-from app.models.decision import Decision
+from app.models.decision import Decision, DecisionVerification
 from app.models.user import AppUser
 from hukuk_models import ReviewFilters
 
@@ -135,16 +135,31 @@ async def test_an_approved_decision_gets_the_new_text_and_keeps_the_rest(
         assert new.tsv is not None
 
 
-async def test_a_second_run_changes_nothing(
+async def test_a_second_run_refreshes_nothing(
     kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
 ) -> None:
-    (record,) = await _load_v5(kb_factory)
-    await _approve(kb_factory, reviewer, record)
-    await _load_v6(kb_factory, record)
-    assert (await refresh_text(kb_factory))["refreshed"] == 1
+    refreshed, same = await _load_v5(kb_factory, 2)
+    await _approve(kb_factory, reviewer, refreshed)
+    await _approve(kb_factory, reviewer, same)
+    async with kb_factory() as session:  # the live text of `same` already equals the v6 text
+        await session.execute(
+            update(Decision)
+            .where(Decision.esas_no == same.fields["esas_no"])
+            .values(full_text=NEW_TEXT, text_completeness=TextCompleteness.full, outcome="bozma")
+        )
+        await session.commit()
+    await _load_v6(kb_factory, refreshed)
+    await _load_v6(kb_factory, same)
+    assert await refresh_text(kb_factory) == {
+        "refreshed": 1,
+        "summary_only->full": 1,
+        "skipped_same": 1,
+    }
     after_first = [(d.id, d.superseded_at) for d in await _decisions(kb_factory)]
 
-    assert not await refresh_text(kb_factory)
+    # The skipped one keeps its old extraction_id, so it is counted again; nothing else moves.
+    assert await refresh_text(kb_factory) == {"skipped_same": 1}
+    assert await refresh_text(kb_factory) == {"skipped_same": 1}
     assert [(d.id, d.superseded_at) for d in await _decisions(kb_factory)] == after_first
 
 
@@ -261,3 +276,75 @@ async def test_rejected_and_pending_sources_are_not_touched(
         assert [(r.review_decision, r.reviewer_name) for r in rows] == [
             (ReviewDecision.reject, reviewer.display_name)
         ]
+
+
+async def test_a_review_with_json_null_edits_is_treated_as_no_edits(
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    (record,) = await _load_v5(kb_factory)
+    await _approve(kb_factory, reviewer, record)
+    async with kb_factory() as session:  # JSON null, not SQL NULL
+        await session.execute(update(Review).values(edits=JSON.NULL))
+        await session.commit()
+        stored = (await session.execute(select(Review.edits))).scalar_one()
+        assert stored is None
+
+    await _load_v6(kb_factory, record)
+    assert await refresh_text(kb_factory) == {"refreshed": 1, "summary_only->full": 1}
+
+
+async def test_the_verification_history_stays_on_the_closed_row(
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    (record,) = await _load_v5(kb_factory)
+    await _approve(kb_factory, reviewer, record)
+    (live,) = await _decisions(kb_factory)
+    async with kb_factory() as session:
+        session.add(
+            DecisionVerification(decision_id=live.id, source="karararama_yargitay", outcome="match")
+        )
+        await session.commit()
+    await _load_v6(kb_factory, record)
+
+    assert (await refresh_text(kb_factory))["refreshed"] == 1
+
+    old, new = await _decisions(kb_factory)
+    async with kb_factory() as session:
+        owners = (await session.execute(select(DecisionVerification.decision_id))).scalars().all()
+    assert list(owners) == [old.id] and new.id != old.id
+
+
+async def test_a_live_row_without_an_extraction_is_refreshed(
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    # No published extraction to compare with: it counts as older than any parser run.
+    (record,) = await _load_v5(kb_factory)
+    await _approve(kb_factory, reviewer, record)
+    async with kb_factory() as session:
+        await session.execute(update(Decision).values(extraction_id=None))
+        await session.commit()
+
+    assert await refresh_text(kb_factory) == {"refreshed": 1, "summary_only->full": 1}
+
+    old, new = await _decisions(kb_factory)
+    async with kb_factory() as session:
+        assert old.extraction_id is None
+        assert new.extraction_id == await _extraction_id(session, record, "5")
+    assert new.superseded_at is None
+
+
+async def test_a_failing_source_is_counted_and_the_others_still_run(
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    bad, good = await _load_v5(kb_factory, 2)
+    await _approve(kb_factory, reviewer, bad)
+    await _approve(kb_factory, reviewer, good)
+    await _load_v6(kb_factory, bad, text_completeness="not-a-completeness")
+    await _load_v6(kb_factory, good)
+
+    counts = await refresh_text(kb_factory)
+
+    assert counts == {"refreshed": 1, "summary_only->full": 1, "failed": 1}
+    live = {d.esas_no: d for d in await _decisions(kb_factory) if d.superseded_at is None}
+    assert live[good.fields["esas_no"]].full_text == NEW_TEXT
+    assert live[bad.fields["esas_no"]].full_text is None  # rolled back, untouched

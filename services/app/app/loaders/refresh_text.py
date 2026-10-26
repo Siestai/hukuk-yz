@@ -16,10 +16,14 @@ source of its text); its `review_id` stays that of the approval, which belongs t
 extraction. `decision_verification` rows stay on the closed row as its history; the copy starts
 with none (do not run the verification loader at the same time: a result written for the closed
 row would not reach the live one). Rejected and pending sources are not touched. A second run
-changes nothing: the live rows already point at the newest extraction.
+changes nothing: the live rows already point at the newest extraction, except that the
+`skipped_*` rows (same text, or covered by edits) keep their old `extraction_id` and are counted
+again; `refreshed` is 0. A live row with no `extraction_id` counts as older than any extraction.
+A source that fails (`IntegrityError`, a bad completeness value) is rolled back alone, counted as
+`failed` and reported on stderr; the others go on and the exit code is 1.
 
 `--dry-run` writes nothing. Both modes print `refreshed`, `skipped_same` (the new text equals
-the live one), `skipped_edits` (every change is covered by an edit) and the completeness
+the live one), `skipped_edits` (every change is covered by an edit), `failed` and the completeness
 transitions of the refreshed rows (`summary_only->full: 50`).
 """
 
@@ -33,15 +37,15 @@ from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import func, inspect, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
-from app.kb import newest_extractions
-from app.models.common import Extraction, RecordStatus, Review, Source, TextCompleteness
+from app.kb import STATUS_GROUPS, newest_extractions
+from app.models.common import Extraction, Review, Source, TextCompleteness
 from app.models.decision import Decision
 from app.settings import get_settings
 
-TEXT_FIELDS = ("full_text", "text_completeness", "outcome")
 # Not copied to the new row: its own key, the trigger's column, and the two the new row sets.
 _NOT_COPIED = frozenset({"id", "tsv", "recorded_at", "superseded_at", "extraction_id"})
 
@@ -85,10 +89,11 @@ async def _refresh_one(session: AsyncSession, source_id: uuid.UUID, dry_run: boo
             .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
-    if source.status is not RecordStatus.approved or live is None:
+    if source.status not in STATUS_GROUPS["approved"] or live is None:
         return counts
     newest_id = (await session.execute(select(newest_extractions(source_id).c.id))).scalar_one()
     newest = await session.get(Extraction, newest_id)
+    # A live row without an extraction (published by hand) counts as older than any parser run.
     published = await session.get(Extraction, live.extraction_id) if live.extraction_id else None
     assert newest is not None
     if _version_key(newest.parser_version) <= _version_key(
@@ -126,7 +131,7 @@ async def _refresh_one(session: AsyncSession, source_id: uuid.UUID, dry_run: boo
 async def refresh_text(
     factory: async_sessionmaker[AsyncSession], *, dry_run: bool = False
 ) -> Counter[str]:
-    """Counts by `refreshed`, `skipped_same`, `skipped_edits` and completeness transition."""
+    """Counts by `refreshed`, `skipped_same`, `skipped_edits`, `failed`, completeness transition."""
     newest = newest_extractions()
     async with factory() as session:
         source_ids = (
@@ -135,7 +140,7 @@ async def refresh_text(
                     select(newest.c.source_id)
                     .join(Decision, Decision.source_id == newest.c.source_id)
                     .where(
-                        newest.c.status == RecordStatus.approved,
+                        newest.c.status.in_(STATUS_GROUPS["approved"]),
                         Decision.superseded_at.is_(None),
                         Decision.extraction_id.is_distinct_from(newest.c.id),
                     )
@@ -147,10 +152,14 @@ async def refresh_text(
         )
     total: Counter[str] = Counter()
     for source_id in source_ids:
-        async with factory() as session:
-            total += await _refresh_one(session, source_id, dry_run)
-            if not dry_run:
-                await session.commit()
+        try:
+            async with factory() as session:
+                total += await _refresh_one(session, source_id, dry_run)
+                if not dry_run:
+                    await session.commit()
+        except (IntegrityError, ValueError) as error:  # the session rolled back on leaving
+            total["failed"] += 1
+            print(f"failed {source_id}: {type(error).__name__}: {error}", file=sys.stderr)
     return total
 
 
@@ -161,12 +170,12 @@ async def _main(dry_run: bool) -> int:
     finally:
         await engine.dispose()
     print(f"{counts['refreshed']} decisions {'would be refreshed' if dry_run else 'refreshed'}")
-    for key in ("refreshed", "skipped_same", "skipped_edits"):
+    for key in ("refreshed", "skipped_same", "skipped_edits", "failed"):
         print(f"  {key}: {counts[key]}")
     for key, count in sorted(counts.items()):
         if "->" in key:
             print(f"  {key}: {count}")
-    return 0
+    return 1 if counts["failed"] else 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:

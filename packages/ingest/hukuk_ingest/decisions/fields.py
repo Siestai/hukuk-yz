@@ -256,17 +256,29 @@ _BODY_RE = re.compile(
     r"(?:istemiştir|talep etmiştir|talebinde bulunmuştur)"
     r"|Yerel[ \t]+mahkeme,|Mahkeme[ \t]+ilamında|Hüküm[ \t]+süresi[ \t]+içinde"
     r"|Hükmün[ \t,]+(?:davacı|davalı|taraf)"
-    # Opening forms of the decisions the markers above miss: the Danıştay / BİM formula, AYM
-    # referral headings, roman headings with a dash or a roman numeral beyond "I.", and the BAM
-    # and Yargıtay HGK opening sentences.
-    r"|TÜRK[ \t]+MİLLETİ[ \t]+AD[Iİ]NA|Yukarıda[ \t]+(?:tarih[ \t]+ve|mahkemesi[ \t]+ile)"
-    r"|Mahalli[ \t]+mahkemesinden[ \t]+verilen|Davacı[ \t]+iddiası"
-    r"|\.?[ \t]*İTİRAZ[ \t]+YOLUNA[ \t]+BAŞVURAN|İTİRAZIN[ \t]+KONUSU|İSTEMİN_?[ \t]*KONUSU"
-    r"|(?:I{1,3}|IV|VI{0,3})[ \t]*[.\-][ \t]*[A-ZÇĞİÖŞÜ]{3,}"
-    r"|\d{1,2}\.[ \t]+Taraflar[ \t]+arasında"
-    r"|Davaya[ \t]+konu[ \t]+uyuşmazlık"
-    r"|[A-E][ \t]*-[ \t]*\d{4}[ \t]+sayılı|Başvurucu[ \t]*\((?:davacı|davalı)\)[ \t]+vekili"
+    # Opening forms the markers above miss, all fixed headings or formulas that no summary
+    # sentence starts with: the Danıştay / BİM formula and the AYM referral headings.
+    r"|TÜRK[ \t]+MİLLETİ[ \t]+AD[Iİ]NA"
+    r"|\.?İTİRAZ[ \t]+YOLUNA[ \t]+BAŞVURAN|İTİRAZIN[ \t]+KONUSU|İSTEMİN_?[ \t]*KONUSU"
     r")",
+    re.MULTILINE,
+)
+# Roman section headings beyond "I." and with a dash ("II. BAŞVURU SÜRECİ", "I-GİRİŞ"): an all-caps
+# heading line. "II. HUKUK DAİRESİ kararı ..." wrapped into an editorial summary has lowercase
+# words, and a court name ("V. CEZA DAİRESİ") is not a section heading either.
+_ROMAN_HEADING_RE = re.compile(
+    r"^[ \t]*(?:I{1,3}|IV|VI{0,3})[ \t]*[.\-][ \t]*"
+    r"(?![^\n]*\b(?:DAİRESİ|KURULU)\b)[A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ \t:]{2,}$",
+    re.MULTILINE,
+)
+# Opening sentences of BAM / Yargıtay decisions. They are ordinary prose, so a wrapped line of the
+# editorial summary can start the same way ("Davacı iddiası doğrultusunda ..."); they count only
+# when the line before ends a sentence (`_after_sentence_end`).
+_SENTENCE_BODY_RE = re.compile(
+    r"^[ \t]*(?:Yukarıda[ \t]+(?:tarih[ \t]+ve|mahkemesi[ \t]+ile)"
+    r"|Mahalli[ \t]+mahkemesinden[ \t]+verilen|Davacı[ \t]+iddiası"
+    r"|\d{1,2}\.[ \t]+Taraflar[ \t]+arasında|Davaya[ \t]+konu[ \t]+uyuşmazlık"
+    r"|[A-E][ \t]*-[ \t]*\d{4}[ \t]+sayılı|Başvurucu[ \t]*\((?:davacı|davalı)\)[ \t]+vekili)",
     re.MULTILINE,
 )
 # The numbered first item of the temyiz reasoning ("1-Dosyadaki yazılara ...", "1-Davalı vekilinin
@@ -283,7 +295,13 @@ _ITEM_RE = re.compile(
 # stay out of `_BODY_RE` so that decisions already found by a marker keep their start.
 _FORMULA_RE = re.compile(
     r"^[^\n]*(?:temyizen[ \t]+incelenmesi|temyiz[ \t]+edilmiş[ \t]+olmakla"
-    r"|hükmün[^\n]{0,40}temyiz|TARAFLARIN[ \t]+İDDİA"
+    r"|hükmün[^\n]{0,40}temyiz)",
+    re.MULTILINE,
+)
+# The BAM opening sentences of the same kind as `_SENTENCE_BODY_RE`, with the same sentence-end
+# condition; like `_FORMULA_RE` they apply only when no other marker exists.
+_SENTENCE_FORMULA_RE = re.compile(
+    r"^[^\n]*(?:TARAFLARIN[ \t]+İDDİA"
     r"|Bölge[ \t]+Adliye[ \t]+Mahkemesi[ \t]+kararı[^\n]{0,80}temyiz[ \t]+edilmekle"
     r"|İlk[ \t]+derece[ \t]+mahkemesince[ \t]+verilen[ \t]+karara[ \t]+karşı)",
     re.MULTILINE,
@@ -656,12 +674,38 @@ def _case_numbers(meta: _Meta, warnings: list[str]) -> tuple[str, str, str]:
 _GLUED_ITEM_RE = re.compile(r"(?<=[a-zçğıöşü])(?=1-Dosyadaki[ \t]+yazılara)")
 
 
+def _after_sentence_end(text: str, pos: int) -> bool:
+    """Whether the last non-blank character before `pos` closes a sentence (or the text starts)."""
+    before = text[:pos].rstrip()
+    return not before or before[-1] in ".:;?!)\"”’'"
+
+
+def _first_after_sentence(pattern: re.Pattern[str], text: str, offset: int) -> re.Match[str] | None:
+    return next(
+        (m for m in pattern.finditer(text, offset) if _after_sentence_end(text, m.start())), None
+    )
+
+
+def _earliest(*matches: re.Match[str] | None) -> re.Match[str] | None:
+    return min((m for m in matches if m), key=lambda m: m.start(), default=None)
+
+
 def _body_start(text: str, lines: list[str], search_from: int, foreign: bool) -> tuple[int, bool]:
     """(line index of the decision body or -1, whether the start is only approximate)."""
     offset = sum(len(line) + 1 for line in lines[:search_from])
-    match = (_FOREIGN_BODY_RE if foreign else _BODY_RE).search(text, offset)
-    formula = None if foreign else _FORMULA_RE.search(text, offset)
-    item = None if foreign else _ITEM_RE.search(text, offset)
+    if foreign:
+        match = _FOREIGN_BODY_RE.search(text, offset)
+        return (text.count("\n", 0, match.start()), False) if match else (-1, False)
+    match = _earliest(
+        _BODY_RE.search(text, offset),
+        _ROMAN_HEADING_RE.search(text, offset),
+        _first_after_sentence(_SENTENCE_BODY_RE, text, offset),
+    )
+    formula = _earliest(
+        _FORMULA_RE.search(text, offset),
+        _first_after_sentence(_SENTENCE_FORMULA_RE, text, offset),
+    )
+    item = _ITEM_RE.search(text, offset)
     if item and (not match or item.start() < match.start()):
         if formula and formula.start() < item.start():
             match, approximate = formula, True
