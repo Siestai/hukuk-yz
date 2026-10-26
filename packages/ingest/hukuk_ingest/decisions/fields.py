@@ -256,14 +256,36 @@ _BODY_RE = re.compile(
     r"(?:istemiştir|talep etmiştir|talebinde bulunmuştur)"
     r"|Yerel[ \t]+mahkeme,|Mahkeme[ \t]+ilamında|Hüküm[ \t]+süresi[ \t]+içinde"
     r"|Hükmün[ \t,]+(?:davacı|davalı|taraf)"
+    # Opening forms of the decisions the markers above miss: the Danıştay / BİM formula, AYM
+    # referral headings, roman headings with a dash or a roman numeral beyond "I.", and the BAM
+    # and Yargıtay HGK opening sentences.
+    r"|TÜRK[ \t]+MİLLETİ[ \t]+AD[Iİ]NA|Yukarıda[ \t]+(?:tarih[ \t]+ve|mahkemesi[ \t]+ile)"
+    r"|Mahalli[ \t]+mahkemesinden[ \t]+verilen|Davacı[ \t]+iddiası"
+    r"|\.?[ \t]*İTİRAZ[ \t]+YOLUNA[ \t]+BAŞVURAN|İTİRAZIN[ \t]+KONUSU|İSTEMİN_?[ \t]*KONUSU"
+    r"|(?:I{1,3}|IV|VI{0,3})[ \t]*[.\-][ \t]*[A-ZÇĞİÖŞÜ]{3,}"
+    r"|\d{1,2}\.[ \t]+Taraflar[ \t]+arasında"
+    r"|Davaya[ \t]+konu[ \t]+uyuşmazlık"
+    r"|[A-E][ \t]*-[ \t]*\d{4}[ \t]+sayılı|Başvurucu[ \t]*\((?:davacı|davalı)\)[ \t]+vekili"
     r")",
     re.MULTILINE,
 )
-# Last resort when no marker above exists: the temyiz formula inside the opening paragraph. The
-# body then starts at the formula's line, which can lose the first line of the paragraph.
+# The numbered first item of the temyiz reasoning ("1-Dosyadaki yazılara ...", "1-Davalı vekilinin
+# temyizi açısından"), for decisions without a DAVA line. It follows the opening paragraph, so the
+# temyiz formula in that paragraph wins when it comes first.
+_ITEM_RE = re.compile(
+    r"^[ \t]*\d[ \t]*-[ \t]*Dosyadaki[ \t]+yazılara"
+    r"|^[ \t]*\d[ \t]*-[ \t]*(?:Davalı|Davacı)[^\n]{0,40}temyizi[ \t]+açısından",
+    re.MULTILINE,
+)
+# Last resort when no marker above exists: the temyiz formula inside the opening paragraph, or the
+# heading / sentence that opens a BAM or temyiz decision whose party paragraph has no marker. The
+# body then starts at the matching line, which can lose the first line of the paragraph. These
+# stay out of `_BODY_RE` so that decisions already found by a marker keep their start.
 _FORMULA_RE = re.compile(
     r"^[^\n]*(?:temyizen[ \t]+incelenmesi|temyiz[ \t]+edilmiş[ \t]+olmakla"
-    r"|hükmün[^\n]{0,40}temyiz)",
+    r"|hükmün[^\n]{0,40}temyiz|TARAFLARIN[ \t]+İDDİA"
+    r"|Bölge[ \t]+Adliye[ \t]+Mahkemesi[ \t]+kararı[^\n]{0,80}temyiz[ \t]+edilmekle"
+    r"|İlk[ \t]+derece[ \t]+mahkemesince[ \t]+verilen[ \t]+karara[ \t]+karşı)",
     re.MULTILINE,
 )
 # Foreign-court articles have no DAVA heading; their summary ends at the facts section.
@@ -630,14 +652,28 @@ def _case_numbers(meta: _Meta, warnings: list[str]) -> tuple[str, str, str]:
     )
 
 
+# The summary has no final full stop, so the item can be glued to its last word in the extraction.
+_GLUED_ITEM_RE = re.compile(r"(?<=[a-zçğıöşü])(?=1-Dosyadaki[ \t]+yazılara)")
+
+
 def _body_start(text: str, lines: list[str], search_from: int, foreign: bool) -> tuple[int, bool]:
     """(line index of the decision body or -1, whether the start is only approximate)."""
     offset = sum(len(line) + 1 for line in lines[:search_from])
-    if match := (_FOREIGN_BODY_RE if foreign else _BODY_RE).search(text, offset):
-        return text.count("\n", 0, match.start()), False
-    if not foreign and (match := _FORMULA_RE.search(text, offset)):
-        return text.count("\n", 0, match.start()), True
-    return -1, False
+    match = (_FOREIGN_BODY_RE if foreign else _BODY_RE).search(text, offset)
+    formula = None if foreign else _FORMULA_RE.search(text, offset)
+    item = None if foreign else _ITEM_RE.search(text, offset)
+    if item and (not match or item.start() < match.start()):
+        if formula and formula.start() < item.start():
+            match, approximate = formula, True
+        else:
+            match, approximate = item, False
+    elif match:
+        approximate = False
+    elif formula:
+        match, approximate = formula, True
+    else:
+        return -1, False
+    return text.count("\n", 0, match.start()), approximate
 
 
 def _other_esas(meta: _Meta, lines: list[str], head_end: int, chosen: str) -> list[str]:
@@ -654,7 +690,8 @@ def _other_esas(meta: _Meta, lines: list[str], head_end: int, chosen: str) -> li
 
 def extract_fields(journal: JournalText, layout: Layout) -> DecisionFields:
     f = DecisionFields()
-    text, lines = journal.text, journal.text.split("\n")
+    text = _GLUED_ITEM_RE.sub("\n", journal.text)
+    lines = text.split("\n")
     foreign = layout is Layout.FOREIGN_ARTICLE
     first, run = _first_label(lines), _first_value_run(lines)
     labelled = run is None or (first is not None and first < run)
