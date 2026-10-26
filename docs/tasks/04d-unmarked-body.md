@@ -3,7 +3,7 @@
 Durum: uygulandı, PR bekliyor (Themis, 2026-10-26).
 Sahip: Themis (uygulayan Claude Code).
 Onay: Orhan (2026-10-26, Telegram: "Başla parser düzeltmesini yap merge et test et").
-Bağlam: 04b (#75) sonrası panelde 7 karar hâlâ "yalnız özet" ya da metinsiz. Ortak testi (WP, 2026-10-26) ve Themis'in PDF kontrolü: bunların 6'sında (5 karar, biri iki kopya) çıkarılan metinde tam karar var; parser gövdenin başladığı yeri bulamıyor. Yalnız özet içeren 3 kayıt yalnız özet kalmalı.
+Bağlam: 04b (#75) sonrası panelde 7 karar hâlâ "yalnız özet" ya da metinsiz. Ortak testi (WP, 2026-10-26) ve Themis'in PDF kontrolü: bunların 6'sında (5 karar, biri iki kopya) çıkarılan metinde tam karar var; parser gövdenin başladığı yeri bulamıyor. Yalnız özet içeren kayıt (`3a48a1a56f55`) yalnız özet kalmalı; `6c3c1de7481b` ve `beb94741d68d` Themis'in metin kontrolüyle tam karar çıktı (notlara bkz.).
 
 ## Hedef
 
@@ -17,7 +17,7 @@ Bağlam: 04b (#75) sonrası panelde 7 karar hâlâ "yalnız özet" ya da metinsi
 
 Kontrol edilecek (tam metin var mı bilinmiyor; varsa hedefe girer): `f80c8ef0131c` (10. HD E.2014/22067), `bbf384d6470b` (22. HD E.2014/2858).
 
-`summary_only` kalmalı (yalnız özet): `6c3c1de7481b`, `beb94741d68d`, `3a48a1a56f55`.
+`summary_only` kalmalı (yalnız özet): `3a48a1a56f55`. (`6c3c1de7481b` ve `beb94741d68d` ilk taslakta bu listedeydi; Themis metni kontrol etti, ikisi de tam karar, hedefe `full` olarak girdi.)
 
 ## Kurallar
 
@@ -30,7 +30,7 @@ Kontrol edilecek (tam metin var mı bilinmiyor; varsa hedefe girer): `f80c8ef013
 ## Kabul
 
 1. Hedefler `full`, gövde doğru başlıyor (her biri için ilk 120 karakter notlarda, kısa).
-2. 3 yalnız-özet kayıt `summary_only`.
+2. `3a48a1a56f55` `summary_only` kalır; `6c3c1de7481b` ve `beb94741d68d` `full` (Themis kontrolü, notlarda).
 3. Hedef dışı değişiklikler sayılı ve açıklanmış.
 4. `packages/ingest/tests/test_decisions_fields.py`'ye yeni kural ve tuzak testleri (kısa, sentetik metin; telifli metin yapıştırılmaz).
 5. `make lint`, `make typecheck`, ingest testleri yeşil.
@@ -55,13 +55,14 @@ Hedeflerin gövdesinin ilk ~120 karakteri:
 
 Kontrol edilecekler: ikisinde de tam metin var, hedefe girdi. `f80c8ef0131c` (10. HD 2014/22067): "Davaya konu uyuşmazlık, 6552 sayılı Kanun kapsamında ..." (SONUÇ: BOZULMASINA ile biter). `bbf384d6470b` (22. HD 2014/2858): "A-5521 sayılı İş Mahkemeleri Kanunu'nun 8. maddesine göre iş mahkemesinden verilen kararlar tefhim veya tebliğ tarihinden..." (GERİ ÇEVRİLMESİNE, karar verildi).
 
-Hedef dışı değişiklik (tam arşiv, 6.336 kayıt; `cmp.py`: summary_only→full 10, başka geçiş yok, başka alan değişimi yok), ikisi görevde `summary_only` kalması istenen listede:
+Hedef dışı değişiklik (tam arşiv, 6.336 kayıt; `cmp.py`: summary_only→full 10, başka geçiş yok, başka alan değişimi yok). İki kayıt ilk taslakta `summary_only` listesindeydi; Themis metni kontrol etti, ikisi de `full` doğru:
 
-- `6c3c1de7481b` (Kütahya 2. Sulh Ceza 2006/366): `summary_only` → `full`. Çıkarılan metin (178 satır) özetten sonra mahkemenin tüm hükmünü içeriyor: gövde "Yukarıda açık kimliği yazılı sanık hakkında mahkememizde yapılan duruşma sonunda: İDDİA: ..." ile başlıyor, İDDİA / SAVUNMA / GEREKÇE bölümleri var ve "açıktan okunup, usulen anlatıldı" ile bitiyor. Yalnız özet değil.
-- `beb94741d68d` (9. HD 2008/5763): `summary_only` → `full`. Gövde "Miktar ve değeri temyiz kesinlik sınırını aşmayan taşınır mal ve alacak davalarına ilişkin nihai kararlar HUMK.'un 427/I..." ile başlıyor; temyiz kesinlik sınırı gerekçesi, "temyiz isteminin ... REDDİNE, ... oybirliği ile karar verildi" ile bitiyor. Kısa ama tam karar (2.214 karakter).
+- `6c3c1de7481b` (Kütahya 2. Sulh Ceza 2006/366): Themis kontrolü: tam birinci derece ceza hükmü (İDDİA, SAVUNMA, DELİLLERİN DEĞERLENDİRİLMESİ VE GEREKÇE, HÜKÜM bölümleri); "usulen anlatıldı" bu tür hükmün olağan kapanışı. `full` doğru.
+- `beb94741d68d` (9. HD 2008/5763): Themis kontrolü: kısa ama tam 2008 Yargıtay kararı (temyiz kesinlik sınırı gerekçesi, "REDDİNE ... karar verildi"). `full` doğru.
 
-Bu ikisini `summary_only` bırakmak için metinde bir dayanak yok: tam karar var. Göreve aykırı ama kanıta uygun; Themis PDF'ye bakıp onaylamalı. Onaylanmazsa kuralı bu ikisi için kapatmanın genel yolu yok (kayıt başına istisna olur).
-`3a48a1a56f55` gerçekten yalnız özet (40 satır, hepsi dar), `summary_only` kaldı.
+Kayıt başına istisna yok; yalnız `3a48a1a56f55` gerçekten yalnız özet (40 satır, hepsi dar), `summary_only` kaldı.
+
+Koruma: gövde olarak seçilen satırdan metnin sonuna en az ~1000 karakter ve 8 satır olmalı, yoksa kural -1 döner (`summary_only`). Özet içindeki geniş satırı kısa bir kalan izliyorsa gövde sayılmaz; bu durumda `body_start_approximate` uyarısı da verilmez. Aynı 10 kayıt korumadan sonra da geçiyor.
 
 Bilinen sınırlar:
 

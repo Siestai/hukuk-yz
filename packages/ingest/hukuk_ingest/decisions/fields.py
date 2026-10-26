@@ -722,20 +722,28 @@ def _body_start(text: str, lines: list[str], search_from: int, foreign: bool) ->
 
 # The journal wraps its summary at one column width; a decision body printed without any opening
 # marker is wider. Rarely a page header glued into a line makes one long too.
+# The margin of 8 sits below every jump measured on the archive (9 to 37 characters) and above the
+# ragged right edge of the wrapped summary. The rule assumes a single-column, non-foreign layout.
 _WRAP_MARGIN = 8
+# A real body is not a stub: a wide line in the summary with a short remainder is no body.
+_MIN_BODY_CHARS = 1000
+_MIN_BODY_LINES = 8
 _MIN_SUMMARY_LINES = 4
 _PAGE_HEADER_RE = re.compile(r"Çalışma ve Toplum, \d{4}/\d")
 
 
 def _wide_line_start(lines: list[str], summary: int) -> int:
-    """Line index of the first line clearly wider than the wrapped summary above it, or -1."""
+    """Line index of the first line clearly wider than the wrapped summary above it, or -1.
+
+    The text from that line on must run to a plausible body length, else it stays summary-only."""
     widest = 0
     for i in range(summary, len(lines)):
         width = len(lines[i])
         if _PAGE_HEADER_RE.search(lines[i]):
             continue
         if i - summary >= _MIN_SUMMARY_LINES and width > widest + _WRAP_MARGIN:
-            return i
+            enough = len(lines) - i >= _MIN_BODY_LINES
+            return i if enough and len("\n".join(lines[i:])) >= _MIN_BODY_CHARS else -1
         widest = max(widest, width)
     return -1
 
@@ -790,7 +798,8 @@ def extract_fields(journal: JournalText, layout: Layout) -> DecisionFields:
         search_from = meta_end if summary is None else summary + 1
         body_line, approximate = _body_start(text, lines, search_from, foreign)
         if body_line < 0 and summary is not None and not foreign:
-            body_line, approximate = _wide_line_start(lines, summary), True
+            body_line = _wide_line_start(lines, summary)
+            approximate = body_line >= 0
     if approximate:
         f.warnings.append("body_start_approximate")
     has_body = body_line >= 0
