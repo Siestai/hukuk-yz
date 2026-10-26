@@ -15,6 +15,7 @@ from app.kb import (
     approve_extraction,
     approve_statute_article,
     article_as_of,
+    edits_by_source,
     fold_tr,
     format_amending_ref,
     publish_batch,
@@ -841,6 +842,96 @@ async def test_source_edits_merge_the_edit_reviews_of_all_extractions_last_write
         assert (shown.chamber, shown.journal_issue) == ("10. HD", 7)  # the same edits, in the list
         by_issue = ReviewFilters(journal_issue=7)
         assert len((await session.execute(queue(None, by_issue, "sha256"))).all()) == 1
+
+
+async def _queue_row(session: AsyncSession, source_id: uuid.UUID | None) -> Any:
+    rows = (await session.execute(queue(None, ReviewFilters(), "sha256"))).all()
+    return next(r for r in rows if r.source_id == source_id)
+
+
+async def test_an_edit_that_cannot_be_shown_falls_back_to_the_extraction(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction = await _extraction(session, 10)
+        assert extraction.source_id
+        before = await _queue_row(session, extraction.source_id)
+        review = _review(extraction, reviewer, ReviewDecision.edit, {"outcome": "onama"})
+        session.add(review)
+        await session.flush()
+
+        async def write(edits: str) -> Any:
+            await session.execute(
+                text("UPDATE review SET edits = CAST(:e AS jsonb) WHERE id = :i"),
+                {"e": edits, "i": review.id},
+            )
+            return await _queue_row(session, extraction.source_id)
+
+        for bad in (
+            '{"court": null, "chamber": null, "journal_issue": null, "esas_no": null}',
+            '{"journal_issue": "7", "chamber": 3, "court": true, "esas_no": ["x"]}',
+            '{"journal_issue": {"a": 1}, "karar_no": {"a": 1}}',
+        ):
+            row = await write(bad)
+            assert (row.court, row.chamber, row.journal_issue, row.esas_no, row.karar_no) == (
+                before.court,
+                before.chamber,
+                before.journal_issue,
+                before.esas_no,
+                before.karar_no,
+            )
+        # an empty string is a string: it is laid over, as the list shows what publish stores
+        row = await write('{"chamber": ""}')
+        assert row.chamber == ""
+        # a null edit is no edit in Python either: it is left out of the detail's fields
+        await write('{"chamber": null, "outcome": "onama"}')
+        assert await source_edits(session, extraction.source_id) == {"outcome": "onama"}
+
+
+async def test_edits_with_the_same_review_time_are_ordered_by_id(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction = await _extraction(session, 10)
+        assert extraction.source_id
+        same = datetime(2026, 10, 26, 12)
+        for chamber in ("1. HD", "2. HD"):  # the second is inserted last: the higher id
+            review = _review(extraction, reviewer, ReviewDecision.edit, {"chamber": chamber})
+            review.reviewed_at = same
+            session.add(review)
+            await session.flush()
+        assert (await source_edits(session, extraction.source_id)) == {"chamber": "2. HD"}
+        assert (await _queue_row(session, extraction.source_id)).chamber == "2. HD"
+        twin = edits_by_source()
+        edits = (
+            await session.execute(
+                select(twin.c.edits).where(twin.c.source_id == extraction.source_id)
+            )
+        ).scalar_one()
+        assert edits == {"chamber": "2. HD"}
+
+
+async def test_the_sql_edits_take_the_newest_value_of_a_field_edited_twice(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction = await _extraction(session, 10)
+        assert extraction.source_id
+        for minute, edits in enumerate(
+            ({"chamber": "1. HD", "outcome": "onama"}, {"chamber": "2. HD"}, {"esas_no": "x"})
+        ):
+            review = _review(extraction, reviewer, ReviewDecision.edit, edits)
+            review.reviewed_at = datetime(2026, 10, 26, 12, minute)
+            session.add(review)
+            await session.flush()
+        twin = edits_by_source()
+        edits = (
+            await session.execute(
+                select(twin.c.edits).where(twin.c.source_id == extraction.source_id)
+            )
+        ).scalar_one()
+        assert edits == {"chamber": "2. HD", "outcome": "onama", "esas_no": "x"}
+        assert edits == await source_edits(session, extraction.source_id)
 
 
 async def test_reopening_an_approved_decision_retires_it_and_it_can_be_rejected(

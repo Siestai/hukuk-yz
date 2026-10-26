@@ -141,12 +141,13 @@ async def publish_decision(
 
 
 def _edit_reviews() -> Select[Any]:
-    """The `edit` reviews of every decision source that carry edits, oldest first. Reviews with
-    no edits hold a JSON null, which `jsonb_each` refuses, so only objects pass."""
+    """The `edit` reviews of every source that carry edits (only decision reviews have any).
+    Reviews with no edits hold a JSON null, which `jsonb_each` refuses, so only objects pass."""
     return (
         select(Extraction.source_id, Review.edits)
         .join(Extraction, Extraction.id == Review.extraction_id)
         .where(Review.decision == ReviewDecision.edit, func.jsonb_typeof(Review.edits) == "object")
+        # oldest first, for the Python merge only: `edits_by_source` re-sorts newest first
         .order_by(Review.reviewed_at, Review.id)
     )
 
@@ -154,23 +155,25 @@ def _edit_reviews() -> Select[Any]:
 async def source_edits(session: AsyncSession, source_id: uuid.UUID) -> dict[str, Any]:
     """The edits in force for a source: those of all its `edit` reviews (of any extraction, so
     a new parser run or a reopen does not drop them) merged oldest to newest, the last writer of
-    a field winning. The SQL twin for lists is `edits_by_source`."""
+    a field winning. A JSON null edits nothing (the extraction's value stands). The SQL twin for
+    lists is `edits_by_source`."""
     rows = await session.execute(_edit_reviews().where(Extraction.source_id == source_id))
     merged: dict[str, Any] = {}
     for _, edits in rows:
-        merged.update(edits)
+        merged.update({name: value for name, value in edits.items() if value is not None})
     return merged
 
 
 def edits_by_source() -> Subquery:
     """`source_edits` of every source that has any, as one jsonb object per source: the newest
-    value of every edited key."""
+    value of every edited key, JSON nulls left out."""
     reviews = _edit_reviews().add_columns(Review.reviewed_at, Review.id).subquery()
     entry = func.jsonb_each(reviews.c.edits).table_valued("key", "value").render_derived()
     latest = (
         select(reviews.c.source_id, entry.c.key, entry.c.value)
         .ext(distinct_on(reviews.c.source_id, entry.c.key))
         .join(entry, true())
+        .where(func.jsonb_typeof(entry.c.value) != "null")
         .order_by(
             reviews.c.source_id, entry.c.key, reviews.c.reviewed_at.desc(), reviews.c.id.desc()
         )
@@ -254,11 +257,13 @@ def queue(
     approval: a human undid it on purpose, so it is looked at one by one)."""
     newest = newest_extractions()
     edited = edits_by_source()
-    # What is shown, filtered and searched is the extraction's value with the edits laid over it.
+    # What is shown, filtered and searched is the extraction's value with the edits laid over it,
+    # when the edit has the field's type (anything else, however it got in, is not laid over).
     shown = {
         name: case(
             (
-                edited.c.edits.has_key(name),
+                func.jsonb_typeof(edited.c.edits[name])
+                == ("number" if name == "journal_issue" else "string"),
                 edited.c.edits[name].as_integer()
                 if name == "journal_issue"
                 else edited.c.edits[name].as_string(),
