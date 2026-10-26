@@ -301,7 +301,9 @@ async def test_the_verification_history_stays_on_the_closed_row(
     (live,) = await _decisions(kb_factory)
     async with kb_factory() as session:
         session.add(
-            DecisionVerification(decision_id=live.id, source="karararama_yargitay", outcome="match")
+            DecisionVerification(
+                decision_id=live.id, source="karararama_yargitay", outcome="verified_official"
+            )
         )
         await session.commit()
     await _load_v6(kb_factory, record)
@@ -323,13 +325,14 @@ async def test_a_live_row_without_an_extraction_is_refreshed(
     async with kb_factory() as session:
         await session.execute(update(Decision).values(extraction_id=None))
         await session.commit()
+    await _load_v6(kb_factory, record)
 
     assert await refresh_text(kb_factory) == {"refreshed": 1, "summary_only->full": 1}
 
     old, new = await _decisions(kb_factory)
     async with kb_factory() as session:
         assert old.extraction_id is None
-        assert new.extraction_id == await _extraction_id(session, record, "5")
+        assert new.extraction_id == await _extraction_id(session, record, "6")
     assert new.superseded_at is None
 
 
