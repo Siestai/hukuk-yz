@@ -18,9 +18,10 @@ from sqlalchemy import (
     nulls_last,
     or_,
     select,
+    true,
     update,
 )
-from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.dialects.postgresql import JSONB, distinct_on
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,6 +60,17 @@ STATUS_GROUPS: dict[str, tuple[RecordStatus, ...]] = {
 }
 STATUS_GROUPS["all"] = tuple(s for group in STATUS_GROUPS.values() for s in group)
 
+# The extraction columns the queue shows and searches; an edit of the same name replaces them.
+_OVERLAID = (
+    "court",
+    "chamber",
+    "esas_no",
+    "karar_no",
+    "decision_kind",
+    "decision_date",
+    "journal_issue",
+)
+
 # `decision` columns copied as they are from fields + edits; '' becomes NULL.
 _NULLABLE_TEXT = ("esas_no", "karar_no", "outcome", "full_text", "editorial_summary")
 
@@ -66,7 +78,7 @@ _NULLABLE_TEXT = ("esas_no", "karar_no", "outcome", "full_text", "editorial_summ
 async def publish_decision(
     session: AsyncSession, extraction_id: uuid.UUID, review_id: uuid.UUID
 ) -> uuid.UUID:
-    """Copy an approved decision extraction (`fields` overlaid with `review.edits`) into
+    """Copy an approved decision extraction (`fields` overlaid with `source_edits`) into
     `decision` and move its source to `approved`; the caller commits.
 
     `verification` is always `unverified`: the journal archive is a search aid, and only the
@@ -96,7 +108,7 @@ async def publish_decision(
     if source.status is not RecordStatus.analyzed:
         raise ValueError("extraction has no source in status 'analyzed'")
 
-    merged: dict[str, Any] = {**extraction.fields, **(review.edits or {})}
+    merged: dict[str, Any] = {**extraction.fields, **await source_edits(session, source.id)}
     if not merged["court"] or not merged["court_level"]:
         raise ValueError("court and court_level are required")
     decision = Decision(
@@ -126,6 +138,52 @@ async def publish_decision(
     source.status = RecordStatus.approved
     await session.flush()
     return decision.id
+
+
+def _edit_reviews() -> Select[Any]:
+    """The `edit` reviews of every decision source that carry edits, oldest first. Reviews with
+    no edits hold a JSON null, which `jsonb_each` refuses, so only objects pass."""
+    return (
+        select(Extraction.source_id, Review.edits)
+        .join(Extraction, Extraction.id == Review.extraction_id)
+        .where(Review.decision == ReviewDecision.edit, func.jsonb_typeof(Review.edits) == "object")
+        .order_by(Review.reviewed_at, Review.id)
+    )
+
+
+async def source_edits(session: AsyncSession, source_id: uuid.UUID) -> dict[str, Any]:
+    """The edits in force for a source: those of all its `edit` reviews (of any extraction, so
+    a new parser run or a reopen does not drop them) merged oldest to newest, the last writer of
+    a field winning. The SQL twin for lists is `edits_by_source`."""
+    rows = await session.execute(_edit_reviews().where(Extraction.source_id == source_id))
+    merged: dict[str, Any] = {}
+    for _, edits in rows:
+        merged.update(edits)
+    return merged
+
+
+def edits_by_source() -> Subquery:
+    """`source_edits` of every source that has any, as one jsonb object per source: the newest
+    value of every edited key."""
+    reviews = _edit_reviews().add_columns(Review.reviewed_at, Review.id).subquery()
+    entry = func.jsonb_each(reviews.c.edits).table_valued("key", "value").render_derived()
+    latest = (
+        select(reviews.c.source_id, entry.c.key, entry.c.value)
+        .ext(distinct_on(reviews.c.source_id, entry.c.key))
+        .join(entry, true())
+        .order_by(
+            reviews.c.source_id, entry.c.key, reviews.c.reviewed_at.desc(), reviews.c.id.desc()
+        )
+        .subquery()
+    )
+    return (
+        select(
+            latest.c.source_id,
+            func.jsonb_object_agg(latest.c.key, latest.c.value, type_=JSONB).label("edits"),
+        )
+        .group_by(latest.c.source_id)
+        .subquery()
+    )
 
 
 def newest_extractions(source_id: uuid.UUID | None = None) -> Subquery:
@@ -195,33 +253,50 @@ def queue(
     which is a `reopen` when a reviewer took it back; `exclude_reopened` leaves those out (bulk
     approval: a human undid it on purpose, so it is looked at one by one)."""
     newest = newest_extractions()
+    edited = edits_by_source()
+    # What is shown, filtered and searched is the extraction's value with the edits laid over it.
+    shown = {
+        name: case(
+            (
+                edited.c.edits.has_key(name),
+                edited.c.edits[name].as_integer()
+                if name == "journal_issue"
+                else edited.c.edits[name].as_string(),
+            ),
+            else_=newest.c[name],
+        )
+        for name in _OVERLAID
+    }
     score = newest.c.confidence["score"].as_integer()
     conditions: list[ColumnElement[bool]] = [newest.c.status.in_(STATUS_GROUPS[status])]
     if band:
         conditions.append(newest.c.confidence["band"].as_string() == band)
     if filters.court is not None:
-        conditions.append(newest.c.court == filters.court)
+        conditions.append(shown["court"] == filters.court)
     if filters.reason is not None:
         conditions.append(newest.c.confidence["reasons"].contains([filters.reason]))
     if filters.journal_issue is not None:
-        conditions.append(newest.c.journal_issue == filters.journal_issue)
+        conditions.append(shown["journal_issue"] == filters.journal_issue)
     if filters.q:
         conditions.append(
             or_(
-                newest.c.esas_no.icontains(filters.q, autoescape=True),
-                newest.c.karar_no.icontains(filters.q, autoescape=True),
+                shown["esas_no"].icontains(filters.q, autoescape=True),
+                shown["karar_no"].icontains(filters.q, autoescape=True),
                 newest.c.title.icontains(filters.q, autoescape=True),
             )
         )
     if after is not None:
         conditions.append(newest.c.sha256 > after)
     columns: list[Any] = [
-        *newest.c,
+        *(c for c in newest.c if c.name not in _OVERLAID),
+        *(expr.label(name) for name, expr in shown.items()),
         newest.c.confidence["band"].as_string().label("band"),
         score.label("score"),
     ]
     reviewed = last_reviews()
-    source: Any = newest.outerjoin(reviewed, reviewed.c.source_id == newest.c.source_id)
+    source: Any = newest.outerjoin(edited, edited.c.source_id == newest.c.source_id).outerjoin(
+        reviewed, reviewed.c.source_id == newest.c.source_id
+    )
     columns += [
         reviewed.c.reviewed_at,
         reviewed.c.reviewer_name,

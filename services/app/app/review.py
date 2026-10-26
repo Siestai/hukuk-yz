@@ -32,6 +32,7 @@ from app.kb import (
     queue,
     reject_extraction,
     reopen_extraction,
+    source_edits,
 )
 from app.models.common import (
     Court,
@@ -220,6 +221,7 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
         ]
     ingest_file = await db.get(IngestFile, extraction.file_id)
     assert ingest_file is not None  # extraction.file_id is a foreign key
+    edits = await source_edits(db, source.id)
     reviews = (
         await db.execute(
             select(Review, AppUser.display_name)
@@ -236,7 +238,10 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
         source_id=source.id,
         source_status=source.status.value,
         title=source.title,
-        fields=extraction.fields,
+        # The edits laid over what the parser found: a reviewer's correction stays on screen
+        # after a parser run or a reopen. `edited_fields` tells which values are theirs.
+        fields={**extraction.fields, **edits},
+        edited_fields=sorted(edits),
         warnings=extraction.warnings,
         confidence=Confidence(**extraction.confidence),
         raw_text_ref=extraction.raw_text_ref,
@@ -306,7 +311,8 @@ async def get_file(extraction_id: uuid.UUID, db: Db) -> Response:
 async def act(
     extraction_id: uuid.UUID, body: ReviewActionRequest, user: Reviewer, db: Db
 ) -> ReviewActionResponse:
-    extraction, _ = await _decision_extraction(db, extraction_id)
+    extraction, source = await _decision_extraction(db, extraction_id)
+    source_id = source.id  # the rollback of a failed review expires the objects
     edits = (
         body.edits.model_dump(mode="json", exclude_unset=True)
         if body.action == "edit" and body.edits
@@ -327,7 +333,8 @@ async def act(
     except StaleExtraction:
         raise ApiError(409, ErrorCode.review_conflict) from None
     except IntegrityError:  # a live-key collision; any other violation is a ValueError
-        conflict = await _live_conflict(db, {**extraction.fields, **(edits or {})})
+        merged = {**extraction.fields, **await source_edits(db, source_id), **(edits or {})}
+        conflict = await _live_conflict(db, merged)
         raise ApiError(
             409, ErrorCode.decision_conflict, {"decision_id": str(conflict) if conflict else None}
         ) from None

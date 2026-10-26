@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import JSON, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.kb import approve_extraction, queue, reject_extraction
+from app.kb import approve_extraction, queue, reject_extraction, reopen_extraction
 from app.loaders.decisions import load, prepare, read_rows
 from app.loaders.refresh_text import refresh_text
 from app.loaders.report import LoadCounts, PreparedRecord
@@ -188,6 +188,25 @@ async def test_an_edited_field_is_never_overwritten(
     _, new = await _decisions(kb_factory)
     assert new.full_text == "elle yazılmış metin"
     assert new.text_completeness is TextCompleteness.full  # not edited: refreshed
+
+
+async def test_an_edit_of_an_earlier_review_is_never_overwritten(
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    (record,) = await _load_v5(kb_factory)
+    await _approve(kb_factory, reviewer, record, {"full_text": "elle yazılmış metin"})
+    async with kb_factory() as session:
+        extraction_id = await _extraction_id(session, record, "5")
+        await reopen_extraction(session, extraction_id, reviewer.id, None)
+        await approve_extraction(session, extraction_id, reviewer.id)  # a plain approval
+        await session.commit()
+    await _load_v6(kb_factory, record)
+
+    assert await refresh_text(kb_factory) == {"refreshed": 1, "summary_only->full": 1}
+
+    live = [d for d in await _decisions(kb_factory) if d.superseded_at is None]
+    assert [d.full_text for d in live] == ["elle yazılmış metin"]
+    assert live[0].text_completeness is TextCompleteness.full
 
 
 async def test_a_decision_whose_changes_are_all_edited_is_skipped(

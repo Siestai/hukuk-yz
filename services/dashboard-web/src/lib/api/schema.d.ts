@@ -1029,6 +1029,8 @@ export interface components {
             confidence: components["schemas"]["Confidence"];
             /** Duplicates */
             duplicates: components["schemas"]["DuplicateOut"][];
+            /** Edited Fields */
+            edited_fields: string[];
             /**
              * Extraction Id
              * Format: uuid

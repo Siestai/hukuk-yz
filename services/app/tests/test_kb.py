@@ -1,7 +1,7 @@
 import copy
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,7 @@ from app.kb import (
     reject_extraction,
     reject_statute_article,
     reopen_extraction,
+    source_edits,
     statute_article_status,
     statute_is_published,
     statute_queue,
@@ -792,6 +793,54 @@ async def _source_status(session: AsyncSession, extraction_id: uuid.UUID) -> Rec
             .where(Extraction.id == extraction_id)
         )
     ).scalar_one()
+
+
+async def test_source_edits_merge_the_edit_reviews_of_all_extractions_last_writer_wins(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    async with kb_loaded() as session:
+        extraction = await _extraction(session, 10)
+        assert extraction.source_id
+        newer = Extraction(
+            source_id=extraction.source_id,
+            file_id=extraction.file_id,
+            parser_name=extraction.parser_name,
+            parser_version="99",
+            fields=extraction.fields,
+        )
+        session.add(newer)
+        await session.flush()
+        assert await source_edits(session, extraction.source_id) == {}
+        for minute, (target, decision, edits) in enumerate(
+            (
+                (
+                    extraction,
+                    ReviewDecision.edit,
+                    {"outcome": "onama", "chamber": "10. HD", "journal_issue": 7},
+                ),
+                (extraction, ReviewDecision.reopen, None),
+                (newer, ReviewDecision.edit, {"outcome": "bozma"}),
+                (newer, ReviewDecision.reject, None),
+            )
+        ):  # one transaction has one now(): the order is set by hand
+            review = _review(target, reviewer, decision, edits)
+            review.reviewed_at = datetime(2026, 10, 26, 12, minute)
+            session.add(review)
+            await session.flush()
+        # a review with a JSON null in `edits` (not SQL NULL) is no edit and breaks nothing
+        await session.execute(
+            text("UPDATE review SET edits = 'null'::jsonb WHERE decision = 'reopen'")
+        )
+        assert await source_edits(session, extraction.source_id) == {
+            "outcome": "bozma",
+            "chamber": "10. HD",
+            "journal_issue": 7,
+        }
+        rows = (await session.execute(queue(None, ReviewFilters(), "sha256"))).all()
+        shown = next(r for r in rows if r.source_id == extraction.source_id)
+        assert (shown.chamber, shown.journal_issue) == ("10. HD", 7)  # the same edits, in the list
+        by_issue = ReviewFilters(journal_issue=7)
+        assert len((await session.execute(queue(None, by_issue, "sha256"))).all()) == 1
 
 
 async def test_reopening_an_approved_decision_retires_it_and_it_can_be_rejected(

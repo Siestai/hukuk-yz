@@ -287,7 +287,8 @@ class ReviewDetail(BaseModel):
     source_id: uuid.UUID
     source_status: SourceStatus
     title: str
-    fields: dict[str, Any]
+    fields: dict[str, Any]  # the extraction's fields with the reviewers' edits laid over them
+    edited_fields: list[str]  # the names in `fields` that come from an edit
     warnings: list[str]
     confidence: Confidence
     raw_text_ref: str | None

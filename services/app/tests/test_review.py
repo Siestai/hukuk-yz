@@ -847,6 +847,127 @@ async def test_a_reopened_approval_is_approved_again_keeping_the_old_decision_su
     assert sum(d.superseded_at is None for d in rows) == 1
 
 
+async def _raw_reparse(factory: Factory, record: PreparedRecord, **fields: Any) -> uuid.UUID:
+    """A newer extraction (parser 7) of the record whose fields carry the raw `fields`."""
+    await load(
+        factory,
+        [dataclasses.replace(record, parser_version="7", fields={**record.fields, **fields})],
+        LoadCounts(),
+    )
+    return await _eid(factory, record, "7")
+
+
+async def test_an_edit_stays_on_screen_after_a_newer_extraction(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {"esas_no": "2012/1941", "karar_no": "2011/2624"})
+    old = await _eid(kb_factory, record)
+    edits = {"karar_no": "2012/2624", "decision_date": "2019-04-01", "chamber": "10. HD"}
+    await client.post(f"{BASE}/{old}", json={"action": "edit", "edits": edits}, headers=me.headers)
+    new = await _raw_reparse(kb_factory, record)
+
+    detail = (await client.get(f"{BASE}/{new}", headers=me.headers)).json()
+    assert detail["fields"]["karar_no"] == "2012/2624"
+    assert detail["fields"]["esas_no"] == "2012/1941"
+    assert detail["edited_fields"] == ["chamber", "decision_date", "karar_no"]
+    assert [r["edits"] for r in detail["reviews"]] == [edits]
+
+    (item,) = (await client.get(f"{BASE}?status=approved", headers=me.headers)).json()["items"]
+    assert (item["extraction_id"], item["karar_no"], item["esas_no"]) == (
+        str(new),
+        "2012/2624",
+        "2012/1941",
+    )
+    assert (item["decision_date"], item["chamber"]) == ("2019-04-01", "10. HD")
+
+    # `q` searches what the list shows: the edited number is found, the raw one is not
+    found = await client.get(f"{BASE}?status=approved&q=2012/2624", headers=me.headers)
+    assert found.json()["total"] == 1
+    raw = await client.get(f"{BASE}?status=approved&q=2011/2624", headers=me.headers)
+    assert raw.json()["total"] == 0
+
+
+async def test_a_record_without_edits_shows_its_extraction_in_detail_and_list(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {})
+    first, second = await _ids(kb_factory, prepared, 1, 2)
+    await client.post(f"{BASE}/{first}", json={"action": "approve"}, headers=me.headers)
+    await client.post(
+        f"{BASE}/{second}", json={"action": "reject", "note": "n"}, headers=me.headers
+    )
+    for extraction_id in (first, second):
+        detail = (await client.get(f"{BASE}/{extraction_id}", headers=me.headers)).json()
+        assert detail["edited_fields"] == []
+    items = (await client.get(f"{BASE}?status=all", headers=me.headers)).json()["items"]
+    assert sorted(i["karar_no"] for i in items) == ["2019/1", "2019/2"]
+
+
+async def test_the_edits_of_several_reviews_merge_and_the_last_writer_wins(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    await client.post(
+        url,
+        json={"action": "edit", "edits": {"karar_no": "2019/10", "chamber": "10. HD"}},
+        headers=me.headers,
+    )
+    await client.post(url, json={"action": "reopen"}, headers=me.headers)
+    await client.post(
+        url,
+        json={"action": "edit", "edits": {"karar_no": "2019/11", "outcome": "onama"}},
+        headers=me.headers,
+    )
+    detail = (await client.get(url, headers=me.headers)).json()
+    assert detail["edited_fields"] == ["chamber", "karar_no", "outcome"]
+    assert (detail["fields"]["karar_no"], detail["fields"]["chamber"]) == ("2019/11", "10. HD")
+    (item,) = (await client.get(f"{BASE}?status=approved", headers=me.headers)).json()["items"]
+    assert (item["karar_no"], item["chamber"]) == ("2019/11", "10. HD")
+
+
+async def test_a_plain_approval_after_a_reopen_keeps_the_earlier_edits(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {"karar_no": "2011/2624"})
+    url = f"{BASE}/{await _eid(kb_factory, record)}"
+    await client.post(
+        url, json={"action": "edit", "edits": {"karar_no": "2012/2624"}}, headers=me.headers
+    )
+    await client.post(url, json={"action": "reopen"}, headers=me.headers)
+    pending = (await client.get(f"{BASE}?status=pending", headers=me.headers)).json()["items"]
+    assert [i["karar_no"] for i in pending] == ["2012/2624"]
+    assert (
+        await client.post(url, json={"action": "approve"}, headers=me.headers)
+    ).status_code == 200
+    async with kb_factory() as session:
+        live = (
+            await session.execute(select(Decision).where(Decision.superseded_at.is_(None)))
+        ).scalar_one()
+    assert live.karar_no == "2012/2624"
+
+
+async def test_a_live_key_collision_is_checked_with_the_earlier_edits(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    first, second = await _seed(kb_factory, {}, {})
+    one, two = await _ids(kb_factory, [first, second], 1, 2)
+    await client.post(
+        f"{BASE}/{one}",
+        json={"action": "edit", "edits": {"karar_no": "2019/99"}},
+        headers=me.headers,
+    )
+    await client.post(f"{BASE}/{one}", json={"action": "reopen"}, headers=me.headers)
+    await client.post(
+        f"{BASE}/{two}",
+        json={"action": "edit", "edits": {"karar_no": "2019/99", "esas_no": "2017/1"}},
+        headers=me.headers,
+    )
+    response = await client.post(f"{BASE}/{one}", json={"action": "approve"}, headers=me.headers)
+    assert (response.status_code, response.json()["error"]["code"]) == (409, "decision_conflict")
+    assert response.json()["error"]["params"]["decision_id"] is not None
+
+
 async def test_reopen_of_a_waiting_decision_is_409_and_writes_nothing(
     client: httpx.AsyncClient, kb_factory: Factory, me: Login
 ) -> None:
