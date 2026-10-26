@@ -442,6 +442,109 @@ def test_short_body_is_an_excerpt() -> None:
     assert f.text_completeness == "excerpt"
 
 
+# --- body openings without a DAVA line ---------------------------------------------------------
+
+_REASONING = "Örnek gerekçe cümlesi, gerekçe devam etmektedir. " * 20
+
+
+def _summary_head() -> str:
+    return era2_text().split("DAVA:")[0]
+
+
+def _with_opening(opening: str, summary_tail: str = "") -> str:
+    """Era 2 header and summary, then `opening` instead of the DAVA line."""
+    head = _summary_head() + summary_tail
+    return f"{head}{opening}\n{_REASONING}\nSONUÇ: Temyiz olunan kararın ONANMASINA, karar verildi."
+
+
+@pytest.mark.parametrize(
+    "opening",
+    [
+        "1-Dosyadaki yazılara, toplanan delillere göre temyiz itirazları yerinde değildir.",
+        "1-Davalı vekilinin temyizi açısından;",
+        "TÜRK MİLLETİ ADINA\nHüküm veren Bölge İdare Mahkemesince gereği görüşüldü:",
+        "Yukarıda tarih ve numarası yazılı mahkeme kararının temyizen tetkiki istenmiştir.",
+        "Mahalli mahkemesinden verilen karara karşı istinaf yoluna başvurulmuştur.",
+        "Davacı iddiası; Davacı vekili dava dilekçesinde özetle, feshin geçersizliğini istemiştir.",
+        ".İTİRAZ YOLUNA BAŞVURAN: Yargıtay 21. Hukuk Dairesi\nİTİRAZIN KONUSU: Örnek madde.",
+        "I-GİRİŞ\nA. İÇTİHATLARI BİRLEŞTİRME KONUSUNDAKİ BAŞVURU",
+        "II-İLK DERECE MAHKEMESİ KARARI ÖZETİ:",
+        "1. Taraflar arasındaki işçilik alacağı davasından dolayı yapılan yargılama sonunda",
+        "A-5521 sayılı İş Mahkemeleri Kanunu'nun 8. maddesine göre",
+        "Başvurucu (davacı) vekili, örnek bir dilekçe vermiştir.",
+        "Davaya konu uyuşmazlık, örnek kanun kapsamındadır.",
+    ],
+)
+def test_body_is_found_from_the_opening_form(opening: str) -> None:
+    f = parse(_with_opening(opening))
+    assert f.text_completeness == "full"
+    assert f.full_text.startswith(opening.splitlines()[0])
+    assert f.editorial_summary.endswith("özet.")  # the summary ends before the opening
+
+
+def test_numbered_item_glued_to_the_end_of_the_summary() -> None:
+    f = parse(_with_opening("1-Dosyadaki yazılara göre temyiz itirazları yerinde değildir.", ""))
+    glued = parse(
+        _summary_head().rstrip("\n").removesuffix(".")  # the summary has no final full stop
+        + "1-Dosyadaki yazılara göre temyiz itirazları yerinde değildir.\n"
+        + _REASONING
+    )
+    assert f.text_completeness == glued.text_completeness == "full"
+    assert glued.editorial_summary.endswith("ikinci satır özet")
+
+
+def test_opening_paragraph_before_the_numbered_item_is_kept() -> None:
+    paragraph = "Hükmün süresi içinde temyizen incelenmesi davalı vekilince istenmiştir.\n"
+    item = "1-Dosyadaki yazılara göre temyiz itirazları yerinde değildir."
+    f = parse(_with_opening(item, paragraph))
+    assert f.full_text.startswith("Hükmün süresi içinde temyizen")
+    assert "body_start_approximate" in f.warnings
+
+
+def test_party_heading_opens_the_body_only_without_a_stronger_marker() -> None:
+    heading = "TARAFLARIN İDDİA VE SAVUNMALARININ ÖZETİ: Davacı işçi örnek iddiada bulunmuştur."
+    f = parse(_with_opening(heading))
+    assert f.text_completeness == "full"
+    assert f.full_text.startswith("TARAFLARIN İDDİA")
+    stronger = "TARAFLARIN İDDİA VE SAVUNMALARININ ÖZETİ:\nDavacı vekili dava dilekçesinde"
+    f = parse(_with_opening(stronger))
+    assert f.full_text.startswith("Davacı vekili")  # a decision already found keeps its start
+
+
+@pytest.mark.parametrize(
+    "trap",
+    [
+        "II. HUKUK DAİRESİ kararı ile birlikte değerlendirilmelidir.",
+        "V. CEZA DAİRESİ içtihadına göre",
+        "II. HUKUK DAİRESİ",
+        "Davacı iddiası doğrultusunda işe iade talebi kabul edilmelidir.",
+        "Davaya konu uyuşmazlık işe iade talebine ilişkindir.",
+        "Yukarıda tarih ve numarası yazılı karar hatalıdır.",
+        "Mahalli mahkemesinden verilen karar yerindedir.",
+        "A-5521 sayılı Kanun uyarınca görevlidir.",
+        "Başvurucu (davacı) vekili temyiz yoluna gitmelidir.",
+        "TARAFLARIN İDDİA ve savunmalarına göre karar verilmelidir.",
+        "Bölge Adliye Mahkemesi kararı davalı tarafından temyiz edilmekle yetinilmemelidir.",
+        "İlk derece mahkemesince verilen karara karşı istinaf yerindedir.",
+        "1. Taraflar arasında akdedilen sözleşme geçerlidir.",
+    ],
+)
+def test_prose_at_the_start_of_a_wrapped_summary_line_does_not_open_the_body(trap: str) -> None:
+    # The summary line before the trap has no sentence end, as in a summary wrapped mid-sentence.
+    text = _summary_head().replace("ikinci satır özet.\n", f"ikinci satır özet ve\n{trap}\n")
+    assert trap in text
+    f = parse(text)
+    assert f.text_completeness == "summary_only"
+    assert trap in f.editorial_summary
+
+
+def test_strong_opening_formula_inside_the_summary_is_not_a_trap_for_mid_line_text() -> None:
+    text = _summary_head().replace(
+        "ikinci satır özet.\n", "ikinci satır TÜRK MİLLETİ ADINA verilmiştir. II. Hukuk Dairesi\n"
+    )
+    assert parse(text).text_completeness == "summary_only"
+
+
 # --- related articles -----------------------------------------------------------------------
 
 

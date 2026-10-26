@@ -47,7 +47,7 @@ from app.models.decision import Decision
 from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
 from app.models.user import AppUser
 from hukuk_ingest.statutes.timeline import statute_as_of
-from hukuk_models import ReviewFilters
+from hukuk_models import ListStatus, ReviewFilters
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
 
@@ -874,3 +874,49 @@ async def test_a_reopened_decision_is_pending_but_not_in_the_bulk_queue(
         assert reopened.review_decision is ReviewDecision.reopen
         assert extraction_id not in [r.id for r in bulk]
         assert len(bulk) == len(pending) - 1
+
+
+async def _add_newer_extraction(session: AsyncSession, extraction_id: uuid.UUID) -> uuid.UUID:
+    """A newer, unreviewed extraction of the same source (a parser fix), committed after the
+    review so that it is the newest one."""
+    new_id: uuid.UUID = (
+        await session.execute(
+            text(
+                "INSERT INTO extraction (file_id, source_id, parser_name, parser_version, fields, "
+                "confidence, warnings) SELECT file_id, source_id, parser_name, '6', fields, "
+                "confidence, warnings FROM extraction WHERE id = :id RETURNING id"
+            ),
+            {"id": extraction_id},
+        )
+    ).scalar_one()
+    return new_id
+
+
+@pytest.mark.parametrize("action", ["approve", "reject"])
+async def test_a_reviewed_source_keeps_its_tab_and_reviewer_under_a_newer_extraction(
+    kb_loaded: async_sessionmaker[AsyncSession], reviewer: AppUser, action: str
+) -> None:
+    async with kb_loaded() as session:
+        extraction_id = await _first_high(session)
+        if action == "approve":
+            await approve_extraction(
+                session, extraction_id, reviewer.id, ReviewDecision.edit, {"outcome": "onama"}
+            )
+        else:
+            await reject_extraction(session, extraction_id, reviewer.id, "kopya")
+        await session.commit()
+        newer = await _add_newer_extraction(session, extraction_id)
+        await session.commit()
+
+        tab: ListStatus = "approved" if action == "approve" else "rejected"
+        (row,) = (await session.execute(queue(None, ReviewFilters(), status=tab))).all()
+        assert row.id == newer  # the newest extraction is listed, with the review of the old one
+        assert row.reviewer_name == "Reviewer"
+        assert row.review_decision is (
+            ReviewDecision.edit if action == "approve" else ReviewDecision.reject
+        )
+        for exclude_reopened in (False, True):  # neither pending nor bulk-approvable
+            stmt = queue("high", ReviewFilters(), "sha256", exclude_reopened=exclude_reopened)
+            assert newer not in [r.id for r in (await session.execute(stmt)).all()]
+        with pytest.raises(StaleExtraction, match="no longer in review"):
+            await approve_extraction(session, newer, reviewer.id)

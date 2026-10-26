@@ -184,7 +184,7 @@ async def test_the_list_holds_the_newest_extraction_of_analyzed_sources_only(
     client: httpx.AsyncClient, kb_factory: Factory, me: Login
 ) -> None:
     prepared = await _seed(kb_factory, {}, {}, {})
-    await load(kb_factory, [dataclasses.replace(prepared[0], parser_version="6")], LoadCounts())
+    await load(kb_factory, [dataclasses.replace(prepared[0], parser_version="7")], LoadCounts())
     async with kb_factory() as session:
         source_id = (
             await session.execute(
@@ -201,7 +201,7 @@ async def test_the_list_holds_the_newest_extraction_of_analyzed_sources_only(
     body = (await client.get(BASE, headers=me.headers)).json()
     assert body["total"] == 2
     assert {i["extraction_id"] for i in body["items"]} == {
-        str(await _eid(kb_factory, prepared[0], "6")),
+        str(await _eid(kb_factory, prepared[0], "7")),
         str(await _eid(kb_factory, prepared[1])),
     }
 
@@ -546,7 +546,7 @@ async def test_the_detail_shows_fields_duplicates_and_reviews(
     left = {k: v for k, v in prepared[1].fields.items() if k != "duplicate_group"}
     await load(
         kb_factory,
-        [dataclasses.replace(prepared[1], parser_version="6", fields=left)],
+        [dataclasses.replace(prepared[1], parser_version="7", fields=left)],
         LoadCounts(),
     )
     assert (await client.get(f"{BASE}/{first}", headers=me.headers)).json()["duplicates"] == []
@@ -754,8 +754,8 @@ async def test_an_action_on_an_older_extraction_is_409(
     client: httpx.AsyncClient, kb_factory: Factory, me: Login
 ) -> None:
     (record,) = await _seed(kb_factory, {})
-    await load(kb_factory, [dataclasses.replace(record, parser_version="6")], LoadCounts())
-    old, new = await _eid(kb_factory, record), await _eid(kb_factory, record, "6")
+    await load(kb_factory, [dataclasses.replace(record, parser_version="7")], LoadCounts())
+    old, new = await _eid(kb_factory, record), await _eid(kb_factory, record, "7")
     response = await client.post(f"{BASE}/{old}", json={"action": "approve"}, headers=me.headers)
     assert (response.status_code, response.json()["error"]["code"]) == (409, "review_conflict")
     assert await _count(kb_factory, Review) == 0
@@ -863,7 +863,7 @@ async def test_reopen_of_an_older_extraction_is_409(
     (record,) = await _seed(kb_factory, {})
     old = await _eid(kb_factory, record)
     await client.post(f"{BASE}/{old}", json={"action": "reject", "note": "n"}, headers=me.headers)
-    await load(kb_factory, [dataclasses.replace(record, parser_version="6")], LoadCounts())
+    await load(kb_factory, [dataclasses.replace(record, parser_version="7")], LoadCounts())
     response = await client.post(f"{BASE}/{old}", json={"action": "reopen"}, headers=me.headers)
     assert (response.status_code, response.json()["error"]["code"]) == (409, "review_conflict")
 
@@ -1563,3 +1563,31 @@ async def test_statute_extractions_stay_out_of_the_decision_review(
             404,
             "extraction_not_found",
         )
+
+
+async def test_the_detail_of_an_approved_source_shows_the_reviews_of_its_older_extraction(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    (record,) = await _seed(kb_factory, {})
+    old = await _eid(kb_factory, record)
+    edit = {"action": "edit", "edits": {"chamber": "22. HD"}}
+    assert (await client.post(f"{BASE}/{old}", json=edit, headers=me.headers)).status_code == 200
+    # a parser fix adds a newer extraction with another text; nobody reviewed it
+    fixed = {**record.fields, "full_text": "yeni metin"}
+    await load(
+        kb_factory,
+        [dataclasses.replace(record, parser_version="7", fields=fixed)],
+        LoadCounts(),
+    )
+    new = await _eid(kb_factory, record, "7")
+
+    body = (await client.get(f"{BASE}/{new}", headers=me.headers)).json()
+
+    assert (body["source_status"], body["fields"]["full_text"]) == ("approved", "yeni metin")
+    (review,) = body["reviews"]
+    assert (review["decision"], review["reviewer_name"]) == ("edit", "baran@x.test")
+    assert review["edits"] == {"chamber": "22. HD"}
+    (item,) = (await client.get(BASE, params={"status": "approved"}, headers=me.headers)).json()[
+        "items"
+    ]
+    assert (item["extraction_id"], item["review_decision"]) == (str(new), "edit")

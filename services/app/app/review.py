@@ -224,7 +224,10 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
         await db.execute(
             select(Review, AppUser.display_name)
             .outerjoin(AppUser, AppUser.id == Review.reviewer_id)
-            .where(Review.extraction_id == extraction_id)
+            .join(Extraction, Extraction.id == Review.extraction_id)
+            # Of the whole source, like the list: a newer extraction (a parser fix) keeps the
+            # approver and the edits of the one that was reviewed.
+            .where(Extraction.source_id == source.id)
             .order_by(Review.reviewed_at, Review.id)
         )
     ).all()
