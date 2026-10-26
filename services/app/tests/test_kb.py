@@ -895,8 +895,12 @@ async def test_edits_with_the_same_review_time_are_ordered_by_id(
         extraction = await _extraction(session, 10)
         assert extraction.source_id
         same = datetime(2026, 10, 26, 12)
-        for chamber in ("1. HD", "2. HD"):  # the second is inserted last: the higher id
+        # ids are random UUIDs: give them explicitly, the second inserted gets the lower one so
+        # that insertion order cannot pass for the tie-break
+        ids = (uuid.UUID(int=2), uuid.UUID(int=1))
+        for chamber, review_id in zip(("2. HD", "1. HD"), ids, strict=True):
             review = _review(extraction, reviewer, ReviewDecision.edit, {"chamber": chamber})
+            review.id = review_id
             review.reviewed_at = same
             session.add(review)
             await session.flush()
