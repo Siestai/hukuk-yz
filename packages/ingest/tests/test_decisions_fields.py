@@ -746,3 +746,63 @@ def test_gold_set_accuracy() -> None:
         assert accuracy[name] == 1.0, (name, accuracy)
     assert accuracy["related_articles"] >= 0.95, accuracy
     assert accuracy["layout"] >= 0.95, accuracy
+
+
+# --- body without any opening marker: wider than the wrapped summary ---------------------------
+
+_NARROW = "Örnek özet satırı yarım kalan cümle devam eder"  # 46 chars, the journal's wrap width
+_REASONING_LINE = "Örnek gerekçe cümlesi, gerekçe devam etmektedir. " * 2
+_WIDE = "Örnek gövde cümlesi işaretsiz başlar, satır genişliği özetin sarma genişliğinden fazladır."
+
+
+def _wrapped(summary_lines: list[str], tail: str = "") -> str:
+    head = (
+        "T.C\nYARGITAY\n9. HUKUK DAİRESİ\nEsas No. 2011/1\nKarar No. 2012/2\nTarihi: 07.06.2012\n"
+    )
+    reasoning = "\n".join(_REASONING_LINE for _ in range(20))
+    body = f"{_WIDE}\n{reasoning}\nSONUÇ: Temyiz olunan kararın ONANMASINA, karar verildi."
+    return f"{head}ÖZETİ: " + "\n".join(summary_lines) + f"\n{tail}{body}"
+
+
+def test_body_wider_than_the_wrapped_summary_is_found_without_any_marker() -> None:
+    f = parse(_wrapped([_NARROW] * 5))  # the summary has no final full stop
+    assert f.text_completeness == "full"
+    assert f.full_text.startswith("Örnek gövde cümlesi")
+    assert f.editorial_summary.endswith(_NARROW)
+    assert "body_start_approximate" in f.warnings
+
+
+def test_a_marker_wins_over_the_width_rule() -> None:
+    f = parse(_wrapped([_NARROW] * 5, tail="DAVA: Davacı örnek talepte bulunmuştur.\n"))
+    assert f.full_text.startswith("DAVA:")
+
+
+@pytest.mark.parametrize(
+    "summary_lines",
+    [
+        [_NARROW] * 3,  # too short a summary to know its wrap width
+        [_NARROW, _NARROW, _NARROW, _NARROW + " ve biraz daha uzun"],  # within the margin
+    ],
+)
+def test_width_rule_needs_a_known_wrap_width_and_a_clear_jump(summary_lines: list[str]) -> None:
+    text = _wrapped(summary_lines).replace(f"{_WIDE}\n", "").replace(_REASONING_LINE, "")
+    assert parse(text).text_completeness == "summary_only"
+
+
+def test_page_header_glued_to_a_summary_line_is_not_a_wide_body() -> None:
+    glued = _NARROW + " Yargıtay Kararları – Çalışma ve Toplum, 2023/4"
+    lines = [_NARROW, _NARROW, glued, _NARROW, _NARROW]
+    f = parse(_wrapped(lines))
+    assert f.full_text.startswith("Örnek gövde cümlesi")
+    assert glued in f.editorial_summary
+
+
+def test_wide_line_inside_the_summary_followed_by_a_short_remainder_stays_summary_only() -> None:
+    wide = _NARROW + " ve bu satır özet içinde olduğu hâlde belirgin biçimde daha geniş basılmıştır"
+    text = (
+        "T.C\nYARGITAY\n9. HUKUK DAİRESİ\nEsas No. 2011/1\nKarar No. 2012/2\nTarihi: 07.06.2012\n"
+        "ÖZETİ: " + "\n".join([_NARROW] * 4 + [wide, _NARROW, _NARROW])
+    )
+    f = parse(text)
+    assert f.text_completeness == "summary_only"
+    assert "body_start_approximate" not in f.warnings
