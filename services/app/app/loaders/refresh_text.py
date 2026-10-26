@@ -6,9 +6,10 @@ After a parser fix, `app.loaders.decisions` adds a new extraction per file, but 
 row an approval published is never rewritten. This command copies the text fields of the newest
 extraction into the approved decisions whose live row was published from an older parser
 version: `full_text`, `text_completeness`, and `outcome` only where the live row has none. A key
-in `review.edits` is never overwritten (a human wrote it), and a new extraction with no text
-never blanks a live text. Nothing else moves: approval, the reviewer's edits, `review_id`,
-`recorded_by`, the verification columns and every other field are copied as they are.
+in the source's edits (`source_edits`, those of all its reviews) is never overwritten (a human
+wrote it), and a new extraction with no text never blanks a live text. Nothing else moves:
+approval, the reviewer's edits, `review_id`, `recorded_by`, the verification columns and every
+other field are copied as they are.
 
 The live row is closed with `superseded_at` and a copy with the refreshed fields takes its
 place, in one transaction per decision. The copy's `extraction_id` is the newest extraction (the
@@ -41,8 +42,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
-from app.kb import STATUS_GROUPS, newest_extractions
-from app.models.common import Extraction, Review, Source, TextCompleteness
+from app.kb import STATUS_GROUPS, newest_extractions, source_edits
+from app.models.common import Extraction, Source, TextCompleteness
 from app.models.decision import Decision
 from app.settings import get_settings
 
@@ -102,8 +103,7 @@ async def _refresh_one(session: AsyncSession, source_id: uuid.UUID, dry_run: boo
         return counts
 
     wanted = _wanted(live, newest.fields)
-    review = await session.get(Review, live.review_id) if live.review_id else None
-    edited = (review.edits or {}) if review else {}
+    edited = await source_edits(session, source_id)
     changes = {k: v for k, v in wanted.items() if k not in edited}
     if not changes:
         counts["skipped_edits" if wanted else "skipped_same"] += 1

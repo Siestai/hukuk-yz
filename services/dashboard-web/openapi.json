@@ -1918,6 +1918,13 @@
             "title": "Duplicates",
             "type": "array"
           },
+          "edited_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Edited Fields",
+            "type": "array"
+          },
           "extraction_id": {
             "format": "uuid",
             "title": "Extraction Id",
@@ -1992,6 +1999,7 @@
           "source_status",
           "title",
           "fields",
+          "edited_fields",
           "warnings",
           "confidence",
           "raw_text_ref",
