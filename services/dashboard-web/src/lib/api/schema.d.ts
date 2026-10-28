@@ -353,6 +353,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kb/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kb Search */
+        get: operations["kb_search_kb_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -1398,6 +1415,83 @@ export interface components {
              * @enum {string}
              */
             result: "met" | "not_met" | "not_applicable" | "unknown";
+        };
+        /**
+         * KbSearchMatch
+         * @description A chunk that matched, with its place in the record's text (`text[char_start:char_end]`).
+         *     A chunk whose license is `internal_only` is never listed.
+         */
+        KbSearchMatch: {
+            /** Char End */
+            char_end: number;
+            /** Char Start */
+            char_start: number;
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * KbSearchResponse
+         * @description `mode` is `fulltext` when the query could not be embedded (no key, or the embedding
+         *     service failed): the ranking then comes from the text index alone.
+         */
+        KbSearchResponse: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "hybrid" | "fulltext";
+            /** Results */
+            results: components["schemas"]["KbSearchResult"][];
+        };
+        /**
+         * KbSearchResult
+         * @description One record: a decision, or one version of a statute article. `score` is the best chunk's.
+         *     `review_status` is `analyzed` for a record no reviewer has approved yet (show it as "not
+         *     approved"). `verification` is the decision's (null for a statute); `valid_from` / `valid_to`
+         *     the statute version's validity (null for a decision).
+         */
+        KbSearchResult: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "statute" | "treaty" | "decision" | "admin_act" | "collective_agreement" | "doctrine" | "calc";
+            /** Matches */
+            matches: components["schemas"]["KbSearchMatch"][];
+            /**
+             * Parent Id
+             * Format: uuid
+             */
+            parent_id: string;
+            /** Ref */
+            ref?: string | null;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "approved" | "analyzed";
+            /** Score */
+            score: number;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /** Title */
+            title: string;
+            /** Valid From */
+            valid_from?: string | null;
+            /** Valid To */
+            valid_to?: string | null;
+            /** Verification */
+            verification?: ("unverified" | "verified_official" | "verified_uyap" | "mismatch" | "not_in_source") | null;
+            /** Version Id */
+            version_id?: string | null;
         };
         /** KnownAmendment */
         KnownAmendment: {
@@ -4542,6 +4636,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    kb_search_kb_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                category?: ("statute" | "treaty" | "decision" | "admin_act" | "collective_agreement" | "doctrine" | "calc")[] | null;
+                as_of?: string | null;
+                court_level?: ("aym" | "ibk" | "hgk_iddk" | "daire" | "bam_bim" | "ilk_derece" | "international") | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbSearchResponse"];
                 };
             };
             /** @description Unauthorized */
