@@ -16,6 +16,7 @@ from app.files.api import router as files_router
 from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.review_statutes import router as review_statutes_router
+from app.search import router as search_router
 from app.settings import get_settings
 from app.statutes import router as statutes_router
 from hukuk_models import HealthResponse
@@ -47,6 +48,7 @@ app.include_router(files_router)
 app.include_router(review_router)
 app.include_router(review_statutes_router)
 app.include_router(statutes_router)
+app.include_router(search_router)
 
 
 @app.middleware("http")

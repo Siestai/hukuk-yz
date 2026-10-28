@@ -1,6 +1,6 @@
 # Görev 14: KB arama indeksi ve `/kb/search` (kararlar + mevzuat)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: uygulandı, PR Orhan'ın onayında (Themis, 2026-10-28). Tam korpus gömme ve gerçek embedding ile eval koşusu merge sonrası canlıda yapılır. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/data-model.md` §7 (arama), §8 (embedding, `chunk` bölme kuralları), `docs/architecture.md` §4.1, §5.1, `docs/tasks/05-decision-load.md` (karar kaydı), `docs/tasks/11-statute-versioning.md` (madde çizelgesi, `extraction.fields`), `docs/decisions.md` 2026-10-27 (v1 kapalı beta, onaysız kaynak, OpenAI embedding).
 Skill'ler: `task-pr-hygiene`, `db-migration` (indeks/kolon eklenirse).
 

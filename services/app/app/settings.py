@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     file_detect_llm_base_url: str = "https://api.anthropic.com"
     file_detect_llm_timeout_seconds: float = 30.0
 
+    # Search (task 14). The beta also searches records no reviewer has approved yet (they carry
+    # the "analyzed" status in the results); set to false before the service opens to the public.
+    kb_search_include_unreviewed: bool = False
+    # Embeddings of the search index and of the query. Without a key the indexing command stops
+    # and /kb/search falls back to full-text search only.
+    openai_api_key: SecretStr | None = None
+    embedding_model: str = "text-embedding-3-large"
+
     @field_validator("archive_root", "file_store_root")
     @classmethod
     def _absolute_root(cls, value: Path | None, info: ValidationInfo) -> Path | None:

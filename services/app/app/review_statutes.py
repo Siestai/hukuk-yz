@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import Db
 from app.errors import ApiError
 from app.kb import (
-    STATUTE_PARSER_NAME,
     StaleExtraction,
     approve_statute_article,
     format_amending_ref,
@@ -27,7 +26,13 @@ from app.kb import (
     unpublished_statute_articles,
     version_evidence,
 )
-from app.models.common import Extraction, Review, Source, SourceCategory
+from app.models.common import (
+    STATUTE_PARSER_NAME,
+    Extraction,
+    Review,
+    Source,
+    SourceCategory,
+)
 from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
 from app.models.user import AppUser
 from app.review_common import Limit, Offset, Reviewer, page, reviewer_check

@@ -1,0 +1,265 @@
+[
+  {
+    "id": "SB-001",
+    "card": "SB-001",
+    "question": "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerekçesi ile birlikte açıkla",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "4857 m.18"
+      },
+      {
+        "category": "statute",
+        "ref": "4857 m.20"
+      },
+      {
+        "category": "decision",
+        "chamber": "9. HD",
+        "esas": "2016/28920",
+        "karar": "2017/17860"
+      },
+      {
+        "category": "decision",
+        "chamber": "7. HD",
+        "esas": "2014/12921",
+        "karar": "2014/18766"
+      }
+    ]
+  },
+  {
+    "id": "SB-002",
+    "card": "SB-002",
+    "question": "4/c sigortalısının ölümü sonrası hak sahiplerinin ölüm toptan ödemesi alabilmesi için gelir tespiti şartı var mıdır",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.36"
+      },
+      {
+        "category": "statute",
+        "ref": "5510 m.34"
+      }
+    ]
+  },
+  {
+    "id": "SB-003",
+    "card": "SB-003",
+    "question": "İşçinin ücretinin düşürülmesinin şartları nelerdir.",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "4857 m.22"
+      },
+      {
+        "category": "statute",
+        "ref": "4857 m.62"
+      },
+      {
+        "category": "decision",
+        "chamber": "9. HD",
+        "esas": "2012/6260",
+        "karar": "2014/11165"
+      },
+      {
+        "category": "decision",
+        "chamber": "9. HD",
+        "esas": "2016/9412",
+        "karar": "2019/16512"
+      }
+    ]
+  },
+  {
+    "id": "SB-004",
+    "card": "SB-004",
+    "question": "Denetmenler bir işyerine denetime gitti ve işyeri ciddi anlamda teşvik alıyor ve asgari ücret desteğinden yararlanıyor. İşyerinde de 1 adet sigortasız işçi çalıştığı tespit ediliyor. Henüz tutanağın tarihinin atılmadığı varsayımıyla işverenin sana bu soruyu sorduğunu düşün. En az hasarla bu konuyu nasıl atlatabiliriz",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.8"
+      },
+      {
+        "category": "statute",
+        "ref": "5510 m.102"
+      }
+    ]
+  },
+  {
+    "id": "SB-005",
+    "card": "SB-005",
+    "question": "Bağıtlanmış toplu iş sözleşmesinde ödenmeyen ikramiye, yakacak yardımına ilişkin, işçi açısından yapılması gerekenler nelerdir ?",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "4857 m.32"
+      },
+      {
+        "category": "decision",
+        "chamber": "9. HD",
+        "esas": "2008/26536",
+        "karar": "2008/25713"
+      },
+      {
+        "category": "decision",
+        "chamber": "9. HD",
+        "esas": "2010/41736",
+        "karar": "2011/7585"
+      }
+    ]
+  },
+  {
+    "id": "SB-007",
+    "card": "SB-007",
+    "question": "Nema etkisine gerek yok. Kesin yeminle ispata da gerek yok. Yaş düzeltmesinin sigortalılık etkisi konusunda karar içerikleri benzer mi tamamen farklı mı",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.57"
+      },
+      {
+        "category": "statute",
+        "ref": "5510 m.38"
+      },
+      {
+        "category": "decision",
+        "chamber": "21. HD",
+        "esas": "2004/6171",
+        "karar": "2004/6223"
+      },
+      {
+        "category": "decision",
+        "chamber": "21. HD",
+        "esas": "2005/410",
+        "karar": "2005/3910"
+      },
+      {
+        "category": "decision",
+        "chamber": "10. HD",
+        "esas": "2004/3869",
+        "karar": "2004/7700"
+      }
+    ]
+  },
+  {
+    "id": "SB-008",
+    "card": "SB-008",
+    "question": "Mesela askere gidecek işçi ne kadar süre önce işten ayrılmalıdır",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "4857 m.31"
+      },
+      {
+        "category": "statute",
+        "ref": "4857 m.17"
+      }
+    ]
+  },
+  {
+    "id": "SB-009",
+    "card": "SB-009",
+    "question": "Babasından maaş alan kız sigortasının maaşı kesilmiştir. İşten çıktıktan sonra kendisine sgk dan genel sağlık sigortası tebliğ edilmiştir. Kişi tekrar maaş başvurusu talebinde bulunabilir mi? Kendisine tebliğ edilen gss borcu silinebilir mi?",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.34"
+      },
+      {
+        "category": "statute",
+        "ref": "5510 m.35"
+      }
+    ]
+  },
+  {
+    "id": "SB-010",
+    "card": "SB-010",
+    "question": "İşçinin ücretinin günlük yada maktu olarak belirlenmesi iş akdinin feshinden sonraki tazminatları nasıl etkiler? Primlerin sgk ya bildirimleri de dikkate alındığında işveren açısından günlük veya maktu ücreti seçmenin hangisi avantajlıdır",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "4857 m.17"
+      },
+      {
+        "category": "statute",
+        "ref": "4857 m.46"
+      }
+    ]
+  },
+  {
+    "id": "SB-011",
+    "card": "SB-011",
+    "question": "Günlük ücretli şubat ayında 28 günlük ücret alırken sgk ya bildirilen prim gün sayısı 30 mu olur yoksa 2 gün resim bildirilerek 28 mi olur. 2 gün eksik bildirilirse eksik gün kodu ne olur",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.80"
+      },
+      {
+        "category": "statute",
+        "ref": "5510 m.86"
+      }
+    ]
+  },
+  {
+    "id": "SB-012",
+    "card": "SB-012",
+    "question": "6 eksik gün koduyla bildirilen bir işçi eksik gün bildirileceği varsayımıyla sgk ya en fazla kaç gün bildirilebilir.",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "4857 m.13"
+      },
+      {
+        "category": "statute",
+        "ref": "5510 m.80"
+      }
+    ]
+  },
+  {
+    "id": "SB-013",
+    "card": "SB-013",
+    "question": "Çalışma saatlerini yarım saat öne almak ya da yarım saat ileri almak için çalışanın izni gerekli mi?",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "4857 m.22"
+      },
+      {
+        "category": "statute",
+        "ref": "4857 m.63"
+      }
+    ]
+  },
+  {
+    "id": "SB-014",
+    "card": "SB-014",
+    "question": "İşverene uygulanan işe giriş bildirgesi cezasında bir yıl içinde tekrar halinde ceza 5 kat uygulanıyor. Bahsedilen bir yılın ne zaman başlayacağına ilişkin mevzuat nedir?",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.102"
+      }
+    ]
+  },
+  {
+    "id": "SB-015",
+    "card": "SB-015",
+    "question": "Denetimde kayıtlar ve eksik gün belgeleri istendi; 3 kişi 07 puantajla bildirilmiş, puantaj ibraz edilmedi. Ne olur, ne yapılmalı? Takip: rapor tespiti yazmış, ek belge isteme yazısı geldi, ceza nasıl en aza iner?",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.86"
+      }
+    ]
+  },
+  {
+    "id": "SB-016",
+    "card": "SB-016",
+    "question": "\"İndirim en çok 15 günlük ödeme süresi kaçırıldığında kaybedilmektedir.\" Bu bilginin kaynağını gösterir misin. Diyelim ki 30 gün içinde verdim ama 15 gün içinde ödemedim. O halde sadece 1/4 indiriminden faydalanamaz mıyım?",
+    "expected": [
+      {
+        "category": "statute",
+        "ref": "5510 m.102"
+      }
+    ]
+  }
+]

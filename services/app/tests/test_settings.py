@@ -40,3 +40,15 @@ def test_the_llm_detection_is_off_by_default(monkeypatch: pytest.MonkeyPatch) ->
     assert settings.file_detect_llm_model.startswith("claude-haiku")
     monkeypatch.setenv("FILE_DETECT_LLM_API_KEY", "secret-key")
     assert "secret-key" not in repr(Settings())
+
+
+def test_search_settings_default_to_the_public_safe_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("KB_SEARCH_INCLUDE_UNREVIEWED", "OPENAI_API_KEY", "EMBEDDING_MODEL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
+    settings = Settings()
+    assert settings.kb_search_include_unreviewed is False
+    assert settings.openai_api_key is None
+    assert settings.embedding_model == "text-embedding-3-large"
+    monkeypatch.setenv("KB_SEARCH_INCLUDE_UNREVIEWED", "true")
+    assert Settings().kb_search_include_unreviewed is True

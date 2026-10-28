@@ -505,14 +505,15 @@ async def test_decision_defaults_and_tsv_trigger(conn: AsyncConnection) -> None:
 
 
 async def test_chunk_embedding_roundtrip(conn: AsyncConnection) -> None:
+    source_id = await _source(conn, "decision")
     await conn.execute(
         text(
-            "INSERT INTO chunk (category, parent_kind, parent_id, kind, license, ordinal, "
-            "char_start, char_end, text, embedding, embedding_model) "
-            "VALUES ('decision', 'decision', gen_random_uuid(), 'body', 'public', 0, 0, 5, "
-            "'hello', CAST(:e AS vector), 'test-model')"
+            "INSERT INTO chunk (category, parent_kind, parent_id, source_id, kind, license, "
+            "ordinal, char_start, char_end, text, text_hash, title, embedding, embedding_model) "
+            "VALUES ('decision', 'decision', gen_random_uuid(), :s, 'body', 'public', 0, 0, 5, "
+            "'hello', 'h', 't', CAST(:e AS vector), 'test-model')"
         ),
-        {"e": HALF_VECTOR},
+        {"e": HALF_VECTOR, "s": source_id},
     )
     row = (
         await conn.execute(

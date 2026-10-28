@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.kb import PARSER_NAME
 from app.loaders import decisions
 from app.loaders.decisions import (
     REQUIRED_KEYS,
@@ -23,6 +22,7 @@ from app.loaders.decisions import (
 from app.loaders.normalize import BOOKKEEPING, COURT_LEVELS, COURTS, OUTCOMES
 from app.loaders.report import LoadCounts, PreparedRecord, build_summary
 from app.models.common import (
+    PARSER_NAME,
     Extraction,
     IngestFile,
     IngestJob,
