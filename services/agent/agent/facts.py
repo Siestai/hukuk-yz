@@ -5,6 +5,7 @@ which options and "neden soruyorum" text, comes from the topic template. An answ
 its question completes.
 """
 
+import re
 from datetime import date
 
 from agent.llm_schemas import IntakeOutput
@@ -47,7 +48,38 @@ def _extracted(fact: TopicFact, extracted: IntakeOutput) -> Fact | None:
     return Fact(key=fact.key, label=fact.label, value=value, status=status)
 
 
-def build_facts(topic: Topic, extracted: IntakeOutput, previous: CaseFacts | None) -> CaseFacts:
+_MONTHS = "ocak şubat mart nisan mayıs haziran temmuz ağustos eylül ekim kasım aralık".split()
+
+
+def stated_in(day: date, question: str) -> bool:
+    """The question names `day`: "3.10.2026", "03/10/2026", "2026-10-03" or "3 Ekim 2026"."""
+    text = _norm(question)
+    day_no, year = rf"0?{day.day}", day.year
+    month_no = rf"0?{day.month}"
+    patterns = (
+        rf"(?<!\d){day_no}\s*[./-]\s*{month_no}\s*[./-]\s*{year}(?!\d)",
+        rf"(?<!\d){year}-{month_no}-{day_no}(?!\d)",
+        rf"(?<!\d){day_no}\s+{_MONTHS[day.month - 1]}\s+{year}(?!\d)",
+    )
+    return any(re.search(p, text) for p in patterns)
+
+
+def _stated_event_date(extracted: IntakeOutput, question: str, today: date) -> date | None:
+    """The event date the intake model gave, if the question names it and it is not in the future;
+    a date the model inferred or invented would pick the wrong version of the law, so it counts as
+    unknown and is asked."""
+    day = extracted.event_date
+    return day if day and day <= today and stated_in(day, question) else None
+
+
+def build_facts(
+    topic: Topic,
+    extracted: IntakeOutput,
+    previous: CaseFacts | None,
+    *,
+    question: str,
+    today: date,
+) -> CaseFacts:
     """The facts of the template, from this question first, then from the earlier turns of the
     same topic; what neither says is unknown."""
     earlier = {f.key: f for f in previous.facts} if previous else {}
@@ -55,7 +87,9 @@ def build_facts(topic: Topic, extracted: IntakeOutput, previous: CaseFacts | Non
     for tf in topic.facts:
         fact = _extracted(tf, extracted) or earlier.get(tf.key)
         facts.append(fact or Fact(key=tf.key, label=tf.label, status="unknown"))
-    event_date = extracted.event_date or (previous.event_date if previous else None)
+    event_date = _stated_event_date(extracted, question, today) or (
+        previous.event_date if previous else None
+    )
     return CaseFacts(
         title=extracted.title.strip() or topic.title,
         facts=facts,

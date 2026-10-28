@@ -7,9 +7,6 @@ from agent.sources import ReadSource
 from agent.topics import Topic
 from hukuk_models.chat import CaseFacts, HoldingRow
 
-# One source in a prompt shows at most this many characters of what was read of it.
-MAX_SOURCE_CHARS = 6000
-
 REGISTER = (
     'Dil: resmi Türkçe; geniş zaman ve -mektedir / -maktadır kipi kullan; "-iyor" kipini '
     '(örneğin "yapılıyor", "bulunuyor") hiçbir cümlede kullanma.'
@@ -93,7 +90,7 @@ def intake_prompt(question: str, topics: dict[str, Topic], previous: CaseFacts |
 def sources_block(read: list[ReadSource]) -> str:
     blocks = []
     for s in read:
-        text = " […] ".join(p.text for p in s.passages)[:MAX_SOURCE_CHARS]
+        text = " […] ".join(p.text for p in s.passages)
         label = "onaylanmadı" if s.review_status == "analyzed" else "onaylı"
         blocks.append(f"[source_id: {s.source_id}] {s.ref} ({s.category}, {label})\n{text}")
     return "\n\n".join(blocks)

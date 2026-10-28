@@ -1,9 +1,7 @@
 """The graph (task 17): SB-001 stops at the clarification and goes on after the answers; skipping
 gives a conditional answer; the gate drops what it must; what cannot pass ends in the fallback."""
 
-import uuid
 from datetime import date
-from typing import Any
 
 from agent_fakes import (
     INTAKE_SB016,
@@ -11,17 +9,24 @@ from agent_fakes import (
     M18_4,
     FakeKb,
     Script,
+    answer_all,
+    ask,
     draft,
+    hit,
+    labour_law_hits,
+    only,
     row,
     scripted,
+    turn,
+    unique_thread,
 )
 from langgraph.checkpoint.memory import InMemorySaver
 
-from agent.api import Graph, RunRequest, turn_events
+from agent.api import Graph, RunRequest
 from agent.graph import build_graph
 from agent.llm import Llm, Models
 from agent.nodes import Deps
-from agent.trace import Tracing
+from hukuk_models import ErrorCode
 from hukuk_models.chat import (
     Answer,
     AnswerEvent,
@@ -33,48 +38,13 @@ from hukuk_models.chat import (
     StepEvent,
 )
 
-QUESTION = "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerekçesi ile birlikte açıkla"
 TODAY = date(2026, 10, 28)
-ANSWERS = {"q1": "gte_30", "q2": "belirsiz", "q3": "2026-10-03", "q4": "hayir", "q5": "hayir"}
 
 
 def make_graph(script: Script, kb: FakeKb | None = None) -> Graph:
     model = scripted(script)
     deps = Deps(llm=Llm(Models(model, model)), kb=kb or FakeKb(), today=lambda: TODAY)
     return build_graph(deps, InMemorySaver())
-
-
-async def turn(graph: Graph, request: RunRequest) -> list[Any]:
-    with Tracing().run(request.thread_id) as trace:
-        return [e async for e in turn_events(graph, request, trace)]
-
-
-def ask(thread: str) -> RunRequest:
-    return RunRequest(thread_id=thread, text=QUESTION)
-
-
-def answer_all(thread: str, **override: str | None) -> RunRequest:
-    """Answers q1..q5; an override of None answers "Bilmiyorum"."""
-    given = {**ANSWERS, **override}
-    return RunRequest(
-        thread_id=thread,
-        clarification_answers=[
-            ClarificationAnswer(question_id=k, value=v)
-            if v is not None
-            else ClarificationAnswer(question_id=k, unknown=True)
-            for k, v in given.items()
-        ],
-    )
-
-
-def only[T](events: list[Any], kind: type[T]) -> T:
-    found = [e for e in events if isinstance(e, kind)]
-    assert len(found) == 1, [type(e).__name__ for e in events]
-    return found[0]
-
-
-def unique_thread() -> str:
-    return f"t-{uuid.uuid4().hex[:8]}"
 
 
 async def test_sb001_stops_at_the_clarification_and_goes_on_after_the_answers() -> None:
@@ -111,14 +81,14 @@ async def test_sb001_stops_at_the_clarification_and_goes_on_after_the_answers() 
     second = await turn(graph, answer_all(thread))
 
     answer = only(second, AnswerEvent).answer
-    assert [type(e).__name__ for e in second][:2] == ["StepEvent", "FactsEvent"]
+    assert [type(e).__name__ for e in second][:2] == ["FactsEvent", "StepEvent"]
     assert only(second, DoneEvent).trace_id
     assert answer.status == "conditional"
     assert answer.applied_law_date == date(2026, 10, 3)
     assert "03.10.2026" in answer.applied_law_text
     assert {c.ref for p in answer.points for c in p.citations} == {"4857 m.18/1"}
     assert answer.points[0].citations[0].quote == M18_1
-    assert answer.points[0].citations[0].char_start == 0
+    assert answer.points[0].citations[0].char_start == len("(1) ")
     assert {i.ref for i in answer.read_sources.items} >= {"4857 m.17", "4857 m.18"}
     assert answer.read_sources.statute_articles == len(answer.read_sources.items)
     assert answer.holding_map.rows[0].citation.ref == "4857 m.18/1"
@@ -297,7 +267,7 @@ async def test_no_verified_row_ends_in_an_error() -> None:
     events = await turn(graph, answer_all(thread))
 
     error = only(events, ErrorEvent)
-    assert error.params == {"reason": "no_verified_answer"}
+    assert error.code == ErrorCode.answer_not_verified
     assert not any(isinstance(e, AnswerEvent) for e in events)
     assert script.of("draft") == []
 
@@ -326,7 +296,10 @@ async def test_a_topic_with_all_facts_known_does_not_stop() -> None:
             )
         ],
     )
-    graph = make_graph(script)
+    circular = hit(
+        "admin:2020-8", "2020/8", "SGK Genelgesi 2020/8", "Genelge metni", category="admin_act"
+    )
+    graph = make_graph(script, FakeKb([*labour_law_hits(), circular]))
 
     events = await turn(graph, ask(unique_thread()))
 

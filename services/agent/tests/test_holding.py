@@ -13,7 +13,13 @@ READ = [
     s
     for s in [
         as_read_source(
-            hit("statute:4857:m18", "4857 m.18", "4857 sayılı İş Kanunu m.18", M18_1, M18_4)
+            hit(
+                "statute:4857:m18",
+                "4857 m.18",
+                "4857 sayılı İş Kanunu m.18",
+                f"(1) {M18_1}",
+                f"(4) {M18_4}",
+            )
         ),
         as_read_source(
             hit(
@@ -68,3 +74,10 @@ def test_the_good_rows_stay_when_others_drop() -> None:
 
     assert len(rows) == 1 and dropped == 1
     assert rows[0].result == "unknown"
+
+
+def test_a_paragraph_the_text_does_not_have_is_left_out_of_the_citation() -> None:
+    rows, dropped = verify(row("statute:4857:m18", M18_4, sub="99"))
+
+    assert dropped == 0
+    assert rows[0].citation.ref == "4857 m.18"

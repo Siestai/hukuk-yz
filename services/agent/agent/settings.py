@@ -1,8 +1,10 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+MIN_SERVICE_KEY_LENGTH = 16
 
 
 class LlmSettings(BaseSettings):
@@ -36,6 +38,17 @@ class Settings(LlmSettings, KbSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     # What `app` sends in `X-Service-Key` to POST /run.
     agent_service_key: SecretStr
+
+    @field_validator("agent_service_key")
+    @classmethod
+    def _real_key(cls, key: SecretStr) -> SecretStr:
+        value = key.get_secret_value()
+        if len(value) < MIN_SERVICE_KEY_LENGTH or value.lower().startswith("change"):
+            raise ValueError(
+                f"AGENT_SERVICE_KEY must be a real secret of at least {MIN_SERVICE_KEY_LENGTH} "
+                "characters, not a placeholder"
+            )
+        return key
 
 
 @lru_cache

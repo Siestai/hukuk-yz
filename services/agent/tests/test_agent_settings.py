@@ -1,12 +1,13 @@
 """The configuration of the agent: models from the environment, defaults for the rest."""
 
 import pytest
+from pydantic import ValidationError
 
 from agent.settings import Settings
 
 REQUIRED = {
     "DATABASE_URL": "postgresql+asyncpg://u@h/d",
-    "AGENT_SERVICE_KEY": "agent-key",
+    "AGENT_SERVICE_KEY": "agent-service-key-for-tests",
     "KB_SERVICE_KEY": "kb-key",
 }
 
@@ -48,3 +49,15 @@ def test_the_default_models_are_ones_pydantic_ai_accepts() -> None:
 
         os.environ.setdefault("ANTHROPIC_API_KEY", "placeholder")
         assert infer_model(name).model_name in name
+
+
+@pytest.mark.parametrize("key", ["change-me", "short", "change-me-please-change-me"])
+def test_a_placeholder_or_short_service_key_is_refused(
+    monkeypatch: pytest.MonkeyPatch, key: str
+) -> None:
+    for name, value in REQUIRED.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv("AGENT_SERVICE_KEY", key)
+
+    with pytest.raises(ValidationError, match="AGENT_SERVICE_KEY"):
+        Settings()

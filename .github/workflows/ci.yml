@@ -63,7 +63,7 @@ jobs:
             src=${pair%%:*}; pkg=${pair##*:}
             want=$(cd "$src" && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum)
             got=$(docker run --rm --entrypoint sh hukuk-app:ci -c \
-              "cd /app/.venv/lib/python3.12/site-packages/$pkg && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum")
+              "cd \$(python -c 'import $pkg, os; print(os.path.dirname($pkg.__file__))') && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum")
             echo "$pkg $want / $got"
             test "$want" = "$got"
           done
@@ -85,7 +85,7 @@ jobs:
             src=${pair%%:*}; pkg=${pair##*:}
             want=$(cd "$src" && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum)
             got=$(docker run --rm --entrypoint sh hukuk-agent:ci -c \
-              "cd /app/.venv/lib/python3.12/site-packages/$pkg && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum")
+              "cd \$(python -c 'import $pkg, os; print(os.path.dirname($pkg.__file__))') && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum")
             echo "$pkg $want / $got"
             test "$want" = "$got"
           done

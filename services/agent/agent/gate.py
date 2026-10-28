@@ -7,6 +7,7 @@ applied, is dropped (md. 25); a point left with no citation is dropped; a "-iyor
 depends on is refused.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -14,7 +15,7 @@ from pydantic import BaseModel, ValidationError
 
 from agent.facts import critical_unknown
 from agent.llm_schemas import CitationPick, DraftOutput
-from agent.sources import ReadSource, citation, locate, summarize, valid_on
+from agent.sources import ReadSource, checked_sub, citation, locate, summarize, valid_on
 from agent.topics import Topic
 from hukuk_models.chat import (
     Answer,
@@ -56,8 +57,16 @@ def draft_texts(draft: DraftOutput) -> list[str]:
     return texts
 
 
-def progressive_in(draft: DraftOutput) -> list[str]:
-    return progressive_forms(draft_texts(draft))
+def progressive_in(
+    draft: DraftOutput, rows: Sequence[HoldingRow] = (), facts: CaseFacts | None = None
+) -> list[str]:
+    """The "-iyor" forms in the draft and in the words the models wrote into the rows and the
+    title of the facts (a row's quote is the source's own words and is not scanned)."""
+    texts = draft_texts(draft)
+    texts += [t for r in rows for t in (r.condition, r.fact_value) if t]
+    if facts is not None:
+        texts.append(facts.title)
+    return progressive_forms(texts)
 
 
 def _cite(
@@ -73,7 +82,12 @@ def _cite(
             drops.citations += 1
         else:
             cited.append(
-                citation(source, sub=pick.sub, quote=quote or None, used_for=pick.used_for)
+                citation(
+                    source,
+                    sub=checked_sub(source, pick.sub),
+                    quote=quote or None,
+                    used_for=pick.used_for,
+                )
             )
     return cited
 
@@ -88,12 +102,14 @@ def _chips(topic: Topic, facts: CaseFacts) -> list[FactChip]:
     ]
 
 
-def _status_note(status: str, date_assumed: bool) -> str:
+def _status_note(status: str, date_assumed: bool, unread: Sequence[str]) -> str:
     if status == "definite":
         return "Verdiğiniz bilgilere göre."
     note = "Eksik bilgiler nedeniyle koşullu cevaptır."
     if date_assumed:
         note += " Olay tarihi bilinmediğinden bugünün tarihindeki metin esas alınmıştır."
+    if unread:
+        note += f" Okunamayan kaynaklar bulunmaktadır: {', '.join(unread)}."
     return note
 
 
@@ -110,16 +126,19 @@ def check_draft(
     read: list[ReadSource],
     applied_on: date,
     date_assumed: bool,
+    unread: Sequence[str] = (),
 ) -> GateResult:
     sources = {s.source_id: s for s in read}
     drops = GateDrops()
     issues = []
 
-    if forms := progressive_in(draft):
+    if forms := progressive_in(draft, rows, facts):
         issues.append(f"-iyor kipi kullanılmıştır: {', '.join(forms)}")
     if draft.status == "definite":
         if missing := critical_unknown(topic, facts):
             issues.append(f"kritik olgu bilinmezken kesin cevap verilemez: {', '.join(missing)}")
+        if unread:
+            issues.append(f"okunamayan kaynak varken kesin cevap verilemez: {', '.join(unread)}")
         if any(r.result == "unknown" for r in rows):
             issues.append("hüküm haritasında sonucu bilinmeyen satır varken kesin cevap verilemez")
     elif not draft.missing_info:
@@ -151,7 +170,7 @@ def check_draft(
     try:
         answer = Answer(
             status=draft.status,
-            status_note=_status_note(draft.status, date_assumed),
+            status_note=_status_note(draft.status, date_assumed, unread),
             headline=draft.headline,
             fact_chips=_chips(topic, facts),
             points=points,
@@ -176,6 +195,7 @@ def not_answered(
     read: list[ReadSource],
     applied_on: date,
     date_assumed: bool,
+    unread: Sequence[str] = (),
 ) -> Answer | None:
     """The answer given when the draft could not pass the gate twice: it says so and shows the
     holding map rows that were verified. None when there is no verified row to show."""
@@ -183,7 +203,7 @@ def not_answered(
         return None
     return Answer(
         status="conditional",
-        status_note=_status_note("conditional", date_assumed),
+        status_note=_status_note("conditional", date_assumed, unread),
         headline=NOT_ANSWERED,
         fact_chips=_chips(topic, facts),
         points=[

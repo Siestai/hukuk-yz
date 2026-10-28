@@ -3,7 +3,7 @@ words; everything else of an `Answer` (read sources, citations, chips, dates, di
 written by code from these."""
 
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -70,7 +70,3 @@ class DraftOutput(LlmModel):
     points: Annotated[list[PointDraft], Field(min_length=1)]
     missing_info: list[MissingDraft] = []
     reasoning_summary: str
-
-
-# The two node kinds that call a model; the name is the step name of the graph.
-NodeName = Literal["intake", "holding_map", "draft", "rewrite"]

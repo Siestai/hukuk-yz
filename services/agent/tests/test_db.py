@@ -4,8 +4,17 @@ clarification goes on in a new process."""
 from datetime import date
 
 import pytest
-from agent_fakes import FakeKb, Script, require_database_url, scripted
-from test_graph import answer_all, ask, only, turn, unique_thread
+from agent_fakes import (
+    FakeKb,
+    Script,
+    answer_all,
+    ask,
+    only,
+    require_database_url,
+    scripted,
+    turn,
+    unique_thread,
+)
 
 from agent.db import open_database, psycopg_url
 from agent.graph import build_graph

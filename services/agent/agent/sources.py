@@ -43,6 +43,10 @@ class ReadSource(BaseModel):
     passages: list[Passage]
 
 
+# What the models are shown of one source, at most; the rest counts as not read.
+MAX_SOURCE_CHARS = 6000
+
+
 def split_ref(ref: str) -> tuple[str, str]:
     """Splits "4857 m.18/1" into ("4857 m.18", "/1"): the article and the paragraph part."""
     found = _STATUTE_REF.match(ref.strip())
@@ -94,6 +98,19 @@ def merge(read: Iterable[ReadSource], new: Iterable[ReadSource]) -> list[ReadSou
     return list(merged.values())
 
 
+def shown(source: ReadSource) -> ReadSource:
+    """`source` cut to what a model is shown of it (`MAX_SOURCE_CHARS`), so that the sources
+    "read" are the texts that were put before the model and no more."""
+    left = MAX_SOURCE_CHARS
+    passages = []
+    for passage in source.passages:
+        if left <= 0:
+            break
+        passages.append(passage.model_copy(update={"text": passage.text[:left]}))
+        left -= len(passage.text)
+    return source.model_copy(update={"passages": passages})
+
+
 def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | None:
     """Where `quote` stands in the text read of `source`, matching it word for word (the white
     space may differ). None: it is not there. The offsets are into the source's full text and
@@ -110,6 +127,17 @@ def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | No
             return None, None
         return passage.char_start + found.start(), passage.char_start + found.end()
     return None
+
+
+def checked_sub(source: ReadSource, sub: str | None) -> str | None:
+    """`sub` when the paragraph it names is in the text read of `source` (its number stands in
+    brackets, "(1)"; "2-a" is paragraph 2); None otherwise, so that a paragraph the model made up
+    is never cited (md. 25)."""
+    if not sub:
+        return None
+    number = re.escape(sub.split("-")[0].strip())
+    marker = re.compile(rf"(?<!\w)\({number}\)")
+    return sub if any(marker.search(p.text) for p in source.passages) else None
 
 
 def valid_on(source: ReadSource, day: date) -> bool:

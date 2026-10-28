@@ -4,7 +4,7 @@ with fake models that CI runs."""
 from datetime import date
 from pathlib import Path
 
-from agent_fakes import INTAKE_SB016, Script, draft, row, scripted
+from agent_fakes import INTAKE_SB016, FailingKb, Script, draft, row, scripted
 
 from agent.eval import (
     FixtureKb,
@@ -13,6 +13,7 @@ from agent.eval import (
     render,
     run_eval,
 )
+from agent.kb import KbUnavailable
 from agent.llm import Models
 from agent.trace import Tracing
 from hukuk_models.chat import Clarification, ClarificationQuestion, QuestionInput
@@ -84,3 +85,15 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models() -> None:
     table = render(results)
     assert table.splitlines()[0].startswith("vaka")
     assert "SB-016" in table.splitlines()[1]
+
+
+async def test_a_case_that_stops_before_the_gate_is_reported_not_fatal() -> None:
+    model = scripted(Script(intake=INTAKE_SB016))
+    graph = build_eval_graph(Models(model, model), FailingKb(KbUnavailable("down")))
+
+    results = await run_eval(graph, Tracing(), CASES, only=["SB-016"])
+
+    result = results[0]
+    assert result.answer is None and result.error == "kb_unavailable"
+    assert (result.dropped, result.fell_back) == (0, False)
+    assert "kb_unavailable" in render(results)

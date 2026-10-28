@@ -86,9 +86,7 @@ async def turn_events(graph: Graph, request: RunRequest, trace: Trace) -> AsyncI
             elif "draft" in chunk:
                 answer = chunk["draft"]["answer"]
                 if answer is None:
-                    yield ErrorEvent(
-                        code=ErrorCode.internal_error, params={"reason": "no_verified_answer"}
-                    )
+                    yield ErrorEvent(code=ErrorCode.answer_not_verified)
                 else:
                     yield AnswerEvent.model_validate({"answer": answer})
     except KbUnavailable:
@@ -163,7 +161,7 @@ def create_app(
         graph: Graph = request.app.state.graph
         if body.text is None:
             snapshot = await graph.aget_state({"configurable": {"thread_id": body.thread_id}})
-            if not snapshot.next:
+            if not any(task.interrupts for task in snapshot.tasks):
                 return _error(409, ErrorCode.clarification_not_pending)
         stream = (sse(e) async for e in run_events(graph, request.app.state.tracing, body))
         headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}

@@ -3,15 +3,18 @@ the fact."""
 
 from datetime import date
 
+import pytest
+
 from agent.facts import (
     apply_answers,
     build_facts,
     clarification_for,
     critical_unknown,
     event_date_of,
+    stated_in,
 )
 from agent.llm_schemas import IntakeFact, IntakeOutput
-from agent.topics import get_topic
+from agent.topics import Topic, get_topic
 from hukuk_models.chat import CaseFacts, ClarificationAnswer
 
 TOPIC = get_topic("ise_iade")
@@ -19,6 +22,15 @@ TOPIC = get_topic("ise_iade")
 
 def intake(*facts: IntakeFact, event: date | None = None) -> IntakeOutput:
     return IntakeOutput(topic="ise_iade", title="İşe iade", event_date=event, facts=list(facts))
+
+
+TODAY = date(2026, 10, 28)
+
+
+def build(
+    topic: Topic, extracted: IntakeOutput, previous: CaseFacts | None, question: str = ""
+) -> CaseFacts:
+    return build_facts(topic, extracted, previous, question=question, today=TODAY)
 
 
 KIDEM = IntakeFact(key="kidem", value="5 ay", status="known")
@@ -29,7 +41,7 @@ def statuses(facts: CaseFacts) -> dict[str, str]:
 
 
 def test_the_facts_are_the_templates_and_what_the_question_does_not_say_is_unknown() -> None:
-    facts = build_facts(TOPIC, intake(KIDEM), None)
+    facts = build(TOPIC, intake(KIDEM), None)
 
     assert [f.key for f in facts.facts] == [f.key for f in TOPIC.facts]
     assert statuses(facts)["kidem"] == "known"
@@ -38,13 +50,13 @@ def test_the_facts_are_the_templates_and_what_the_question_does_not_say_is_unkno
 
 
 def test_a_fact_the_model_invents_is_left_out() -> None:
-    facts = build_facts(TOPIC, intake(IntakeFact(key="maas", value="50.000", status="known")), None)
+    facts = build(TOPIC, intake(IntakeFact(key="maas", value="50.000", status="known")), None)
 
     assert "maas" not in statuses(facts)
 
 
 def test_a_value_that_is_an_option_becomes_the_options_label() -> None:
-    facts = build_facts(
+    facts = build(
         TOPIC, intake(IntakeFact(key="sozlesme_turu", value="belirsiz", status="known")), None
     )
 
@@ -56,21 +68,21 @@ def test_assumed_never_needs_the_users_word_for_it() -> None:
     said = IntakeFact(key="yer_alti", value="Yer altı işi değil", status="assumed_never")
     silent = IntakeFact(key="onceki_donem", value=None, status="assumed_never")
 
-    facts = build_facts(TOPIC, intake(said, silent), None)
+    facts = build(TOPIC, intake(said, silent), None)
 
     assert statuses(facts)["yer_alti"] == "assumed_never"
     assert statuses(facts)["onceki_donem"] == "unknown"
 
 
 def test_earlier_turns_fill_what_this_question_does_not_say() -> None:
-    first = build_facts(TOPIC, intake(KIDEM), None)
-    again = build_facts(TOPIC, intake(), first)
+    first = build(TOPIC, intake(KIDEM), None)
+    again = build(TOPIC, intake(), first)
 
     assert statuses(again)["kidem"] == "known"
 
 
 def test_only_unknown_critical_facts_are_asked_in_the_order_of_the_template() -> None:
-    facts = build_facts(
+    facts = build(
         TOPIC, intake(KIDEM, IntakeFact(key="isci_sayisi", value="45", status="known")), None
     )
 
@@ -90,13 +102,13 @@ def test_only_unknown_critical_facts_are_asked_in_the_order_of_the_template() ->
 
 def test_nothing_is_asked_when_every_critical_fact_is_known() -> None:
     every = [IntakeFact(key=k, value="x", status="known") for k in [f.key for f in TOPIC.facts]]
-    facts = build_facts(TOPIC, intake(*every), None)
+    facts = build(TOPIC, intake(*every), None)
 
     assert clarification_for(TOPIC, facts, {}) is None
 
 
 def test_answers_fill_the_facts_and_the_date_answer_is_the_event_date() -> None:
-    facts = build_facts(TOPIC, intake(KIDEM), None)
+    facts = build(TOPIC, intake(KIDEM), None)
     clarification = clarification_for(TOPIC, facts, {})
     assert clarification is not None
     answers = [
@@ -122,7 +134,7 @@ def test_answers_fill_the_facts_and_the_date_answer_is_the_event_date() -> None:
 
 
 def test_an_answer_that_is_no_option_and_no_date_leaves_the_fact_unknown() -> None:
-    facts = build_facts(TOPIC, intake(KIDEM), None)
+    facts = build(TOPIC, intake(KIDEM), None)
     clarification = clarification_for(TOPIC, facts, {})
     assert clarification is not None
     answers = [
@@ -136,3 +148,32 @@ def test_an_answer_that_is_no_option_and_no_date_leaves_the_fact_unknown() -> No
     assert statuses(done)["isci_sayisi"] == "unknown"
     assert statuses(done)["bildirim_tarihi"] == "unknown"
     assert done.event_date is None
+
+
+def test_an_event_date_the_question_names_is_kept() -> None:
+    facts = build(
+        TOPIC, intake(KIDEM, event=date(2026, 10, 3)), None, "Fesih 3 Ekim 2026 günü oldu"
+    )
+
+    assert facts.event_date == date(2026, 10, 3)
+
+
+@pytest.mark.parametrize(
+    ("event", "question"),
+    [
+        (date(2026, 10, 3), "Fesih geçen hafta oldu"),
+        (date(2027, 1, 5), "Fesih 05.01.2027 tarihinde olacak"),
+        (date(2026, 10, 13), "Fesih 3.10.2026 günü oldu"),
+    ],
+)
+def test_an_event_date_the_question_does_not_name_or_in_the_future_is_unknown(
+    event: date, question: str
+) -> None:
+    assert build(TOPIC, intake(KIDEM, event=event), None, question).event_date is None
+
+
+@pytest.mark.parametrize(
+    "text", ["3.10.2026", "03/10/2026", "2026-10-03", "3 ekim 2026", "03 Ekim 2026"]
+)
+def test_the_forms_of_a_date_in_a_question(text: str) -> None:
+    assert stated_in(date(2026, 10, 3), f"Fesih {text} günüdür")

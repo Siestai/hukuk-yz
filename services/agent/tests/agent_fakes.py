@@ -3,6 +3,7 @@
 
 import json
 import os
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
@@ -12,8 +13,14 @@ import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from agent.api import Graph, RunRequest, turn_events
 from agent.kb import KbHit, KbMatch
 from agent.sources import covers
+from agent.trace import Tracing
+from hukuk_models.chat import ClarificationAnswer
+
+QUESTION = "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerekçesi ile birlikte açıkla"
+ANSWERS = {"q1": "gte_30", "q2": "belirsiz", "q3": "2026-10-03", "q4": "hayir", "q5": "hayir"}
 
 M18_1 = (
     "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin "
@@ -72,16 +79,16 @@ def labour_law_hits() -> list[KbHit]:
             "statute:4857:m18",
             "4857 m.18",
             "4857 sayılı İş Kanunu m.18",
-            M18_1,
-            M18_4,
-            M18_UNDERGROUND,
+            f"(1) {M18_1}",
+            f"(4) {M18_4}",
+            f"(5) {M18_UNDERGROUND}",
         ),
         hit("statute:4857:m17", "4857 m.17", "4857 sayılı İş Kanunu m.17", M17_4),
         hit(
             "statute:5510:m102",
             "5510 m.102",
             "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102",
-            M102_5,
+            f"(5) {M102_5}",
         ),
     ]
 
@@ -116,6 +123,23 @@ class FakeKb:
             and (not categories or h.category in categories)
             and (as_of is None or ((h.valid_from or as_of) <= as_of <= (h.valid_to or as_of)))
         ][:limit]
+
+
+class FailingKb:
+    """A knowledge base whose every search raises `error`."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def search(
+        self,
+        q: str,
+        *,
+        categories: Sequence[str] = (),
+        as_of: date | None = None,
+        limit: int = 10,
+    ) -> list[KbHit]:
+        raise self.error
 
 
 INTAKE_SB001 = {
@@ -225,3 +249,36 @@ def require_database_url() -> str:
     if not url:
         pytest.skip("DATABASE_URL not set")
     return url
+
+
+async def turn(graph: Graph, request: RunRequest) -> list[Any]:
+    with Tracing().run(request.thread_id) as trace:
+        return [e async for e in turn_events(graph, request, trace)]
+
+
+def ask(thread: str) -> RunRequest:
+    return RunRequest(thread_id=thread, text=QUESTION)
+
+
+def answer_all(thread: str, **override: str | None) -> RunRequest:
+    """Answers q1..q5; an override of None answers "Bilmiyorum"."""
+    given = {**ANSWERS, **override}
+    return RunRequest(
+        thread_id=thread,
+        clarification_answers=[
+            ClarificationAnswer(question_id=k, value=v)
+            if v is not None
+            else ClarificationAnswer(question_id=k, unknown=True)
+            for k, v in given.items()
+        ],
+    )
+
+
+def only[T](events: list[Any], kind: type[T]) -> T:
+    found = [e for e in events if isinstance(e, kind)]
+    assert len(found) == 1, [type(e).__name__ for e in events]
+    return found[0]
+
+
+def unique_thread() -> str:
+    return f"t-{uuid.uuid4().hex[:8]}"

@@ -1,6 +1,6 @@
 # Görev 17: Ajan v1 (`services/agent`, LangGraph)
 
-Durum: tamamlandı (gerçek LLM eval koşusu Orhan/orkestratörde). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: uygulandı, PR onayda. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/architecture.md` §2 (agent durumsuz, `POST /run`, sınır kuralları), §4.1, §5.1 (atıf kapısı), Themis araştırması "Ana app ajanı: tasarım" (15.10; özet aşağıda), `docs/tasks/14-kb-search.md` (`/kb/search`), `docs/tasks/15-chat-contract-eval.md` (çıktı şeması, eval), gereksinim md. 4, 22, 23, 25, 33.
 Skill'ler: `task-pr-hygiene`.
 
@@ -46,3 +46,14 @@ Skill'ler: `task-pr-hygiene`.
 - `ruff`, `mypy`, `pytest` yeşil; graf testleri sahte LLM (Pydantic AI `TestModel`/`FunctionModel`) ve sahte `/kb/search` ile: SB-001 akışı interrupt'ta durur, cevaplar sonrası devam eder; atlama koşullu cevap verir; okunmamış kaynağa atıf kapıda düşer; uydurma alıntılı harita satırı düşer; "-iyor" taraması çalışır.
 - Docker image ve compose servisi (`agent`), CI'da build.
 - Gerçek LLM ile (Themis, yerel yığın + yerel KB örneği) 3 vaka eval koşusu, tablo PR'da; doğrulanamayan açıkça yazılır.
+
+## Uygulama notları (şemadan sapmalar)
+
+- **Komşu fıkralar (graf 4. madde):** `app`'te madde okuma endpoint'i henüz yok (Görev 18 kapsamında). v1, zorunlu maddeyi madde künyesiyle (`4857 m.18`) arar; arama o maddenin döndürdüğü diğer parçalarını aynı kayıtta getirir. Maddenin tüm fıkralarının getirilmesi madde okuma endpoint'ine bağlıdır.
+- **`/kb/search` kimliği:** Görev 14 sözleşmesi oturum ister; agent `X-Service-Key` gönderir. Servis anahtarı ile çağrıyı kabul etmeyi Görev 18 `app` tarafına ekler (`18-chat-wiring.md`); o zamana kadar agent yalnız fixture KB (`--kb fixtures`) ile çalışır.
+- **Fıkra (`sub`):** model fıkra adı verebilir; kod yalnız okunan metinde fıkra numarası (`(1)`) geçiyorsa atıfa yazar, geçmiyorsa atıf fıkrasız (madde düzeyinde) kalır.
+- **Okunanlar:** modele gösterilen metin kaynak başına en çok 6000 karakterdir; "okunanlar" yalnız modele gösterilen metni sayar.
+- **Okunamayan zorunlu kaynak:** cevap `definite` olamaz; `status_note` okunamayan kaynakları yazar.
+- **Olay tarihi:** modelin verdiği tarih, soru metninde geçmiyorsa veya gelecekteyse bilinmiyor sayılır ve sorulur.
+- **Hata kodu:** doğrulanmış cevap üretilemezse `answer_not_verified` hata olayı ve `done` gönderilir (Görev 15 sözleşmesi); kod ortak `ErrorCode` listesindedir.
+- **Eval koşucusu:** `FixtureKb`, `--kb`, `--case`, `--json` şema dışıdır; PR açıklamasında listelenir.

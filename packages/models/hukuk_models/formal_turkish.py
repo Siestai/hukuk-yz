@@ -4,7 +4,7 @@
 import re
 from collections.abc import Iterable
 
-PROGRESSIVE = re.compile(r"\b\w*[ıiuü]yor(?:lar|um|sun|uz|sunuz)?\b", re.IGNORECASE)
+PROGRESSIVE = re.compile(r"\b\w*[ıiuü]yor(?:lar|um|sun|uz|sunuz|sa|du|muş)?\b", re.IGNORECASE)
 
 
 def progressive_forms(texts: Iterable[str]) -> list[str]:

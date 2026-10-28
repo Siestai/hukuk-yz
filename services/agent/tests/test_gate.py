@@ -19,7 +19,13 @@ DAY = date(2026, 10, 3)
 
 def read() -> list[ReadSource]:
     found = as_read_source(
-        hit("statute:4857:m18", "4857 m.18", "4857 sayılı İş Kanunu m.18", M18_1, M18_4)
+        hit(
+            "statute:4857:m18",
+            "4857 m.18",
+            "4857 sayılı İş Kanunu m.18",
+            f"(1) {M18_1}",
+            f"(4) {M18_4}",
+        )
     )
     assert found is not None
     return [found]
@@ -39,6 +45,8 @@ def facts(known: bool) -> CaseFacts:
         TOPIC,
         IntakeOutput.model_validate({"topic": "ise_iade", "title": "t", "facts": chosen}),
         None,
+        question="",
+        today=DAY,
     )
 
 
@@ -164,6 +172,8 @@ def test_the_calculations_of_the_template_are_added_by_code() -> None:
             topic,
             IntakeOutput.model_validate({"topic": "kidem_ihbar", "title": "t", "facts": []}),
             None,
+            question="",
+            today=DAY,
         ),
         rows=rows(),
         read=read(),
@@ -185,3 +195,60 @@ def test_the_not_answered_answer_shows_the_verified_rows_or_nothing() -> None:
     assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
     assert answer.holding_map.rows
     assert not_answered(rows=[], **kwargs) is None  # type: ignore[arg-type]
+
+
+def test_a_paragraph_the_text_read_does_not_have_is_not_cited() -> None:
+    output = draft()
+    output["points"][0]["citations"][0]["sub"] = "99"
+
+    result = check(output)
+
+    assert result.answer is not None
+    assert result.answer.points[0].citations[0].ref == "4857 m.18"
+    assert result.answer.points[0].citations[0].label == "4857 sayılı İş Kanunu m.18"
+
+
+def test_the_scan_looks_at_the_rows_and_the_title_of_the_facts_too() -> None:
+    output = DraftOutput.model_validate(draft())
+    row_with = HoldingRow.model_validate(
+        {
+            **rows()[0].model_dump(),
+            "condition": "Kıdem aranıyor",
+            "fact_value": "Hâlâ çalışıyor",
+        }
+    )
+    titled = facts(False).model_copy(update={"title": "Dava açılıyor"})
+
+    assert progressive_in(output, [row_with], titled) == ["aranıyor", "açılıyor", "çalışıyor"]
+
+
+def test_an_unread_must_read_source_forbids_definite() -> None:
+    result = check_draft(
+        DraftOutput.model_validate(draft("definite", missing=False)),
+        topic=TOPIC,
+        facts=facts(True),
+        rows=rows(),
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+        unread=["2020/8"],
+    )
+
+    assert result.answer is None
+    assert any("okunamayan kaynak" in i for i in result.issues)
+
+
+def test_an_unread_must_read_source_is_named_in_the_note_of_a_conditional_answer() -> None:
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=rows(),
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+        unread=["2020/8"],
+    )
+
+    assert result.answer is not None
+    assert "Okunamayan kaynaklar bulunmaktadır: 2020/8." in result.answer.status_note

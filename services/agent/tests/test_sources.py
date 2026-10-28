@@ -5,12 +5,15 @@ from datetime import date
 from agent_fakes import M18_1, M18_4, hit
 
 from agent.sources import (
+    MAX_SOURCE_CHARS,
     ReadSource,
     as_read_source,
+    checked_sub,
     citation,
     covers,
     locate,
     merge,
+    shown,
     split_ref,
     summarize,
     valid_on,
@@ -112,3 +115,22 @@ def test_the_read_sources_count_the_distinct_sources_per_category() -> None:
 
     assert (summary.statute_articles, summary.decisions, summary.admin_acts) == (1, 1, 0)
     assert [i.source_id for i in summary.items] == ["statute:4857:m18", "decision:a"]
+
+
+def test_a_paragraph_is_cited_only_when_its_number_stands_in_the_text_read() -> None:
+    read = source(f"(1) {M18_1}", f"(4) {M18_4}")
+
+    assert checked_sub(read, "4") == "4"
+    assert checked_sub(read, "1-a") == "1-a"
+    assert checked_sub(read, "99") is None
+    assert checked_sub(read, None) is None
+    assert checked_sub(source(M18_1), "1") is None
+
+
+def test_the_models_are_shown_no_more_than_what_is_recorded_as_read() -> None:
+    long = "x" * (MAX_SOURCE_CHARS - 10)
+
+    cut = shown(source(long, M18_1, M18_4))
+
+    assert [len(p.text) for p in cut.passages] == [MAX_SOURCE_CHARS - 10, 10]
+    assert shown(source(M18_1)).passages == source(M18_1).passages

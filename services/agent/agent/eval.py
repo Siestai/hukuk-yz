@@ -74,11 +74,13 @@ class FixtureKb:
                 valid_to=ref.valid_to,
             ),
         )
-        if all(m.text != ref.quote for m in hit.matches):
+        # The paragraph number stands in the text as in the law's own, so that a `sub` can be read.
+        text = f"({sub.removeprefix('/').split('-')[0]}) {ref.quote}" if sub else ref.quote
+        if all(m.text != text for m in hit.matches):
             hit.matches.append(
                 KbMatch(
                     chunk_id=f"{ref.source_id}#{len(hit.matches)}",
-                    text=ref.quote,
+                    text=text,
                     char_start=ref.char_start,
                     char_end=ref.char_end,
                 )
@@ -167,7 +169,9 @@ async def run_case(
                 thread_id=thread_id,
                 clarification_answers=answers_for(pending, case.get("facts") or {}),
             )
-    gate = (await graph.aget_state({"configurable": {"thread_id": thread_id}})).values["gate"]
+    # A case that stopped before the draft (an error, an unanswered clarification) has no gate.
+    state = await graph.aget_state({"configurable": {"thread_id": thread_id}})
+    gate = state.values.get("gate") or {}
     metrics: dict[str, float | None] = {}
     total = 0.0
     if answer is not None:

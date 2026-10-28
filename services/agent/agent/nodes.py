@@ -19,7 +19,7 @@ from agent.kb import KbClient
 from agent.llm import Llm
 from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
 from agent.plan import Plan, make_plan
-from agent.sources import ReadSource, as_read_source, citation, covers, merge, split_ref
+from agent.sources import ReadSource, as_read_source, citation, covers, merge, shown, split_ref
 from agent.topics import SourceRef, Topic, get_topic, load_topics
 from agent.trace import current_trace
 from hukuk_models.chat import (
@@ -55,7 +55,6 @@ class State(TypedDict, total=False):
     topic: str
     facts: dict[str, Any]
     clarification: dict[str, Any] | None
-    skipped: bool
     plan: dict[str, Any]
     read: list[dict[str, Any]]
     unread: list[str]
@@ -88,9 +87,13 @@ def _dumps(items: list[BaseModel]) -> list[dict[str, Any]]:
 
 
 async def _read_ref(kb: KbClient, ref: SourceRef, as_of: date) -> ReadSource | None:
-    """Reads the source `ref` names, in the version in force on `as_of`; None when the knowledge
-    base does not have it."""
-    hits = await kb.search(ref.ref, categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT)
+    """Reads the source `ref` names, in the version in force on `as_of`, with the other
+    paragraphs of the article the search returns with it; None when the knowledge base does not
+    have it."""
+    # The künye of the article, so that the hit holds its other paragraphs too.
+    hits = await kb.search(
+        split_ref(ref.ref)[0], categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT
+    )
     return next(
         (s for h in hits if covers(h.ref, ref.ref) and (s := as_read_source(h)) is not None), None
     )
@@ -118,7 +121,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
 
     async def intake(state: State) -> dict[str, Any]:
         question = state["question"]
-        async with trace().node("intake", {"question": question[:200]}) as rec:
+        async with trace().node("intake", {"question_chars": len(question)}) as rec:
             _step("intake")
             topics = load_topics()
             previous = state.get("facts")
@@ -131,12 +134,21 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             )
             topic = get_topic(out.topic)
             # Facts of another topic are not this question's facts.
-            facts = build_facts(topic, out, earlier if state.get("topic") == topic.id else None)
+            facts = build_facts(
+                topic,
+                out,
+                earlier if state.get("topic") == topic.id else None,
+                question=question,
+                today=deps.today(),
+            )
             sources = await _question_sources(
                 deps.kb, topic, facts, facts.event_date or deps.today()
             )
             clarification = clarification_for(topic, facts, sources)
             _facts_event(facts)
+            if clarification:
+                # Here, not in `clarify`: that node runs again when the user answers.
+                _step("clarify")
             rec.output = {
                 "topic": topic.id,
                 "unknown_critical": critical_unknown(topic, facts),
@@ -146,7 +158,6 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "topic": topic.id,
                 "facts": facts.model_dump(mode="json"),
                 "clarification": clarification.model_dump(mode="json") if clarification else None,
-                "skipped": False,
                 "plan": {},
                 "read": [],
                 "unread": [],
@@ -159,13 +170,12 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
         async with trace().node("clarify", {"pending": bool(state.get("clarification"))}) as rec:
             if not state.get("clarification"):
                 return {}
-            _step("clarify")
             clarification = Clarification.model_validate(state["clarification"])
             # The graph stops here; the checkpoint holds the state until the user answers or skips.
             reply = interrupt(clarification.model_dump(mode="json"))
             if reply["skip"]:
                 rec.output = {"skipped": True}
-                return {"skipped": True}
+                return {}
             answers = [ClarificationAnswer.model_validate(a) for a in reply["answers"]]
             facts = apply_answers(
                 get_topic(state["topic"]),
@@ -204,6 +214,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             for query in made.queries:
                 hits = await deps.kb.search(query, as_of=made.as_of, limit=SEARCH_LIMIT)
                 read = merge(read, [s for h in hits if (s := as_read_source(h)) is not None])
+            read = [shown(s) for s in read]
             rec.output = {"read": [s.ref for s in read], "unread": unread}
             return {"read": _dumps(list(read)), "unread": unread}
 
@@ -265,6 +276,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     read=read,
                     applied_on=made.as_of,
                     date_assumed=made.as_of_assumed,
+                    unread=state["unread"],
                 )
                 drops.citations += result.drops.citations
                 drops.points += result.drops.points
@@ -281,6 +293,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     read=read,
                     applied_on=made.as_of,
                     date_assumed=made.as_of_assumed,
+                    unread=state["unread"],
                 )
             gate = {
                 "citations_dropped": drops.citations,
