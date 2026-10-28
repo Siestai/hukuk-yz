@@ -22,9 +22,13 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
-from app.kb import PARSER_NAME
 from app.loaders.confidence import confidence
-from app.models.common import Extraction, Source, SourceCategory
+from app.models.common import (
+    PARSER_NAME,
+    Extraction,
+    Source,
+    SourceCategory,
+)
 from app.settings import get_settings
 
 BATCH = 500

@@ -25,7 +25,10 @@ from sqlalchemy.dialects.postgresql import JSONB, distinct_on
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.chunk_index import sync_decision, sync_extraction
 from app.models.common import (
+    PARSER_NAME,
+    STATUTE_PARSER_NAME,
     ChangeKind,
     Court,
     CourtLevel,
@@ -47,8 +50,6 @@ from app.models.user import AppUser
 from hukuk_ingest.statutes.timeline import FOUND, GAP, NOT_IN_FORCE, UNKNOWN_ARTICLE
 from hukuk_models import Band, ListStatus, ReviewFilters, StatuteArticleStatus
 
-PARSER_NAME = "decisions"
-STATUTE_PARSER_NAME = "statutes"
 Sort = Literal["score_asc", "score_desc", "reviewed_desc", "sha256"]
 
 # The source statuses of each list tab. A published decision was approved, so it stays under
@@ -414,10 +415,12 @@ async def approve_extraction(
     StaleExtraction (see `lock_pending`), ValueError (not publishable) or IntegrityError (live-key
     collision); the caller commits."""
     async with _reviewed(session, extraction_id, reviewer_id, decision, edits, note, band) as (
-        _,
+        source,
         review,
     ):
-        return review.id, await publish_decision(session, extraction_id, review.id)
+        decision_id = await publish_decision(session, extraction_id, review.id)
+        await sync_decision(session, source.id)
+        return review.id, decision_id
 
 
 async def reject_extraction(
@@ -429,6 +432,7 @@ async def reject_extraction(
         session, extraction_id, reviewer_id, ReviewDecision.reject, None, note, None
     ) as (source, review):
         source.status = RecordStatus.rejected
+        await sync_decision(session, source.id)
     return review.id
 
 
@@ -450,6 +454,7 @@ async def reopen_extraction(
             .values(superseded_at=func.now())
         )
         source.status = RecordStatus.analyzed
+        await sync_decision(session, source.id)
     return review.id
 
 
@@ -840,6 +845,7 @@ async def approve_statute_article(
             session.add(review)
             await session.flush()
             article_id = await publish_statute_article(session, extraction_id, review.id)
+            await sync_extraction(session, extraction_id)
     except IntegrityError as exc:
         raise ValueError(f"database constraint violated: {_violated_constraint(exc)}") from exc
     return review.id, article_id
@@ -862,6 +868,7 @@ async def reject_statute_article(
             )
             session.add(review)
             await session.flush()
+            await sync_extraction(session, extraction_id)
     except IntegrityError as exc:
         raise ValueError(f"database constraint violated: {_violated_constraint(exc)}") from exc
     return review.id

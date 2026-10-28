@@ -1,6 +1,6 @@
 # Görev 14: KB arama indeksi ve `/kb/search` (kararlar + mevzuat)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: uygulandı, PR onayda (Themis, 2026-10-28). Tam korpus gömme ve gerçek embedding ile eval koşusu merge sonrası canlıda yapılır. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/data-model.md` §7 (arama), §8 (embedding, `chunk` bölme kuralları), `docs/architecture.md` §4.1, §5.1, `docs/tasks/05-decision-load.md` (karar kaydı), `docs/tasks/11-statute-versioning.md` (madde çizelgesi, `extraction.fields`), `docs/decisions.md` 2026-10-27 (v1 kapalı beta, onaysız kaynak, OpenAI embedding).
 Skill'ler: `task-pr-hygiene`, `db-migration` (indeks/kolon eklenirse).
 
@@ -52,3 +52,5 @@ Beta süresince `analyzed` durumdaki kaynaklar da indekslenir ve aranabilir. Her
 - Bölme ve birleştirme saf fonksiyon; DB ve OpenAI istemcisi kenarda, enjekte edilebilir.
 - OpenAI çağrısını testte gerçek ağa çıkarma.
 - Tam korpus gömme işi bu PR'da koşulmaz; merge sonrası Themis canlıda çalıştırır (tahmin: ~8 M kelime ≈ 15-20 M token, birkaç dolar).
+- Yeni bir `extraction` (yükleyici) zaten analiz edilmiş bir kaynak için chunk'ları kendiliğinden yenilemez: yükleyiciler chunk'a dokunmaz, `python -m app.loaders.chunks` o kaynağı yeniden üretir. Onay / ret / metin yenileme ise chunk'ları kendisi yeniler.
+- HNSW süzgeçleri sonradan uygular (`hnsw.ef_search = 200`); dar süzgeçte eksik dönebilir. Eval sonrası `hnsw.iterative_scan` düşünülür.

@@ -560,3 +560,58 @@ class FileCount(BaseModel):
 
 class FileDetail(FileOut):
     versions: list[FileOut]  # the whole chain, oldest to newest, this record included
+
+
+# --- knowledge-base search (task 14) -----------------------------------------------------------
+
+KbCategory = Literal[
+    "statute",
+    "treaty",
+    "decision",
+    "admin_act",
+    "collective_agreement",
+    "doctrine",
+    "calc",
+]
+KbCourtLevel = Literal["aym", "ibk", "hgk_iddk", "daire", "bam_bim", "ilk_derece", "international"]
+VerificationStatus = Literal[
+    "unverified", "verified_official", "verified_uyap", "mismatch", "not_in_source"
+]
+
+
+class KbSearchMatch(BaseModel):
+    """A chunk that matched, with its place in the record's text (`text[char_start:char_end]`).
+    A chunk whose license is `internal_only` is never listed."""
+
+    chunk_id: uuid.UUID
+    text: str
+    char_start: int
+    char_end: int
+
+
+class KbSearchResult(BaseModel):
+    """One record: a decision, or one version of a statute article. `score` is the best chunk's.
+    `review_status` is `analyzed` for a record no reviewer has approved yet (show it as "not
+    approved"). `verification` is the decision's (null for a statute); `valid_from` / `valid_to`
+    the statute version's validity (null for a decision)."""
+
+    source_id: uuid.UUID
+    parent_id: uuid.UUID
+    version_id: uuid.UUID | None = None
+    category: KbCategory
+    title: str
+    ref: str | None = None
+    review_status: Literal["approved", "analyzed"]
+    verification: VerificationStatus | None = None
+    valid_from: date | None = None
+    valid_to: date | None = None
+    score: float
+    matches: list[KbSearchMatch]
+
+
+class KbSearchResponse(BaseModel):
+    """`mode` is `fulltext` when the query could not be embedded (no key, or the embedding
+    service failed): the ranking then comes from the text index alone."""
+
+    mode: Literal["hybrid", "fulltext"]
+    results: list[KbSearchResult]

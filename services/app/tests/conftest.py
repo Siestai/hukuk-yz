@@ -1,9 +1,11 @@
 """Fixtures shared by the database tests (skipped when DATABASE_URL is unset; CI sets it)."""
 
+import hashlib
 import json
 import os
+import re
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -15,10 +17,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from alembic import command
 from app.db import make_engine, make_session_factory
-from app.kb import STATUTE_PARSER_NAME, approve_statute_article
+from app.embeddings import Embedded
+from app.kb import approve_statute_article
 from app.loaders import statutes as statute_loader
 from app.loaders.statutes_report import StatuteCounts
 from app.models.common import (
+    STATUTE_PARSER_NAME,
     Court,
     CourtLevel,
     Extraction,
@@ -30,6 +34,36 @@ from app.models.common import (
 )
 from app.models.decision import Decision
 from app.models.user import AppUser, UserRole
+
+
+class FakeEmbedder:
+    """An embedder with no network: a normalized bag of hashed words, so that texts with words in
+    common are close. `calls` lists the texts of every request."""
+
+    model_id = "fake-embedding:1024"
+
+    def __init__(self) -> None:
+        self.calls: list[list[str]] = []
+
+    async def embed(self, texts: Sequence[str]) -> Embedded:
+        self.calls.append(list(texts))
+        vectors: list[list[float]] = []
+        tokens = 0
+        for passage in texts:
+            vector = [0.0] * 1024
+            words = re.findall(r"\w+", passage.lower())
+            tokens += len(words)
+            for word in words:
+                vector[int(hashlib.sha1(word.encode()).hexdigest()[:8], 16) % 1024] += 1.0
+            norm = sum(x * x for x in vector) ** 0.5 or 1.0
+            vectors.append([x / norm for x in vector])
+        return Embedded(vectors, tokens)
+
+
+@pytest.fixture
+def fake_embedder() -> FakeEmbedder:
+    return FakeEmbedder()
+
 
 ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
 SCAN_PNG_PATH = (

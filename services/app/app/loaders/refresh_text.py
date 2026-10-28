@@ -41,6 +41,7 @@ from sqlalchemy import func, inspect, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.chunk_index import sync_decision
 from app.db import make_engine, make_session_factory
 from app.kb import STATUS_GROUPS, newest_extractions, source_edits
 from app.models.common import Extraction, Source, TextCompleteness
@@ -125,6 +126,7 @@ async def _refresh_one(session: AsyncSession, source_id: uuid.UUID, dry_run: boo
     )
     session.add(Decision(**{**columns, **changes, "extraction_id": newest.id}))
     await session.flush()
+    await sync_decision(session, source_id)
     return counts
 
 

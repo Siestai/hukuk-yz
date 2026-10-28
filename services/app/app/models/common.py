@@ -426,6 +426,11 @@ class FileDeletion(UuidPkMixin, Base):
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
 
 
+# The `extraction.parser_name` of the decision and the statute pipelines.
+PARSER_NAME = "decisions"
+STATUTE_PARSER_NAME = "statutes"
+
+
 class Extraction(UuidPkMixin, Base):
     """data-model.md §3: raw parser output; copied to typed tables only after review."""
 

@@ -31,11 +31,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth import normalize_email
 from app.db import make_engine, make_session_factory
-from app.kb import PARSER_NAME, publish_batch, queue
+from app.kb import publish_batch, queue
 from app.loaders.confidence import confidence
 from app.loaders.normalize import normalize
 from app.loaders.report import LoadCounts, PreparedRecord, build_summary, write_report
 from app.models.common import (
+    PARSER_NAME,
     Extraction,
     IngestFile,
     IngestJob,

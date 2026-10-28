@@ -14,10 +14,10 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.kb import STATUTE_PARSER_NAME
 from app.loaders import statutes
 from app.loaders.statutes_report import StatuteCounts
 from app.models.common import (
+    STATUTE_PARSER_NAME,
     Extraction,
     IngestFile,
     IngestJob,

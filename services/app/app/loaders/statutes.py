@@ -37,7 +37,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import make_engine, make_session_factory
 from app.kb import (
-    STATUTE_PARSER_NAME,
     publish_statute_batch,
     unpublished_statute_articles,
 )
@@ -51,6 +50,7 @@ from app.loaders.statutes_report import (
     write_report,
 )
 from app.models.common import (
+    STATUTE_PARSER_NAME,
     Extraction,
     IngestFile,
     IngestJob,

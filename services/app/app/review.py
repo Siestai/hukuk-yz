@@ -23,7 +23,6 @@ from app.auth import Db
 from app.errors import ApiError
 from app.files.store import LocalFileStore, blob_key
 from app.kb import (
-    PARSER_NAME,
     STATUS_GROUPS,
     StaleExtraction,
     approve_extraction,
@@ -35,6 +34,7 @@ from app.kb import (
     source_edits,
 )
 from app.models.common import (
+    PARSER_NAME,
     Court,
     Extraction,
     IngestFile,

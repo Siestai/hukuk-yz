@@ -19,6 +19,7 @@ REOPEN_MIGRATION = VERSIONS / "0009_review_decision_reopen.py"
 FILE_STORE_MIGRATION = VERSIONS / "0010_ingest_file_store.py"
 GORUS_MIGRATION = VERSIONS / "0011_document_type_gorus.py"
 REVIEW_MIGRATION = VERSIONS / "0012_file_review.py"
+CHUNK_MIGRATION = VERSIONS / "0014_chunk_search_index.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
 # 0007: login_attempt).
 LATER_TABLES = {
@@ -252,3 +253,23 @@ def test_the_detector_knows_the_document_types_of_the_enum() -> None:
     from hukuk_ingest.classify.evidence import DOC_TYPES
 
     assert DOC_TYPES == tuple(m.value for m in DocumentType)
+
+
+def test_chunk_search_columns_and_indexes_are_in_orm_and_migration() -> None:
+    migration = _load_migration(CHUNK_MIGRATION)
+    source = CHUNK_MIGRATION.read_text()
+    table = Base.metadata.tables["chunk"]
+    assert (migration.revision, migration.down_revision) == ("0014", "0013")
+    assert set(migration.NEW_COLUMNS) <= {c.name for c in table.columns}
+    assert all(f'"{name}"' in source for name in migration.NEW_COLUMNS)
+    for name in ("source_id", "text_hash", "title"):
+        assert not table.columns[name].nullable, name
+    for name in ("ref", "court_level", "doc_date", "valid_from", "valid_to"):
+        assert table.columns[name].nullable, name
+    indexes = {str(i.name): i for i in table.indexes}
+    assert indexes["ix_chunk_source_id"].columns.keys() == ["source_id"]
+    embedding = indexes["ix_chunk_embedding"]
+    assert embedding.dialect_options["postgresql"]["using"] == "hnsw"
+    assert embedding.dialect_options["postgresql"]["ops"] == {"embedding": "vector_cosine_ops"}
+    assert "ix_chunk_source_id" in source and "ix_chunk_embedding" in source
+    assert "hnsw (embedding vector_cosine_ops)" in source
