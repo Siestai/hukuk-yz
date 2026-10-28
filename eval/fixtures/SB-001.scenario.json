@@ -36,12 +36,17 @@
         "key": "onceki_donem",
         "label": "Önceki çalışma",
         "status": "unknown"
+      },
+      {
+        "key": "kisaltma",
+        "label": "Sözleşmeyle kısaltma",
+        "status": "unknown"
       }
     ]
   },
   "clarification": {
     "index": 1,
-    "total": 5,
+    "total": 6,
     "questions": [
       {
         "id": "q1",
@@ -202,6 +207,37 @@
           ],
           "allow_unknown": true
         }
+      },
+      {
+        "id": "q6",
+        "fact_key": "kisaltma",
+        "text": "Altı aylık kıdem süresi toplu veya bireysel iş sözleşmesiyle kısaltılmış ya da kaldırılmış mı?",
+        "why": "Kıdem süresi sözleşmeyle kısaltılmışsa altı aylık şart uygulanmamaktadır; bu nedenle önce bu sorulmaktadır (7. HD E.2014/12921 K.2014/18766).",
+        "source_refs": [
+          {
+            "source_id": "decision:yargitay-7hd-2014-12921-2014-18766",
+            "category": "decision",
+            "label": "Yargıtay 7. HD, E.2014/12921 K.2014/18766",
+            "ref": "7. HD E.2014/12921 K.2014/18766",
+            "review_status": "analyzed",
+            "verification": "unverified",
+            "used_for": "Kıdem hesabı ve sözleşmeyle kısaltma"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "evet",
+              "label": "Evet"
+            },
+            {
+              "value": "hayir",
+              "label": "Hayır"
+            }
+          ],
+          "allow_unknown": true
+        }
       }
     ]
   },
@@ -210,7 +246,8 @@
     "q2": "belirsiz",
     "q3": "2026-10-03",
     "q4": "hayir",
-    "q5": "hayir"
+    "q5": "hayir",
+    "q6": "hayir"
   },
   "facts_complete": {
     "title": "İşe iade, 5 ay kıdem",
@@ -251,6 +288,12 @@
         "label": "Önceki çalışma",
         "value": "Hayır",
         "status": "assumed_never"
+      },
+      {
+        "key": "kisaltma",
+        "label": "Sözleşmeyle kısaltma",
+        "value": "Hayır",
+        "status": "known"
       }
     ]
   },

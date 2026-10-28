@@ -93,6 +93,25 @@
         "title": "Answer",
         "type": "object"
       },
+      "AnswerEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/Answer"
+          },
+          "type": {
+            "const": "answer",
+            "default": "answer",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer"
+        ],
+        "title": "AnswerEvent",
+        "type": "object"
+      },
       "AnswerPoint": {
         "additionalProperties": false,
         "properties": {
@@ -526,6 +545,41 @@
         "title": "CaseFacts",
         "type": "object"
       },
+      "ChatEvent": {
+        "description": "One event of the `text/event-stream` of `POST /chat/conversations/{id}/messages`: the SSE\n`event:` line is its `type`, the `data:` line is its JSON.",
+        "discriminator": {
+          "mapping": {
+            "answer": "#/components/schemas/AnswerEvent",
+            "clarification": "#/components/schemas/ClarificationEvent",
+            "done": "#/components/schemas/DoneEvent",
+            "error": "#/components/schemas/ErrorEvent",
+            "facts": "#/components/schemas/FactsEvent",
+            "step": "#/components/schemas/StepEvent"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StepEvent"
+          },
+          {
+            "$ref": "#/components/schemas/FactsEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ClarificationEvent"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorEvent"
+          },
+          {
+            "$ref": "#/components/schemas/DoneEvent"
+          }
+        ],
+        "title": "ChatEvent"
+      },
       "CitationRef": {
         "additionalProperties": false,
         "description": "A source the answer rests on. Tapping it opens the full text of `source_id` with the part\ngiven by `quote` (and `char_start`..`char_end` in that text) highlighted.",
@@ -714,6 +768,25 @@
           "question_id"
         ],
         "title": "ClarificationAnswer",
+        "type": "object"
+      },
+      "ClarificationEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "clarification": {
+            "$ref": "#/components/schemas/Clarification"
+          },
+          "type": {
+            "const": "clarification",
+            "default": "clarification",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "clarification"
+        ],
+        "title": "ClarificationEvent",
         "type": "object"
       },
       "ClarificationQuestion": {
@@ -1086,6 +1159,43 @@
         "title": "DecisionEdits",
         "type": "object"
       },
+      "DoneEvent": {
+        "additionalProperties": false,
+        "description": "The last event. `turn_id` is the assistant turn the feedback goes to (None when the\nstream ended in an error).",
+        "properties": {
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
+          "turn_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turn Id"
+          },
+          "type": {
+            "const": "done",
+            "default": "done",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "DoneEvent",
+        "type": "object"
+      },
       "DuplicateOut": {
         "properties": {
           "band": {
@@ -1179,6 +1289,40 @@
         "title": "ErrorCode",
         "type": "string"
       },
+      "ErrorEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "default": {},
+            "title": "Params",
+            "type": "object"
+          },
+          "type": {
+            "const": "error",
+            "default": "error",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "ErrorEvent",
+        "type": "object"
+      },
       "ErrorResponse": {
         "properties": {
           "error": {
@@ -1259,6 +1403,25 @@
           "status"
         ],
         "title": "FactChip",
+        "type": "object"
+      },
+      "FactsEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "facts": {
+            "$ref": "#/components/schemas/CaseFacts"
+          },
+          "type": {
+            "const": "facts",
+            "default": "facts",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "facts"
+        ],
+        "title": "FactsEvent",
         "type": "object"
       },
       "Feedback": {
@@ -3834,6 +3997,32 @@
         "title": "StatuteSummaryRow",
         "type": "object"
       },
+      "StepEvent": {
+        "additionalProperties": false,
+        "description": "A live status line (\"Kaynaklar okunuyor\"); `node` is the name of the step.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "type": {
+            "const": "step",
+            "default": "step",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "label"
+        ],
+        "title": "StepEvent",
+        "type": "object"
+      },
       "TimelineGap": {
         "description": "A gap entry has no text field.",
         "properties": {
@@ -4047,12 +4236,6 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
-          },
-          "redacted_names": {
-            "default": 0,
-            "minimum": 0.0,
-            "title": "Redacted Names",
-            "type": "integer"
           },
           "role": {
             "enum": [
@@ -4847,16 +5030,18 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {
-                "schema": {}
-              },
-              "text/event-stream": {}
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatEvent",
+                  "type": "string"
+                }
+              }
             },
-            "description": "ChatEvent stream"
+            "description": "A stream of ChatEvent"
           },
           "401": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4866,7 +5051,7 @@
           },
           "403": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4876,7 +5061,7 @@
           },
           "404": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4886,7 +5071,7 @@
           },
           "405": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4896,7 +5081,7 @@
           },
           "409": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4906,7 +5091,7 @@
           },
           "415": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4916,7 +5101,7 @@
           },
           "422": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4926,7 +5111,7 @@
           },
           "429": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -4936,7 +5121,7 @@
           },
           "500": {
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }

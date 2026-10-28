@@ -174,7 +174,7 @@
       ]
     },
     {
-      "text": "9. HD E.2016/28920 K.2017/17860 gerekçesi dürüstlük kuralını anmaktadır; ancak aynı kararda altı aydan az kıdemli işçi için yerel mahkemenin kabul kararı bozulmuş ve dava reddedilmiştir. Bu nedenle dürüstlük kuralına dayanılarak korunma sonucuna varılmamaktadır.",
+      "text": "9. HD E.2016/28920 K.2017/17860 gerekçesi dürüstlük kuralını anmaktadır; ancak aynı kararda (karar doğrulanmamıştır) altı aydan az kıdemli işçi için yerel mahkemenin kabul kararı bozulmuş ve dava reddedilmiştir. Bu nedenle dürüstlük kuralına dayanılarak korunma sonucuna varılmamaktadır.",
       "citations": [
         {
           "source_id": "decision:yargitay-9hd-2016-28920-2017-17860",
@@ -192,7 +192,7 @@
   "missing_info": [
     {
       "fact_key": "yer_alti",
-      "condition": "İşçi yer altı işlerinde çalışıyorsa",
+      "condition": "İşçi yer altı işlerinde çalışmaktaysa",
       "result": "Kıdem şartı aranmamaktadır.",
       "citations": [
         {
@@ -209,7 +209,7 @@
     },
     {
       "fact_key": "onceki_donem",
-      "condition": "Aynı işverende önceki süreler eklendiğinde kıdem altı ayı aşıyorsa",
+      "condition": "Aynı işverende önceki süreler eklendiğinde kıdem altı ayı aşmaktaysa",
       "result": "Kıdem şartı sağlanmaktadır; işçi sayısı da birleştirilen işyerlerinin toplamıyla belirlenmektedir.",
       "citations": [
         {
@@ -268,7 +268,7 @@
     },
     {
       "fact_key": "isci_sayisi",
-      "condition": "Kıdem şartı sağlansa bile işyerinde otuzdan az işçi çalışıyorsa",
+      "condition": "Kıdem şartı sağlansa bile işyerinde otuzdan az işçi çalışmaktaysa",
       "result": "İş güvencesi hükümleri uygulanmamaktadır.",
       "citations": [
         {

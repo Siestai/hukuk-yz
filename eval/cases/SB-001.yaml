@@ -18,6 +18,7 @@ expected:
     - bildirim_tarihi
     - onceki_donem
     - yer_alti
+    - kisaltma
   must_not:
     - dürüstlük kuralıyla korunur
     - m.18/5 (deneme süresi

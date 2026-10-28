@@ -22,7 +22,7 @@ from pydantic import ValidationError
 from hukuk_models.chat import DISCLAIMER, Answer
 
 # Formal Turkish (-mektedir / -maktadır), never the "-iyor" aorist forms.
-PROGRESSIVE = re.compile(r"\b\w*[ıiuü]yor(?:lar|um|sun|uz|sunuz)?\b", re.IGNORECASE)
+PROGRESSIVE = re.compile(r"\b\w*[ıiuü]yor(?:lar|um|sun|uz|sunuz|sa|du|muş)?\b", re.IGNORECASE)
 DATE = re.compile(r"\b\d{2}\.\d{2}\.\d{4}\b")
 # What is the law's own wording or an id, not the answer's: neither "-iyor" nor must_not apply.
 QUOTED_KEYS = {"quote", "condition_quote", "source_id"}
@@ -116,6 +116,8 @@ def score(
         )
     )
 
+    # Cheap by design: `Answer` already requires this of a valid answer; here it also holds for
+    # answers that fail the schema, so the two metrics fail independently.
     read = {c.get("source_id") for c in answer.get("read_sources", {}).get("items", [])}
     unread = [c.get("ref", "?") for c in cited if c.get("source_id") not in read]
     metrics.append(

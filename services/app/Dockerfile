@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.12-slim-bookworm
 # No proxy is trusted for X-Forwarded-For unless FORWARDED_ALLOW_IPS names it (login rate limit).
-ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH" FORWARDED_ALLOW_IPS=""
+ENV PYTHONUNBUFFERED=1 CHAT_FIXTURES_DIR=/app/eval/fixtures PATH="/app/.venv/bin:$PATH" FORWARDED_ALLOW_IPS=""
 # Tesseract (Turkish + orientation data) for the worker's OCR of scans (task 12a).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-tur tesseract-ocr-osd \
@@ -37,6 +37,8 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY services/app/alembic.ini services/app/alembic.ini
 COPY services/app/alembic services/app/alembic
+# The hand-made chat cases of CHAT_BACKEND=fixture (task 15).
+COPY eval/fixtures eval/fixtures
 WORKDIR /app/services/app
 USER app
 EXPOSE 8000

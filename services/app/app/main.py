@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, Response
 from sqlalchemy import text
 
 from app.auth import router as auth_router
+from app.chat import open_store
 from app.chat import router as chat_router
 from app.db import make_engine
 from app.errors import ERROR_RESPONSES
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level)
     app.state.engine = make_engine(settings.database_url)
+    app.state.chat_store = open_store(settings)
     logger.info("app started (env=%s)", settings.env)
     # uvicorn reads this variable itself; here it is only checked.
     if settings.env != "dev" and not os.environ.get("FORWARDED_ALLOW_IPS", "").strip():

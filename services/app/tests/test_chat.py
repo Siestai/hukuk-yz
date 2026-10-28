@@ -10,12 +10,14 @@ import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app import chat
 from app.auth import hash_password
+from app.chat import ChatStore, load_scenarios, open_store
 from app.db import make_engine
 from app.main import app
 from app.models.user import AppUser, UserRole
 from app.settings import Settings
-from hukuk_models.chat import Answer, AnswerEvent, ChatEvent, DoneEvent
+from hukuk_models.chat import Answer, AnswerEvent, ChatEvent, DoneEvent, ErrorEvent
 
 PASSWORD = "correct horse battery"
 FIXTURES = Path(__file__).parents[3] / "eval" / "fixtures"
@@ -56,13 +58,9 @@ async def login(
 
 
 @pytest.fixture
-async def client(
-    database_url: str, users_factory: Factory, monkeypatch: pytest.MonkeyPatch
-) -> AsyncIterator[httpx.AsyncClient]:
-    settings = Settings(database_url=database_url, chat_backend="fixture")
-    monkeypatch.setattr("app.chat.get_settings", lambda: settings)
+async def client(database_url: str, users_factory: Factory) -> AsyncIterator[httpx.AsyncClient]:
     app.state.engine = make_engine(database_url)
-    app.state.chat_store = None
+    app.state.chat_store = ChatStore(load_scenarios(FIXTURES))
     try:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="https://test"
@@ -218,12 +216,43 @@ async def test_roles(
 
 
 async def test_backend_none_is_unavailable(
-    client: httpx.AsyncClient,
-    user: dict[str, str],
-    monkeypatch: pytest.MonkeyPatch,
-    database_url: str,
+    client: httpx.AsyncClient, user: dict[str, str], database_url: str
 ) -> None:
-    settings = Settings(database_url=database_url, chat_backend="none")
-    monkeypatch.setattr("app.chat.get_settings", lambda: settings)
+    assert open_store(Settings(database_url=database_url, chat_backend="none")) is None
+    app.state.chat_store = None
     response = await client.get("/chat/conversations", headers=user)
     assert (response.status_code, response.json()["error"]["code"]) == (503, "chat_unavailable")
+
+
+def test_a_missing_or_empty_fixture_folder_stops_the_start(tmp_path: Path) -> None:
+    for folder in (tmp_path, tmp_path / "missing"):
+        settings = Settings(database_url="postgresql+asyncpg://x/x", chat_backend="fixture")
+        settings.chat_fixtures_dir = folder
+        with pytest.raises(RuntimeError, match="no chat fixtures"):
+            open_store(settings)
+
+
+async def test_a_failure_inside_the_stream_is_an_error_event_then_done(
+    client: httpx.AsyncClient, user: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = chat._add_turn
+
+    def broken(conv: Any, **fields: Any) -> Any:
+        if fields["role"] == "assistant":
+            raise RuntimeError("boom")
+        return real(conv, **fields)
+
+    monkeypatch.setattr(chat, "_add_turn", broken)
+    conversation = await new_conversation(client, user)
+    # The user turn is stored before the stream starts, so the failure comes with a 200 stream.
+    response = await client.post(
+        f"/chat/conversations/{conversation}/messages",
+        json={"text": scenario("SB-001")["questions"][0]},
+        headers=user,
+    )
+    assert response.status_code == 200
+    events = parse_sse(response.text)
+    assert types(events)[-2:] == ["error", "done"]
+    error, done = events[-2].root, events[-1].root
+    assert isinstance(error, ErrorEvent) and error.code == "internal_error"
+    assert isinstance(done, DoneEvent) and done.turn_id is None

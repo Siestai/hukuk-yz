@@ -126,7 +126,7 @@
     {
       "fact_key": "ceza_turu",
       "condition": "Ceza ek belge, defter ibrazı veya bordroya ilişkinse",
-      "result": "m.102/2 indirimi yoktur; yalnız m.102/5 peşin ödeme indirimi vardır.",
+      "result": "m.102/2 indirimi yoktur; ödeme 15 gün içinde yapılmadığı için m.102/5 peşin ödeme indirimi de uygulanmamaktadır.",
       "citations": [
         {
           "source_id": "statute:5510:m102",
@@ -151,7 +151,7 @@
     },
     {
       "fact_key": "kendiliginden",
-      "condition": "Belge denetim tespiti, mahkeme kararı veya kamu idarelerinden alınan belgeye dayanıyorsa",
+      "condition": "Belge denetim tespiti, mahkeme kararı veya kamu idarelerinden alınan belgeye dayanmaktaysa",
       "result": "m.102/2 indirimi uygulanmamaktadır.",
       "citations": [
         {

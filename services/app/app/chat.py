@@ -6,10 +6,17 @@ answers 503. The real agent and the persistent tables come in tasks 17 and 18.
 
 Every role may use `/chat/*`; a conversation belongs to the user who made it (another user's
 conversation is a 404).
+
+Errors: before the stream starts (unknown conversation, no fixture, nothing pending, bad answers)
+the response is an HTTP error with the JSON body of `app/errors.py`. Once the stream has started
+the status is 200 and a failure is an `error` event followed by `done` (without a turn id).
+(OpenAPI lists the error bodies under `text/event-stream` too: FastAPI gives every response of a
+route the route's media type. They are JSON on the wire.)
 """
 
 import asyncio
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -44,11 +51,18 @@ from hukuk_models.chat import (
     Turn,
 )
 
+logger = logging.getLogger("app")
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 DEFAULT_FIXTURES = Path(__file__).parents[3] / "eval" / "fixtures"
+
+
+class EventStreamResponse(StreamingResponse):
+    media_type = "text/event-stream"
+
+
 EVENT_STREAM: dict[int | str, dict[str, Any]] = {
-    200: {"content": {"text/event-stream": {}}, "description": "ChatEvent stream"}
+    200: {"model": ChatEvent, "description": "A stream of ChatEvent"}
 }
 
 
@@ -71,8 +85,11 @@ def load_scenarios(directory: Path) -> list[Scenario]:
     def answer(name: str) -> Answer:
         return Answer.model_validate_json((directory / name).read_text(encoding="utf-8"))
 
+    paths = sorted(directory.glob("*.scenario.json"))
+    if not paths:
+        raise RuntimeError(f"no chat fixtures (*.scenario.json) in {directory}")
     scenarios = []
-    for path in sorted(directory.glob("*.scenario.json")):
+    for path in paths:
         raw = json.loads(path.read_text(encoding="utf-8"))
         scenarios.append(
             Scenario(
@@ -115,19 +132,19 @@ class ChatStore:
         return found
 
 
-def _store(request: Request, settings: Settings) -> ChatStore:
+def open_store(settings: Settings) -> ChatStore | None:
+    """The store of the configured backend, loaded at startup so that a missing fixture folder
+    stops the app instead of answering every question with `chat_no_fixture`."""
     if settings.chat_backend != "fixture":
-        raise ApiError(503, ErrorCode.chat_unavailable)
-    directory = settings.chat_fixtures_dir or DEFAULT_FIXTURES
-    store: ChatStore | None = getattr(request.app.state, "chat_store", None)
-    if store is None:
-        store = ChatStore(load_scenarios(directory))
-        request.app.state.chat_store = store
-    return store
+        return None
+    return ChatStore(load_scenarios(settings.chat_fixtures_dir or DEFAULT_FIXTURES))
 
 
 def get_store(request: Request) -> ChatStore:
-    return _store(request, get_settings())
+    store: ChatStore | None = request.app.state.chat_store
+    if store is None:
+        raise ApiError(503, ErrorCode.chat_unavailable)
+    return store
 
 
 Store = Annotated[ChatStore, Depends(get_store)]
@@ -180,7 +197,7 @@ def _pending(conv: _Conversation) -> Clarification | None:
     return last.clarification if last and last.role == "assistant" else None
 
 
-async def _play(
+async def _events(
     conv: _Conversation, body: MessageRequest, scenario: Scenario, delay: float
 ) -> AsyncIterator[bytes]:
     """The events of one assistant turn. The user turn is stored by the caller, before the
@@ -220,17 +237,30 @@ async def _play(
     yield _sse(DoneEvent(turn_id=turn.id, trace_id=trace_id))
 
 
-async def _failed(code: ErrorCode) -> AsyncIterator[bytes]:
-    yield _sse(ErrorEvent(code=code))
-    yield _sse(DoneEvent())
+async def _play(
+    conv: _Conversation, body: MessageRequest, scenario: Scenario, delay: float
+) -> AsyncIterator[bytes]:
+    try:
+        async for chunk in _events(conv, body, scenario, delay):
+            yield chunk
+    except Exception:
+        logger.exception("chat stream failed")
+        yield _sse(ErrorEvent(code=ErrorCode.internal_error))
+        yield _sse(DoneEvent())
 
 
-@router.post("/conversations/{conversation_id}/messages", responses=EVENT_STREAM)
+@router.post(
+    "/conversations/{conversation_id}/messages",
+    response_class=EventStreamResponse,
+    responses=EVENT_STREAM,
+)
 async def post_message(
-    conversation_id: uuid.UUID, body: MessageRequest, user: CurrentUser, request: Request
+    conversation_id: uuid.UUID,
+    body: MessageRequest,
+    user: CurrentUser,
+    store: Store,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
-    settings = get_settings()
-    store = _store(request, settings)
     conv = store.get(conversation_id, user.id)
     if body.text is not None:
         scenario = store.find_scenario(body.text)
@@ -252,7 +282,7 @@ async def post_message(
     assert conv.scenario is not None
     stream = _play(conv, body, conv.scenario, settings.chat_fixture_step_delay_seconds)
     headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
-    return StreamingResponse(stream, media_type="text/event-stream", headers=headers)
+    return EventStreamResponse(stream, headers=headers)
 
 
 @router.post("/turns/{turn_id}/feedback", status_code=201)

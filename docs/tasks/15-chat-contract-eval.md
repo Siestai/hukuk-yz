@@ -1,6 +1,6 @@
 # Görev 15: Cevap sözleşmesi (chat API şeması) ve eval seti v0
 
-Durum: tamamlandı (2026-10-28, dal feat/task-15-chat-contract). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: tamamlandı (2026-10-28, dal feat/task-15-chat-contract). Sahip: Themis (Claude Code çalıştırır). Onay: proje sahibi.
 Bağlam: `docs/architecture.md` §4.1 (soru → cevap), §5 (md. 22, 23, 25, 35), `docs/decisions.md` 2026-10-27 (chat UI yönü: Alternatif B; v1 kapalı beta), `docs/design/chat-ui/` (B ekranları), konu kartları (`eval/cases/` kaynağı).
 Skill'ler: `task-pr-hygiene`, `frontend-ui` (tip üretimi).
 

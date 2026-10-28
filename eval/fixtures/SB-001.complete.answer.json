@@ -32,6 +32,11 @@
       "fact_key": "onceki_donem",
       "label": "Önceki çalışma yok",
       "status": "assumed_never"
+    },
+    {
+      "fact_key": "kisaltma",
+      "label": "Süre sözleşmeyle kısaltılmamış",
+      "status": "known"
     }
   ],
   "points": [
@@ -107,7 +112,7 @@
       ]
     },
     {
-      "text": "Otuz işçi ve belirsiz süreli sözleşme şartları sağlanmakta, yer altı işi istisnası uygulanmamaktadır; sonucu kıdem şartının sağlanmaması belirlemektedir.",
+      "text": "Otuz işçi ve belirsiz süreli sözleşme şartları sağlanmakta, yer altı işi istisnası uygulanmamakta, altı aylık süre sözleşmeyle kısaltılmamıştır; sonucu kıdem şartının sağlanmaması belirlemektedir.",
       "citations": [
         {
           "source_id": "statute:4857:m18",
@@ -128,6 +133,15 @@
           "verification": "verified",
           "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
           "used_for": "Yer altı işi istisnası"
+        },
+        {
+          "source_id": "decision:yargitay-7hd-2014-12921-2014-18766",
+          "category": "decision",
+          "label": "Yargıtay 7. HD, E.2014/12921 K.2014/18766",
+          "ref": "7. HD E.2014/12921 K.2014/18766",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Kıdem hesabı ve sözleşmeyle kısaltma"
         }
       ]
     },
@@ -184,7 +198,7 @@
       ]
     },
     {
-      "text": "9. HD E.2016/28920 K.2017/17860 gerekçesi dürüstlük kuralını anmaktadır; ancak aynı kararda altı aydan az kıdemli işçi için yerel mahkemenin kabul kararı bozulmuş ve dava reddedilmiştir. Bu nedenle dürüstlük kuralına dayanılarak korunma sonucuna varılmamaktadır.",
+      "text": "9. HD E.2016/28920 K.2017/17860 gerekçesi dürüstlük kuralını anmaktadır; ancak aynı kararda (karar doğrulanmamıştır) altı aydan az kıdemli işçi için yerel mahkemenin kabul kararı bozulmuş ve dava reddedilmiştir. Bu nedenle dürüstlük kuralına dayanılarak korunma sonucuna varılmamaktadır.",
       "citations": [
         {
           "source_id": "decision:yargitay-9hd-2016-28920-2017-17860",

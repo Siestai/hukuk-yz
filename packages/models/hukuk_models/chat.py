@@ -364,8 +364,6 @@ class Turn(ChatModel):
     text: str | None = None
     clarification_answers: list[ClarificationAnswer] | None = None
     skipped: bool = False
-    # How many personal names were masked in `text` ("1 kişi adı gizlendi", KVKK).
-    redacted_names: Annotated[int, Field(ge=0)] = 0
     # Assistant turns carry facts and either a clarification or an answer.
     facts: CaseFacts | None = None
     clarification: Clarification | None = None
@@ -380,7 +378,7 @@ class Turn(ChatModel):
             if sum(sent) != 1 or any(r is not None for r in replied):
                 raise ValueError("a user turn is a text, answers or a skip")
         else:
-            if any(sent) or self.redacted_names:
+            if any(sent):
                 raise ValueError("an assistant turn has no user input")
             if self.clarification is not None and self.answer is not None:
                 raise ValueError("a turn asks or answers, not both")

@@ -607,6 +607,15 @@ export interface components {
             /** Status Note */
             status_note: string;
         };
+        /** AnswerEvent */
+        AnswerEvent: {
+            answer: components["schemas"]["Answer"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "answer";
+        };
         /** AnswerPoint */
         AnswerPoint: {
             /** Citations */
@@ -751,6 +760,12 @@ export interface components {
             title: string;
         };
         /**
+         * ChatEvent
+         * @description One event of the `text/event-stream` of `POST /chat/conversations/{id}/messages`: the SSE
+         *     `event:` line is its `type`, the `data:` line is its JSON.
+         */
+        ChatEvent: components["schemas"]["StepEvent"] | components["schemas"]["FactsEvent"] | components["schemas"]["ClarificationEvent"] | components["schemas"]["AnswerEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["DoneEvent"];
+        /**
          * CitationRef
          * @description A source the answer rests on. Tapping it opens the full text of `source_id` with the part
          *     given by `quote` (and `char_start`..`char_end` in that text) highlighted.
@@ -814,6 +829,15 @@ export interface components {
             unknown: boolean;
             /** Value */
             value?: string | null;
+        };
+        /** ClarificationEvent */
+        ClarificationEvent: {
+            clarification: components["schemas"]["Clarification"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "clarification";
         };
         /** ClarificationQuestion */
         ClarificationQuestion: {
@@ -927,6 +951,22 @@ export interface components {
             /** Text Completeness */
             text_completeness?: ("full" | "excerpt" | "summary_only") | null;
         };
+        /**
+         * DoneEvent
+         * @description The last event. `turn_id` is the assistant turn the feedback goes to (None when the
+         *     stream ended in an error).
+         */
+        DoneEvent: {
+            /** Trace Id */
+            trace_id?: string | null;
+            /** Turn Id */
+            turn_id?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "done";
+        };
         /** DuplicateOut */
         DuplicateOut: {
             /**
@@ -965,6 +1005,22 @@ export interface components {
          * @enum {string}
          */
         ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "http_error" | "internal_error";
+        /** ErrorEvent */
+        ErrorEvent: {
+            code: components["schemas"]["ErrorCode"];
+            /**
+             * Params
+             * @default {}
+             */
+            params: {
+                [key: string]: string | number;
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "error";
+        };
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
@@ -997,6 +1053,15 @@ export interface components {
              * @enum {string}
              */
             status: "known" | "unknown" | "assumed_never";
+        };
+        /** FactsEvent */
+        FactsEvent: {
+            facts: components["schemas"]["CaseFacts"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "facts";
         };
         /** Feedback */
         Feedback: {
@@ -1851,6 +1916,21 @@ export interface components {
             statute_number: string;
         };
         /**
+         * StepEvent
+         * @description A live status line ("Kaynaklar okunuyor"); `node` is the name of the step.
+         */
+        StepEvent: {
+            /** Label */
+            label: string;
+            /** Node */
+            node: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "step";
+        };
+        /**
          * TimelineGap
          * @description A gap entry has no text field.
          */
@@ -1925,11 +2005,6 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * Redacted Names
-             * @default 0
-             */
-            redacted_names: number;
             /**
              * Role
              * @enum {string}
@@ -2596,14 +2671,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description ChatEvent stream */
+            /** @description A stream of ChatEvent */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
-                    "text/event-stream": unknown;
+                    "text/event-stream": components["schemas"]["ChatEvent"];
                 };
             };
             /** @description Unauthorized */
@@ -2612,7 +2686,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Forbidden */
@@ -2621,7 +2695,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not Found */
@@ -2630,7 +2704,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Method Not Allowed */
@@ -2639,7 +2713,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Conflict */
@@ -2648,7 +2722,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Unsupported Media Type */
@@ -2657,7 +2731,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Unprocessable Entity */
@@ -2666,7 +2740,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Too Many Requests */
@@ -2675,7 +2749,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -2684,7 +2758,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
                 };
             };
         };
