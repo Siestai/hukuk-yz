@@ -1,0 +1,23 @@
+id: SB-021
+question: "denetmen işverenden resmi tebligat ile istenilmeden bordro alıyor ve bordrolarda da bir sigortalının imzası eksik. Bu durumda denetmen geçersizlik cezası uygulayabilir mi"
+expected:
+  status: conditional
+  headline_contains:
+    - tutanak
+  must_cite:
+    - 5510 m.102/1-e-5
+    - 2020/8 Genelge 2.8.1
+    - 2020/8 Genelge 2.8.3
+  must_ask:
+    - tutanakla_teslim
+    - odeme_sekli
+    - defter_turu
+  must_not:
+    - geçersizlik cezası uygulanamaz
+  traps:
+    - Ölçüt tebligat değil, tutanakla teslim almadır; tebligat veya tutanakla talep şartı yalnız e-1, e-2, e-3 (ibraz etmeme) cezaları içindir.
+    - Kanundan "usulüne uygun istem" çıkarıp cezayı uygulanamaz saymak yanlıştır; Genelge ve Talimat önce okunur.
+    - Ceza bordro başınadır; bir bordroda birden çok sigortalının imzası eksikse tek ceza verilir.
+    - Ücret makbuz mukabilinde veya banka kanalıyla ödenmişse imza şartı aranmaz.
+    - e-4 ve e-5 cezaları, tutmakla yükümlü olunan defter türüne göre ibraz etmeme cezasını aşamaz.
+tags: [sgk, idari-para-cezasi, bordro]

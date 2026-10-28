@@ -12,9 +12,11 @@ from app.models.common import Base, PgEnum, UuidPkMixin
 class UserRole(PgEnum):
     admin = "admin"
     reviewer = "reviewer"
+    user = "user"  # the closed beta chat (task 15): /chat/* only
 
 
-# The migration (0005) repeats the labels literally; tests/test_orm_consistency.py checks them.
+# The migrations (0005, 0015) repeat the labels literally; tests/test_orm_consistency.py checks
+# them.
 USER_ROLE_TYPE = "user_role"
 
 

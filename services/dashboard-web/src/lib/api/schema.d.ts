@@ -55,6 +55,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Conversations */
+        get: operations["list_conversations_chat_conversations_get"];
+        put?: never;
+        /** Create Conversation */
+        post: operations["create_conversation_chat_conversations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Conversation */
+        get: operations["get_conversation_chat_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/conversations/{conversation_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Message */
+        post: operations["post_message_chat_conversations__conversation_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/turns/{turn_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Feedback */
+        post: operations["post_feedback_chat_turns__turn_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files": {
         parameters: {
             query?: never;
@@ -509,6 +578,68 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Answer */
+        Answer: {
+            /**
+             * Applied Law Date
+             * Format: date
+             */
+            applied_law_date: string;
+            /** Applied Law Text */
+            applied_law_text: string;
+            /**
+             * Calculations
+             * @default []
+             */
+            calculations: components["schemas"]["Calculation"][];
+            /**
+             * Disclaimer
+             * @default Hukuki görüş değildir.
+             * @constant
+             */
+            disclaimer: "Hukuki görüş değildir.";
+            /** Fact Chips */
+            fact_chips: components["schemas"]["FactChip"][];
+            /** Headline */
+            headline: string;
+            holding_map: components["schemas"]["HoldingMap"];
+            /**
+             * Missing Info
+             * @default []
+             */
+            missing_info: components["schemas"]["MissingInfo"][];
+            /** Points */
+            points: components["schemas"]["AnswerPoint"][];
+            read_sources: components["schemas"]["ReadSources"];
+            /**
+             * Short Point Count
+             * @default 3
+             */
+            short_point_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "definite" | "conditional";
+            /** Status Note */
+            status_note: string;
+        };
+        /** AnswerEvent */
+        AnswerEvent: {
+            answer: components["schemas"]["Answer"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "answer";
+        };
+        /** AnswerPoint */
+        AnswerPoint: {
+            /** Citations */
+            citations: components["schemas"]["CitationRef"][];
+            /** Text */
+            text: string;
+        };
         /**
          * ArticleAsOf
          * @description What a published article said on a date (task 11b). Only fields that apply to the status
@@ -623,6 +754,125 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * Calculation
+         * @description v1 only says what a calculation needs ("brüt ücret gerekli"); the engine comes in v2.
+         */
+        Calculation: {
+            /** Needs */
+            needs: string[];
+            /** Title */
+            title: string;
+        };
+        /**
+         * CaseFacts
+         * @description "Anladığım olay": the case as the agent understood it. The user can correct it.
+         */
+        CaseFacts: {
+            /** Event Date */
+            event_date?: string | null;
+            /** Facts */
+            facts: components["schemas"]["Fact"][];
+            /** Title */
+            title: string;
+        };
+        /**
+         * ChatEvent
+         * @description One event of the `text/event-stream` of `POST /chat/conversations/{id}/messages`: the SSE
+         *     `event:` line is its `type`, the `data:` line is its JSON.
+         */
+        ChatEvent: components["schemas"]["StepEvent"] | components["schemas"]["FactsEvent"] | components["schemas"]["ClarificationEvent"] | components["schemas"]["AnswerEvent"] | components["schemas"]["ErrorEvent"] | components["schemas"]["DoneEvent"];
+        /**
+         * CitationRef
+         * @description A source the answer rests on. Tapping it opens the full text of `source_id` with the part
+         *     given by `quote` (and `char_start`..`char_end` in that text) highlighted.
+         */
+        CitationRef: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "statute" | "treaty" | "decision" | "admin_act" | "collective_agreement" | "case_document" | "doctrine" | "calc";
+            /** Char End */
+            char_end?: number | null;
+            /** Char Start */
+            char_start?: number | null;
+            /** Label */
+            label: string;
+            /** Quote */
+            quote?: string | null;
+            /** Ref */
+            ref: string;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status: "approved" | "analyzed";
+            /** Source Id */
+            source_id: string;
+            /** Used For */
+            used_for?: string | null;
+            /** Valid From */
+            valid_from?: string | null;
+            /** Valid To */
+            valid_to?: string | null;
+            /**
+             * Verification
+             * @enum {string}
+             */
+            verification: "verified" | "unverified" | "not_applicable";
+        };
+        /**
+         * Clarification
+         * @description "Tamamlanması gereken bilgiler" (md. 22). The user answers, marks "Bilmiyorum" or skips;
+         *     skipping gives a conditional answer.
+         */
+        Clarification: {
+            /** Index */
+            index: number;
+            /** Questions */
+            questions: components["schemas"]["ClarificationQuestion"][];
+            /** Total */
+            total: number;
+        };
+        /** ClarificationAnswer */
+        ClarificationAnswer: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * Unknown
+             * @default false
+             */
+            unknown: boolean;
+            /** Value */
+            value?: string | null;
+        };
+        /** ClarificationEvent */
+        ClarificationEvent: {
+            clarification: components["schemas"]["Clarification"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "clarification";
+        };
+        /** ClarificationQuestion */
+        ClarificationQuestion: {
+            /** Fact Key */
+            fact_key: string;
+            /** Id */
+            id: string;
+            input: components["schemas"]["QuestionInput"];
+            /**
+             * Source Refs
+             * @default []
+             */
+            source_refs: components["schemas"]["CitationRef"][];
+            /** Text */
+            text: string;
+            /** Why */
+            why: string;
+        };
         /** Confidence */
         Confidence: {
             /**
@@ -634,6 +884,53 @@ export interface components {
             reasons: string[];
             /** Score */
             score: number;
+        };
+        /** Conversation */
+        Conversation: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ConversationDetail */
+        ConversationDetail: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Turns */
+            turns: components["schemas"]["Turn"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ConversationList */
+        ConversationList: {
+            /** Items */
+            items: components["schemas"]["Conversation"][];
         };
         /**
          * DecisionEdits
@@ -670,6 +967,22 @@ export interface components {
             source_chamber?: string | null;
             /** Text Completeness */
             text_completeness?: ("full" | "excerpt" | "summary_only") | null;
+        };
+        /**
+         * DoneEvent
+         * @description The last event. `turn_id` is the assistant turn the feedback goes to (None when the
+         *     stream ended in an error).
+         */
+        DoneEvent: {
+            /** Trace Id */
+            trace_id?: string | null;
+            /** Turn Id */
+            turn_id?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "done";
         };
         /** DuplicateOut */
         DuplicateOut: {
@@ -708,10 +1021,117 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "http_error" | "internal_error";
+        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "http_error" | "internal_error";
+        /** ErrorEvent */
+        ErrorEvent: {
+            code: components["schemas"]["ErrorCode"];
+            /**
+             * Params
+             * @default {}
+             */
+            params: {
+                [key: string]: string | number;
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "error";
+        };
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** Fact */
+        Fact: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "known" | "unknown" | "assumed_never";
+            /** Value */
+            value?: string | null;
+        };
+        /**
+         * FactChip
+         * @description A fact the answer rests on, shown above it; tapping it edits the fact.
+         */
+        FactChip: {
+            /** Fact Key */
+            fact_key: string;
+            /** Label */
+            label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "known" | "unknown" | "assumed_never";
+        };
+        /** FactsEvent */
+        FactsEvent: {
+            facts: components["schemas"]["CaseFacts"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "facts";
+        };
+        /** Feedback */
+        Feedback: {
+            /**
+             * Comment
+             * @default
+             */
+            comment: string;
+            /**
+             * Correction
+             * @default
+             */
+            correction: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind?: ("wrong_source" | "wrong_conclusion" | "missing" | "unclear" | "other") | null;
+            /** Point Index */
+            point_index?: number | null;
+            /** Rating */
+            rating?: ("up" | "down") | null;
+            /**
+             * Turn Id
+             * Format: uuid
+             */
+            turn_id: string;
+        };
+        /** FeedbackIn */
+        FeedbackIn: {
+            /**
+             * Comment
+             * @default
+             */
+            comment: string;
+            /**
+             * Correction
+             * @default
+             */
+            correction: string;
+            /** Kind */
+            kind?: ("wrong_source" | "wrong_conclusion" | "missing" | "unclear" | "other") | null;
+            /** Point Index */
+            point_index?: number | null;
+            /** Rating */
+            rating?: ("up" | "down") | null;
         };
         /**
          * FileApproval
@@ -965,6 +1385,37 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** HoldingMap */
+        HoldingMap: {
+            /**
+             * Citations
+             * @default []
+             */
+            citations: components["schemas"]["CitationRef"][];
+            /** Reasoning Summary */
+            reasoning_summary: string;
+            /** Rows */
+            rows: components["schemas"]["HoldingRow"][];
+        };
+        /**
+         * HoldingRow
+         * @description One row of the hüküm haritası: a condition of the norm, the case's value for it, the
+         *     outcome.
+         */
+        HoldingRow: {
+            citation: components["schemas"]["CitationRef"];
+            /** Condition */
+            condition: string;
+            /** Condition Quote */
+            condition_quote: string;
+            /** Fact Value */
+            fact_value?: string | null;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "met" | "not_met" | "not_applicable" | "unknown";
+        };
         /**
          * KbSearchMatch
          * @description A chunk that matched, with its place in the record's text (`text[char_start:char_end]`).
@@ -1068,6 +1519,86 @@ export interface components {
             /** Token */
             token: string;
             user: components["schemas"]["UserOut"];
+        };
+        /**
+         * MessageRequest
+         * @description A question (`text`), the answers to the open questions, or the choice to skip them. The
+         *     mode is only the presentation the user has open.
+         */
+        MessageRequest: {
+            /** Clarification Answers */
+            clarification_answers?: components["schemas"]["ClarificationAnswer"][] | null;
+            /**
+             * Mode
+             * @default short
+             * @enum {string}
+             */
+            mode: "short" | "detailed" | "reasoned";
+            /**
+             * Skip
+             * @default false
+             */
+            skip: boolean;
+            /** Text */
+            text?: string | null;
+        };
+        /**
+         * MissingInfo
+         * @description What a conditional answer depends on: if `condition`, then `result`.
+         */
+        MissingInfo: {
+            /**
+             * Citations
+             * @default []
+             */
+            citations: components["schemas"]["CitationRef"][];
+            /** Condition */
+            condition: string;
+            /** Fact Key */
+            fact_key?: string | null;
+            /** Result */
+            result: string;
+        };
+        /** QuestionInput */
+        QuestionInput: {
+            /**
+             * Allow Unknown
+             * @default true
+             * @constant
+             */
+            allow_unknown: true;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "choice" | "date" | "number" | "text";
+            /**
+             * Options
+             * @default []
+             */
+            options: components["schemas"]["QuestionOption"][];
+        };
+        /** QuestionOption */
+        QuestionOption: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * ReadSources
+         * @description "Okunanlar", written by the harness from its trace, never by the model. The counts are
+         *     those of the distinct sources in `items`.
+         */
+        ReadSources: {
+            /** Admin Acts */
+            admin_acts: number;
+            /** Decisions */
+            decisions: number;
+            /** Items */
+            items: components["schemas"]["CitationRef"][];
+            /** Statute Articles */
+            statute_articles: number;
         };
         /** ReasonCount */
         ReasonCount: {
@@ -1479,6 +2010,21 @@ export interface components {
             statute_number: string;
         };
         /**
+         * StepEvent
+         * @description A live status line ("Kaynaklar okunuyor"); `node` is the name of the step.
+         */
+        StepEvent: {
+            /** Label */
+            label: string;
+            /** Node */
+            node: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "step";
+        };
+        /**
          * TimelineGap
          * @description A gap entry has no text field.
          */
@@ -1536,6 +2082,38 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /** Turn */
+        Turn: {
+            answer?: components["schemas"]["Answer"] | null;
+            clarification?: components["schemas"]["Clarification"] | null;
+            /** Clarification Answers */
+            clarification_answers?: components["schemas"]["ClarificationAnswer"][] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            facts?: components["schemas"]["CaseFacts"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /**
+             * Skipped
+             * @default false
+             */
+            skipped: boolean;
+            /** Text */
+            text?: string | null;
+            /** Trace Id */
+            trace_id?: string | null;
+        };
         /** UserOut */
         UserOut: {
             /** Display Name */
@@ -1551,7 +2129,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "admin" | "reviewer";
+            role: "admin" | "reviewer" | "user";
         };
     };
     responses: never;
@@ -1782,6 +2360,525 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_conversations_chat_conversations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_conversation_chat_conversations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_conversation_chat_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_message_chat_conversations__conversation_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageRequest"];
+            };
+        };
+        responses: {
+            /** @description A stream of ChatEvent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ChatEvent"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_feedback_chat_turns__turn_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                turn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feedback"];
                 };
             };
             /** @description Unauthorized */

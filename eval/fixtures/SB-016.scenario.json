@@ -1,0 +1,146 @@
+{
+  "case_id": "SB-016",
+  "questions": [
+    "\"İndirim en çok 15 günlük ödeme süresi kaçırıldığında kaybedilmektedir.\" Bu bilginin kaynağını gösterir misin. Diyelim ki 30 gün içinde verdim ama 15 gün içinde ödemedim.  O halde sadece 1/4 indiriminden faydalanamaz mıyım?"
+  ],
+  "facts": {
+    "title": "İdari para cezasında iki indirim",
+    "facts": [
+      {
+        "key": "belge_30_gun",
+        "label": "Belgenin verilmesi",
+        "value": "Yasal süre geçtikten sonra 30 gün içinde verildi",
+        "status": "known"
+      },
+      {
+        "key": "odeme_15_gun",
+        "label": "Cezanın ödenmesi",
+        "value": "Tebliğden sonraki 15 gün içinde ödenmedi",
+        "status": "known"
+      },
+      {
+        "key": "ceza_turu",
+        "label": "Ceza türü",
+        "status": "unknown"
+      },
+      {
+        "key": "kendiliginden",
+        "label": "Belgenin kendiliğinden verilmesi",
+        "status": "unknown"
+      }
+    ]
+  },
+  "clarification": {
+    "index": 1,
+    "total": 2,
+    "questions": [
+      {
+        "id": "q1",
+        "fact_key": "ceza_turu",
+        "text": "Hangi cezadan söz ediliyor?",
+        "why": "Kendiliğinden verme indirimi yalnız 5510 m.102/1'in (a), (b), (g), (h) ve (j) bentlerindeki cezalar için geçerlidir (m.102/2); peşin ödeme indirimi bent ayrımı yapmamaktadır (m.102/5).",
+        "source_refs": [
+          {
+            "source_id": "statute:5510:m102",
+            "category": "statute",
+            "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+            "ref": "5510 m.102/2",
+            "review_status": "approved",
+            "verification": "verified",
+            "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+          },
+          {
+            "source_id": "statute:5510:m102",
+            "category": "statute",
+            "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/5",
+            "ref": "5510 m.102/5",
+            "review_status": "approved",
+            "verification": "verified",
+            "quote": "İdarî para cezalarının, Kuruma itiraz edilmeden veya yargı yoluna başvurulmadan önce tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde, bunun dörtte üçü tahsil edilir.",
+            "used_for": "Peşin ödeme indirimi (dörtte üçü tahsil)"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "bildirge",
+              "label": "Bildirge (işe giriş, işten ayrılış, işyeri bildirgesi)"
+            },
+            {
+              "value": "diger",
+              "label": "Ek belge, defter ibrazı veya bordro"
+            }
+          ],
+          "allow_unknown": true
+        }
+      },
+      {
+        "id": "q2",
+        "fact_key": "kendiliginden",
+        "text": "Belge kendiliğinden mi verildi?",
+        "why": "Mahkeme kararına, Kurum denetim memurlarının tespitine veya kamu idarelerinden alınan belgelere dayanan cezalarda m.102/2 indirimi uygulanmamaktadır.",
+        "source_refs": [
+          {
+            "source_id": "statute:5510:m102",
+            "category": "statute",
+            "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+            "ref": "5510 m.102/2",
+            "review_status": "approved",
+            "verification": "verified",
+            "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "kendiliginden",
+              "label": "Kendiliğinden verildi"
+            },
+            {
+              "value": "tespit",
+              "label": "Denetim tespiti veya yazı üzerine verildi"
+            }
+          ],
+          "allow_unknown": true
+        }
+      }
+    ]
+  },
+  "complete_answers": {
+    "q1": "bildirge",
+    "q2": "kendiliginden"
+  },
+  "facts_complete": {
+    "title": "İdari para cezasında iki indirim",
+    "facts": [
+      {
+        "key": "belge_30_gun",
+        "label": "Belgenin verilmesi",
+        "value": "Yasal süre geçtikten sonra 30 gün içinde verildi",
+        "status": "known"
+      },
+      {
+        "key": "odeme_15_gun",
+        "label": "Cezanın ödenmesi",
+        "value": "Tebliğden sonraki 15 gün içinde ödenmedi",
+        "status": "known"
+      },
+      {
+        "key": "ceza_turu",
+        "label": "Ceza türü",
+        "value": "Bildirge (işe giriş, işten ayrılış, işyeri bildirgesi)",
+        "status": "known"
+      },
+      {
+        "key": "kendiliginden",
+        "label": "Belgenin kendiliğinden verilmesi",
+        "value": "Kendiliğinden verildi",
+        "status": "known"
+      }
+    ]
+  },
+  "on_skip": "SB-016.skipped.answer.json",
+  "on_complete": "SB-016.answer.json"
+}

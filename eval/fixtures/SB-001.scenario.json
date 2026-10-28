@@ -1,0 +1,302 @@
+{
+  "case_id": "SB-001",
+  "questions": [
+    "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerekçesi ile birlikte açıkla"
+  ],
+  "facts": {
+    "title": "İşe iade, 5 ay kıdem",
+    "facts": [
+      {
+        "key": "kidem",
+        "label": "Kıdem",
+        "value": "5 ay",
+        "status": "known"
+      },
+      {
+        "key": "isci_sayisi",
+        "label": "İşçi sayısı",
+        "status": "unknown"
+      },
+      {
+        "key": "sozlesme_turu",
+        "label": "Sözleşme türü",
+        "status": "unknown"
+      },
+      {
+        "key": "bildirim_tarihi",
+        "label": "Bildirimin ulaştığı tarih",
+        "status": "unknown"
+      },
+      {
+        "key": "yer_alti",
+        "label": "Yer altı işi",
+        "status": "unknown"
+      },
+      {
+        "key": "onceki_donem",
+        "label": "Önceki çalışma",
+        "status": "unknown"
+      },
+      {
+        "key": "kisaltma",
+        "label": "Sözleşmeyle kısaltma",
+        "status": "unknown"
+      }
+    ]
+  },
+  "clarification": {
+    "index": 1,
+    "total": 6,
+    "questions": [
+      {
+        "id": "q1",
+        "fact_key": "isci_sayisi",
+        "text": "İşyerinde kaç işçi çalışıyor?",
+        "why": "İş güvencesi yalnız otuz veya daha fazla işçi çalıştıran işyerlerinde uygulanmaktadır (4857 m.18/1). Aynı işverenin aynı işkolundaki işyerleri birlikte sayılmaktadır (m.18/4).",
+        "source_refs": [
+          {
+            "source_id": "statute:4857:m18",
+            "category": "statute",
+            "label": "4857 sayılı İş Kanunu m.18/1",
+            "ref": "4857 m.18/1",
+            "review_status": "approved",
+            "verification": "verified",
+            "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren",
+            "used_for": "Altı aylık kıdem şartı"
+          },
+          {
+            "source_id": "statute:4857:m18",
+            "category": "statute",
+            "label": "4857 sayılı İş Kanunu m.18/4",
+            "ref": "4857 m.18/4",
+            "review_status": "approved",
+            "verification": "verified",
+            "quote": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+            "used_for": "Önceki sürelerin birleştirilmesi"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "lt_30",
+              "label": "30'dan az"
+            },
+            {
+              "value": "gte_30",
+              "label": "30 veya fazla"
+            }
+          ],
+          "allow_unknown": true
+        }
+      },
+      {
+        "id": "q2",
+        "fact_key": "sozlesme_turu",
+        "text": "İş sözleşmesi belirsiz süreli mi?",
+        "why": "İş güvencesi belirsiz süreli iş sözleşmesiyle çalışan işçiye tanınmaktadır (4857 m.18/1).",
+        "source_refs": [
+          {
+            "source_id": "statute:4857:m18",
+            "category": "statute",
+            "label": "4857 sayılı İş Kanunu m.18/1",
+            "ref": "4857 m.18/1",
+            "review_status": "approved",
+            "verification": "verified",
+            "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren",
+            "used_for": "Altı aylık kıdem şartı"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "belirsiz",
+              "label": "Belirsiz süreli"
+            },
+            {
+              "value": "belirli",
+              "label": "Belirli süreli"
+            }
+          ],
+          "allow_unknown": true
+        }
+      },
+      {
+        "id": "q3",
+        "fact_key": "bildirim_tarihi",
+        "text": "Fesih bildirimi hangi tarihte işçiye ulaştı?",
+        "why": "Altı aylık kıdem, fesih bildiriminin işçiye ulaştığı tarihe göre belirlenmektedir (9. HD E.2016/28920 K.2017/17860).",
+        "source_refs": [
+          {
+            "source_id": "decision:yargitay-9hd-2016-28920-2017-17860",
+            "category": "decision",
+            "label": "Yargıtay 9. HD, E.2016/28920 K.2017/17860",
+            "ref": "9. HD E.2016/28920 K.2017/17860",
+            "review_status": "analyzed",
+            "verification": "unverified",
+            "used_for": "Kıdem, fesih bildiriminin ulaştığı tarihte dolmuş olmalıdır"
+          }
+        ],
+        "input": {
+          "kind": "date",
+          "options": [],
+          "allow_unknown": true
+        }
+      },
+      {
+        "id": "q4",
+        "fact_key": "onceki_donem",
+        "text": "İşçi aynı işverenin yanında önceki dönemlerde veya başka işyerlerinde de çalışmış mıydı?",
+        "why": "Aynı işverenin bir veya değişik işyerlerinde geçen süreler kıdemde birleştirilmektedir (4857 m.18/4).",
+        "source_refs": [
+          {
+            "source_id": "statute:4857:m18",
+            "category": "statute",
+            "label": "4857 sayılı İş Kanunu m.18/4",
+            "ref": "4857 m.18/4",
+            "review_status": "approved",
+            "verification": "verified",
+            "quote": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+            "used_for": "Önceki sürelerin birleştirilmesi"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "evet",
+              "label": "Evet"
+            },
+            {
+              "value": "hayir",
+              "label": "Hayır"
+            }
+          ],
+          "allow_unknown": true
+        }
+      },
+      {
+        "id": "q5",
+        "fact_key": "yer_alti",
+        "text": "İşçi yer altı işlerinde mi çalışıyor?",
+        "why": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmamaktadır (4857 m.18/1 son cümle).",
+        "source_refs": [
+          {
+            "source_id": "statute:4857:m18",
+            "category": "statute",
+            "label": "4857 sayılı İş Kanunu m.18/1 son cümle",
+            "ref": "4857 m.18/1 son cümle",
+            "review_status": "approved",
+            "verification": "verified",
+            "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+            "used_for": "Yer altı işi istisnası"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "evet",
+              "label": "Evet"
+            },
+            {
+              "value": "hayir",
+              "label": "Hayır"
+            }
+          ],
+          "allow_unknown": true
+        }
+      },
+      {
+        "id": "q6",
+        "fact_key": "kisaltma",
+        "text": "Altı aylık kıdem süresi toplu veya bireysel iş sözleşmesiyle kısaltılmış ya da kaldırılmış mı?",
+        "why": "Kıdem süresi sözleşmeyle kısaltılmışsa altı aylık şart uygulanmamaktadır; bu nedenle önce bu sorulmaktadır (7. HD E.2014/12921 K.2014/18766).",
+        "source_refs": [
+          {
+            "source_id": "decision:yargitay-7hd-2014-12921-2014-18766",
+            "category": "decision",
+            "label": "Yargıtay 7. HD, E.2014/12921 K.2014/18766",
+            "ref": "7. HD E.2014/12921 K.2014/18766",
+            "review_status": "analyzed",
+            "verification": "unverified",
+            "used_for": "Kıdem hesabı ve sözleşmeyle kısaltma"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "options": [
+            {
+              "value": "evet",
+              "label": "Evet"
+            },
+            {
+              "value": "hayir",
+              "label": "Hayır"
+            }
+          ],
+          "allow_unknown": true
+        }
+      }
+    ]
+  },
+  "complete_answers": {
+    "q1": "gte_30",
+    "q2": "belirsiz",
+    "q3": "2026-10-03",
+    "q4": "hayir",
+    "q5": "hayir",
+    "q6": "hayir"
+  },
+  "facts_complete": {
+    "title": "İşe iade, 5 ay kıdem",
+    "event_date": "2026-10-03",
+    "facts": [
+      {
+        "key": "kidem",
+        "label": "Kıdem",
+        "value": "5 ay",
+        "status": "known"
+      },
+      {
+        "key": "isci_sayisi",
+        "label": "İşçi sayısı",
+        "value": "30 veya fazla",
+        "status": "known"
+      },
+      {
+        "key": "sozlesme_turu",
+        "label": "Sözleşme türü",
+        "value": "Belirsiz süreli",
+        "status": "known"
+      },
+      {
+        "key": "bildirim_tarihi",
+        "label": "Bildirimin ulaştığı tarih",
+        "value": "03.10.2026",
+        "status": "known"
+      },
+      {
+        "key": "yer_alti",
+        "label": "Yer altı işi",
+        "value": "Hayır",
+        "status": "assumed_never"
+      },
+      {
+        "key": "onceki_donem",
+        "label": "Önceki çalışma",
+        "value": "Hayır",
+        "status": "assumed_never"
+      },
+      {
+        "key": "kisaltma",
+        "label": "Sözleşmeyle kısaltma",
+        "value": "Hayır",
+        "status": "known"
+      }
+    ]
+  },
+  "on_skip": "SB-001.answer.json",
+  "on_complete": "SB-001.complete.answer.json"
+}

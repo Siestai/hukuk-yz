@@ -72,7 +72,7 @@ Her kaynak türü kaydının üst kimliği.
 ### `app_user`, `user_session` (Görev 08)
 | tablo | alanlar |
 |---|---|
-| `app_user` | id, email (benzersiz, küçük harfe normalize), display_name, role (`user_role`: `admin` / `reviewer`), password_hash (argon2id), is_active, created_at, last_login_at? |
+| `app_user` | id, email (benzersiz, küçük harfe normalize), display_name, role (`user_role`: `admin` / `reviewer` / `user`; `user` yalnız `/chat/*` kullanır, inceleme ve yönetim uçlarına erişemez), password_hash (argon2id), is_active, created_at, last_login_at? |
 | `user_session` | id, user_id → `app_user`, token_hash (SHA-256, benzersiz; ham token saklanmaz), created_at, expires_at, revoked_at?, last_seen_at? |
 
 `review.reviewer_id` → `app_user.id` FK'si Görev 09'da (Alembic 0006) `NOT VALID` eklendi: yeni review satırları gerçek bir kullanıcıya bağlanmak zorunda; Görev 05'te CLI ile yazılmış eski satırlar (kullanıcısız UUID) doğrulanmaz. `VALIDATE CONSTRAINT` bu satırlarda başarısız olur. Oturum süresi sabittir (`SESSION_TTL_HOURS`, varsayılan 12), kullanımla uzamaz.

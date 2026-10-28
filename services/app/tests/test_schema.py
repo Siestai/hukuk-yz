@@ -173,6 +173,38 @@ def test_the_review_migration_keeps_old_rows_approved_and_downgrades_to_0011(
         asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))
 
 
+def test_the_user_role_migration_downgrades_to_0014_unless_a_user_account_exists(
+    alembic_config: Config, database_url: str
+) -> None:
+    async def run(sql: str) -> list[str]:
+        engine = make_engine(database_url)
+        try:
+            async with engine.begin() as conn:
+                return [str(row[0]) for row in await conn.execute(text(sql))]
+        finally:
+            await engine.dispose()
+
+    labels = "SELECT unnest(enum_range(NULL::user_role))::text"
+    command.upgrade(alembic_config, "head")
+    assert "user" in asyncio.run(run(labels))
+    command.downgrade(alembic_config, "0014")
+    assert sorted(asyncio.run(run(labels))) == ["admin", "reviewer"]
+    command.upgrade(alembic_config, "head")
+    asyncio.run(
+        run(
+            "INSERT INTO app_user (email, display_name, role, password_hash) "
+            "VALUES ('u@x.test', 'u', 'user', 'x') RETURNING 1"
+        )
+    )
+    try:
+        with pytest.raises(RuntimeError, match="role 'user'"):
+            command.downgrade(alembic_config, "0014")
+    finally:
+        asyncio.run(run("DELETE FROM app_user WHERE email = 'u@x.test' RETURNING 1"))
+        command.upgrade(alembic_config, "head")
+    assert "user" in asyncio.run(run(labels))
+
+
 def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) -> None:
     expected = set(Base.metadata.tables)
 

@@ -65,7 +65,9 @@ function leafTexts(node: object): string[] {
 
 function roles(): string[] {
     const schema = readFileSync(join(SRC, "lib/api/schema.d.ts"), "utf8");
-    const union = /^\s+role: ((?:"\w+"(?: \| )?)+);/m.exec(schema)?.[1] ?? "";
+    // The role of the logged-in user (UserOut), not the `role` of a chat turn.
+    const userOut = /^\s+UserOut: \{[\s\S]*?\brole: ((?:"\w+"(?: \| )?)+);/m.exec(schema)?.[1];
+    const union = userOut ?? "";
     return [...union.matchAll(/"(\w+)"/g)].map((m) => String(m[1]));
 }
 

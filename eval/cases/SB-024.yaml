@@ -1,0 +1,26 @@
+id: SB-024
+question: "yeni açılan işyerlerinde ile giriş Bildirgesi için verilen 1 aylık süreyi örnekle açıkla"
+expected:
+  status: conditional
+  headline_contains:
+    - bir aylık
+  must_cite:
+    - 5510 m.8/1-b
+    - HMK m.92/2
+    - HMK m.93/1
+    - 2013/11 Genelge 2.4
+    - 2013/11 Genelge Birinci Kısım Beşinci Bölüm 1.3
+  must_ask:
+    - tescil_ve_calistirma_tarihi
+    - isyeri_kolu
+    - son_gun_mali_tatil
+    - bildirge_yolu
+  must_not:
+    - TBK m.92
+  traps:
+    - Süre her sigortalının başlama gününden değil, ilk sigortalı çalıştırılan tarihten itibaren tek bir tarihte kapanan bir aylık penceredir.
+    - Ay sonu kuralının dayanağı HMK m.92/2'dir; TBK m.92/3 sözleşme süreleri içindir, dayanak gösterilmez.
+    - Son gün hafta sonuna veya resmî tatile rastlarsa süre izleyen ilk iş günü biter (HMK m.93/1); mali tatil ayrı mekanizmadır.
+    - İşyeri bildirgesi süresi ile işe giriş bildirgesi süresi ayrıdır.
+    - İnşaat, balıkçılık ve tarım işyerlerinde m.8/1-a aynı gün der; yeni açılan inşaat işyerinde b bendinin uygulanıp uygulanmadığı kaynaklarda çözülmemiştir.
+tags: [sgk, bildirge, sure]

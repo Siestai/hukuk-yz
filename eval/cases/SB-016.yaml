@@ -1,0 +1,26 @@
+id: SB-016
+question: '"İndirim en çok 15 günlük ödeme süresi kaçırıldığında kaybedilmektedir." Bu bilginin kaynağını gösterir misin. Diyelim ki 30 gün içinde verdim ama 15 gün içinde ödemedim.  O halde sadece 1/4 indiriminden faydalanamaz mıyım?'
+facts:
+  ceza_turu: bildirge
+  kendiliginden: kendiliginden
+expected:
+  status: definite
+  headline_contains:
+    - iki indirim
+    - 15 gün
+  must_cite:
+    - 5510 m.102/2
+    - 5510 m.102/5
+    - 2020/8 Genelge m.3.1
+  must_ask:
+    - ceza_turu
+    - kendiliginden
+  must_not:
+    - SSİY m.102
+  traps:
+    - İki ayrı indirim vardır; m.102/2'de ceza dörtte bire iner, m.102/5'te dörtte üçü ödenir. İfadeler ters yönlüdür, hangi fıkra olduğu yazılır.
+    - 15 günlük ödeme süresi iki indirim için ortak şarttır; 30 günlük süre yalnız m.102/2 indiriminin şartıdır.
+    - m.102/2 indirimi yalnız m.102/1'in (a), (b), (g), (h) ve (j) bentleri için geçerlidir.
+    - SSİY m.102 bu konuda hüküm içermez, kaynak olarak yazılmaz.
+    - Alıntılanan cümle hangi indirimden söz ettiğini belirtmediği için tek başına kesin hüküm gibi kullanılmaz.
+tags: [sgk, idari-para-cezasi, indirim]

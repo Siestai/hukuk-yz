@@ -1,7 +1,7 @@
 """Manage users (task 08). The password is asked on the terminal, never taken from an argument
 or the environment.
 
-    python -m app.users create --email E --name N --role {admin,reviewer}
+    python -m app.users create --email E --name N --role {admin,reviewer,user}
     python -m app.users set-password --email E    (also revokes the open sessions)
     python -m app.users deactivate --email E
     python -m app.users list

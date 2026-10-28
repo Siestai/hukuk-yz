@@ -1,0 +1,29 @@
+id: SB-006
+question: "Peki işçiler greve gitti. Ve işveren lokavt kararı aldı. Burada işçiler neler yapabilir, sendika neler yapabilir kısaca bahseder misin"
+expected:
+  status: conditional
+  headline_contains:
+    - kanuni
+  must_cite:
+    - 6356 m.58
+    - 6356 m.59
+    - 6356 m.60/1
+    - 6356 m.64/1
+    - 6356 m.66/2
+    - 6356 m.67/3
+    - 6356 m.70
+    - 6356 m.71
+  must_ask:
+    - kanuni_mi
+    - yasakli_isyeri
+    - uyelik_ve_katilim
+    - grev_disi_isci_ilani
+  must_not:
+    - 9. HD E.2006/24785 K.2006/25725
+  traps:
+    - Kanuni grev (askı, fesih yasağı) ile kanun dışı grev (haklı fesih, tazminat, idari ceza) ayrımı cevabın merkezindedir.
+    - Askıdaki işçiye grev süresince ücret ve sosyal yardım ödenemez, süre kıdem tazminatına sayılmaz; bunun aksi TİS ile kararlaştırılamaz (m.67/3).
+    - Kanuni grevde fesih yasağı yalnız katılma veya teşvik nedeniyle fesihtir (m.66/2).
+    - Lokavt, grev kararının tebliğinden sonra ve usulüne uygun bildirimle alınmalıdır; aksi hâlde kanun dışıdır.
+    - 2822 dönemine ait Yargıtay kararları 6356 maddeleriyle karşılaştırılmadan kullanılmaz.
+tags: [sendika, grev, lokavt]
