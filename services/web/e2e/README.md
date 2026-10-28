@@ -18,7 +18,7 @@ Ortam değişkenleri: `E2E_EMAIL`, `E2E_PASSWORD` (gerekli, repoya yazılmaz), `
 | Dosya           | Ne dener                                                                                                                                                                                                                             |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `login.spec.ts` | oturumsuz yönlendirme, yanlış parola (Türkçe hata), giriş, çıkış                                                                                                                                                                     |
-| `chat.spec.ts`  | giriş → yeni soru (SB-001) → olay kartı + 1/5 soru → iki cevap, gerisi atlanır → koşullu cevap, "Tamamlanması gereken bilgiler" açık → Gerekçeli → tablo → dayanak → vurgulu metin → 👎 geri bildirim; her adımda yatay kaydırma yok |
+| `chat.spec.ts`  | giriş → yeni soru (SB-001) → olay kartı + 1/6 soru → iki cevap, gerisi atlanır → koşullu cevap, "Tamamlanması gereken bilgiler" açık → Gerekçeli → tablo → dayanak → vurgulu metin → 👎 geri bildirim; her adımda yatay kaydırma yok |
 
 İki proje koşar: `chromium` (masaüstü) ve `chromium-mobile` (telefon: yatay kaydırma, dokunma). Fixture arka ucun
 durumu bellektedir; her koşu kendi konuşmasını açar, sıfırlama gerekmez.

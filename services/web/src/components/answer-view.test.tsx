@@ -24,7 +24,7 @@ describe("AnswerView", () => {
         setup("short");
         expect(screen.getByText("Koşullu cevap")).toBeInTheDocument();
         expect(screen.getByText("Tamamlanması gereken bilgiler")).toBeInTheDocument();
-        expect(screen.getByText(/İşçi yer altı işlerinde çalışıyorsa/)).toBeVisible();
+        expect(screen.getByText(/İşçi yer altı işlerinde çalışmaktaysa/)).toBeVisible();
     });
 
     it("shows the first points in short mode and all of them in detailed mode", () => {

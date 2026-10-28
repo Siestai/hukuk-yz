@@ -13,14 +13,14 @@ test("login, question, clarification, conditional answer, reasoned mode, source,
     await ask(page, SB001);
     await expect(page.getByRole("heading", { name: "Anladığım olay" })).toBeVisible();
     await expect(page.getByText("Bilinmiyor").first()).toBeVisible();
-    await expect(page.getByText("Soru 1 / 5")).toBeVisible();
+    await expect(page.getByText("Soru 1 / 6")).toBeVisible();
     await expectNoHorizontalScroll(page);
 
     // Two answers, the rest skipped.
     await page.getByRole("button", { name: "30 veya fazla" }).click();
-    await expect(page.getByText("Soru 2 / 5")).toBeVisible();
+    await expect(page.getByText("Soru 2 / 6")).toBeVisible();
     await page.getByRole("button", { name: "Belirsiz süreli" }).click();
-    await expect(page.getByText("Soru 3 / 5")).toBeVisible();
+    await expect(page.getByText("Soru 3 / 6")).toBeVisible();
     await page.getByRole("button", { name: "Soruları atla, koşullu cevabı göster" }).click();
 
     // B-2: a conditional answer, its open questions section expanded, no "müşteri" anywhere.
@@ -32,7 +32,10 @@ test("login, question, clarification, conditional answer, reasoned mode, source,
     await expectNoHorizontalScroll(page);
     if (!isMobile) {
         await expect(
-            page.getByRole("navigation", { name: "Konuşmalar" }).getByText("İşe iade, 5 ay kıdem"),
+            page
+                .getByRole("navigation", { name: "Konuşmalar" })
+                .getByText("İşe iade, 5 ay kıdem")
+                .first(),
         ).toBeVisible();
     }
 

@@ -20,7 +20,7 @@ describe("answerPlainText", () => {
 
     it("names the note of a conditional answer and lists the missing information", () => {
         expect(text).toContain(`Koşullu cevap: ${conditionalAnswer.status_note}`);
-        expect(text).toContain("Eksik bilgiler:\n- İşçi yer altı işlerinde çalışıyorsa:");
+        expect(text).toContain("Eksik bilgiler:\n- İşçi yer altı işlerinde çalışmaktaysa:");
     });
 
     it("leaves out the note and the list of a definite answer without gaps", () => {

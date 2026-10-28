@@ -33,11 +33,6 @@ export function UserBubble({
                     </p>
                 ))}
             </div>
-            {turn.redacted_names > 0 ? (
-                <p className="text-xs text-ink-3">
-                    {t("redacted", { count: turn.redacted_names })}
-                </p>
-            ) : null}
         </div>
     );
 }

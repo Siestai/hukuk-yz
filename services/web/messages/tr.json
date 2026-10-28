@@ -35,8 +35,7 @@
     "user": {
       "skipped": "Soruları atladım.",
       "unknown": "Bilmiyorum",
-      "answer": "{question} {answer}",
-      "redacted": "{count, number} kişi adı gizlendi"
+      "answer": "{question} {answer}"
     },
     "step": "{label}...",
     "stream": {

@@ -42,7 +42,7 @@ describe("toTurn", () => {
         expect(
             toTurn(
                 play([
-                    { type: "error", code: "x" },
+                    { type: "error", code: "internal_error", params: {} },
                     { type: "done", turn_id: "t1" },
                 ]),
                 "x",

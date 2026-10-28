@@ -23,14 +23,4 @@ export type Reply = {
     skip?: boolean;
 };
 
-/**
- * One event of the message stream. The OpenAPI document does not describe the `text/event-stream`
- * body, so only this envelope is written here; every payload is a generated schema.
- */
-export type ChatEvent =
-    | { type: "step"; node: string; label: string }
-    | { type: "facts"; facts: CaseFacts }
-    | { type: "clarification"; clarification: Clarification }
-    | { type: "answer"; answer: Answer }
-    | { type: "error"; code: string; params?: Record<string, string | number> }
-    | { type: "done"; turn_id?: string | null; trace_id?: string | null };
+export type ChatEvent = Schemas["ChatEvent"];

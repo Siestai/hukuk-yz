@@ -59,7 +59,6 @@ export function toTurn(live: LiveTurn, createdAt: string): Turn | null {
         id: live.turnId,
         role: "assistant",
         created_at: createdAt,
-        redacted_names: 0,
         skipped: false,
         facts: live.facts,
         clarification: live.clarification,

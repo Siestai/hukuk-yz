@@ -24,7 +24,6 @@ function sentTurn(body: MessageRequest): Turn {
         id: crypto.randomUUID(),
         role: "user",
         created_at: new Date().toISOString(),
-        redacted_names: 0,
         text: body.text ?? null,
         clarification_answers: body.clarification_answers ?? null,
         skipped: body.skip ?? false,
