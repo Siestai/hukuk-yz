@@ -45,12 +45,16 @@ MATCHES_PER_RECORD = 3
 EF_SEARCH = 200
 _TOKEN_RE = re.compile(r"\w{3,}")
 _MAX_TOKENS = 16
+# Turkish case folding for the two letters Python's `lower()` gets wrong ('İ' becomes 'i' plus
+# U+0307, which `\w` drops; 'I' becomes 'i', not 'ı'); the database's locale does not fold them.
+_TURKISH_LOWER = str.maketrans({"İ": "i", "I": "ı"})
 
 
 def _tsquery(q: str) -> str:
     """The words of the question joined by OR: a natural-language question rarely has all its
     words in one passage, so the ranking (not the match) separates good from poor."""
-    return " | ".join(dict.fromkeys(_TOKEN_RE.findall(q.lower())[:_MAX_TOKENS]))
+    words = _TOKEN_RE.findall(q.translate(_TURKISH_LOWER).lower())
+    return " | ".join(dict.fromkeys(words[:_MAX_TOKENS]))
 
 
 def _filters(
@@ -180,36 +184,34 @@ async def search(
             .outerjoin(
                 Decision, and_(Chunk.parent_kind == "decision", Decision.id == Chunk.parent_id)
             )
-            .where(Chunk.id.in_([i for i in fused if isinstance(i, uuid.UUID)]))
+            .where(Chunk.id.in_(list(fused)))
         )
     ).all()
-    chunks = {c.id: c for c, _, _ in found}
-    extras = {c.id: (rank, verification) for c, rank, verification in found}
+    chunks = {str(c.id): c for c, _, _ in found}
+    extras = {str(c.id): (rank, verification) for c, rank, verification in found}
     scored = [
         Scored(
-            str(c.id),
+            key,
             _record_key(c),
             fused[c.id]
             * authority_weight(
-                c.court_level.value if c.court_level else None, extras[c.id][0].value
+                c.court_level.value if c.court_level else None, extras[key][0].value
             ),
         )
-        for c in chunks.values()
+        for key, c in chunks.items()
     ]
     grouped = group_by_record(scored)[:limit]
 
     results: list[KbSearchResult] = []
     bodyless: list[tuple[Any, ...]] = []
     for record, score, chunk_ids in grouped:
-        best = chunks[uuid.UUID(chunk_ids[0])]
-        shown = [
-            chunks[uuid.UUID(i)]
-            for i in chunk_ids
-            if chunks[uuid.UUID(i)].license is not License.internal_only
-        ][:MATCHES_PER_RECORD]
+        best = chunks[chunk_ids[0]]
+        shown = [chunks[i] for i in chunk_ids if chunks[i].license is not License.internal_only][
+            :MATCHES_PER_RECORD
+        ]
         if not shown:
             bodyless.append(record)
-        verification = extras[best.id][1]
+        verification = extras[chunk_ids[0]][1]
         results.append(
             KbSearchResult(
                 source_id=best.source_id,
@@ -227,7 +229,7 @@ async def search(
             )
         )
     if bodyless:
-        await _opening_chunks(db, results, bodyless, chunks)
+        await _opening_chunks(db, results, bodyless)
     return KbSearchResponse(mode=mode, results=results)
 
 
@@ -241,7 +243,6 @@ async def _opening_chunks(
     db: AsyncSession,
     results: list[KbSearchResult],
     records: list[tuple[Any, ...]],
-    chunks: dict[uuid.UUID, Chunk],
 ) -> None:
     """A record found only through its editorial summary is shown by the first chunk of its own
     text (if it has one)."""

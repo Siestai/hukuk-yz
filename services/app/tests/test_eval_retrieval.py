@@ -16,6 +16,8 @@ def test_matching() -> None:
     assert matches(DECISION, HIT)
     other = {"category": "decision", "ref": "Yargıtay 9. HD, E. 2016/289200 K. 2017/17860"}
     assert not matches(DECISION, other)
+    nineteenth = {"category": "decision", "ref": "Yargıtay 19. HD, E. 2016/28920 K. 2017/17860"}
+    assert not matches(DECISION, nineteenth)
 
 
 def test_recall_counts_the_expected_sources_in_the_first_k() -> None:

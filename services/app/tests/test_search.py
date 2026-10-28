@@ -19,6 +19,7 @@ from app.main import app
 from app.models.chunk import Chunk
 from app.models.common import Extraction, License, RecordStatus, Source
 from app.models.user import AppUser, UserRole
+from app.search import _tsquery
 from app.settings import Settings, get_settings
 from tests.conftest import FakeEmbedder
 from tests.test_chunk_index import SUMMARY, load_decision
@@ -90,6 +91,12 @@ async def search(
     assert response.status_code == 200, response.text
     results: list[dict[str, Any]] = response.json()["results"]
     return results
+
+
+def test_the_tsquery_folds_turkish_capitals() -> None:
+    assert _tsquery("İşe iade") == "işe | iade"
+    assert _tsquery("ISIK") == "ısık"
+    assert _tsquery("işe iade, işe") == "işe | iade"
 
 
 async def test_search_needs_a_login(client: httpx.AsyncClient) -> None:
@@ -236,3 +243,17 @@ async def test_without_an_embedder_the_search_is_full_text_only(
     app.dependency_overrides[get_embedder] = lambda: None
     response = await client.get("/kb/search", params={"q": "işe iade"}, headers=headers)
     assert response.json()["mode"] == "fulltext" and len(response.json()["results"]) == 1
+
+
+async def test_a_capital_dotted_i_query_finds_the_lowercase_text(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await load_decision(kb_factory)
+    await index_all(kb_factory, fake_embedder, articles=False)
+    configure(True)
+    app.dependency_overrides[get_embedder] = lambda: None
+    assert len(await search(client, headers, q="İADE")) == 1

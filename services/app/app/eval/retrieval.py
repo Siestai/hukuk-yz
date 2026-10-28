@@ -9,6 +9,7 @@ report is the mean over the questions, plus the misses. Scoring is a pure functi
 import argparse
 import asyncio
 import json
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -32,7 +33,7 @@ def matches(expected: dict[str, Any], result: dict[str, Any]) -> bool:
     if expected["category"] == "statute":
         return bool(ref == expected["ref"])
     return bool(
-        f"{expected['chamber']}," in ref
+        re.search(rf"(?<!\d){re.escape(expected['chamber'])},", ref) is not None
         and f"E. {expected['esas']} " in f"{ref} "
         and f"K. {expected['karar']}" in ref
     )

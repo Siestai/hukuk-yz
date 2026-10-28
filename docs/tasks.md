@@ -33,7 +33,7 @@
 - [ ] Gereksinim m.10 "kapalı ve sınırlı liste" yazım hatası mı?
 
 ## Chat v1 (kapalı beta, 2026-10-27)
-- [ ] Görev 14: KB arama indeksi + `/kb/search` (uygulandı, PR Orhan'ın onayında; `docs/tasks/14-kb-search.md`)
+- [ ] Görev 14: KB arama indeksi + `/kb/search` (uygulandı, PR onayda; `docs/tasks/14-kb-search.md`)
 - [ ] Görev 15: cevap sözleşmesi + eval seti v0 (`docs/tasks/15-chat-contract-eval.md`)
 - [ ] Görev 16: chat web arayüzü (`docs/tasks/16-chat-web.md`)
 - [ ] Görev 17: ajan v1, LangGraph (`docs/tasks/17-agent-v1.md`)

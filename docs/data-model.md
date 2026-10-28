@@ -237,16 +237,23 @@ Kayıt başına tek embedding yetmez: uzun kararlarda birden fazla konu tek vekt
 | alan | not |
 |---|---|
 | id | |
+| source_id | FK `source` (CASCADE); her chunk kaynağına bağlı, arama `source.status` ile süzer |
 | category | A..H; sonuçlar kategori etiketli döner (md. 28) |
-| parent_kind, parent_id | ebeveyn kayıt (`decision`, `statute_article`, `admin_act`...) |
+| parent_kind, parent_id | ebeveyn kayıt (`decision`, `statute_article`, `admin_act`...) veya henüz onaylanmamış kayıt için `extraction`. İnceleme durumu saklanmaz, `parent_kind`'dan çıkar: `decision` / `statute_article` onaylı, `extraction` analiz edilmiş |
 | version_id | sürümlü kayıtlarda ilgili `*_version`; `as_of` filtresi chunk düzeyinde çalışır |
+| valid_from, valid_to | mevzuat sürümünün geçerlilik aralığı (`as_of` filtresi) |
+| court_level, doc_date | kararlarda mahkeme seviyesi ve karar tarihi (`court_level`, `as_of`, `date_from`/`date_to` filtreleri) |
+| title, ref | sonuç satırı: başlık ve künye |
 | kind | `body` / `editorial_summary` |
 | license | ebeveynden kopya; `internal_only` chunk metni kullanıcıya veya LLM'e gitmez |
 | ordinal, char_start, char_end | ebeveyn metindeki konum; nokta atıf ve alıntı doğrulaması için |
 | header | embedding'e giren künye: `Yargıtay 9. HD · 2018-03-12 · 4857/17,32 · Kıdem tazminatı`. Gösterilmez |
 | text | |
+| text_hash | header + text'in sha256'sı (gömme girdisi); değişmeyen chunk yeniden gömülmez |
 | embedding (vector), embedding_model | model değişince yalnızca bu tablo yeniden üretilir |
 | tsv (tsvector) | |
+
+**İndeksler:** `ix_chunk_embedding` HNSW (`vector_cosine_ops`, `m = 16`, `ef_construction = 64`; arama `<=>` ile sıralar), `ix_chunk_tsv` GIN, `ix_chunk_source_id`, `ix_chunk_version_id`. `chunk` yeniden üretilebilir bir indekstir, doğruluk kaynağı değildir (migration 0014 tabloyu boşaltıp sütunları ekler).
 
 **Bölme kuralları:**
 
