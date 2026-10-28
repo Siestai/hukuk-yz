@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { infoTip, renderWithIntl } from "@/test/intl";
 import { MobileNav } from "./mobile-nav";
 
@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ replace: vi.fn() }),
     usePathname: pathname,
 }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ POST: vi.fn() }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ POST: vi.fn() }) }));
 
 const user = { display_name: "Baran Yılmaz", role: "reviewer" } as const;
 const escape = () => new Event("cancel", { cancelable: true });

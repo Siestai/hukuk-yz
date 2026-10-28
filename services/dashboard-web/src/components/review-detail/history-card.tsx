@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 

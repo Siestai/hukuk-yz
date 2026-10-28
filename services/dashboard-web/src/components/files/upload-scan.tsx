@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
 import { ACTIVE_SCANS, fileHref, type ReviewStatus, type ScanStatus } from "@/lib/files";
 import { ReviewBadge } from "./review-badge";
 import { SCAN_REFRESH_LIMIT_MS, SCAN_REFRESH_MS } from "./scan-refresh";

@@ -2,8 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../../../messages/tr.json";
-import { formats, timeZone } from "@/i18n/formats";
+import { messages } from "@/i18n/messages";
+import { formats, timeZone } from "@hukuk/web-core/i18n/formats";
 import { detail, STATUTE_ID } from "@/test/statute-fixtures";
 import StatuteArticlePage from "./page";
 
@@ -13,7 +13,7 @@ const notFound = vi.hoisted(() =>
         throw new Error("NEXT_NOT_FOUND");
     }),
 );
-vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
+vi.mock("@hukuk/web-core/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
 vi.mock("next/navigation", () => ({
     notFound,
     redirect: vi.fn(),

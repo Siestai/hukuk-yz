@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { FILE_ID } from "@/test/file-fixtures";
 import { renderWithIntl } from "@/test/intl";
 import { FileViewer } from "./file-viewer";

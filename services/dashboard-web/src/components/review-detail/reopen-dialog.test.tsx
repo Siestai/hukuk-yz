@@ -2,8 +2,8 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
-import type { components } from "@/lib/api/schema";
+import { messages } from "@/i18n/messages";
+import type { components } from "@hukuk/web-core/api/schema";
 import { renderWithIntl } from "@/test/intl";
 import { ReviewProvider } from "./review-session";
 import { ReviewStatusStrip } from "./review-status-strip";
@@ -11,7 +11,7 @@ import { ReviewStatusStrip } from "./review-status-strip";
 const refresh = vi.hoisted(() => vi.fn());
 const POST = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh }) }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ GET: vi.fn(), POST }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ GET: vi.fn(), POST }) }));
 
 type Review = components["schemas"]["ReviewOut"];
 

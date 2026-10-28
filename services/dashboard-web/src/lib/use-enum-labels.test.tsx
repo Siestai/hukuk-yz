@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import messages from "../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { readRepoFile, reasonCodes, warningCodes } from "@/test/reason-codes";
 import { COURTS } from "./queue-params";
 import { useEnumLabels } from "./use-enum-labels";

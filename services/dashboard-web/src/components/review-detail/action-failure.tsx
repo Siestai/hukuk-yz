@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { useReviewSession, type Failure } from "./review-session";
 
 /** The field names of a 422 (`edits.karar_no` → `karar_no`); empty when the API named none. */

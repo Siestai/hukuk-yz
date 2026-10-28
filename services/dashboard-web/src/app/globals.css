@@ -2,6 +2,7 @@
 @import "@hukuk/ui/styles.css";
 
 @source "../../../../packages/ui/src";
+@source "../../../../packages/web-core/src";
 
 /*
  * Text layer of PDF.js (selectable text over a drawn page). Reduced from pdfjs-dist's

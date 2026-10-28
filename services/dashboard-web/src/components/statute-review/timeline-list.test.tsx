@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { timeline } from "@/test/statute-fixtures";
 import { renderWithIntl } from "@/test/intl";
 import { TimelineList } from "./timeline-list";

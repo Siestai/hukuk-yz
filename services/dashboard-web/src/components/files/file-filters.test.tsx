@@ -2,7 +2,7 @@ import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { renderWithIntl } from "@/test/intl";
 import { FileFilters } from "./file-filters";
 

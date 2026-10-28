@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { listItem, NEXT_FILE_ID } from "@/test/file-fixtures";
 import { renderWithIntl } from "@/test/intl";
 import type { FileListParams, FileListResponse } from "@/lib/files";

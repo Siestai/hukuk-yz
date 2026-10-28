@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { formats } from "../../i18n/formats";
-import messages from "../../../messages/tr.json";
-import { isUpstreamUnavailable } from "@/lib/api/errors";
+import { formats } from "@hukuk/web-core/i18n/formats";
+import { messages } from "@/i18n/messages";
+import { isUpstreamUnavailable } from "@hukuk/web-core/api/errors";
 import { infoTip } from "@/test/intl";
 import QueuePage from "./page";
 
@@ -15,7 +15,7 @@ const redirect = vi.hoisted(() =>
         throw new Error(`NEXT_REDIRECT ${path}`);
     }),
 );
-vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
+vi.mock("@hukuk/web-core/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
 vi.mock("@/lib/api/review", () => ({ getReviewSummary: () => summaryGet() }));
 vi.mock("@/components/review-queue/queue-results", () => ({
     QueueResults: () => <p>queue results</p>,

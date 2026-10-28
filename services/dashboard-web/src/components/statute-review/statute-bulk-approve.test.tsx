@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import { listItem } from "@/test/statute-fixtures";
 import { StatuteBulkApprove } from "./statute-bulk-approve";

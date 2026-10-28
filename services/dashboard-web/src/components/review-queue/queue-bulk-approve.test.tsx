@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import type { QueueParams } from "@/lib/queue-params";
 import { QueueBulkApprove } from "./queue-bulk-approve";
 

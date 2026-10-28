@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "@hukuk/ui/styles.css";
+
+@source "../../../../packages/ui/src";
+@source "../../../../packages/web-core/src";

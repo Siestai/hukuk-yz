@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import type { BulkEnd, BulkState } from "@/lib/bulk-approve";
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { BulkConfirmCheck } from "./bulk-confirm-check";
 import { BulkCounters } from "./bulk-counters";
 import { BulkStepHeading } from "./bulk-step-heading";

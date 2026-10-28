@@ -10,10 +10,12 @@ WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY services/dashboard-web/package.json services/dashboard-web/package.json
 COPY packages/ui/package.json packages/ui/package.json
+COPY packages/web-core/package.json packages/web-core/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter "dashboard-web..."
 COPY services/dashboard-web services/dashboard-web
 COPY packages/ui packages/ui
+COPY packages/web-core packages/web-core
 # Not `pnpm build`: its copy step is for running outside Docker; the runtime stage copies
 # `.next/static` and `public` itself.
 RUN pnpm --filter dashboard-web exec next build

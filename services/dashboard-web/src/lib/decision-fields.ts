@@ -1,4 +1,4 @@
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 
 export type RelatedArticle = components["schemas"]["RelatedArticle"];
 

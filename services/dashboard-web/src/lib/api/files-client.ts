@@ -1,7 +1,7 @@
-import type { createApiClient } from "./client";
-import { apiError } from "./errors";
-import type { components } from "./schema";
-import { ApiFailure, unwrap } from "./review-client";
+import type { createApiClient } from "@hukuk/web-core/api/client";
+import { apiError } from "@hukuk/web-core/api/errors";
+import type { components } from "@hukuk/web-core/api/schema";
+import { ApiFailure, unwrap } from "@hukuk/web-core/api/unwrap";
 
 type Api = ReturnType<typeof createApiClient>;
 

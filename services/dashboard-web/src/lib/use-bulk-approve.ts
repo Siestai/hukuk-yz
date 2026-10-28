@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
 import { postBulkApprove, postStatuteBulkApprove } from "@/lib/api/review-client";
 import {
     isRetryable,

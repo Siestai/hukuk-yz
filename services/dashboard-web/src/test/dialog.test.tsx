@@ -227,4 +227,15 @@ describe("Dialog (viewer variant)", () => {
         );
         expect(screen.queryByText("içerik")).not.toBeInTheDocument();
     });
+
+    it("rises from the bottom edge as a sheet", async () => {
+        render(
+            <Dialog open onClose={() => {}} title="Kaynak" variant="sheet" closeLabel="Kapat">
+                <p>metin</p>
+            </Dialog>,
+        );
+        const dialog = screen.getByRole("dialog", { name: "Kaynak" });
+        expect(dialog).toHaveClass("mt-auto", "rounded-t-md");
+        expect(screen.getByRole("button", { name: "Kapat" })).toBeInTheDocument();
+    });
 });

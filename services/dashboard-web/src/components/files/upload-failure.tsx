@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
 import { postFileAction } from "@/lib/api/files-client";
-import { ApiFailure } from "@/lib/api/review-client";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import { fileHref } from "@/lib/files";
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { isUuid } from "@/lib/uuid";
 
 const linkClass =

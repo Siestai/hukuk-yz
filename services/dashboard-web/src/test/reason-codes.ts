@@ -36,7 +36,7 @@ type Schemas = Record<string, { properties: Record<string, unknown> }>;
 
 const schemas = () =>
     (
-        JSON.parse(readRepoFile("services/dashboard-web/openapi.json")) as {
+        JSON.parse(readRepoFile("packages/web-core/openapi.json")) as {
             components: { schemas: Schemas };
         }
     ).components.schemas;

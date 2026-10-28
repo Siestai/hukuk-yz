@@ -13,7 +13,7 @@ const refresh = vi.hoisted(() => vi.fn());
 const GET = vi.hoisted(() => vi.fn());
 const POST = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ GET, POST }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ GET, POST }) }));
 
 const queue: StatuteQueueParams = { kind: "statute", statute: "5510", band: "high", page: 1 };
 const done = { data: { review_id: "r1", article_id: "a1", source_status: "approved" } };

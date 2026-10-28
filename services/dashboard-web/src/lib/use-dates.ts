@@ -1,6 +1,6 @@
 import { useFormatter } from "next-intl";
 
-import { formats } from "@/i18n/formats";
+import { formats } from "@hukuk/web-core/i18n/formats";
 
 import { useCommon } from "./use-common";
 

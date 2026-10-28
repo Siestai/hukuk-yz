@@ -13,7 +13,7 @@ const refresh = vi.hoisted(() => vi.fn());
 const GET = vi.hoisted(() => vi.fn());
 const POST = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ GET, POST }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ GET, POST }) }));
 
 const ID = "3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10";
 const NEXT = "7a1d5c2e-1b34-4c8e-9f60-0d2b8e4a7c11";

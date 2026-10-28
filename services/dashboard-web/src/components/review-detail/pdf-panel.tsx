@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 
 import { PdfViewer } from "@/components/pdf-viewer/pdf-viewer";
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import { usePhone } from "@/lib/use-phone";
 
 export type PdfAvailability = components["schemas"]["ReviewDetail"]["pdf"];

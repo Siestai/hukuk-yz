@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { renderWithIntl } from "@/test/intl";
 import { FileTabs } from "./file-tabs";
 

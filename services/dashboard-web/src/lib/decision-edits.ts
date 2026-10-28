@@ -1,4 +1,4 @@
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import type { DecisionFields, RelatedArticle } from "@/lib/decision-fields";
 import { COURTS } from "@/lib/queue-params";
 

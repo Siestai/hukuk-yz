@@ -1,16 +1,12 @@
+import { fontVariables } from "@hukuk/ui/fonts";
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
-import { monoExt, monoLatin, sansExt, sansLatin, serifExt, serifLatin } from "../fonts/fonts";
-import { THEME_COLOR } from "@/lib/theme-color";
+import { THEME_COLOR } from "@hukuk/web-core/lib/theme-color";
 import "./globals.css";
-
-const fontVariables = [sansLatin, sansExt, monoLatin, monoExt, serifLatin, serifExt]
-    .map((font) => font.variable)
-    .join(" ");
 
 // Next sets width=device-width and initial-scale=1 itself. No maximum-scale: zooming stays possible.
 // `cover` lets the page reach under the notch and the home indicator; the mobile top bar, the

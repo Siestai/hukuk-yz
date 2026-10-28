@@ -23,9 +23,10 @@ type DialogProps = Omit<ComponentProps<"dialog">, "open" | "onClose" | "onCancel
     returnFocusTo?: RefObject<HTMLElement | null>;
     /**
      * `drawer` slides in from the left edge at full height (the mobile navigation); `viewer` fills
-     * the phone screen and is a large, tall window from `md` (a document to read).
+     * the phone screen and is a large, tall window from `md` (a document to read); `sheet` rises
+     * from the bottom edge and is a centered, narrower sheet from `md` (a source to read).
      */
-    variant?: "center" | "drawer" | "viewer";
+    variant?: "center" | "drawer" | "viewer" | "sheet";
     /** The accessible name of a close button beside the title; without it there is no button. */
     closeLabel?: string;
 };
@@ -34,6 +35,7 @@ const variantClass = {
     center: "m-auto w-inset max-w-lg max-h-inset rounded-md border",
     drawer: "m-0 mr-auto h-viewport max-h-none w-72 max-w-full rounded-none border-y-0 border-l-0 pt-safe-4 pb-safe-4 pl-safe-4 md:pt-safe-5 md:pb-safe-5 md:pl-safe-5",
     viewer: "m-0 h-viewport max-h-none w-full max-w-none rounded-none border-0 pt-safe-4 pb-safe-4 md:m-auto md:h-inset md:w-inset md:max-w-6xl md:rounded-md md:border md:p-5",
+    sheet: "m-0 mt-auto h-auto max-h-inset w-full max-w-none rounded-b-none rounded-t-md border-x-0 border-b-0 pb-safe-4 md:mx-auto md:max-w-2xl md:border-x",
 } as const;
 
 /**

@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import type { QueueParams } from "@/lib/queue-params";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import type { QueueState } from "@/lib/queue-state";

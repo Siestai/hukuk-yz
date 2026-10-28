@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { renderWithIntl } from "@/test/intl";
 import { AppShell } from "./app-shell";
 
@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ replace: vi.fn() }),
     usePathname: () => "/",
 }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ POST: vi.fn() }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ POST: vi.fn() }) }));
 
 const user = { display_name: "Baran Yılmaz", role: "reviewer" } as const;
 

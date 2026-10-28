@@ -4,7 +4,7 @@ import { Button, DialogActions, Label, Textarea } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useState, type FormEvent } from "react";
 
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { useReviewSession } from "./review-session";
 
 /**

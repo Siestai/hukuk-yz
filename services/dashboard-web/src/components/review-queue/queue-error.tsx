@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 
 /** The API refused the request (4xx): shows the translated message of its error code. */
 export function QueueError({

@@ -16,8 +16,8 @@ import { StatuteBulkApprove } from "@/components/statute-review/statute-bulk-app
 import { StatuteFilters } from "@/components/statute-review/statute-filters";
 import { StatuteResults } from "@/components/statute-review/statute-results";
 import { StatuteTabs } from "@/components/statute-review/statute-tabs";
-import { createServerApi } from "@/lib/api/server";
-import { settle } from "@/lib/api/settle";
+import { createServerApi } from "@hukuk/web-core/api/server";
+import { settle } from "@hukuk/web-core/api/settle";
 import { parseNotice } from "@/lib/queue-params";
 import {
     parseStatuteParams,

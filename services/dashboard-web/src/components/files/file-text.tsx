@@ -4,9 +4,9 @@ import { Button } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
 import { getFileText } from "@/lib/api/files-client";
-import { ApiFailure } from "@/lib/api/review-client";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 
 type State =
     { kind: "closed" } | { kind: "loading" } | { kind: "shown"; text: string } | { kind: "failed" };

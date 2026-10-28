@@ -100,6 +100,33 @@ jobs:
           asset=$(curl -fsS http://localhost:3000/giris | grep -o '/_next/static/[^"]*\.css' | head -1)
           test -n "$asset"
           curl -fsS -o /dev/null "http://localhost:3000$asset"
+      - run: docker build -f services/web/Dockerfile -t hukuk-web:ci .
+      - name: web runs as non-root
+        run: |
+          uid=$(docker run --rm hukuk-web:ci id -u)
+          echo "uid=$uid"
+          test "$uid" != "0"
+      - name: web image is under 400MB
+        run: |
+          size=$(docker image inspect hukuk-web:ci --format '{{.Size}}')
+          echo "size=$size bytes"
+          test "$size" -lt 400000000
+      - name: web starts and /healthz answers (no API needed)
+        run: |
+          docker run -d --name web-ci -p 3001:3000 \
+            -e APP_API_URL=http://app.invalid:8000 hukuk-web:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/healthz || true)
+            if [ "$code" = "200" ]; then echo "healthz: $code"; exit 0; fi
+            sleep 1
+          done
+          docker logs web-ci
+          exit 1
+      - name: web serves its static assets (standalone copy layout)
+        run: |
+          asset=$(curl -fsS http://localhost:3001/giris | grep -o '/_next/static/[^"]*\.css' | head -1)
+          test -n "$asset"
+          curl -fsS -o /dev/null "http://localhost:3001$asset"
 
   web:
     runs-on: ubuntu-latest
@@ -120,7 +147,7 @@ jobs:
       - name: OpenAPI schema and generated types are current
         run: |
           pnpm openapi
-          test -z "$(git status --porcelain -- services/dashboard-web/openapi.json services/dashboard-web/src/lib/api)"
+          test -z "$(git status --porcelain -- packages/web-core/openapi.json packages/web-core/src/api)"
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test

@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import type { QueueParams } from "@/lib/queue-params";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import { renderWithIntl } from "@/test/intl";
@@ -12,7 +12,7 @@ import type { BulkSample } from "./bulk-confirm-step";
 const refresh = vi.hoisted(() => vi.fn());
 const POST = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ POST }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ POST }) }));
 
 const { bulk } = messages.review;
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;

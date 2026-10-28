@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { FILE_ID, NEXT_FILE_ID, pendingFile } from "@/test/file-fixtures";
 import { renderWithIntl } from "@/test/intl";
 import type { FileOut } from "@/lib/files";
@@ -13,7 +13,7 @@ const refresh = vi.hoisted(() => vi.fn());
 const POST = vi.hoisted(() => vi.fn());
 const DELETE = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ POST, DELETE }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ POST, DELETE }) }));
 
 const approve = messages.files.detail.approve;
 const PREVIOUS_ID = "9b2e7d41-5c68-4f0a-8e13-6a7c1d2f3b44";

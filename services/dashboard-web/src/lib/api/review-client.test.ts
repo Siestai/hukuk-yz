@@ -1,14 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { createApiClient } from "./client";
-import {
-    ApiFailure,
-    locate,
-    neighbour,
-    nextAfter,
-    postReview,
-    postReviewIn,
-} from "./review-client";
+import type { createApiClient } from "@hukuk/web-core/api/client";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
+import { locate, neighbour, nextAfter, postReview, postReviewIn } from "./review-client";
 
 const queue = { band: "low", sort: "score_asc", page: 2 } as const;
 

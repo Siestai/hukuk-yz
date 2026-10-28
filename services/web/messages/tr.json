@@ -1,0 +1,153 @@
+{
+  "brand": {
+    "name": "Libria",
+    "logoLabel": "Libria logosu"
+  },
+  "login": {
+    "title": "Giriş yap",
+    "hint": "Hesabınızı yönetici açar."
+  },
+  "conversations": {
+    "title": "Konuşmalar",
+    "new": "Yeni soru",
+    "untitled": "Yeni soru",
+    "empty": "Henüz konuşma yok.",
+    "open": "Konuşmalar",
+    "close": "Konuşmaları kapat",
+    "logout": "Çıkış yap"
+  },
+  "chat": {
+    "empty": {
+      "title": "Ne öğrenmek istiyorsunuz?",
+      "hint": "İş ve sosyal güvenlik hukuku sorunuzu yazın. Cevabı değiştirecek bilgileri tek tek sorarım."
+    },
+    "composer": {
+      "label": "Sorunuz",
+      "placeholder": "Sorunuzu yazın",
+      "send": "Gönder"
+    },
+    "mode": {
+      "label": "Cevap görünümü",
+      "short": "Kısa",
+      "detailed": "Ayrıntılı",
+      "reasoned": "Gerekçeli"
+    },
+    "user": {
+      "skipped": "Soruları atladım.",
+      "unknown": "Bilmiyorum",
+      "answer": "{question} {answer}",
+      "redacted": "{count, number} kişi adı gizlendi"
+    },
+    "step": "{label}...",
+    "stream": {
+      "retry": "Tekrar dene",
+      "connectionLost": "Bağlantı koptu."
+    },
+    "facts": {
+      "title": "Anladığım olay",
+      "unknown": "Bilinmiyor",
+      "edit": "Düzenle",
+      "editValue": "{label} değerini düzelt",
+      "save": "Düzelt",
+      "cancel": "Vazgeç",
+      "correction": "{label} yanlış anlaşılmış, doğrusu: {value}"
+    },
+    "question": {
+      "progress": "Soru {index} / {total}",
+      "why": "Neden soruyorum: {why}",
+      "unknown": "Bilmiyorum",
+      "next": "Devam",
+      "skip": "Soruları atla, koşullu cevabı göster"
+    },
+    "answer": {
+      "status": {
+        "definite": "Net cevap",
+        "conditional": "Koşullu cevap"
+      },
+      "missing": "Tamamlanması gereken bilgiler",
+      "calculation": "Hesap: {title}",
+      "needs": "{needs} gerekli",
+      "reads": "Okunanlar",
+      "readsStatutes": "{count, number} madde",
+      "readsDecisions": "{count, number} karar",
+      "readsAdminActs": "{count, number} idari düzenleme",
+      "appliedLaw": "Uygulanan mevzuat:",
+      "edit": "Düzenle"
+    },
+    "holding": {
+      "title": "Koşullar olaya uyuyor mu?",
+      "condition": "Kanundaki koşul",
+      "inCase": "Olayda",
+      "result": "Sonuç",
+      "unknownValue": "Bilinmiyor",
+      "results": {
+        "met": "Sağlandı",
+        "not_met": "Sağlanmadı",
+        "not_applicable": "Uygulanmaz",
+        "unknown": "Bilinmiyor"
+      },
+      "symbols": {
+        "met": "✓",
+        "not_met": "✗",
+        "not_applicable": "–",
+        "unknown": "?"
+      }
+    },
+    "citation": {
+      "open": "Dayanağı aç: {label}",
+      "verified": "teyitli",
+      "unverified": "teyitsiz",
+      "analyzed": "onaylanmadı"
+    },
+    "viewer": {
+      "title": "Dayanak",
+      "panel": "Dayanak paneli",
+      "empty": "Bir dayanağa dokunun, metni burada açılır.",
+      "close": "Dayanağı kapat",
+      "approved": "Onaylı metin",
+      "analyzed": "Onaylanmadı",
+      "verified": "Teyitli",
+      "unverified": "Teyitsiz",
+      "validity": "Yürürlük: {from} - {to}",
+      "validityOpen": "Yürürlük: {from} tarihinden beri",
+      "usedFor": "Cevaptaki kullanım: {text}",
+      "loading": "Metin yükleniyor",
+      "unavailable": "Bu dayanağın metni şu an gösterilemiyor.",
+      "quoteOnly": "Kaynağın yalnız cevapta kullanılan kısmı gösteriliyor."
+    },
+    "feedback": {
+      "label": "Geri bildirim",
+      "up": "Faydalı",
+      "down": "Hatalı",
+      "thumbUp": "👍",
+      "thumbDown": "👎",
+      "report": "Hata bildir",
+      "sent": "Geri bildiriminiz alındı.",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "dialog": {
+        "title": "Hata bildir",
+        "point": "Hangi madde?",
+        "pointAll": "Cevabın tamamı",
+        "pointItem": "{index, number}. madde: {text}",
+        "kind": "Hata türü",
+        "comment": "Yorum (isteğe bağlı)",
+        "correction": "Doğrusu (isteğe bağlı)",
+        "submit": "Gönder",
+        "cancel": "Vazgeç"
+      },
+      "kinds": {
+        "wrong_source": "Yanlış dayanak",
+        "wrong_conclusion": "Yanlış sonuç",
+        "missing": "Eksik bilgi",
+        "unclear": "Anlaşılmıyor",
+        "other": "Diğer"
+      },
+      "copyText": {
+        "basis": "Dayanak",
+        "conditional": "Koşullu cevap",
+        "missing": "Tamamlanması gereken bilgiler"
+      }
+    }
+  }
+}

@@ -10,3 +10,6 @@ services:
   dashboard-web:
     ports:
       - "127.0.0.1:${DASHBOARD_HOST_PORT:-3000}:3000"
+  web:
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3002}:3000"

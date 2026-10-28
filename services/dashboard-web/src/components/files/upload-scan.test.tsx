@@ -1,13 +1,13 @@
 import { act, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { FILE_ID } from "@/test/file-fixtures";
 import { renderWithIntl } from "@/test/intl";
 import { UploadScan } from "./upload-scan";
 
 const GET = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ GET }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ GET }) }));
 
 const { upload } = messages.files;
 const state = (scan_status: string, review_status = "pending") => ({

@@ -1,4 +1,4 @@
-import { apiError } from "@/lib/api/errors";
+import { apiError } from "@hukuk/web-core/api/errors";
 import type { FileOut } from "@/lib/files";
 
 export type UploadFields = {

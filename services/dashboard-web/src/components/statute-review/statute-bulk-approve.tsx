@@ -1,8 +1,8 @@
 import { getTranslations } from "next-intl/server";
 
 import { BulkApproveButton } from "@/components/review-queue/bulk-approve-button";
-import type { components } from "@/lib/api/schema";
-import type { Settled } from "@/lib/api/settle";
+import type { components } from "@hukuk/web-core/api/schema";
+import type { Settled } from "@hukuk/web-core/api/settle";
 import { isNumberedArticle } from "@/lib/statute-article";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 

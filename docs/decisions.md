@@ -78,6 +78,7 @@
 - **Betada onaysız kaynak** (Orhan): `analyzed` durumdaki kaynaklar aranır ve "onaylanmadı" etiketiyle gösterilir; `rejected` hiçbir zaman. Açık yayından önce ayarla kapatılır (`KB_SEARCH_INCLUDE_UNREVIEWED`).
 - **Embedding: OpenAI** (Orhan): `text-embedding-3-large`, 1024 boyut (mevcut şema).
 - **Ajan çerçevesi** (Orhan onayı, Themis önerisi): LangGraph iskelet + düğümlerde Pydantic AI tipli çağrılar; sabit iş akışı, dar LLM düğümleri; "okunanlar" kodla üretilir; atıf kapısı kodla. `deepagents` ana yoldan çıkar (2026-10-03 kaydını değiştirir). Görevler: 14 arama, 15 sözleşme + eval, 16 web, 17 ajan, 18 bağlama.
+- **Ortak web kodu `packages/web-core`** (Themis, Görev 16): iki arayüz (dashboard-web, `services/web`) için ortak API istemcisi ve üretilmiş OpenAPI tipleri, oturum/proxy, güvenlik başlıkları, hata kodu çevirisi, giriş formu ve test kurulumu `packages/web-core`'a taşındı; yeni `services/web` (chat) onu kullanır. Kopya yok.
 
 ## Açık öneriler (karar bekliyor)
 

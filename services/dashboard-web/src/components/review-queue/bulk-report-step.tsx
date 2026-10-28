@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import type { BulkEnd, BulkState } from "@/lib/bulk-approve";
 import { stateDetailHref, type QueueState } from "@/lib/queue-state";
 import { useEnumLabels } from "@/lib/use-enum-labels";
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { BulkCounters } from "./bulk-counters";
 import { BulkStepHeading } from "./bulk-step-heading";
 

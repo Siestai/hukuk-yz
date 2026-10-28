@@ -2,8 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { formats } from "../../../i18n/formats";
-import messages from "../../../../messages/tr.json";
+import { formats } from "@hukuk/web-core/i18n/formats";
+import { messages } from "@/i18n/messages";
 import { listItem } from "@/test/statute-fixtures";
 import StatuteQueuePage from "./page";
 
@@ -13,7 +13,7 @@ const redirect = vi.hoisted(() =>
         throw new Error(`NEXT_REDIRECT ${path}`);
     }),
 );
-vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
+vi.mock("@hukuk/web-core/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
 vi.mock("@/components/statute-review/statute-results", () => ({
     StatuteResults: () => <p>statute results</p>,
 }));

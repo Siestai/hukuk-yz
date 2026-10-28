@@ -1,6 +1,6 @@
 # Görev 16: Chat web arayüzü v1 (`services/web`, Alternatif B)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: uygulandı, PR Orhan'ın onayında. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/decisions.md` 2026-10-27 (Alternatif B, kapalı beta), `docs/design/chat-ui/alt-B.png` (mobil), `alt-D.png` (masaüstü üç sütun), `docs/tasks/15-chat-contract-eval.md` (sözleşme, fixture backend), `services/dashboard-web` (auth, i18n, token, responsive kalıpları), `packages/ui`.
 Skill'ler: `task-pr-hygiene`, `frontend-ui` (bağlayıcı).
 

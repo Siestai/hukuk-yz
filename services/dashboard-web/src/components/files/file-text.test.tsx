@@ -2,13 +2,13 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { FILE_ID } from "@/test/file-fixtures";
 import { renderWithIntl } from "@/test/intl";
 import { FileText } from "./file-text";
 
 const GET = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ GET }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ GET }) }));
 
 const { text } = messages.files.detail;
 

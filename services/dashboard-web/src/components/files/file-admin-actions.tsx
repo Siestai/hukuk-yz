@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
 import { postFileAction } from "@/lib/api/files-client";
-import { ApiFailure } from "@/lib/api/review-client";
-import { useErrorMessage } from "@/lib/use-error-message";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 
 /** Archive or restore a file, queue it for another scan, take back its approval (admin). */
 export function FileAdminActions({

@@ -7,9 +7,9 @@ import { FileTabs } from "@/components/files/file-tabs";
 import { UploadPanel } from "@/components/files/upload-panel";
 import { QueueSkeleton } from "@/components/review-queue/queue-skeleton";
 import { getPendingFiles } from "@/lib/api/files";
-import { getMe } from "@/lib/api/me";
-import { createServerApi } from "@/lib/api/server";
-import { settle } from "@/lib/api/settle";
+import { getMe } from "@hukuk/web-core/api/me";
+import { createServerApi } from "@hukuk/web-core/api/server";
+import { settle } from "@hukuk/web-core/api/settle";
 import { fileApiQuery, parseFileParams, serializeFileParams } from "@/lib/files";
 
 export default async function FilesPage({

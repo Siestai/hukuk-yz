@@ -1,0 +1,52 @@
+{
+  "loginForm": {
+    "email": "E-posta",
+    "password": "Parola",
+    "submit": "Giriş yap",
+    "submitting": "Giriş yapılıyor",
+    "required": "E-posta ve parolayı girin."
+  },
+  "errors": {
+    "unauthorized": "E-posta veya parola hatalı.",
+    "too_many_attempts": "Çok fazla hatalı deneme. {minutes, plural, other {# dakika}} sonra tekrar deneyin.",
+    "validation_error": "Girilen bilgiler geçersiz. Alanları kontrol edin.",
+    "upstream_unavailable": "Sunucuya ulaşılamıyor. Biraz sonra tekrar deneyin.",
+    "invalid_response": "Sunucudan beklenmeyen bir yanıt geldi. Dosyanın yüklenip yüklenmediğini listeden kontrol edin.",
+    "generic": "Beklenmeyen bir hata oluştu. Daha sonra tekrar deneyin.",
+    "payload_too_large": "Gönderilen veri çok büyük.",
+    "review_conflict": "Bu kaydı az önce başka biri işledi.",
+    "decision_conflict": "Bu değerlerle bir karar zaten yayınlanmış.",
+    "extraction_not_found": "Kayıt bulunamadı.",
+    "forbidden": "Bu işlem için yetkiniz yok.",
+    "bulk_count_changed": "Kuyruktaki kayıt sayısı değişti.",
+    "bulk_band_not_allowed": "Toplu onay yalnız yüksek güven bandında yapılır.",
+    "bulk_no_progress": "Sunucu ilerlemedi; toplu onay durduruldu.",
+    "file_not_found": "Dosya bulunamadı.",
+    "invalid_file": "Dosya geçersiz ya da boş.",
+    "duplicate_file": "Bu dosya zaten yüklü.",
+    "file_too_large": "Dosya izin verilen boyuttan büyük. En fazla 50 MB yüklenebilir.",
+    "unsupported_file_type": "Bu dosya türü desteklenmiyor ya da içeriği uzantısıyla uyuşmuyor. Kabul edilenler: PDF, Word, UDF, Excel, PNG, JPG ve TXT.",
+    "file_store_unavailable": "Dosya depolama şu an kullanılamıyor.",
+    "file_version_conflict": "Bu dosyanın daha yeni bir sürümü var ya da arşivde; yeni sürüm eklenemez.",
+    "scan_in_progress": "Dosya şu anda taranıyor; bitince yeniden deneyin.",
+    "invalid_date": "Tarih geçersiz.",
+    "file_not_pending": "Bu dosya az önce başka biri tarafından onaylandı. Sayfa yenilendi.",
+    "file_not_approved": "Bu dosyanın onayı zaten kaldırılmış.",
+    "file_approved": "Onaylı dosya silinemez. Önce onayı kaldırın.",
+    "file_has_newer_version": "Bu dosyanın daha yeni bir sürümü var; önce o sürümle ilgilenin.",
+    "file_processed": "Bu dosya bilgi tabanına işlenmiş; silinemez.",
+    "not_found": "Kayıt bulunamadı.",
+    "chat_unavailable": "Sohbet şu an kullanılamıyor. Biraz sonra tekrar deneyin.",
+    "chat_no_fixture": "Bu soru deneme sürümünde hazır değil. Hazır sorulardan birini sorun.",
+    "clarification_not_pending": "Bu soru artık cevap beklemiyor. Yeni bir soru sorun."
+  },
+  "errorPage": {
+    "title": "Bir sorun oluştu",
+    "retry": "Tekrar dene",
+    "notFound": {
+      "title": "Sayfa bulunamadı",
+      "message": "Aradığınız sayfa yok ya da taşınmış olabilir.",
+      "home": "Ana sayfaya dön"
+    }
+  }
+}
