@@ -52,7 +52,15 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     embedding_model: str = "text-embedding-3-large"
 
-    @field_validator("archive_root", "file_store_root")
+    # The chat backend (task 15): "fixture" answers from the hand-made cases of `eval/fixtures`
+    # (kept in memory, no model); "none" answers /chat/* with 503. The real agent comes in task 17.
+    chat_backend: Literal["fixture", "none"] = "none"
+    # Where the fixture backend reads its cases from; unset: `eval/fixtures` of the checkout.
+    chat_fixtures_dir: Path | None = None
+    # Pause between the stream events of the fixture backend, so that a UI shows its live steps.
+    chat_fixture_step_delay_seconds: float = 0.0
+
+    @field_validator("archive_root", "file_store_root", "chat_fixtures_dir")
     @classmethod
     def _absolute_root(cls, value: Path | None, info: ValidationInfo) -> Path | None:
         if value is not None and not value.is_absolute():

@@ -1,0 +1,31 @@
+id: SB-026
+question: "Mahkeme kararıyla geriye dönük hizmet veriliyor mu verilemiyor mu"
+facts:
+  hizmet_yillari: "2022"
+  bildirim_durumu: hic_bildirim
+expected:
+  status: definite
+  headline_contains:
+    - geriye dönük hizmet
+    - verilmektedir
+  must_cite:
+    - 5510 m.86/9
+    - 5510 m.86/8
+    - 10. HD E.2026/513 K.2026/4936
+    - SSİY m.18/1-c
+    - 2020/20 Genelge İkinci Kısım İkinci Bölüm 1.3
+  must_ask:
+    - hizmet_yillari
+    - bildirim_durumu
+  must_not:
+    - dönem sınırı yok
+    - açık nokta
+    - İkinci Kısım Birinci Bölüm 1.3
+  traps:
+    - m.86/8 (denetimde en fazla bir yıl) ile m.86/9 (ilam, beş yıl) karıştırılmaz; fıkra sayımına mülga altıncı fıkra dahildir.
+    - Bir yıllık sınır yoktur ancak her hizmet yılı için beş yıllık dava süresi vardır; "dönem sınırı yok" tek başına yanıltıcıdır.
+    - Beş yılın hak düşürücü olması m.86/9 metninde değil Yargıtay 10. HD gerekçesindedir; SGK yazısı "zamanaşımı" der. Kaynak belirtilir.
+    - İşe iade kararı hizmet tespiti kararı değildir; yalnız en çok dört aylık süre prime ve hizmete dahil edilir.
+    - Genelge künyesi İkinci Kısım İkinci Bölüm 1.3'tür; Birinci Bölüm yazmak yanlıştır.
+    - Kanun hükmü okunmadan "uygulanmıyor" veya "açık nokta" gibi dayanaksız kanaat cümlesi kurulmaz.
+tags: [sgk, hizmet-tespiti, sure]

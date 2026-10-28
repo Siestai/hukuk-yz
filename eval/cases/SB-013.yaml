@@ -1,0 +1,27 @@
+id: SB-013
+question: "ben sana en iyisi yatmadan bir soru daha sorayım. Çalışma saatlerini yarım saat öne almak ya da yarım saat ileri almak için çalışanın izni gereklimi?"
+expected:
+  status: conditional
+  headline_contains:
+    - çalışma saat
+  must_cite:
+    - 4857 m.22/1
+    - 4857 m.22/2
+    - 4857 m.63/1
+    - Çalışma Süreleri Yönetmeliği m.8
+    - 22. HD E.2017/20988 K.2019/6513
+    - 9. HD E.2023/3247 K.2023/3581
+  must_ask:
+    - calisma_saati_kaynagi
+    - kaymanin_kapsami
+    - somut_etki
+    - sure_sinirlari
+  must_not:
+    - yarım saat önemsizdir
+  traps:
+    - Başlama ve bitiş saatleri çalışma koşuludur; esaslı değişiklik yazılı bildirim ve altı işgünü içinde yazılı kabul olmadan işçiyi bağlamaz.
+    - Her saat kayması esaslı değişiklik değildir; yönetim hakkı kapsamındaki, geçerli nedene dayanan değişiklikler sayılmaz. Kaynaklarda yarım saat için eşik yoktur.
+    - Süregelen uygulama çalışma koşulu olabilir (m.22/1 işyeri uygulamasını sayar).
+    - Günlük 11 saat ve haftalık 45 saat sınırları ile dinlenme süreleri korunmalıdır.
+    - Servis güzergâhı değişikliği işçi aleyhine esaslı değişiklik sayılmıştır (9. HD E.2023/3247 K.2023/3581).
+tags: [is-hukuku, calisma-suresi, esasli-degisiklik]

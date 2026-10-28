@@ -53,6 +53,10 @@ class ErrorCode(StrEnum):
     )
     file_processed = "file_processed"  # deleting a file the knowledge base has been built from
     invalid_date = "invalid_date"  # params: field
+    chat_unavailable = "chat_unavailable"  # no chat backend is configured (CHAT_BACKEND)
+    # the fixture backend knows only the hand-made questions of eval/fixtures
+    chat_no_fixture = "chat_no_fixture"
+    clarification_not_pending = "clarification_not_pending"  # answers or skip with no open question
     http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
     internal_error = "internal_error"
 
@@ -77,7 +81,7 @@ class UserOut(BaseModel):
     id: uuid.UUID
     email: str
     display_name: str
-    role: Literal["admin", "reviewer"]
+    role: Literal["admin", "reviewer", "user"]
 
 
 Band = Literal["high", "medium", "low"]

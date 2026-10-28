@@ -1,0 +1,517 @@
+{
+  "status": "conditional",
+  "status_note": "Sonuç, aşağıda istenen bilgilere bağlıdır.",
+  "headline": "Kural olarak işe iade davası açılamamaktadır.",
+  "fact_chips": [
+    {
+      "fact_key": "kidem",
+      "label": "Kıdem 5 ay",
+      "status": "known"
+    },
+    {
+      "fact_key": "isci_sayisi",
+      "label": "İşçi sayısı",
+      "status": "unknown"
+    },
+    {
+      "fact_key": "sozlesme_turu",
+      "label": "Sözleşme türü",
+      "status": "unknown"
+    },
+    {
+      "fact_key": "bildirim_tarihi",
+      "label": "Bildirim tarihi",
+      "status": "unknown"
+    },
+    {
+      "fact_key": "yer_alti",
+      "label": "Yer altı işi",
+      "status": "unknown"
+    },
+    {
+      "fact_key": "onceki_donem",
+      "label": "Önceki çalışma",
+      "status": "unknown"
+    }
+  ],
+  "points": [
+    {
+      "text": "İş güvencesi için en az altı aylık kıdem aranmaktadır; 5 aylık kıdem bu eşiğin altında kalmaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1",
+          "ref": "4857 m.18/1",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren",
+          "used_for": "Altı aylık kıdem şartı"
+        }
+      ]
+    },
+    {
+      "text": "Altı ay, fesih bildiriminin işçiye ulaştığı tarihte dolmuş olmalıdır; sürenin bildirim önelleri sonunda dolacak olması yeterli olmamaktadır.",
+      "citations": [
+        {
+          "source_id": "decision:yargitay-9hd-2016-28920-2017-17860",
+          "category": "decision",
+          "label": "Yargıtay 9. HD, E.2016/28920 K.2017/17860",
+          "ref": "9. HD E.2016/28920 K.2017/17860",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Kıdem, fesih bildiriminin ulaştığı tarihte dolmuş olmalıdır"
+        },
+        {
+          "source_id": "decision:yargitay-7hd-2014-12921-2014-18766",
+          "category": "decision",
+          "label": "Yargıtay 7. HD, E.2014/12921 K.2014/18766",
+          "ref": "7. HD E.2014/12921 K.2014/18766",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Kıdem hesabı ve sözleşmeyle kısaltma"
+        }
+      ]
+    },
+    {
+      "text": "Deneme süresi ve askıda geçen süreler kıdeme dahildir; aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilmektedir.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/2",
+          "ref": "4857 m.18/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "m.66'daki süreler kıdeme sayılır"
+        },
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/4",
+          "ref": "4857 m.18/4",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+          "used_for": "Önceki sürelerin birleştirilmesi"
+        }
+      ]
+    },
+    {
+      "text": "Yer altı işlerinde çalışan işçiler için kıdem şartı aranmamaktadır; ayrıca bireysel veya toplu iş sözleşmesiyle altı aylık süre kısaltılmış ya da kaldırılmış olabilmektedir.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1 son cümle",
+          "ref": "4857 m.18/1 son cümle",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+          "used_for": "Yer altı işi istisnası"
+        },
+        {
+          "source_id": "decision:yargitay-7hd-2014-12921-2014-18766",
+          "category": "decision",
+          "label": "Yargıtay 7. HD, E.2014/12921 K.2014/18766",
+          "ref": "7. HD E.2014/12921 K.2014/18766",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Kıdem hesabı ve sözleşmeyle kısaltma"
+        }
+      ]
+    },
+    {
+      "text": "Altı aydan az çalışmış işçi için bildirim süresi iki haftadır; bildirim şartına uymayan taraf bildirim süresine ilişkin ücret tutarında tazminat ödemektedir.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m17",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.17/2-a",
+          "ref": "4857 m.17/2-a",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Altı aydan az kıdemde bildirim süresi iki haftadır"
+        },
+        {
+          "source_id": "statute:4857:m17",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.17/4",
+          "ref": "4857 m.17/4",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Bildirim şartına uymayan tarafın tazminatı"
+        }
+      ]
+    },
+    {
+      "text": "Kıdem tazminatı her geçen tam yıl için hesaplandığından 5 aylık çalışmada doğmamaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:1475:m14",
+          "category": "statute",
+          "label": "1475 sayılı İş Kanunu m.14/1",
+          "ref": "1475 m.14/1",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "her geçen tam yıl için",
+          "used_for": "Kıdem tazminatı tam yıl için hesaplanır"
+        }
+      ]
+    },
+    {
+      "text": "m.18 kapsamı dışında kalan işçinin sözleşmesi fesih hakkının kötüye kullanılarak sona erdirilmişse bildirim süresinin üç katı tutarında tazminat ödenmektedir.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m17",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.17/6",
+          "ref": "4857 m.17/6",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Fesih hakkının kötüye kullanılması"
+        }
+      ]
+    },
+    {
+      "text": "9. HD E.2016/28920 K.2017/17860 gerekçesi dürüstlük kuralını anmaktadır; ancak aynı kararda altı aydan az kıdemli işçi için yerel mahkemenin kabul kararı bozulmuş ve dava reddedilmiştir. Bu nedenle dürüstlük kuralına dayanılarak korunma sonucuna varılmamaktadır.",
+      "citations": [
+        {
+          "source_id": "decision:yargitay-9hd-2016-28920-2017-17860",
+          "category": "decision",
+          "label": "Yargıtay 9. HD, E.2016/28920 K.2017/17860",
+          "ref": "9. HD E.2016/28920 K.2017/17860",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Kıdem, fesih bildiriminin ulaştığı tarihte dolmuş olmalıdır"
+        }
+      ]
+    }
+  ],
+  "short_point_count": 3,
+  "missing_info": [
+    {
+      "fact_key": "yer_alti",
+      "condition": "İşçi yer altı işlerinde çalışıyorsa",
+      "result": "Kıdem şartı aranmamaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1 son cümle",
+          "ref": "4857 m.18/1 son cümle",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+          "used_for": "Yer altı işi istisnası"
+        }
+      ]
+    },
+    {
+      "fact_key": "onceki_donem",
+      "condition": "Aynı işverende önceki süreler eklendiğinde kıdem altı ayı aşıyorsa",
+      "result": "Kıdem şartı sağlanmaktadır; işçi sayısı da birleştirilen işyerlerinin toplamıyla belirlenmektedir.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/2",
+          "ref": "4857 m.18/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "m.66'daki süreler kıdeme sayılır"
+        },
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/4",
+          "ref": "4857 m.18/4",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+          "used_for": "Önceki sürelerin birleştirilmesi"
+        }
+      ]
+    },
+    {
+      "fact_key": "bildirim_tarihi",
+      "condition": "Altı ay, fesih bildiriminin işçiye ulaştığı tarihte dolmuşsa",
+      "result": "Kıdem şartı sağlanmaktadır.",
+      "citations": [
+        {
+          "source_id": "decision:yargitay-9hd-2016-28920-2017-17860",
+          "category": "decision",
+          "label": "Yargıtay 9. HD, E.2016/28920 K.2017/17860",
+          "ref": "9. HD E.2016/28920 K.2017/17860",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Kıdem, fesih bildiriminin ulaştığı tarihte dolmuş olmalıdır"
+        }
+      ]
+    },
+    {
+      "fact_key": "sozlesme_turu",
+      "condition": "Kıdem şartı sağlansa bile sözleşme belirli süreli ise",
+      "result": "İş güvencesi hükümleri uygulanmamaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1",
+          "ref": "4857 m.18/1",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren",
+          "used_for": "Altı aylık kıdem şartı"
+        }
+      ]
+    },
+    {
+      "fact_key": "isci_sayisi",
+      "condition": "Kıdem şartı sağlansa bile işyerinde otuzdan az işçi çalışıyorsa",
+      "result": "İş güvencesi hükümleri uygulanmamaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1",
+          "ref": "4857 m.18/1",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren",
+          "used_for": "Altı aylık kıdem şartı"
+        }
+      ]
+    },
+    {
+      "condition": "Altı aylık süre toplu veya bireysel iş sözleşmesiyle kısaltılmış ya da kaldırılmışsa",
+      "result": "5 aylık kıdem yeterli olabilmektedir.",
+      "citations": [
+        {
+          "source_id": "decision:yargitay-7hd-2014-12921-2014-18766",
+          "category": "decision",
+          "label": "Yargıtay 7. HD, E.2014/12921 K.2014/18766",
+          "ref": "7. HD E.2014/12921 K.2014/18766",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Kıdem hesabı ve sözleşmeyle kısaltma"
+        }
+      ]
+    }
+  ],
+  "holding_map": {
+    "rows": [
+      {
+        "condition": "Otuz veya daha fazla işçi çalıştıran işyeri",
+        "condition_quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde",
+        "citation": {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1",
+          "ref": "4857 m.18/1",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde",
+          "used_for": "Altı aylık kıdem şartı"
+        },
+        "result": "unknown"
+      },
+      {
+        "condition": "Belirsiz süreli iş sözleşmesi",
+        "condition_quote": "belirsiz süreli iş sözleşmesini",
+        "citation": {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1",
+          "ref": "4857 m.18/1",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "belirsiz süreli iş sözleşmesini",
+          "used_for": "Altı aylık kıdem şartı"
+        },
+        "result": "unknown"
+      },
+      {
+        "condition": "En az altı ay kıdem, bildirimin ulaştığı gün",
+        "condition_quote": "en az altı aylık kıdemi olan işçinin",
+        "citation": {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1",
+          "ref": "4857 m.18/1",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "en az altı aylık kıdemi olan işçinin",
+          "used_for": "Altı aylık kıdem şartı"
+        },
+        "fact_value": "5 ay",
+        "result": "not_met"
+      },
+      {
+        "condition": "Yer altı işi istisnası",
+        "condition_quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+        "citation": {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/1 son cümle",
+          "ref": "4857 m.18/1 son cümle",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+          "used_for": "Yer altı işi istisnası"
+        },
+        "result": "unknown"
+      },
+      {
+        "condition": "Önceki sürelerin birleştirilmesi",
+        "condition_quote": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+        "citation": {
+          "source_id": "statute:4857:m18",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.18/4",
+          "ref": "4857 m.18/4",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+          "used_for": "Önceki sürelerin birleştirilmesi"
+        },
+        "result": "unknown"
+      }
+    ],
+    "reasoning_summary": "Kıdem koşulu sağlanmadığı sürece işçi m.18-21 hükümlerindeki güvenceden yararlanamamaktadır. İşçi sayısı, sözleşme türü, önceki dönemler, yer altı işi ve sözleşmeyle kısaltma bilinmeden kesin sonuç verilmemektedir.",
+    "citations": [
+      {
+        "source_id": "statute:4857:m18",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.18/1",
+        "ref": "4857 m.18/1",
+        "review_status": "approved",
+        "verification": "verified",
+        "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren",
+        "used_for": "Altı aylık kıdem şartı"
+      }
+    ]
+  },
+  "calculations": [
+    {
+      "title": "İhbar tazminatı",
+      "needs": [
+        "Brüt ücret"
+      ]
+    }
+  ],
+  "read_sources": {
+    "statute_articles": 11,
+    "decisions": 2,
+    "admin_acts": 0,
+    "items": [
+      {
+        "source_id": "statute:4857:m15",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.15",
+        "ref": "4857 m.15",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m17",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.17",
+        "ref": "4857 m.17",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m18",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.18",
+        "ref": "4857 m.18",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m19",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.19",
+        "ref": "4857 m.19",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m20",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.20",
+        "ref": "4857 m.20",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m21",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.21",
+        "ref": "4857 m.21",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m62",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.62",
+        "ref": "4857 m.62",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m63",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.63",
+        "ref": "4857 m.63",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m66",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.66",
+        "ref": "4857 m.66",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:7036:m3",
+        "category": "statute",
+        "label": "7036 sayılı İş Mahkemeleri Kanunu m.3",
+        "ref": "7036 m.3",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:1475:m14",
+        "category": "statute",
+        "label": "1475 sayılı İş Kanunu m.14",
+        "ref": "1475 m.14",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "decision:yargitay-9hd-2016-28920-2017-17860",
+        "category": "decision",
+        "label": "Yargıtay 9. HD, E.2016/28920 K.2017/17860",
+        "ref": "9. HD E.2016/28920 K.2017/17860",
+        "review_status": "analyzed",
+        "verification": "unverified"
+      },
+      {
+        "source_id": "decision:yargitay-7hd-2014-12921-2014-18766",
+        "category": "decision",
+        "label": "Yargıtay 7. HD, E.2014/12921 K.2014/18766",
+        "ref": "7. HD E.2014/12921 K.2014/18766",
+        "review_status": "analyzed",
+        "verification": "unverified"
+      }
+    ]
+  },
+  "applied_law_date": "2026-10-27",
+  "applied_law_text": "27.10.2026 tarihinde yürürlükte olan metin",
+  "disclaimer": "Hukuki görüş değildir."
+}

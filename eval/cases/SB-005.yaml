@@ -1,0 +1,28 @@
+id: SB-005
+question: "Bağıtlanmış toplu iş sözleşmesinde ödenmeyen ikramiye, yakacak yardımına ilişkin, işçi açısından yapılması gerekenler nelerdir ?"
+expected:
+  status: conditional
+  headline_contains:
+    - toplu iş sözleşmesi
+  must_cite:
+    - 6356 m.36/1
+    - 6356 m.36/2
+    - 6356 m.39/1
+    - 7036 m.3/1
+    - 4857 m.24/II-e
+    - 9. HD E.2008/26536 K.2008/25713
+  must_ask:
+    - tis_maddesi
+    - sendika_uyeligi
+    - tis_yururluk
+    - odenmeyen_donem
+  must_not:
+    - 22. HD E.2012/12745 K.2013/2608
+  traps:
+    - Cevap TİS'in kendi metnine bağlıdır; TİS metni olmadan kesin tutar ve zamanaşımı söylenmez.
+    - Yararlanma taraf sendika üyeliğine bağlıdır (m.39); dayanışma aidatı geriye işlemez.
+    - Süresi biten TİS'in normatif hükümleri devam eder; faiz türü değişir (yasal faiz).
+    - 22. HD E.2012/12745 K.2013/2608 yalnız TİS veya sözleşme dayanağı olmayan işyeri uygulaması içindir, TİS ikramiyesi için kullanılmaz.
+    - Arabuluculuk son tutanağı olmadan dava dilekçesi usulden reddedilir (7036 m.3/2).
+    - Yakacak yardımının ayni mi nakdi mi, ücret eki mi olduğu TİS metnine göre belirlenir.
+tags: [tis, sendika, alacak]

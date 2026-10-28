@@ -1,0 +1,30 @@
+id: SB-001
+question: "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerekçesi ile birlikte açıkla"
+expected:
+  status: conditional
+  headline_contains:
+    - işe iade
+    - açılamamaktadır
+  must_cite:
+    - 4857 m.18/1
+    - 4857 m.18/4
+    - 4857 m.17/2-a
+    - 1475 m.14/1
+    - 9. HD E.2016/28920 K.2017/17860
+    - 7. HD E.2014/12921 K.2014/18766
+  must_ask:
+    - isci_sayisi
+    - sozlesme_turu
+    - bildirim_tarihi
+    - onceki_donem
+    - yer_alti
+  must_not:
+    - dürüstlük kuralıyla korunur
+    - m.18/5 (deneme süresi
+  traps:
+    - Altı ay, fesih bildiriminin işçiye ulaştığı tarihte dolmuş olmalıdır; bildirim önelleri sonunda dolacak olması yetmez.
+    - Kıdem şartı ile işçi sayısı şartı ayrıdır; yer altı işi, toplu veya bireysel sözleşmeyle kısaltma ve süre birleştirme önce sorulur.
+    - m.18/5 işveren vekillerine ilişkindir; deneme süresinin kıdeme dahil olması Yargıtay içtihadıdır, m.18/2 yalnız m.66 sürelerini sayar.
+    - 9. HD E.2016/28920 K.2017/17860 dürüstlük kuralını anar ancak o olayda uygulamamıştır; kesin cümle kurulmaz.
+    - Altı ayın hangi gün dolduğu kaynakta yazılı değildir; sınır günleri kesin söylenmez.
+tags: [is-hukuku, is-guvencesi, kidem]

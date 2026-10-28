@@ -1,0 +1,120 @@
+{
+  "case_id": "SB-026",
+  "questions": [
+    "Mahkeme kararıyla geriye dönük hizmet veriliyor mu verilemiyor mu"
+  ],
+  "facts": {
+    "title": "Geriye dönük hizmet tespiti",
+    "facts": [
+      {
+        "key": "tespit_yolu",
+        "label": "Hizmetin tespit yolu",
+        "value": "Mahkeme ilamı",
+        "status": "known"
+      },
+      {
+        "key": "hizmet_yillari",
+        "label": "Hizmet yılları",
+        "status": "unknown"
+      },
+      {
+        "key": "bildirim_durumu",
+        "label": "Bildirim durumu",
+        "status": "unknown"
+      }
+    ]
+  },
+  "clarification": {
+    "index": 1,
+    "total": 2,
+    "questions": [
+      {
+        "id": "q1",
+        "fact_key": "hizmet_yillari",
+        "text": "Hizmet hangi yıllarda geçti?",
+        "why": "Beş yıllık dava süresi her hizmet yılı için o yılın sonundan başlamaktadır (5510 m.86/9).",
+        "source_refs": [
+          {
+            "source_id": "statute:5510:m86",
+            "category": "statute",
+            "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+            "ref": "5510 m.86/9",
+            "review_status": "approved",
+            "verification": "verified",
+            "quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak, alacakları ilâm ile ispatlayabilirlerse",
+            "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+          }
+        ],
+        "input": {
+          "kind": "text",
+          "options": [],
+          "allow_unknown": true
+        }
+      },
+      {
+        "id": "q2",
+        "fact_key": "bildirim_durumu",
+        "text": "İşveren hiç bildirim yaptı mı, çalışma kesintisiz mi sürdü?",
+        "why": "Bildirim sonrasında kesintisiz süren çalışmada hak düşürücü süre, çalışmanın bittiği yılın sonundan başlamaktadır (10. HD E.2026/513 K.2026/4936).",
+        "source_refs": [
+          {
+            "source_id": "decision:yargitay-10hd-2026-513-2026-4936",
+            "category": "decision",
+            "label": "Yargıtay 10. HD, E.2026/513 K.2026/4936",
+            "ref": "10. HD E.2026/513 K.2026/4936",
+            "review_status": "analyzed",
+            "verification": "unverified",
+            "used_for": "Beş yıllık süre hak düşürücüdür; kesintisiz çalışmada başlangıç"
+          }
+        ],
+        "input": {
+          "kind": "choice",
+          "allow_unknown": true,
+          "options": [
+            {
+              "value": "hic_bildirim",
+              "label": "İşveren hiç bildirim yapmadı"
+            },
+            {
+              "value": "kesintisiz",
+              "label": "Bildirim yapıldı, çalışma kesintisiz sürdü"
+            },
+            {
+              "value": "kesintili",
+              "label": "Bildirim yapıldı, çalışma kesintili"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "complete_answers": {
+    "q1": "2022",
+    "q2": "hic_bildirim"
+  },
+  "facts_complete": {
+    "title": "Geriye dönük hizmet tespiti",
+    "facts": [
+      {
+        "key": "tespit_yolu",
+        "label": "Hizmetin tespit yolu",
+        "value": "Mahkeme ilamı",
+        "status": "known"
+      },
+      {
+        "key": "hizmet_yillari",
+        "label": "Hizmet yılları",
+        "value": "2022",
+        "status": "known"
+      },
+      {
+        "key": "bildirim_durumu",
+        "label": "Bildirim durumu",
+        "value": "İşveren hiç bildirim yapmadı",
+        "status": "known"
+      }
+    ]
+  },
+  "on_skip": "SB-026.skipped.answer.json",
+  "on_complete": "SB-026.answer.json"
+}

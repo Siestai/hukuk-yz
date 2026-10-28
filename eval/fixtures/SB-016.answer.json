@@ -1,0 +1,302 @@
+{
+  "status": "definite",
+  "status_note": "Verdiğiniz bilgilere göre.",
+  "headline": "Belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse iki indirimin ikisi de kaybedilmektedir; yalnız 1/4 indirimi kalmamaktadır.",
+  "fact_chips": [
+    {
+      "fact_key": "belge_30_gun",
+      "label": "Belge 30 gün içinde verildi",
+      "status": "known"
+    },
+    {
+      "fact_key": "odeme_15_gun",
+      "label": "15 gün içinde ödenmedi",
+      "status": "known"
+    },
+    {
+      "fact_key": "ceza_turu",
+      "label": "Bildirge cezası",
+      "status": "known"
+    },
+    {
+      "fact_key": "kendiliginden",
+      "label": "Kendiliğinden verildi",
+      "status": "known"
+    }
+  ],
+  "points": [
+    {
+      "text": "İki ayrı indirim vardır: m.102/2'de belge yasal süre geçtikten sonra kendiliğinden 30 gün içinde verilirse ceza dörtte bire inmektedir; m.102/5'te ceza tebliğden itibaren 15 gün içinde peşin ödenirse dörtte üçü tahsil edilmektedir. İki ifade ters yönlüdür: birinde indirim yüzde 75, diğerinde yüzde 25'tir.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+          "ref": "5510 m.102/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+        },
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/5",
+          "ref": "5510 m.102/5",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "İdarî para cezalarının, Kuruma itiraz edilmeden veya yargı yoluna başvurulmadan önce tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde, bunun dörtte üçü tahsil edilir.",
+          "used_for": "Peşin ödeme indirimi (dörtte üçü tahsil)"
+        }
+      ]
+    },
+    {
+      "text": "m.102/2 indirimi iki şartın birlikte gerçekleşmesine bağlıdır: 30 gün içinde kendiliğinden verme ve tebligat tarihini takip eden günden itibaren 15 gün içinde ödeme. Kanun metni iki şartı \"ve\" ile bağlamaktadır; 15 günlük ödeme şartı bu indirimin kendi şartıdır.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+          "ref": "5510 m.102/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+        },
+        {
+          "source_id": "admin:sgk-2020-8",
+          "category": "admin_act",
+          "label": "2020/8 İPC Genelgesi m.3.1",
+          "ref": "2020/8 Genelge m.3.1",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"
+        }
+      ]
+    },
+    {
+      "text": "Soruya cevap: belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse iki indirimin ikisi de kaybedilmektedir. Ceza tebliğ edilen tam tutardır ve gecikme cezası ile gecikme zammı eklenmektedir; \"yalnız 1/4 indirimi kalır\" sonucu doğru değildir.",
+      "citations": [
+        {
+          "source_id": "admin:sgk-2020-8",
+          "category": "admin_act",
+          "label": "2020/8 İPC Genelgesi m.3.1",
+          "ref": "2020/8 Genelge m.3.1",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"
+        },
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/5",
+          "ref": "5510 m.102/5",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "İdarî para cezalarının, Kuruma itiraz edilmeden veya yargı yoluna başvurulmadan önce tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde, bunun dörtte üçü tahsil edilir.",
+          "used_for": "Peşin ödeme indirimi (dörtte üçü tahsil)"
+        }
+      ]
+    },
+    {
+      "text": "Tersi de geçerlidir: belge 30 günden sonra verilmiş ancak kendiliğinden verilmişse ve ceza 15 gün içinde ödenmişse m.102/2 indirimi yoktur; yalnız m.102/5 uygulanmakta ve dörtte üçü ödenmektedir.",
+      "citations": [
+        {
+          "source_id": "admin:sgk-2020-8",
+          "category": "admin_act",
+          "label": "2020/8 İPC Genelgesi m.3.1",
+          "ref": "2020/8 Genelge m.3.1",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"
+        }
+      ]
+    },
+    {
+      "text": "İki indirimden de yararlanılırsa tebliğ edilen cezanın 1/4'ünün 3/4'ü tahsil edilmektedir, yani 3/16'sı.",
+      "citations": [
+        {
+          "source_id": "admin:sgk-2020-8",
+          "category": "admin_act",
+          "label": "2020/8 İPC Genelgesi m.3.1",
+          "ref": "2020/8 Genelge m.3.1",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"
+        }
+      ]
+    },
+    {
+      "text": "m.102/2 indirimi yalnız m.102/1'in (a), (b), (g), (h) ve (j) bentleri için geçerlidir; mahkeme kararına, Kurum denetim memurunun tespitine veya kamu idarelerinden alınan belgelere dayanan cezalar kapsam dışıdır. m.102/5 indirimi bent ayrımı yapmamaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+          "ref": "5510 m.102/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+        },
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/5",
+          "ref": "5510 m.102/5",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "İdarî para cezalarının, Kuruma itiraz edilmeden veya yargı yoluna başvurulmadan önce tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde, bunun dörtte üçü tahsil edilir.",
+          "used_for": "Peşin ödeme indirimi (dörtte üçü tahsil)"
+        }
+      ]
+    },
+    {
+      "text": "\"İndirim en çok 15 günlük ödeme süresi kaçırıldığında kaybedilmektedir\" cümlesi hangi indirimden söz ettiğini belirtmediği için tek başına kesin hüküm gibi kullanılmamalıdır: 15 gün iki indirim için de ortak şarttır, 30 günlük süre ise yalnız m.102/2 indiriminin şartıdır.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+          "ref": "5510 m.102/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+        },
+        {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/5",
+          "ref": "5510 m.102/5",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "İdarî para cezalarının, Kuruma itiraz edilmeden veya yargı yoluna başvurulmadan önce tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde, bunun dörtte üçü tahsil edilir.",
+          "used_for": "Peşin ödeme indirimi (dörtte üçü tahsil)"
+        }
+      ]
+    }
+  ],
+  "short_point_count": 3,
+  "missing_info": [],
+  "holding_map": {
+    "rows": [
+      {
+        "condition": "Belge yasal süre geçtikten sonra kendiliğinden 30 gün içinde verilmelidir",
+        "condition_quote": "yasal süresi geçtikten sonra ilgililerce kendiliğinden 30 gün içinde verilmesi",
+        "citation": {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+          "ref": "5510 m.102/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "yasal süresi geçtikten sonra ilgililerce kendiliğinden 30 gün içinde verilmesi",
+          "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+        },
+        "fact_value": "30 gün içinde verildi",
+        "result": "met"
+      },
+      {
+        "condition": "m.102/2 yalnız (a), (b), (g), (h) ve (j) bentlerindeki cezalar için geçerlidir",
+        "condition_quote": "(a), (b), (g), (h) ve (j) bentlerinde öngörülen cezalar dörtte bir oranına karşılık gelen tutar üzerinden uygulanır",
+        "citation": {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+          "ref": "5510 m.102/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "(a), (b), (g), (h) ve (j) bentlerinde öngörülen cezalar dörtte bir oranına karşılık gelen tutar üzerinden uygulanır",
+          "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+        },
+        "fact_value": "Bildirge cezası",
+        "result": "met"
+      },
+      {
+        "condition": "Ceza, tebligat tarihini takip eden günden itibaren 15 gün içinde ödenmelidir",
+        "condition_quote": "tebligat tarihini takip eden günden itibaren 15 gün içinde ödenmesi",
+        "citation": {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/2",
+          "ref": "5510 m.102/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "tebligat tarihini takip eden günden itibaren 15 gün içinde ödenmesi",
+          "used_for": "Kendiliğinden verme indirimi (dörtte bir)"
+        },
+        "fact_value": "Ödenmedi",
+        "result": "not_met"
+      },
+      {
+        "condition": "Ceza, tebliğden itibaren 15 gün içinde peşin ödenmelidir (m.102/5)",
+        "condition_quote": "tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde",
+        "citation": {
+          "source_id": "statute:5510:m102",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/5",
+          "ref": "5510 m.102/5",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde",
+          "used_for": "Peşin ödeme indirimi (dörtte üçü tahsil)"
+        },
+        "fact_value": "Ödenmedi",
+        "result": "not_met"
+      }
+    ],
+    "reasoning_summary": "Ödeme şartı yerine gelmediğinden m.102/2 ve m.102/5 indirimlerinin ikisi de uygulanmamakta, tebliğ edilen ceza gecikme cezası ve gecikme zammıyla tahsil edilmektedir.",
+    "citations": [
+      {
+        "source_id": "statute:5510:m102",
+        "category": "statute",
+        "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102/5",
+        "ref": "5510 m.102/5",
+        "review_status": "approved",
+        "verification": "verified",
+        "quote": "İdarî para cezalarının, Kuruma itiraz edilmeden veya yargı yoluna başvurulmadan önce tebliğ tarihinden itibaren onbeş gün içinde peşin ödenmesi halinde, bunun dörtte üçü tahsil edilir.",
+        "used_for": "Peşin ödeme indirimi (dörtte üçü tahsil)"
+      },
+      {
+        "source_id": "admin:sgk-2020-8",
+        "category": "admin_act",
+        "label": "2020/8 İPC Genelgesi m.3.1",
+        "ref": "2020/8 Genelge m.3.1",
+        "review_status": "approved",
+        "verification": "verified",
+        "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"
+      }
+    ]
+  },
+  "calculations": [
+    {
+      "title": "Ödenecek tutar",
+      "needs": [
+        "Tebliğ edilen idari para cezası tutarı"
+      ]
+    }
+  ],
+  "read_sources": {
+    "statute_articles": 1,
+    "decisions": 0,
+    "admin_acts": 1,
+    "items": [
+      {
+        "source_id": "statute:5510:m102",
+        "category": "statute",
+        "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.102",
+        "ref": "5510 m.102",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "admin:sgk-2020-8",
+        "category": "admin_act",
+        "label": "2020/8 İPC Genelgesi",
+        "ref": "2020/8 Genelge",
+        "review_status": "approved",
+        "verification": "verified"
+      }
+    ]
+  },
+  "applied_law_date": "2026-10-27",
+  "applied_law_text": "27.10.2026 tarihinde yürürlükte olan metin",
+  "disclaimer": "Hukuki görüş değildir."
+}

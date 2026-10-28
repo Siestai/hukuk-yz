@@ -6,7 +6,7 @@ import { LogoutButton } from "./logout-button";
 import { NavLink } from "./nav-link";
 
 export type AppNavProps = {
-    user: { display_name: string; role: "admin" | "reviewer" };
+    user: { display_name: string; role: "admin" | "reviewer" | "user" };
     /** Pending decisions; null when the count could not be fetched. */
     pending: number | null;
     /** Files waiting for approval; null when the count could not be fetched. */
@@ -23,7 +23,11 @@ export function AppNav({ user, pending, pendingFiles, onNavigate }: AppNavProps)
         { key: "sources", help: "navSources", label: t("nav.sources") },
         { key: "knowledgeBase", help: "navKnowledgeBase", label: t("nav.knowledgeBase") },
     ] as const;
-    const roleLabel = { admin: t("enums.role.admin"), reviewer: t("enums.role.reviewer") };
+    const roleLabel = {
+        admin: t("enums.role.admin"),
+        reviewer: t("enums.role.reviewer"),
+        user: t("enums.role.user"),
+    };
 
     return (
         <>

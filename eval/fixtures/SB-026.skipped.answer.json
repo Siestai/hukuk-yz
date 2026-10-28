@@ -1,0 +1,378 @@
+{
+  "status": "conditional",
+  "status_note": "Sonuç, aşağıda istenen bilgilere bağlıdır.",
+  "headline": "Mahkeme kararıyla geriye dönük hizmet verilmektedir; hangi hizmet yılları için dava süresinin dolduğu hizmetin geçtiği yıllara ve bildirim durumuna bağlıdır.",
+  "fact_chips": [
+    {
+      "fact_key": "tespit_yolu",
+      "label": "Mahkeme ilamı",
+      "status": "known"
+    },
+    {
+      "fact_key": "hizmet_yillari",
+      "label": "Hizmet yılları",
+      "status": "unknown"
+    },
+    {
+      "fact_key": "bildirim_durumu",
+      "label": "Bildirim durumu",
+      "status": "unknown"
+    }
+  ],
+  "points": [
+    {
+      "text": "Mahkeme kararıyla geriye dönük hizmet verilmektedir: aylık prim ve hizmet belgesi işveren tarafından verilmeyen veya çalıştıkları Kurumca tespit edilemeyen sigortalılar, hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içinde iş mahkemesine başvurup alacakları ilamla çalıştıklarını ispatlarlarsa, mahkeme kararında belirtilen aylık kazanç toplamları ve prim ödeme gün sayıları dikkate alınmaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+          "ref": "5510 m.86/9",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak, alacakları ilâm ile ispatlayabilirlerse",
+          "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+        }
+      ]
+    },
+    {
+      "text": "\"En fazla bir yıl\" sınırı m.86/8'dedir ve yalnız Kurum denetim elemanlarının işyerinde fiilen yaptıkları, kayıt ve belgelere dayanmayan tespitler için geçerlidir; ilamla hizmet (m.86/9) bu sınıra tabi değildir.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/8",
+          "ref": "5510 m.86/8",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "en fazla tespitin yapıldığı tarihten geriye yönelik bir yıllık süreye ilişkin kısmı dikkate alınır",
+          "used_for": "Bir yıllık sınır yalnız denetim tespiti için"
+        },
+        {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+          "ref": "5510 m.86/9",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak, alacakları ilâm ile ispatlayabilirlerse",
+          "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+        }
+      ]
+    },
+    {
+      "text": "Geriye gitmenin sınırı beş yıllık dava süresidir: süre her hizmet yılı için o yılın sonundan işlemektedir, bu nedenle eski hizmet yılları için süre dolmuş olabilmektedir. Yargıtay 10. HD bu süreyi hak düşürücü saymaktadır; m.86/9 metni bu nitelemeyi yazmamaktadır.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+          "ref": "5510 m.86/9",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak, alacakları ilâm ile ispatlayabilirlerse",
+          "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+        },
+        {
+          "source_id": "decision:yargitay-10hd-2026-513-2026-4936",
+          "category": "decision",
+          "label": "Yargıtay 10. HD, E.2026/513 K.2026/4936",
+          "ref": "10. HD E.2026/513 K.2026/4936",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Beş yıllık süre hak düşürücüdür; kesintisiz çalışmada başlangıç"
+        }
+      ]
+    },
+    {
+      "text": "SGK'nın 22.06.2018 tarihli yazısı beş yılı \"dava açma zamanaşımı süresi\" olarak nitelemekte ve Kuruma yapılacak başvurularda hak düşürücü süre bulunmadığını belirtmektedir; kaynağa göre nitelendirme değişmektedir.",
+      "citations": [
+        {
+          "source_id": "admin:sgk-yazi-2018-06-22",
+          "category": "admin_act",
+          "label": "SGK yazısı 22.06.2018 (79961784-045-E.6396349)",
+          "ref": "SGK yazısı 22.06.2018",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Beş yıl dava açma zamanaşımı; Kuruma başvuruda hak düşürücü süre yoktur"
+        }
+      ]
+    },
+    {
+      "text": "İşveren bildirim yapmışsa veya çalışma Kurumca tespit edilmişse, sonrasında kesintisiz devam eden çalışmalar bakımından hak düşürücü süre geçti denememektedir; başlangıç, kesintisiz çalışmanın bittiği yılın sonudur.",
+      "citations": [
+        {
+          "source_id": "decision:yargitay-10hd-2026-513-2026-4936",
+          "category": "decision",
+          "label": "Yargıtay 10. HD, E.2026/513 K.2026/4936",
+          "ref": "10. HD E.2026/513 K.2026/4936",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Beş yıllık süre hak düşürücüdür; kesintisiz çalışmada başlangıç"
+        }
+      ]
+    },
+    {
+      "text": "Kesinleşen hizmet tespiti ilamı Kurumca re'sen tescile dayanak olmaktadır. Denetim yolunda ise bir yılı aşan sigortalı çalışmalar, her zaman düzenlenebilir nitelikte olmayan kanunen geçerli kayıt ve belgelerle kanıtlanmak şartıyla dikkate alınabilmektedir.",
+      "citations": [
+        {
+          "source_id": "statute:ssiy:m18",
+          "category": "statute",
+          "label": "Sosyal Sigorta İşlemleri Yönetmeliği m.18/1-c",
+          "ref": "SSİY m.18/1-c",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Kesinleşen ilam Kurumca re'sen tescile dayanak olur"
+        },
+        {
+          "source_id": "statute:ssiy:m26",
+          "category": "statute",
+          "label": "Sosyal Sigorta İşlemleri Yönetmeliği m.26/2",
+          "ref": "SSİY m.26/2",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "Denetim yolunda bir yıllık süre"
+        }
+      ]
+    },
+    {
+      "text": "İşe iade kararı (4857 m.21) hizmet tespiti kararı değildir. Genelge yalnız kesinleşmeye kadar çalıştırılmayan süre için en çok dört aya kadar ücret ve diğer hakların, işçinin kesinleşen kararın tebliğinden itibaren on iş günü içinde işe başlamak için başvurması kaydıyla prime esas kazanca dahil edilip hizmetten sayılacağını belirtmektedir.",
+      "citations": [
+        {
+          "source_id": "statute:4857:m21",
+          "category": "statute",
+          "label": "4857 sayılı İş Kanunu m.21",
+          "ref": "4857 m.21",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "İşe iade kararı"
+        },
+        {
+          "source_id": "admin:sgk-2020-20",
+          "category": "admin_act",
+          "label": "2020/20 Genelge, İkinci Kısım, İkinci Bölüm, 1.3",
+          "ref": "2020/20 Genelge İkinci Kısım İkinci Bölüm 1.3",
+          "review_status": "approved",
+          "verification": "verified",
+          "used_for": "İşe iade sonrası en çok dört ay prime esas kazanca dahildir"
+        }
+      ]
+    }
+  ],
+  "short_point_count": 3,
+  "missing_info": [
+    {
+      "fact_key": "hizmet_yillari",
+      "condition": "Hizmetin geçtiği yılın sonundan başlayarak beş yıl geçmişse",
+      "result": "O hizmet yılı için dava süresi dolmuştur; geçmemişse ilamla hizmet tespiti istenebilmektedir.",
+      "citations": [
+        {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+          "ref": "5510 m.86/9",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak, alacakları ilâm ile ispatlayabilirlerse",
+          "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+        },
+        {
+          "source_id": "decision:yargitay-10hd-2026-513-2026-4936",
+          "category": "decision",
+          "label": "Yargıtay 10. HD, E.2026/513 K.2026/4936",
+          "ref": "10. HD E.2026/513 K.2026/4936",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Beş yıllık süre hak düşürücüdür; kesintisiz çalışmada başlangıç"
+        }
+      ]
+    },
+    {
+      "fact_key": "bildirim_durumu",
+      "condition": "İşveren bildirim yapmış ve çalışma bundan sonra kesintisiz sürmüşse",
+      "result": "Hak düşürücü süre geçti denememektedir; başlangıç, kesintisiz çalışmanın bittiği yılın sonudur.",
+      "citations": [
+        {
+          "source_id": "decision:yargitay-10hd-2026-513-2026-4936",
+          "category": "decision",
+          "label": "Yargıtay 10. HD, E.2026/513 K.2026/4936",
+          "ref": "10. HD E.2026/513 K.2026/4936",
+          "review_status": "analyzed",
+          "verification": "unverified",
+          "used_for": "Beş yıllık süre hak düşürücüdür; kesintisiz çalışmada başlangıç"
+        }
+      ]
+    }
+  ],
+  "holding_map": {
+    "rows": [
+      {
+        "condition": "Aylık prim ve hizmet belgesi verilmemiş veya çalışma Kurumca tespit edilememiş olmalıdır",
+        "condition_quote": "işveren tarafından verilmeyen veya çalıştıkları Kurumca tespit edilemeyen sigortalılar",
+        "citation": {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+          "ref": "5510 m.86/9",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "işveren tarafından verilmeyen veya çalıştıkları Kurumca tespit edilemeyen sigortalılar",
+          "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+        },
+        "result": "unknown"
+      },
+      {
+        "condition": "Hizmetin geçtiği yılın sonundan başlayarak beş yıl içinde iş mahkemesine başvurulmalıdır",
+        "condition_quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak",
+        "citation": {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+          "ref": "5510 m.86/9",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak",
+          "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+        },
+        "result": "unknown"
+      },
+      {
+        "condition": "Çalışma ilamla ispatlanmalıdır",
+        "condition_quote": "alacakları ilâm ile ispatlayabilirlerse",
+        "citation": {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+          "ref": "5510 m.86/9",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "alacakları ilâm ile ispatlayabilirlerse",
+          "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+        },
+        "fact_value": "Mahkeme ilamı",
+        "result": "met"
+      },
+      {
+        "condition": "Bir yıllık geriye dönük sınır, kayıt ve belgelere dayanmayan denetim tespitleri için uygulanır",
+        "condition_quote": "kayıt ve belgelere dayanmaksızın çalıştığı belirlendiği halde",
+        "citation": {
+          "source_id": "statute:5510:m86",
+          "category": "statute",
+          "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/8",
+          "ref": "5510 m.86/8",
+          "review_status": "approved",
+          "verification": "verified",
+          "quote": "kayıt ve belgelere dayanmaksızın çalıştığı belirlendiği halde",
+          "used_for": "Bir yıllık sınır yalnız denetim tespiti için"
+        },
+        "fact_value": "Mahkeme ilamı yolu",
+        "result": "not_applicable"
+      }
+    ],
+    "reasoning_summary": "m.86/9 uyarınca ilamla hizmet verilmektedir; bir yıllık sınır yalnız denetim tespitleri için geçerlidir. Geriye gitmenin sınırı, her hizmet yılı için o yılın sonundan işleyen beş yıllık dava süresidir.",
+    "citations": [
+      {
+        "source_id": "statute:5510:m86",
+        "category": "statute",
+        "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/9",
+        "ref": "5510 m.86/9",
+        "review_status": "approved",
+        "verification": "verified",
+        "quote": "hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesine başvurarak, alacakları ilâm ile ispatlayabilirlerse",
+        "used_for": "İlamla hizmet tespiti ve beş yıllık süre"
+      },
+      {
+        "source_id": "statute:5510:m86",
+        "category": "statute",
+        "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86/8",
+        "ref": "5510 m.86/8",
+        "review_status": "approved",
+        "verification": "verified",
+        "quote": "en fazla tespitin yapıldığı tarihten geriye yönelik bir yıllık süreye ilişkin kısmı dikkate alınır",
+        "used_for": "Bir yıllık sınır yalnız denetim tespiti için"
+      }
+    ]
+  },
+  "calculations": [
+    {
+      "title": "Dava süresi (5 yıl)",
+      "needs": [
+        "Hizmetin geçtiği yıl"
+      ]
+    }
+  ],
+  "read_sources": {
+    "statute_articles": 5,
+    "decisions": 1,
+    "admin_acts": 2,
+    "items": [
+      {
+        "source_id": "statute:5510:m86",
+        "category": "statute",
+        "label": "5510 sayılı Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu m.86",
+        "ref": "5510 m.86",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:ssiy:m26",
+        "category": "statute",
+        "label": "Sosyal Sigorta İşlemleri Yönetmeliği m.26",
+        "ref": "SSİY m.26",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:ssiy:m18",
+        "category": "statute",
+        "label": "Sosyal Sigorta İşlemleri Yönetmeliği m.18",
+        "ref": "SSİY m.18",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:4857:m21",
+        "category": "statute",
+        "label": "4857 sayılı İş Kanunu m.21",
+        "ref": "4857 m.21",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "statute:7036:m4",
+        "category": "statute",
+        "label": "7036 sayılı İş Mahkemeleri Kanunu m.4",
+        "ref": "7036 m.4",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "admin:sgk-yazi-2018-06-22",
+        "category": "admin_act",
+        "label": "SGK yazısı 22.06.2018 (79961784-045-E.6396349)",
+        "ref": "SGK yazısı 22.06.2018",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "admin:sgk-2020-20",
+        "category": "admin_act",
+        "label": "2020/20 Genelge",
+        "ref": "2020/20 Genelge",
+        "review_status": "approved",
+        "verification": "verified"
+      },
+      {
+        "source_id": "decision:yargitay-10hd-2026-513-2026-4936",
+        "category": "decision",
+        "label": "Yargıtay 10. HD, E.2026/513 K.2026/4936",
+        "ref": "10. HD E.2026/513 K.2026/4936",
+        "review_status": "analyzed",
+        "verification": "unverified"
+      }
+    ]
+  },
+  "applied_law_date": "2026-10-27",
+  "applied_law_text": "27.10.2026 tarihinde yürürlükte olan metin",
+  "disclaimer": "Hukuki görüş değildir."
+}

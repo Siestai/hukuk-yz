@@ -1,0 +1,25 @@
+id: SB-008
+question: "Mesela askere gidecek işçi ne kadar süre önce işten ayrılmalıdır"
+expected:
+  status: conditional
+  headline_contains:
+    - makul
+  must_cite:
+    - 1475 m.14/1
+    - 9. HD E.2009/12918 K.2011/12793
+    - 9. HD E.2015/21153 K.2018/15767
+  must_ask:
+    - sevk_tarihi
+    - sevk_tehiri
+    - sonraki_calisma
+    - ayrilis_gerekcesi
+  must_not:
+    - gün önce ayrılmalıdır
+    - ay önce ayrılmalıdır
+  traps:
+    - Kanunda sabit bir gün veya ay sayısı yoktur; ölçüt Yargıtay'ın "makul süre" ilkesidir.
+    - Muvazzaf askerlik (1475 m.14) ile manevra ve diğer silah altına alınma (4857 m.31, iki ay ve 90 gün) karıştırılmaz.
+    - Muvazzaf askerlik sebebiyle fesihte ihbar önelinin tanınmasına gerek yoktur; kıdem tazminatı doğar, ihbar tazminatı doğmaz.
+    - Ayrıldıktan sonra başka işyerinde çalışma, feshin askerlik nedenine dayandığı iddiasını zayıflatır.
+    - Askerlik şubesinden sevk tarihi ve sevk tehiri sorgusu uygulama önerisidir, Yargıtay'a atfedilmez.
+tags: [is-hukuku, askerlik, kidem-tazminati]

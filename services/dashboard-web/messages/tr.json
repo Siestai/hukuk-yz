@@ -629,7 +629,8 @@
   "enums": {
     "role": {
       "admin": "Yönetici",
-      "reviewer": "İnceleyici"
+      "reviewer": "İnceleyici",
+      "user": "Kullanıcı"
     },
     "band": {
       "high": "Yüksek",

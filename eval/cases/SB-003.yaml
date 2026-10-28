@@ -1,0 +1,29 @@
+id: SB-003
+question: "İşçinin ücretinin düşürülmesinin şartları nelerdir."
+expected:
+  status: conditional
+  headline_contains:
+    - yazılı
+  must_cite:
+    - 4857 m.22/1
+    - 4857 m.22/2
+    - 9. HD E.2021/4643 K.2021/8989
+    - 9. HD E.2016/9412 K.2019/16512
+    - 9. HD E.2012/6260 K.2014/11165
+  must_ask:
+    - yazili_bildirim
+    - yazili_kabul
+    - dusurulen_kalem
+    - tis_var_mi
+  must_not:
+    - 4857 m.22/3
+    - 4857 m.22/4
+    - ücret düşürülemez
+  traps:
+    - Yazılı bildirim ve altı işgünü içinde yazılı kabul birlikte aranır; yalnız bildirim yetmez.
+    - Bordro imzası veya sessiz devam kabul değildir; imzalı yeni iş sözleşmesi (ücret miktarı yazılı) kabul sayılır.
+    - m.22'nin yalnız iki fıkrası vardır; anlaşma yolu ve geçmişe etkisizlik m.22/2'dedir.
+    - m.62 cevabın tek dayanağı yapılmaz; Yargıtay emredici der ancak kanun metni dardır.
+    - '"Ücret düşürülemez" kesin cümlesi yanlıştır; yazılı kabulle veya geçerli nedenli değişiklik fesihle düşebilir.'
+    - Nakdî yardımın aynî ikamesi esaslı değişiklik sayılmayabilir; miktarın azaltılması sayılır.
+tags: [is-hukuku, ucret, esasli-degisiklik]

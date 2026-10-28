@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, Response
 from sqlalchemy import text
 
 from app.auth import router as auth_router
+from app.chat import router as chat_router
 from app.db import make_engine
 from app.errors import ERROR_RESPONSES
 from app.errors import install as install_error_handlers
@@ -45,6 +46,7 @@ app = FastAPI(title="hukuk-agent", lifespan=lifespan, responses=ERROR_RESPONSES)
 install_error_handlers(app)
 app.include_router(auth_router)
 app.include_router(files_router)
+app.include_router(chat_router)
 app.include_router(review_router)
 app.include_router(review_statutes_router)
 app.include_router(statutes_router)

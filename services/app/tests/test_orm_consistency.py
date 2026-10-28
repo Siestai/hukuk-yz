@@ -12,6 +12,7 @@ from app.models.user import USER_ROLE_TYPE, UserRole
 VERSIONS = Path(__file__).parents[1] / "alembic" / "versions"
 MIGRATION = VERSIONS / "0002_kb_schema_v0_1.py"
 USERS_MIGRATION = VERSIONS / "0005_users_and_sessions.py"
+USER_ROLE_USER_MIGRATION = VERSIONS / "0015_user_role_user.py"
 REVIEW_FK_MIGRATION = VERSIONS / "0006_review_reviewer_fk.py"
 LOGIN_ATTEMPT_MIGRATION = VERSIONS / "0007_login_attempt.py"
 EVIDENCE_MIGRATION = VERSIONS / "0008_statute_version_evidence.py"
@@ -61,7 +62,9 @@ def test_enum_labels_match_migration() -> None:
 def test_user_role_labels_match_migration() -> None:
     migration = _load_migration(USERS_MIGRATION)
     assert USER_ROLE_TYPE == "user_role"
-    assert tuple(m.value for m in UserRole) == migration.USER_ROLES
+    later = _load_migration(USER_ROLE_USER_MIGRATION)
+    assert tuple(m.value for m in UserRole) == (*migration.USER_ROLES, "user")
+    assert later.OLD_LABELS == migration.USER_ROLES
 
 
 def test_tables_match_migration() -> None:
