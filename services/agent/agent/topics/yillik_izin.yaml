@@ -1,0 +1,82 @@
+# Konu kartları SB-027 (izin süresi hesabı), SB-028 (izin ücreti ve haklı fesih).
+id: yillik_izin
+title: Yıllık ücretli izin
+description: >-
+  Yıllık ücretli izin süresi (4857 m.53, hizmet yılına göre), izin kullanma, izin ücreti
+  (m.57, m.59) ve izin ücretinin ödenmemesi hâlinde işçinin haklı feshi.
+facts:
+  - key: ise_giris_tarihi
+    label: İşe giriş tarihi
+    critical: true
+    question:
+      text: İşçi işe hangi tarihte başladı?
+      why: >-
+        İzin süresi her izin yılı için o yılın hak edildiği andaki hizmet süresine göre ayrı
+        belirlenmektedir (4857 m.53/4); 10.06.2003 öncesindeki hizmet yılları için eski süreler
+        uygulanmaktadır.
+      kind: date
+      basis:
+        - {ref: "4857 m.53/4", category: statute}
+  - key: yas_durumu
+    label: Yaş
+    critical: true
+    question:
+      text: İşçi on sekiz yaş ve altında veya elli yaş ve üzerinde mi?
+      why: On sekiz yaş ve altı ile elli yaş ve üstü işçilere izin en az yirmi gündür (4857 m.53).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
+      basis:
+        - {ref: "4857 m.53", category: statute}
+  - key: yer_alti
+    label: Yer altı işi
+    critical: true
+    question:
+      text: İşçi yer altı işlerinde mi çalışmaktadır?
+      why: Yer altı işlerinde çalışan işçilerin izin süreleri dörder gün artırılmaktadır (4857 m.53).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
+      basis:
+        - {ref: "4857 m.53", category: statute}
+  - key: sozlesme_izin
+    label: Sözleşmede daha uzun izin
+    critical: true
+    question:
+      text: İş sözleşmesi veya toplu iş sözleşmesi daha uzun izin öngörmekte midir?
+      why: İş sözleşmesi veya toplu iş sözleşmesiyle daha uzun izin verilebilmektedir (4857 m.53).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
+      basis:
+        - {ref: "4857 m.53", category: statute}
+  - key: kullanilan_izin
+    label: Kullanılan izin
+  - key: izin_ucreti_odemesi
+    label: İzin ücretinin ödenmesi
+must_read:
+  - {ref: "4857 m.53", category: statute}
+  - {ref: "4857 m.54", category: statute}
+  - {ref: "4857 m.57", category: statute}
+  - {ref: "4857 m.59", category: statute}
+  - {ref: "22. HD E.2017/26700 K.2020/105", category: decision}
+  - {ref: "9. HD E.2022/6747 K.2022/8363", category: decision}
+  - {ref: "9. HD E.2025/2024 K.2025/2487", category: decision}
+queries:
+  - yıllık ücretli izin süresi hizmet süresi bir yıldan beş yıla kadar on dört gün
+  - yıllık izin ücreti izne başlamadan önce peşin ödenir haklı fesih
+traps:
+  - İzin süresi toplam kıdeme göre tek seferde belirlenmez; eşik her izin yılı için ayrı uygulanır, beşinci yılın izni on dört gündür.
+  - Son tam yıldan sonra kalan artık süre için izin doğmaz; kıstelyevm (orantılı) izin hesaplanmaz.
+  - İzin ücretinin peşin ödenmemesi 4857 m.24/II-e uyarınca haklı fesih nedenidir; işçinin ayrıca talep etmesi gerekmez, ancak ödeme yapıldıktan sonra fesih hakkı ortadan kalkabilir.
+  - Aylık ücretli işçide ay sonu maaş ödemesi, ay ortasındaki izin günü için peşin sayılmaz; tutarın bir gün olması için kanunda eşik yoktur.
+  - İşçinin kendi haklı feshinde ihbar tazminatı istenemez; fesihte ödenecek izin ücreti çıplak günlük ücretle hesaplanır (m.59).
+calculations:
+  - title: Yıllık izin ücreti
+    needs:
+      - Hak edilen izin günü
+      - Kullanılan izin günü
+      - Çıplak günlük ücret

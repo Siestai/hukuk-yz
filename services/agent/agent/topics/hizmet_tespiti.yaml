@@ -1,0 +1,60 @@
+# Konu kartı SB-026 (mahkeme kararıyla geriye dönük hizmet, 5510 m.86/8-9); eval/cases/SB-026.yaml.
+id: hizmet_tespiti
+title: Hizmet tespiti ve geriye dönük hizmet
+description: >-
+  Bildirilmemiş veya eksik bildirilmiş sigortalı çalışmanın tespiti: mahkeme ilamı yolu (5510 m.86/9,
+  beş yıllık süre) ve denetim yolu (m.86/8, bir yıllık sınır), hak düşürücü süre.
+facts:
+  - key: tespit_yolu
+    label: Hizmetin tespit yolu
+    critical: true
+    question:
+      text: Hizmet mahkeme ilamıyla mı, denetim tespitiyle mi belirlenecek?
+      why: >-
+        Bir yıllık geriye dönük sınır yalnız Kurum denetim elemanlarının işyerinde yaptığı
+        tespitler için (5510 m.86/8), beş yıllık dava süresi ise mahkeme ilamı yolu için
+        (m.86/9) geçerlidir.
+      kind: choice
+      options:
+        - {value: ilam, label: Mahkeme ilamı}
+        - {value: denetim, label: Kurum denetim tespiti}
+      basis:
+        - {ref: "5510 m.86/8", category: statute}
+        - {ref: "5510 m.86/9", category: statute}
+  - key: hizmet_yillari
+    label: Hizmet yılları
+    critical: true
+    question:
+      text: Hizmet hangi yıllarda geçti?
+      why: Beş yıllık dava süresi her hizmet yılı için o yılın sonundan başlamaktadır (5510 m.86/9).
+      kind: text
+      basis:
+        - {ref: "5510 m.86/9", category: statute}
+  - key: bildirim_durumu
+    label: Bildirim durumu
+    critical: true
+    question:
+      text: İşveren hiç bildirim yaptı mı, çalışma kesintisiz mi sürdü?
+      why: >-
+        Bildirim sonrasında kesintisiz süren çalışmada hak düşürücü süre, çalışmanın bittiği
+        yılın sonundan başlamaktadır (10. HD E.2026/513 K.2026/4936).
+      kind: choice
+      options:
+        - {value: hic_bildirim, label: İşveren hiç bildirim yapmadı}
+        - {value: kesintisiz, label: "Bildirim yapıldı, çalışma kesintisiz sürdü"}
+        - {value: kesintili, label: "Bildirim yapıldı, çalışma kesintili"}
+      basis:
+        - {ref: "10. HD E.2026/513 K.2026/4936", category: decision}
+must_read:
+  - {ref: "5510 m.86", category: statute}
+  - {ref: "7036 m.4", category: statute}
+  - {ref: "10. HD E.2026/513 K.2026/4936", category: decision}
+queries:
+  - hizmet tespiti ilam hizmetlerinin geçtiği yılın sonundan başlayarak beş yıl içerisinde iş mahkemesi
+  - kayıt ve belgelere dayanmaksızın çalıştığı belirlenen sigortalı bir yıllık süre tespit
+traps:
+  - m.86/8 (denetimde en fazla bir yıl) ile m.86/9 (ilam, beş yıl) karıştırılmaz; fıkra sayımına mülga altıncı fıkra dahildir.
+  - 'Dönem sınırı yok denmez; bir yıl sınırı ilam yolunda yoktur, ancak her hizmet yılı için beş yıllık dava süresi vardır ve eski yıllar için süre dolmuş olabilir.'
+  - Beş yıllık sürenin niteliği m.86/9 metninde yazılı değildir; Yargıtay 10. HD hak düşürücü saymaktadır, kaynak belirtilir.
+  - Bildirim sonrası kesintisiz çalışmada süre başlangıcı çalışmanın bittiği yılın sonudur; kısmi bildirim kesintili çalışma karinesi doğurabilir.
+  - İşe iade kararı hizmet tespiti kararı değildir.

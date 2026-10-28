@@ -1,0 +1,54 @@
+# Konu kartı SB-016 (5510 m.102/2 ve m.102/5 indirimleri); eval vakası eval/cases/SB-016.yaml.
+id: idari_para_cezasi
+title: SGK idari para cezası ve indirimler
+description: >-
+  5510 m.102 kapsamındaki idari para cezaları: belgenin kendiliğinden verilmesi indirimi (m.102/2),
+  peşin ödeme indirimi (m.102/5), tebliğ ve ödeme süreleri, ceza türüne göre kapsam.
+facts:
+  - key: belge_30_gun
+    label: Belgenin verilmesi
+  - key: odeme_15_gun
+    label: Cezanın ödenmesi
+  - key: ceza_turu
+    label: Ceza türü
+    critical: true
+    question:
+      text: Hangi cezadan söz edilmektedir?
+      why: >-
+        Kendiliğinden verme indirimi yalnız 5510 m.102/1'in (a), (b), (g), (h) ve (j)
+        bentlerindeki cezalar için geçerlidir (m.102/2); peşin ödeme indirimi bent ayrımı
+        yapmamaktadır (m.102/5).
+      kind: choice
+      options:
+        - {value: bildirge, label: "Bildirge (işe giriş, işten ayrılış, işyeri bildirgesi)"}
+        - {value: diger, label: "Ek belge, defter ibrazı veya bordro"}
+      basis:
+        - {ref: "5510 m.102/2", category: statute}
+        - {ref: "5510 m.102/5", category: statute}
+  - key: kendiliginden
+    label: Belgenin kendiliğinden verilmesi
+    critical: true
+    question:
+      text: Belge kendiliğinden mi verildi?
+      why: >-
+        Mahkeme kararına, Kurum denetim memurlarının tespitine veya kamu idarelerinden alınan
+        belgelere dayanan cezalarda m.102/2 indirimi uygulanmamaktadır.
+      kind: choice
+      options:
+        - {value: kendiliginden, label: Kendiliğinden verildi}
+        - {value: tespit, label: Denetim tespiti veya yazı üzerine verildi}
+      basis:
+        - {ref: "5510 m.102/2", category: statute}
+must_read:
+  - {ref: "5510 m.102", category: statute}
+  - {ref: "2020/8", category: admin_act}
+queries:
+  - idari para cezası kendiliğinden verme otuz gün içinde dörtte bir ödeme onbeş gün
+  - idari para cezası peşin ödeme tebliğ tarihinden onbeş gün dörtte üçü tahsil
+traps:
+  - İki ayrı indirim vardır; m.102/2'de ceza dörtte bire iner, m.102/5'te dörtte üçü ödenir. İfadeler ters yönlüdür, hangi fıkra olduğu yazılır.
+  - 15 günlük ödeme süresi iki indirim için ortak şarttır; 30 günlük süre yalnız m.102/2 indiriminin şartıdır.
+  - m.102/2 indirimi yalnız m.102/1'in (a), (b), (g), (h) ve (j) bentleri için geçerlidir; ek belge, defter ibrazı, bordro ve denetim tespiti cezalarında yalnız m.102/5 vardır.
+  - Süresinde verilen belge ceza doğurmaz; "süresinde" ile "kendiliğinden" aynı şey değildir.
+  - 30 günde verip 15 günde ödemeyen, iki indirimden de yararlanamaz; "sadece dörtte bir indirimi kalır" denmez.
+  - SSİY m.102 bu konudaki indirim hükmünü içermez; atıf yapılmaz.

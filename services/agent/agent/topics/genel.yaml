@@ -1,0 +1,26 @@
+# Genel şablon: şablonu olmayan konular için (docs/tasks/17-agent-v1.md).
+id: genel
+title: Genel
+description: İş hukuku, sosyal güvenlik, sendika ve toplu iş sözleşmesi ve iş sağlığı ve güvenliği konularında, başka bir şablona uymayan sorular.
+facts:
+  - key: olay_tarihi
+    label: Olay tarihi
+    critical: true
+    question:
+      text: Olay hangi tarihte gerçekleşti?
+      why: Uygulanacak metin, olayın gerçekleştiği tarihte yürürlükte olan metindir.
+      kind: date
+  - key: statu
+    label: Çalışma statüsü
+    critical: true
+    question:
+      text: Kişi hangi statüde sigortalı?
+      why: Sigortalılık statüsü hangi hükümlerin uygulanacağını belirlemektedir (5510 m.4).
+      kind: choice
+      options:
+        - {value: a, label: Hizmet akdiyle çalışan (4/a)}
+        - {value: b, label: Kendi adına ve hesabına çalışan (4/b)}
+        - {value: c, label: Kamu görevlisi (4/c)}
+      basis:
+        - {ref: "5510 m.4", category: statute}
+event_date_fact: olay_tarihi

@@ -1,0 +1,187 @@
+"""The gate: what an answer must keep, in pure code."""
+
+from datetime import date
+
+import pytest
+from agent_fakes import M18_1, M18_4, draft, hit, row
+
+from agent.facts import build_facts
+from agent.gate import check_draft, not_answered, progressive_in
+from agent.holding import verify_rows
+from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
+from agent.sources import ReadSource, as_read_source
+from agent.topics import get_topic
+from hukuk_models.chat import CaseFacts, HoldingRow
+
+TOPIC = get_topic("ise_iade")
+DAY = date(2026, 10, 3)
+
+
+def read() -> list[ReadSource]:
+    found = as_read_source(
+        hit("statute:4857:m18", "4857 m.18", "4857 sayılı İş Kanunu m.18", M18_1, M18_4)
+    )
+    assert found is not None
+    return [found]
+
+
+def rows(result: str = "met") -> list[HoldingRow]:
+    holding = HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_4, result)]})
+    return verify_rows(holding, read(), DAY)[0]
+
+
+def facts(known: bool) -> CaseFacts:
+    every = [
+        {"key": f.key, "value": "x", "status": "known"} for f in TOPIC.facts if f.question or known
+    ]
+    chosen = every if known else [{"key": "kidem", "value": "5 ay", "status": "known"}]
+    return build_facts(
+        TOPIC,
+        IntakeOutput.model_validate({"topic": "ise_iade", "title": "t", "facts": chosen}),
+        None,
+    )
+
+
+def check(output: dict, *, known: bool = False, result: str = "met"):  # type: ignore[no-untyped-def,type-arg]
+    return check_draft(
+        DraftOutput.model_validate(output),
+        topic=TOPIC,
+        facts=facts(known),
+        rows=rows(result),
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+    )
+
+
+def test_a_good_conditional_draft_becomes_an_answer_the_contract_accepts() -> None:
+    result = check(draft())
+
+    assert result.issues == []
+    assert result.answer is not None
+    assert result.answer.disclaimer == "Hukuki görüş değildir."
+    assert result.answer.applied_law_text == "03.10.2026 tarihinde yürürlükte olan metin"
+    assert result.answer.short_point_count == 1
+
+
+def test_definite_with_everything_known_passes() -> None:
+    result = check(draft("definite", missing=False), known=True)
+
+    assert result.issues == []
+    assert result.answer is not None and result.answer.status == "definite"
+
+
+def test_definite_is_refused_while_a_critical_fact_is_unknown() -> None:
+    result = check(draft("definite", missing=False))
+
+    assert result.answer is None
+    assert any("kritik olgu bilinmezken" in i for i in result.issues)
+
+
+def test_definite_is_refused_when_a_holding_row_is_unknown() -> None:
+    result = check(draft("definite", missing=False), known=True, result="unknown")
+
+    assert result.answer is None
+    assert any("sonucu bilinmeyen satır" in i for i in result.issues)
+
+
+def test_conditional_must_say_what_it_depends_on() -> None:
+    result = check(draft(missing=False))
+
+    assert result.answer is None
+    assert any("missing_info" in i for i in result.issues)
+
+
+@pytest.mark.parametrize(
+    "headline", ["Dava açılıyor.", "İşçi hak kazanıyor.", "Bu durum aranıyor."]
+)
+def test_the_progressive_scan_finds_iyor_forms(headline: str) -> None:
+    output = DraftOutput.model_validate(draft(headline=headline))
+
+    assert progressive_in(output)
+    assert any("-iyor" in i for i in check(draft(headline=headline)).issues)
+
+
+def test_the_progressive_scan_passes_formal_turkish() -> None:
+    assert progressive_in(DraftOutput.model_validate(draft())) == []
+
+
+def test_the_scan_looks_at_every_sentence_the_model_wrote() -> None:
+    output = draft()
+    output["points"][0]["text"] = "Kıdem aranıyor."
+    output["missing_info"][0]["result"] = "Hüküm uygulanıyor."
+    output["reasoning_summary"] = "Şart sağlanıyor."
+
+    assert progressive_in(DraftOutput.model_validate(output)) == [
+        "aranıyor",
+        "sağlanıyor",
+        "uygulanıyor",
+    ]
+
+
+def test_a_citation_to_a_text_not_in_force_on_the_date_drops() -> None:
+    old = as_read_source(
+        hit("statute:4857:m18", "4857 m.18", "t", M18_1, valid_to=date(2020, 1, 1))
+    )
+    assert old is not None
+
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=rows(),
+        read=[old],
+        applied_on=DAY,
+        date_assumed=False,
+    )
+
+    assert result.answer is None
+    assert result.drops.points == 1
+    assert any("atıfı doğrulanan nokta kalmamıştır" in i for i in result.issues)
+
+
+def test_no_verified_row_is_no_answer() -> None:
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=[],
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+    )
+
+    assert result.answer is None
+    assert any("hüküm haritası" in i for i in result.issues)
+
+
+def test_the_calculations_of_the_template_are_added_by_code() -> None:
+    topic = get_topic("kidem_ihbar")
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=topic,
+        facts=build_facts(
+            topic,
+            IntakeOutput.model_validate({"topic": "kidem_ihbar", "title": "t", "facts": []}),
+            None,
+        ),
+        rows=rows(),
+        read=read(),
+        applied_on=DAY,
+        date_assumed=True,
+    )
+
+    assert result.answer is not None
+    assert [c.title for c in result.answer.calculations] == ["Kıdem tazminatı", "İhbar tazminatı"]
+    assert "Olay tarihi bilinmediğinden" in result.answer.status_note
+
+
+def test_the_not_answered_answer_shows_the_verified_rows_or_nothing() -> None:
+    kwargs = dict(topic=TOPIC, facts=facts(False), read=read(), applied_on=DAY, date_assumed=False)
+
+    answer = not_answered(rows=rows(), **kwargs)  # type: ignore[arg-type]
+
+    assert answer is not None
+    assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
+    assert answer.holding_map.rows
+    assert not_answered(rows=[], **kwargs) is None  # type: ignore[arg-type]

@@ -20,9 +20,8 @@ import yaml
 from pydantic import ValidationError
 
 from hukuk_models.chat import DISCLAIMER, Answer
+from hukuk_models.formal_turkish import progressive_forms
 
-# Formal Turkish (-mektedir / -maktadır), never the "-iyor" aorist forms.
-PROGRESSIVE = re.compile(r"\b\w*[ıiuü]yor(?:lar|um|sun|uz|sunuz|sa|du|muş)?\b", re.IGNORECASE)
 DATE = re.compile(r"\b\d{2}\.\d{2}\.\d{4}\b")
 # What is the law's own wording or an id, not the answer's: neither "-iyor" nor must_not apply.
 QUOTED_KEYS = {"quote", "condition_quote", "source_id"}
@@ -149,9 +148,7 @@ def score(
         Metric("must_not", _fraction(len(must_not) - len(found), len(must_not)), ", ".join(found))
     )
 
-    progressive = sorted(
-        {m.group(0) for s in strings(answer, NOT_SCANNED_FOR_MODE) for m in PROGRESSIVE.finditer(s)}
-    )
+    progressive = progressive_forms(strings(answer, NOT_SCANNED_FOR_MODE))
     metrics.append(Metric("formal_mode", float(not progressive), ", ".join(progressive)))
 
     metrics.append(Metric("disclaimer", float(answer.get("disclaimer") == DISCLAIMER)))

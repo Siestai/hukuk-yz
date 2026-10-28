@@ -1,6 +1,6 @@
 # Görev 17: Ajan v1 (`services/agent`, LangGraph)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: tamamlandı (gerçek LLM eval koşusu Orhan/orkestratörde). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/architecture.md` §2 (agent durumsuz, `POST /run`, sınır kuralları), §4.1, §5.1 (atıf kapısı), Themis araştırması "Ana app ajanı: tasarım" (15.10; özet aşağıda), `docs/tasks/14-kb-search.md` (`/kb/search`), `docs/tasks/15-chat-contract-eval.md` (çıktı şeması, eval), gereksinim md. 4, 22, 23, 25, 33.
 Skill'ler: `task-pr-hygiene`.
 

@@ -73,6 +73,23 @@ jobs:
           size=$(docker image inspect hukuk-app:ci --format '{{.Size}}')
           echo "size=$size bytes"
           test "$size" -lt 350000000
+      - run: docker build -f services/agent/Dockerfile -t hukuk-agent:ci .
+      - name: agent runs as non-root
+        run: |
+          uid=$(docker run --rm hukuk-agent:ci id -u)
+          echo "uid=$uid"
+          test "$uid" != "0"
+      - name: agent image carries the checked-out source and the topic templates
+        run: |
+          for pair in services/agent/agent:agent packages/models/hukuk_models:hukuk_models; do
+            src=${pair%%:*}; pkg=${pair##*:}
+            want=$(cd "$src" && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum)
+            got=$(docker run --rm --entrypoint sh hukuk-agent:ci -c \
+              "cd /app/.venv/lib/python3.12/site-packages/$pkg && find . -name '*.py' -type f | LC_ALL=C sort | xargs sha256sum | sha256sum")
+            echo "$pkg $want / $got"
+            test "$want" = "$got"
+          done
+          docker run --rm --entrypoint python hukuk-agent:ci -c "from agent.topics import load_topics; print(sorted(load_topics()))"
       - run: docker build -f services/dashboard-web/Dockerfile -t hukuk-dashboard-web:ci .
       - name: dashboard-web runs as non-root
         run: |
