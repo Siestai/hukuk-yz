@@ -83,22 +83,48 @@ def build_facts(
     """The facts of the template, from this question first, then from the earlier turns of the
     same topic; what neither says is unknown."""
     earlier = {f.key: f for f in previous.facts} if previous else {}
+    supplied = {f.key: f for f in extracted.facts}
+    stated_event = _stated_event_date(extracted, question, today)
     facts = []
     for tf in topic.facts:
         fact = _extracted(tf, extracted)
-        if fact is not None and tf.question is not None and tf.question.kind == "date":
-            day = parse_date(fact.value or "")
+        is_date = tf.question is not None and tf.question.kind == "date"
+        if is_date:
+            # An explicit unknown or rejected correction invalidates the earlier date.
+            # Silence alone permits inheritance. Never resurrect a date after rejection.
+            supplied_date = tf.key in supplied
+            day = parse_date(fact.value or "") if fact else None
             if day is None or day > today or not stated_in(day, question):
                 fact = None
-        fact = fact or earlier.get(tf.key)
+            if tf.key == topic.event_date_fact and extracted.event_date is not None:
+                if not supplied_date and stated_event is not None:
+                    fact = Fact(
+                        key=tf.key, label=tf.label, value=stated_event.isoformat(), status="known"
+                    )
+                elif stated_event is None or day != stated_event:
+                    fact = None
+                supplied_date = True
+            if not supplied_date:
+                fact = earlier.get(tf.key)
+        else:
+            fact = fact or earlier.get(tf.key)
         facts.append(fact or Fact(key=tf.key, label=tf.label, status="unknown"))
-    event_date = _stated_event_date(extracted, question, today) or (
-        previous.event_date if previous else None
+    # With a template date, the fact is the single source of truth, including unknown.
+    event_date = (
+        event_date_of(topic, facts)
+        if topic.event_date_fact
+        else (
+            stated_event
+            if extracted.event_date is not None
+            else previous.event_date
+            if previous
+            else None
+        )
     )
     return CaseFacts(
         title=extracted.title.strip() or topic.title,
         facts=facts,
-        event_date=event_date_of(topic, facts) or event_date,
+        event_date=event_date,
     )
 
 

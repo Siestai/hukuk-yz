@@ -1,4 +1,6 @@
-"""The trace of a run: per node the input summary, the output, the model, tokens, time and cost.
+"""The trace of a run: per node safe input/output summaries, model, tokens, time and cost.
+
+Node summaries must use counters or fixed codes, never private gate feedback or model text.
 
 Always written to the structured log. With the `LANGFUSE_*` variables set, the model calls and one
 span per run also go to Langfuse over OpenTelemetry. The harness (not a model) writes it.

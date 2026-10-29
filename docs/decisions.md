@@ -92,3 +92,7 @@
 
 - **2026-10-01, Baran (WP grubu):** Yüksek riskli / acil vakalarda (ör. SGK tespiti sonrası "ne yapalım") sistem otomatik cevap vermesin, uzman insana (Baran/İbrahim) eskalasyon yapsın. Bu eskalasyon ayrı paket veya kredi olarak ücretlendirilsin. Themis olumlu görüş bildirdi (hibrit model: makine + insan onayı). Tetikleme kullanıcı seçimi değil sistem tespiti olmalı: konu sınıfı + süre işliyor mu + belirsizlik düzeyi. Fiyatlandırma, SLA ve kapsam kararı Orhan + Baran + İbrahim'de.
 - **2026-10-01, İbrahim:** Marka/isim/tasarım. Şu an sıfır. Palet yönü: lacivert temelli (SGK/ÇSGB akrabalığı), kurumsal ama soru sormaya cesaretlendiren. Themis isim adayı listesi çıkaracak, Orhan'la gruba sunulacak.
+
+### 2026-10-29 — Görev 17 bağımsız inceleme takibi
+
+- **Tarih düzeltmesi ve log mahremiyeti** (Orhan'ın PR81 takip talebi; md. 4, 31): aynı konudaki yeni olay tarihi, şablondaki tarih olgusuyla birlikte güncellenir. Açıkça bilinmiyor verilen, doğrulanamayan veya çelişen tarih düzeltmesi önceki tarihi geri getirmez; netleştirme ister. Tarih verilmemiş turda önceki olgu korunur. Kapının ayrıntılı hata metni modelin tekrar isteminde ve iç durumda kalır; düğüm izine yalnız sabit hata kodları ve adetler yazılır. Gerçek model değerlendirmesi ve Postgres kabul kapısı bu düzeltmenin yerel sahte model testlerinden ayrı kalır.

@@ -204,3 +204,66 @@ def test_a_future_clarification_date_stays_unknown_and_clears_the_old_event_date
     )
     assert done.event_date is None
     assert statuses(done)["bildirim_tarihi"] == "unknown"
+
+
+@pytest.mark.parametrize(
+    ("event", "value", "status", "question", "expected"),
+    [
+        (
+            date(2024, 1, 1),
+            None,
+            None,
+            "Düzeltme: bildirim 2024-01-01 tarihinde ulaştı.",
+            date(2024, 1, 1),
+        ),
+        (
+            date(2027, 1, 5),
+            "2027-01-05",
+            "known",
+            "Düzeltme: bildirim tarihi 2027-01-05 olacak.",
+            None,
+        ),
+        (date(2027, 1, 5), None, None, "Düzeltme: bildirim tarihi 2027-01-05 olacak.", None),
+        (None, "2024-01-01", "known", "Düzeltme: bildirim 2024-01-01.", date(2024, 1, 1)),
+        (None, "2024-01-01", "known", "Düzeltme: bildirim geçen hafta.", None),
+        (None, "invalid", "known", "Düzeltme: bildirim tarihi geçersiz.", None),
+        (None, None, "unknown", "Düzeltme: bildirim tarihini bilmiyorum.", None),
+        (date(2024, 1, 1), "2023-01-01", "known", "Bildirim 2024-01-01 veya 2023-01-01.", None),
+        (None, None, None, "İşçi sayısı 45.", date(2020, 1, 1)),
+    ],
+)
+def test_date_corrections_replace_or_invalidate_previous_dates(
+    event: date | None, value: str | None, status: str | None, question: str, expected: date | None
+) -> None:
+    from agent.plan import make_plan
+
+    old = build(
+        TOPIC,
+        intake(
+            IntakeFact(key="bildirim_tarihi", value="2020-01-01", status="known"),
+            event=date(2020, 1, 1),
+        ),
+        None,
+        "Bildirim 2020-01-01",
+    )
+    supplied = (
+        []
+        if status is None
+        else [
+            IntakeFact.model_validate({"key": "bildirim_tarihi", "value": value, "status": status})
+        ]
+    )
+    new = build(TOPIC, intake(*supplied, event=event), old, question)
+    fact = next(f for f in new.facts if f.key == "bildirim_tarihi")
+    assert new.event_date == event_date_of(TOPIC, new.facts) == expected
+    assert fact.status == ("unknown" if expected is None else "known")
+    if expected is None:
+        assert fact.value is None
+    clarification = clarification_for(TOPIC, new, {})
+    assert clarification is not None
+    assert any(q.fact_key == "bildirim_tarihi" for q in clarification.questions) == (
+        expected is None
+    )
+    plan = make_plan(TOPIC, question, new, TODAY)
+    assert plan.as_of == (expected or TODAY)
+    assert plan.as_of_assumed == (expected is None)

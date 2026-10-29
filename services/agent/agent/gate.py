@@ -46,6 +46,8 @@ class GateResult:
     answer: Answer | None
     issues: list[str]
     drops: GateDrops = field(default_factory=GateDrops)
+    # Fixed codes only: detailed issues belong in model feedback, never in logs.
+    issue_counts: dict[str, int] = field(default_factory=dict)
 
 
 def draft_texts(draft: DraftOutput) -> list[str]:
@@ -139,18 +141,36 @@ def check_draft(
     sources = {s.source_id: s for s in read}
     drops = GateDrops()
     issues = []
+    issue_counts: dict[str, int] = {}
+
+    def reject(code: str, feedback: str, count: int = 1) -> None:
+        issues.append(feedback)
+        issue_counts[code] = count
 
     if forms := progressive_in(draft, rows, facts):
-        issues.append(f"-iyor kipi kullanılmıştır: {', '.join(forms)}")
+        reject("progressive_form", f"-iyor kipi kullanılmıştır: {', '.join(forms)}", len(forms))
     if draft.status == "definite":
         if missing := critical_unknown(topic, facts):
-            issues.append(f"kritik olgu bilinmezken kesin cevap verilemez: {', '.join(missing)}")
+            reject(
+                "critical_unknown",
+                f"kritik olgu bilinmezken kesin cevap verilemez: {', '.join(missing)}",
+                len(missing),
+            )
         if unread:
-            issues.append(f"okunamayan kaynak varken kesin cevap verilemez: {', '.join(unread)}")
+            reject(
+                "unread_source",
+                f"okunamayan kaynak varken kesin cevap verilemez: {', '.join(unread)}",
+                len(unread),
+            )
         if any(r.result == "unknown" for r in rows):
-            issues.append("hüküm haritasında sonucu bilinmeyen satır varken kesin cevap verilemez")
+            reject(
+                "unknown_holding",
+                "hüküm haritasında sonucu bilinmeyen satır varken kesin cevap verilemez",
+            )
     elif not draft.missing_info:
-        issues.append("koşullu cevap neye bağlı olduğunu (missing_info) söylemelidir")
+        reject(
+            "missing_conditions", "koşullu cevap neye bağlı olduğunu (missing_info) söylemelidir"
+        )
 
     points = []
     for p in draft.points:
@@ -160,7 +180,7 @@ def check_draft(
         else:
             drops.points += 1
     if not points:
-        issues.append("atıfı doğrulanan nokta kalmamıştır")
+        reject("no_verified_points", "atıfı doğrulanan nokta kalmamıştır")
     missing_info = [
         MissingInfo(
             fact_key=m.fact_key,
@@ -171,9 +191,9 @@ def check_draft(
         for m in draft.missing_info
     ]
     if not rows:
-        issues.append("doğrulanan hüküm haritası satırı yoktur")
+        reject("no_verified_rows", "doğrulanan hüküm haritası satırı yoktur")
     if issues:
-        return GateResult(None, issues, drops)
+        return GateResult(None, issues, drops, issue_counts)
 
     try:
         answer = Answer(
@@ -191,7 +211,12 @@ def check_draft(
             applied_law_text=_law_text(applied_on),
         )
     except ValidationError as exc:
-        return GateResult(None, [f"şema: {e['msg']}" for e in exc.errors()], drops)
+        return GateResult(
+            None,
+            [f"şema: {e['msg']}" for e in exc.errors()],
+            drops,
+            {"answer_schema": exc.error_count()},
+        )
     return GateResult(answer, [], drops)
 
 

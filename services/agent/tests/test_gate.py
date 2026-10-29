@@ -307,3 +307,31 @@ def test_missing_info_citation_purpose_is_also_checked_for_formal_tense() -> Non
     ]
     assert progressive_in(DraftOutput.model_validate(output)) == ["aranıyorsa"]
     assert check(output).answer is None
+
+
+@pytest.mark.parametrize(
+    ("status", "has_rows", "expected"),
+    [
+        ("definite", True, {"critical_unknown": 5, "unread_source": 1, "unknown_holding": 1}),
+        ("conditional", False, {"missing_conditions": 1, "no_verified_rows": 1}),
+    ],
+)
+def test_issue_counts_use_fixed_codes_while_feedback_keeps_details(
+    status: str, has_rows: bool, expected: dict[str, int]
+) -> None:
+    private = "PRIVATE_SOURCE_12345678901"
+    result = check_draft(
+        DraftOutput.model_validate(draft(status, missing=False)),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=rows("unknown") if has_rows else [],
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+        unread=[private],
+    )
+    assert result.answer is None
+    assert result.issue_counts == expected
+    if status == "definite":
+        assert private in " ".join(result.issues)
+    assert private not in str(result.issue_counts)

@@ -271,12 +271,14 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             _step("draft")
             drops = GateDrops(rows=state["gate"].get("rows_dropped", 0))
             issues: list[str] = []
+            issue_counts: dict[str, int] = {}
             answer = None
             attempts = 0
             for attempt in range(1, DRAFT_ATTEMPTS + 1):
                 attempts = attempt
                 if not rows:
                     issues = ["doğrulanan hüküm haritası satırı yoktur"]
+                    issue_counts = {"no_verified_rows": 1}
                     break
                 output = await deps.llm.run(
                     "strong",
@@ -304,6 +306,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 drops.citations += result.drops.citations
                 drops.points += result.drops.points
                 issues = result.issues
+                issue_counts = result.issue_counts
                 if result.answer is not None:
                     answer = result.answer
                     break
@@ -326,7 +329,8 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "fallback": fell_back,
                 "issues": issues,
             }
-            rec.output = gate
+            rec.output = {k: v for k, v in gate.items() if k != "issues"}
+            rec.output["issue_counts"] = issue_counts
             return {"answer": answer.model_dump(mode="json") if answer else None, "gate": gate}
 
     return {

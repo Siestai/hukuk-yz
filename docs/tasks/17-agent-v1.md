@@ -54,11 +54,11 @@ Skill'ler: `task-pr-hygiene`.
 - **Fıkra (`sub`):** model fıkra adı verebilir; kod yalnız okunan metinde satır başındaki sayısal fıkra işaretini (`(1)`) ve alıntının aynı fıkrada geçtiğini doğrularsa atıfa yazar. Bentler ve doğrulanamayan fıkralar için atıf madde düzeyinde kalır.
 - **Okunanlar:** modele gösterilen metin kaynak başına en çok 6000 karakterdir; "okunanlar" yalnız modele gösterilen metni sayar. Zorunlu kaynak bu sınırda kesilirse okunamayanlar listesinde de görünür.
 - **Okunamayan zorunlu kaynak:** cevap `definite` olamaz; `status_note` okunamayan kaynakları yazar.
-- **Olay tarihi:** modelin verdiği tarih (olgu içindeki tarih dahil), soru metninde geçmiyorsa veya gelecekteyse bilinmiyor sayılır ve sorulur. Gelecekteki netleştirme tarihi de bilinmiyor kalır.
+- **Olay tarihi:** modelin verdiği tarih (olgu içindeki tarih dahil), soru metninde geçmiyorsa veya gelecekteyse bilinmiyor sayılır ve sorulur. Yeni olay tarihi şablondaki tarih olgusuyla birlikte güncellenir. Açık bilinmiyor/geçersiz/çelişkili düzeltme önceki tarihi geri getirmez; tarih verilmemiş tur önceki olguyu korur. Gelecekteki netleştirme tarihi de bilinmiyor kalır.
 - **Hata kodu:** doğrulanmış cevap üretilemezse `answer_not_verified` hata olayı ve `done` gönderilir (Görev 15 sözleşmesi); kod ortak `ErrorCode` listesindedir.
 - **Eval koşucusu:** `FixtureKb`, `--kb`, `--case`, `--json` şema dışıdır; PR açıklamasında listelenir.
 
 - **Fixture KB sınırı:** `eval/fixtures/*.answer.json` içindeki alıntılar, alıntıdaki özgün metin ve konumla kullanılır; fıkra işareti uydurulmaz. Bu parçalar tam madde/karar metni değildir; eksik zorunlu kaynaklar cevabı koşullu kılar. Gerçek modelle bu fixture KB üzerinde üç vaka koşusu ayrıca yetkilendirilip yapılacaktır; bu koşu gerçek HTTP KB bütünleşmesini doğrulamaz.
-- **İz kaydı mahremiyeti (md. 31):** kullanıcı sorusu yerine karakter sayısı kaydedilir. Sağlayıcı hata metni/traceback istemi içerebileceğinden hata logunda yalnız hata sınıfı bulunur.
+- **İz kaydı mahremiyeti (md. 31):** kullanıcı sorusu yerine karakter sayısı kaydedilir. Sağlayıcı hata metni/traceback istemi içerebileceğinden hata logunda yalnız hata sınıfı bulunur. Kapının ayrıntılı geri bildirimi yalnız iç durumda ve modelin tekrar isteminde tutulur; düğüm loguna sabit hata kodları ve adetleri, düşen atıf/nokta/satır sayıları, deneme sayısı ve fallback bilgisi yazılır.
 
 - **Geçerlilik sınırı (md. 4):** Görev 14 ile aynı aralık kullanılır: `valid_from <= as_of < valid_to`; bitiş günü eski sürüm atıfta kullanılamaz.
