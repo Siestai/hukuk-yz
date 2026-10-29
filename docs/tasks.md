@@ -35,6 +35,6 @@
 ## Chat v1 (kapalı beta, 2026-10-27)
 - [x] Görev 14: KB arama indeksi + `/kb/search` (`docs/tasks/14-kb-search.md`)
 - [x] Görev 15: cevap sözleşmesi + eval seti v0 (`docs/tasks/15-chat-contract-eval.md`)
-- [ ] Görev 16: chat web arayüzü (uygulandı, PR Orhan'ın onayında; `docs/tasks/16-chat-web.md`)
+- [ ] Görev 16: chat web arayüzü (inceleme düzeltmeleri tamamlandı, DB'li entegrasyon doğrulaması bekliyor; PR Orhan'ın onayında; `docs/tasks/16-chat-web.md`)
 - [ ] Görev 17: ajan v1, LangGraph (`docs/tasks/17-agent-v1.md`)
 - [ ] Görev 18: uçtan uca bağlama (`docs/tasks/18-chat-wiring.md`)

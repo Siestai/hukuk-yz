@@ -14,8 +14,8 @@ import { ConversationList } from "./conversation-list";
 import { ModeTabs } from "./mode-tabs";
 import { hasOpenQuestions, Thread } from "./thread";
 
-/** Today in the user's time zone, as `YYYY-MM-DD` (the Swedish locale formats dates that way). */
-const localDate = () => new Date().toLocaleDateString("sv-SE");
+/** Today in Türkiye's time zone, as `YYYY-MM-DD` (the Swedish locale formats dates that way). */
+const localDate = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
 
 /**
  * The chat screen: conversations on the left (a drawer on a phone), the thread in the middle with
@@ -50,6 +50,7 @@ export function ChatApp({
     // Reset first: from the "/" page the router keeps the same page element, so it would not remount.
     function startNew() {
         session.reset();
+        setOpened(null);
         router.push("/");
     }
 

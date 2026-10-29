@@ -38,6 +38,7 @@ export function FeedbackDialog({
 
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (pending) return;
         const form = new FormData(event.currentTarget);
         const point = String(form.get("point"));
         const body: FeedbackIn = {

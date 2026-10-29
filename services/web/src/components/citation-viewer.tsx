@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CitationRef } from "@/lib/chat-types";
 import { loadSourceText, type SourceText } from "@/lib/source-text";
 
-type Loaded = { citation: CitationRef; source: SourceText | null };
+type Loaded = { citation: CitationRef; asOf: string; source: SourceText | null };
 
 /**
  * The full text of a source with the part the answer relies on highlighted and scrolled into
@@ -24,7 +24,7 @@ export function CitationViewer({ citation, asOf }: { citation: CitationRef; asOf
     useEffect(() => {
         let current = true;
         void loadSourceText(api, citation, asOf).then((source) => {
-            if (current) setLoaded({ citation, source });
+            if (current) setLoaded({ citation, asOf, source });
         });
         return () => {
             current = false;
@@ -35,7 +35,8 @@ export function CitationViewer({ citation, asOf }: { citation: CitationRef; asOf
         mark.current?.scrollIntoView?.({ block: "center" });
     }, [loaded]);
 
-    const source = loaded?.citation === citation ? loaded.source : undefined;
+    const source =
+        loaded?.citation === citation && loaded.asOf === asOf ? loaded.source : undefined;
     const date = (value: string) => format.dateTime(new Date(value), "date");
     const { valid_from: from, valid_to: to } = citation;
 

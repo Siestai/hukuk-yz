@@ -37,6 +37,11 @@ describe("readEvents", () => {
 });
 
 describe("readEvents with a broken stream", () => {
+    it("rejects malformed JSON instead of silently dropping it", async () => {
+        await expect(collect(readEvents(body("data: {broken}\n\n")))).rejects.toBeInstanceOf(
+            SyntaxError,
+        );
+    });
     it("yields an error event and the done event after it", async () => {
         const events = await collect(
             readEvents(

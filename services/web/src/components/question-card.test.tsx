@@ -55,6 +55,7 @@ describe("QuestionCard", () => {
         expect(screen.getByText("Neden soruyorum: Otuz işçi sınırı için.")).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "30 veya fazla" }));
         expect(screen.getByText("Soru 2 / 3", { selector: "p" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Fesih tarihi nedir?" })).toHaveFocus();
     });
 
     it("sends the answers given and Bilmiyorum for the questions skipped", async () => {

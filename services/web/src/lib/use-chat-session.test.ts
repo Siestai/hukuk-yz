@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { sendMessage } from "./chat-stream";
-import type { ChatEvent } from "./chat-types";
+import type { ChatEvent, ConversationDetail } from "./chat-types";
 import { useChatSession } from "./use-chat-session";
 
 vi.mock("./chat-client", () => ({
@@ -54,6 +54,59 @@ describe("useChatSession", () => {
         expect(result.current.live).toBeNull();
         expect(result.current.failure).toBeNull();
         expect(result.current.partial).toBeNull();
+    });
+
+    it("ignores a late event from a cancelled stream", async () => {
+        let release: () => void = () => undefined;
+        vi.mocked(sendMessage).mockImplementation(async function* () {
+            await new Promise<void>((resolve) => {
+                release = resolve;
+            });
+            yield FACTS;
+            yield { type: "done", turn_id: "old" } as ChatEvent;
+        });
+        const { result } = renderHook(() => useChatSession(null, []));
+        act(() => void result.current.send({ text: "soru" }, "short"));
+        await waitFor(() => expect(sendMessage).toHaveBeenCalledOnce());
+        act(() => result.current.reset());
+        await act(async () => release());
+        expect(result.current.turns).toEqual([]);
+        expect(result.current.live).toBeNull();
+        expect(result.current.conversationId).toBeNull();
+    });
+
+    it("resends a failed clarification reply without adding another user turn", async () => {
+        const reply = {
+            clarification_answers: [{ question_id: "q1", value: "30+", unknown: false }],
+        };
+        vi.mocked(sendMessage)
+            .mockImplementationOnce(
+                finishing([
+                    { type: "error", code: "internal_error", params: {} } as ChatEvent,
+                    { type: "done" } as ChatEvent,
+                ]),
+            )
+            .mockImplementationOnce(
+                finishing([
+                    { type: "answer", answer: { headline: "x" } } as unknown as ChatEvent,
+                    { type: "done", turn_id: "t1" } as ChatEvent,
+                ]),
+            );
+        const initial = {
+            id: "c1",
+            turns: [{ id: "clarify", role: "assistant", clarification: { questions: [] } }],
+        } as unknown as ConversationDetail;
+        const { result } = renderHook(() => useChatSession(initial, []));
+        await act(async () => result.current.send(reply, "short"));
+        expect(result.current.failure?.code).toBe("internal_error");
+        await act(async () => result.current.retry());
+        expect(result.current.failure).toBeNull();
+        expect(result.current.turns.filter((turn) => turn.role === "user")).toHaveLength(1);
+        expect(vi.mocked(sendMessage).mock.calls[1]?.[1]).toEqual({
+            ...reply,
+            skip: false,
+            mode: "short",
+        });
     });
 
     it("aborts the stream on unmount", async () => {

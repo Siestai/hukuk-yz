@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -24,6 +24,14 @@ describe("Composer", () => {
         await userEvent.type(box, "bir{Shift>}{Enter}{/Shift}iki");
         expect(onSend).not.toHaveBeenCalled();
         expect(box).toHaveValue("bir\niki");
+    });
+
+    it("does not send Enter during IME composition", async () => {
+        const { onSend, box } = setup();
+        await userEvent.type(box, "soru");
+        fireEvent.keyDown(box, { key: "Enter", isComposing: true });
+        expect(onSend).not.toHaveBeenCalled();
+        expect(box).toHaveValue("soru");
     });
 
     it("sends nothing for blank text", async () => {

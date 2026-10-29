@@ -67,6 +67,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                     window.history.replaceState(null, "", `/konusmalar/${id}`);
                 }
                 for await (const event of sendMessage(id, body, controller.signal)) {
+                    if (controller.signal.aborted) return;
                     current = applyEvent(current, event);
                     setLive(current);
                 }
@@ -76,11 +77,11 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 if (current.error) setFailure(current.error);
                 else if (!current.finished)
                     setFailure({ code: "upstream_unavailable", params: {} });
-                if (!turn && current.facts) setPartial(current);
+                if (!turn && (current.facts || current.clarification)) setPartial(current);
             } catch (error) {
                 // A stream we aborted belongs to a screen that is gone; it must not write to the new one.
                 if (controller.signal.aborted) return;
-                if (current.facts) setPartial(current);
+                if (current.facts || current.clarification) setPartial(current);
                 setFailure(
                     error instanceof ApiFailure
                         ? { code: error.code, params: error.params }
@@ -88,7 +89,12 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 );
             }
             setLive(null);
-            void listConversations(api).then(setConversations, () => undefined);
+            void listConversations(api).then(
+                (items) => {
+                    if (!controller.signal.aborted) setConversations(items);
+                },
+                () => undefined,
+            );
         },
         [api, conversationId],
     );

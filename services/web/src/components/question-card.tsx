@@ -2,7 +2,7 @@
 
 import { Button, Card, Input, Progress } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import type {
     CitationRef,
@@ -50,11 +50,12 @@ export function QuestionCard({
     const [given, setGiven] = useState<Record<string, ClarificationAnswer>>({});
     const question = questions[position];
     const heading = useRef<HTMLHeadingElement>(null);
+    const progressId = useId();
 
     // The next question replaces the last one under the user's finger or cursor: move focus to
-    // it so a screen reader reads it. Not on the first question, which arrives with the turn.
+    // it so a screen reader reads it. Also on the first question, when the turn arrives.
     useEffect(() => {
-        if (position > 0) heading.current?.focus();
+        heading.current?.focus();
     }, [position]);
 
     if (!question) return null;
@@ -74,10 +75,10 @@ export function QuestionCard({
                 <Progress
                     value={position + 1}
                     max={questions.length}
-                    aria-label={t("progress", { index: position + 1, total: questions.length })}
+                    aria-labelledby={progressId}
                 />
                 <div>
-                    <p className="text-sm text-ink-2">
+                    <p id={progressId} aria-live="polite" className="text-sm text-ink-2">
                         {t("progress", { index: position + 1, total: questions.length })}
                     </p>
                     <h3

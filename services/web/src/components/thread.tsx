@@ -78,7 +78,12 @@ export function Thread({
                                         clarification={turn.clarification}
                                         busy={busy}
                                         onReply={onSend}
-                                        onOpenCitation={(citation) => onOpenCitation(citation)}
+                                        onOpenCitation={(citation) =>
+                                            onOpenCitation(
+                                                citation,
+                                                turn.facts?.event_date ?? undefined,
+                                            )
+                                        }
                                     />
                                 ) : null}
                                 {turn.answer ? (
@@ -112,6 +117,16 @@ export function Thread({
                 </div>
             ) : null}
             {partial?.facts ? <FactsCard facts={partial.facts} /> : null}
+            {partial?.clarification ? (
+                <QuestionCard
+                    clarification={partial.clarification}
+                    busy={busy}
+                    onReply={onSend}
+                    onOpenCitation={(citation) =>
+                        onOpenCitation(citation, partial.facts?.event_date ?? undefined)
+                    }
+                />
+            ) : null}
             <div role="alert">
                 {failure ? (
                     <div className="grid justify-items-start gap-2 rounded-md bg-low-soft px-4 py-3 text-sm text-low">

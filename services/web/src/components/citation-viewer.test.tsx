@@ -20,7 +20,10 @@ const citation = {
     valid_from: "2020-01-01",
 } as CitationRef;
 
-beforeEach(() => vi.mocked(loadSourceText).mockReset());
+beforeEach(() => {
+    vi.mocked(loadSourceText).mockReset();
+    Element.prototype.scrollIntoView = vi.fn();
+});
 
 describe("CitationViewer", () => {
     it("shows the text with the relied-on part marked, and the review status", async () => {
@@ -35,6 +38,7 @@ describe("CitationViewer", () => {
         expect(screen.getByText("Teyitli")).toBeInTheDocument();
         expect(screen.getByText("Cevaptaki kullanım: Kıdem şartı")).toBeInTheDocument();
         expect(loadSourceText).toHaveBeenCalledWith(expect.anything(), citation, "2026-10-01");
+        expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
     });
 
     it("says so when the quote is all there is", async () => {
