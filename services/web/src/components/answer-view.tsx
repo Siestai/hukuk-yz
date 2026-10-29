@@ -61,22 +61,31 @@ export function AnswerView({
                     {answer.headline}
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                    {answer.fact_chips.map((chip) => (
-                        <button
-                            key={chip.fact_key}
-                            type="button"
-                            disabled={!facts || !onCorrect}
-                            onClick={() => setEditing(true)}
-                            className={cn(
-                                "min-h-8 rounded-md px-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11",
-                                chip.status === "unknown"
-                                    ? "bg-medium-soft text-medium"
-                                    : "bg-sunken text-ink-2",
-                            )}
-                        >
-                            {chip.label}
-                        </button>
-                    ))}
+                    {answer.fact_chips.map((chip) => {
+                        const className = cn(
+                            "inline-flex min-h-8 items-center rounded-md px-2.5 text-sm font-medium",
+                            chip.status === "unknown"
+                                ? "bg-medium-soft text-medium"
+                                : "bg-sunken text-ink-2",
+                        );
+                        return facts && onCorrect ? (
+                            <button
+                                key={chip.fact_key}
+                                type="button"
+                                onClick={() => setEditing(true)}
+                                className={cn(
+                                    className,
+                                    "focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11",
+                                )}
+                            >
+                                {chip.label}
+                            </button>
+                        ) : (
+                            <span key={chip.fact_key} className={className}>
+                                {chip.label}
+                            </span>
+                        );
+                    })}
                     {facts && onCorrect ? (
                         <button
                             type="button"
@@ -101,8 +110,8 @@ export function AnswerView({
             {definite ? null : (
                 <FoldSection title={t("missing")} open>
                     <ul className="grid gap-3">
-                        {answer.missing_info.map((info) => (
-                            <li key={info.condition} className="font-serif text-ink">
+                        {answer.missing_info.map((info, index) => (
+                            <li key={index} className="font-serif text-ink">
                                 <p className="wrap-anywhere">
                                     {info.condition}
                                     {": "}
@@ -127,8 +136,8 @@ export function AnswerView({
                 </div>
             ) : (
                 <ul className="grid gap-4 border-t border-line p-4">
-                    {points.map((point) => (
-                        <li key={point.text} className="flex gap-3">
+                    {points.map((point, index) => (
+                        <li key={index} className="flex gap-3">
                             <span
                                 aria-hidden="true"
                                 className="mt-2.5 size-1.5 shrink-0 rounded-sm bg-ink-3"
@@ -143,15 +152,15 @@ export function AnswerView({
                     ))}
                 </ul>
             )}
-            {answer.calculations.map((calculation) => (
+            {answer.calculations.map((calculation, index) => (
                 <FoldSection
-                    key={calculation.title}
+                    key={index}
                     title={t("calculation", { title: calculation.title })}
                     hint={t("needs", { needs: calculation.needs.join(", ") })}
                 >
                     <ul className="list-disc pl-5 text-ink-2">
-                        {calculation.needs.map((need) => (
-                            <li key={need}>{need}</li>
+                        {calculation.needs.map((need, position) => (
+                            <li key={position}>{need}</li>
                         ))}
                     </ul>
                 </FoldSection>

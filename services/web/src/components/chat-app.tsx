@@ -14,6 +14,9 @@ import { ConversationList } from "./conversation-list";
 import { ModeTabs } from "./mode-tabs";
 import { hasOpenQuestions, Thread } from "./thread";
 
+/** Today in the user's time zone, as `YYYY-MM-DD` (the Swedish locale formats dates that way). */
+const localDate = () => new Date().toLocaleDateString("sv-SE");
+
 /**
  * The chat screen: conversations on the left (a drawer on a phone), the thread in the middle with
  * the mode selector above it, the source panel on the right (a bottom sheet on a phone).
@@ -32,13 +35,12 @@ export function ChatApp({
     const wide = useWide();
     const session = useChatSession(detail, conversations);
     const [mode, setMode] = useState<ChatMode>("short");
-    const [citation, setCitation] = useState<CitationRef | null>(null);
+    const [opened, setOpened] = useState<{ citation: CitationRef; asOf: string } | null>(null);
     const [drawer, setDrawer] = useState(false);
     const menu = useRef<HTMLButtonElement>(null);
 
     const { turns, live } = session;
     const answer = turns.findLast((turn) => turn.answer)?.answer ?? null;
-    const asOf = answer?.applied_law_date ?? new Date().toISOString().slice(0, 10);
     const title =
         session.conversations.find((c) => c.id === session.conversationId)?.title ||
         turns.findLast((turn) => turn.facts)?.facts?.title ||
@@ -113,11 +115,14 @@ export function ChatApp({
                         <Thread
                             turns={turns}
                             live={live}
+                            partial={session.partial}
                             failure={session.failure}
                             mode={mode}
                             onSend={(body) => session.send(body, mode)}
                             onRetry={session.retry}
-                            onOpenCitation={setCitation}
+                            onOpenCitation={(citation, asOf) =>
+                                setOpened({ citation, asOf: asOf ?? localDate() })
+                            }
                         />
                     </div>
                 </div>
@@ -133,8 +138,8 @@ export function ChatApp({
                 className="hidden w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-5 lg:block xl:w-96"
             >
                 <p className="mb-2 text-sm font-medium text-ink-3">{t("viewer.title")}</p>
-                {citation && wide ? (
-                    <CitationViewer citation={citation} asOf={asOf} />
+                {opened && wide ? (
+                    <CitationViewer citation={opened.citation} asOf={opened.asOf} />
                 ) : (
                     <p className="text-sm text-ink-3">{t("viewer.empty")}</p>
                 )}
@@ -151,12 +156,12 @@ export function ChatApp({
             </Dialog>
             <Dialog
                 variant="sheet"
-                open={citation !== null && !wide}
-                onClose={() => setCitation(null)}
+                open={opened !== null && !wide}
+                onClose={() => setOpened(null)}
                 title={t("viewer.title")}
                 closeLabel={t("viewer.close")}
             >
-                {citation ? <CitationViewer citation={citation} asOf={asOf} /> : null}
+                {opened ? <CitationViewer citation={opened.citation} asOf={opened.asOf} /> : null}
             </Dialog>
         </div>
     );

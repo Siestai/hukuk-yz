@@ -66,7 +66,7 @@ export function FeedbackDialog({
                     <Select id="feedback-point" name="point" defaultValue="">
                         <option value="">{t("pointAll")}</option>
                         {points.map((point, index) => (
-                            <option key={point.text} value={index}>
+                            <option key={index} value={index}>
                                 {t("pointItem", { index: index + 1, text: point.text })}
                             </option>
                         ))}

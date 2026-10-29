@@ -5,7 +5,7 @@ import { createApiClient } from "@hukuk/web-core/api/client";
 import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { answerPlainText } from "@/lib/answer-text";
 import { postFeedback } from "@/lib/chat-client";
@@ -18,29 +18,46 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
     const errorMessage = useErrorMessage();
     const api = useMemo(() => createApiClient(), []);
     const [dialog, setDialog] = useState<"down" | "report" | null>(null);
-    const [sent, setSent] = useState(false);
+    // What has been sent: one rating per answer, then the buttons stay as they are.
+    const [sent, setSent] = useState<"up" | "down" | "report" | null>(null);
+    const [pending, setPending] = useState(false);
     const [copied, setCopied] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    useEffect(() => {
+        if (!copied) return;
+        const timer = setTimeout(() => setCopied(false), 2000);
+        return () => clearTimeout(timer);
+    }, [copied]);
+
     async function rateUp() {
+        if (pending || sent) return;
         setError(null);
+        setPending(true);
         try {
             await postFeedback(api, turnId, { rating: "up", comment: "", correction: "" });
-            setSent(true);
+            setSent("up");
         } catch (failure) {
             setError(errorMessage(failure instanceof ApiFailure ? failure.code : undefined));
+        } finally {
+            setPending(false);
         }
     }
 
     async function copy() {
-        await navigator.clipboard.writeText(
-            answerPlainText(answer, {
-                basis: t("copyText.basis"),
-                conditional: t("copyText.conditional"),
-                missing: t("copyText.missing"),
-            }),
-        );
-        setCopied(true);
+        setError(null);
+        try {
+            await navigator.clipboard.writeText(
+                answerPlainText(answer, {
+                    basis: t("copyText.basis"),
+                    conditional: t("copyText.conditional"),
+                    missing: t("copyText.missing"),
+                }),
+            );
+            setCopied(true);
+        } catch {
+            setError(t("copyFailed"));
+        }
     }
 
     return (
@@ -51,6 +68,8 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                     variant="outline"
                     size="sm"
                     aria-label={t("up")}
+                    aria-pressed={sent === "up"}
+                    disabled={pending || sent !== null}
                     onClick={rateUp}
                 >
                     <span aria-hidden="true">{t("thumbUp")}</span>
@@ -60,11 +79,19 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                     variant="outline"
                     size="sm"
                     aria-label={t("down")}
+                    aria-pressed={sent === "down"}
+                    disabled={pending || sent !== null}
                     onClick={() => setDialog("down")}
                 >
                     <span aria-hidden="true">{t("thumbDown")}</span>
                 </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setDialog("report")}>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={pending || sent !== null}
+                    onClick={() => setDialog("report")}
+                >
                     {t("report")}
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={copy}>
@@ -72,7 +99,7 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                 </Button>
             </div>
             <div role="status" className="text-sm text-ink-2">
-                {sent ? t("sent") : null}
+                {sent ? t(`sent.${sent}`) : null}
             </div>
             <div role="alert">{error ? <p className="text-sm text-low">{error}</p> : null}</div>
             <FeedbackDialog
@@ -82,8 +109,8 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                 points={answer.points}
                 onClose={() => setDialog(null)}
                 onSent={() => {
+                    setSent(dialog === "down" ? "down" : "report");
                     setDialog(null);
-                    setSent(true);
                 }}
             />
         </div>

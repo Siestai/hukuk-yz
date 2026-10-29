@@ -2,7 +2,7 @@
 
 import { createApiClient } from "@hukuk/web-core/api/client";
 import { ApiFailure } from "@hukuk/web-core/api/unwrap";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createConversation, listConversations } from "./chat-client";
 import { applyEvent, emptyLive, toTurn, type LiveTurn } from "./chat-state";
@@ -41,13 +41,20 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
     const [conversations, setConversations] = useState(initialList);
     const [live, setLive] = useState<LiveTurn | null>(null);
     const [failure, setFailure] = useState<Failure | null>(null);
+    // What a stream that broke off had already delivered; shown above the error, gone on the next run.
+    const [partial, setPartial] = useState<LiveTurn | null>(null);
     const lastBody = useRef<MessageRequest | null>(null);
+    const stream = useRef<AbortController | null>(null);
     const busy = live !== null;
 
     const run = useCallback(
         async (body: MessageRequest, showSent: boolean) => {
+            stream.current?.abort();
+            const controller = new AbortController();
+            stream.current = controller;
             lastBody.current = body;
             setFailure(null);
+            setPartial(null);
             if (showSent) setTurns((previous) => [...previous, sentTurn(body)]);
             let current = emptyLive;
             setLive(current);
@@ -55,19 +62,25 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 let id = conversationId;
                 if (!id) {
                     id = (await createConversation(api)).id;
+                    if (controller.signal.aborted) return;
                     setConversationId(id);
                     window.history.replaceState(null, "", `/konusmalar/${id}`);
                 }
-                for await (const event of sendMessage(id, body)) {
+                for await (const event of sendMessage(id, body, controller.signal)) {
                     current = applyEvent(current, event);
                     setLive(current);
                 }
+                if (controller.signal.aborted) return;
                 const turn = toTurn(current, new Date().toISOString());
                 if (turn) setTurns((previous) => [...previous, turn]);
                 if (current.error) setFailure(current.error);
                 else if (!current.finished)
                     setFailure({ code: "upstream_unavailable", params: {} });
+                if (!turn && current.facts) setPartial(current);
             } catch (error) {
+                // A stream we aborted belongs to a screen that is gone; it must not write to the new one.
+                if (controller.signal.aborted) return;
+                if (current.facts) setPartial(current);
                 setFailure(
                     error instanceof ApiFailure
                         ? { code: error.code, params: error.params }
@@ -81,12 +94,16 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
     );
 
     const reset = useCallback(() => {
+        stream.current?.abort();
         setConversationId(null);
         setTurns([]);
         setLive(null);
         setFailure(null);
+        setPartial(null);
         lastBody.current = null;
     }, []);
+
+    useEffect(() => () => stream.current?.abort(), []);
 
     return {
         reset,
@@ -95,6 +112,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
         turns,
         live,
         failure,
+        partial,
         busy,
         /** Sends a question, the answers to the open questions, or the skip. */
         send: (reply: Reply, mode: ChatMode) => run({ skip: false, ...reply, mode }, true),

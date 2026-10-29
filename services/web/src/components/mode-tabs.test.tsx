@@ -9,8 +9,11 @@ describe("ModeTabs", () => {
     it("marks the current mode and reports the one picked", async () => {
         const onChange = vi.fn();
         renderWithIntl(<ModeTabs mode="short" onChange={onChange} />);
-        expect(screen.getByRole("tab", { name: "Kısa" })).toHaveAttribute("aria-selected", "true");
-        await userEvent.click(screen.getByRole("tab", { name: "Gerekçeli" }));
+        expect(screen.getByRole("button", { name: "Kısa" })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Gerekçeli" }));
         expect(onChange).toHaveBeenCalledWith("reasoned");
     });
 });

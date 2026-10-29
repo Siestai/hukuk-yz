@@ -48,7 +48,8 @@ export async function* sendMessage(
         body: JSON.stringify(body),
         credentials: "same-origin",
         signal,
-    }).catch(() => {
+    }).catch((error: unknown) => {
+        if (signal?.aborted) throw error;
         throw new ApiFailure("upstream_unavailable");
     });
     if (!response.ok || !response.body) {

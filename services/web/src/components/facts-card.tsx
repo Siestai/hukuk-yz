@@ -13,16 +13,13 @@ import type { CaseFacts, Fact } from "@/lib/chat-types";
 export function FactsCard({
     facts,
     onCorrect,
-    focusKey,
 }: {
     facts: CaseFacts;
     /** Absent: the card is read-only (an older turn). */
     onCorrect?: (message: string) => void;
-    /** The fact whose editor opens first. */
-    focusKey?: string;
 }) {
     const t = useTranslations("chat.facts");
-    const [editing, setEditing] = useState<string | null>(focusKey ?? null);
+    const [editing, setEditing] = useState<string | null>(null);
 
     function submit(event: FormEvent<HTMLFormElement>, fact: Fact) {
         event.preventDefault();

@@ -8,6 +8,8 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const config: NextConfig = {
     output: "standalone",
+    // The chat answer is an event stream: gzip in the Next server would hold the steps back.
+    compress: false,
     outputFileTracingRoot: join(import.meta.dirname, "../.."),
     transpilePackages: ["@hukuk/ui", "@hukuk/web-core"],
     // The repo's AGENTS.md and .claude/skills are the agent guidance; no generated copies.

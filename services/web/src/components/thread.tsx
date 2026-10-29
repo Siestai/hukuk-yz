@@ -17,11 +17,14 @@ import { UserBubble } from "./user-bubble";
 type Props = {
     turns: Turn[];
     live: LiveTurn | null;
+    /** What a broken stream had delivered before it failed. */
+    partial: LiveTurn | null;
     failure: Failure | null;
     mode: ChatMode;
     onSend: (reply: Reply) => void;
     onRetry: () => void;
-    onOpenCitation: (citation: CitationRef) => void;
+    /** `asOf`: the law date of the answer the citation belongs to; absent: today. */
+    onOpenCitation: (citation: CitationRef, asOf?: string) => void;
 };
 
 /** The questions the user was asked last: the clarification of the turn before `index`. */
@@ -34,7 +37,16 @@ export function hasOpenQuestions(turns: Turn[], live: LiveTurn | null): boolean 
     return live === null && Boolean(turns.at(-1)?.clarification);
 }
 
-export function Thread({ turns, live, failure, mode, onSend, onRetry, onOpenCitation }: Props) {
+export function Thread({
+    turns,
+    live,
+    partial,
+    failure,
+    mode,
+    onSend,
+    onRetry,
+    onOpenCitation,
+}: Props) {
     const t = useTranslations("chat");
     const errorMessage = useErrorMessage();
     const last = useRef<HTMLDivElement>(null);
@@ -66,7 +78,7 @@ export function Thread({ turns, live, failure, mode, onSend, onRetry, onOpenCita
                                         clarification={turn.clarification}
                                         busy={busy}
                                         onReply={onSend}
-                                        onOpenCitation={onOpenCitation}
+                                        onOpenCitation={(citation) => onOpenCitation(citation)}
                                     />
                                 ) : null}
                                 {turn.answer ? (
@@ -76,7 +88,12 @@ export function Thread({ turns, live, failure, mode, onSend, onRetry, onOpenCita
                                             mode={mode}
                                             facts={turn.facts ?? null}
                                             onCorrect={correct}
-                                            onOpenCitation={onOpenCitation}
+                                            onOpenCitation={(citation) =>
+                                                onOpenCitation(
+                                                    citation,
+                                                    turn.answer?.applied_law_date,
+                                                )
+                                            }
                                         />
                                         <FeedbackBar turnId={turn.id} answer={turn.answer} />
                                     </>
@@ -94,6 +111,7 @@ export function Thread({ turns, live, failure, mode, onSend, onRetry, onOpenCita
                     </p>
                 </div>
             ) : null}
+            {partial?.facts ? <FactsCard facts={partial.facts} /> : null}
             <div role="alert">
                 {failure ? (
                     <div className="grid justify-items-start gap-2 rounded-md bg-low-soft px-4 py-3 text-sm text-low">
@@ -103,11 +121,9 @@ export function Thread({ turns, live, failure, mode, onSend, onRetry, onOpenCita
                                 : null}{" "}
                             {errorMessage(failure.code, failure.params)}
                         </p>
-                        {failure.code === "upstream_unavailable" ? (
-                            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-                                {t("stream.retry")}
-                            </Button>
-                        ) : null}
+                        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+                            {t("stream.retry")}
+                        </Button>
                     </div>
                 ) : null}
             </div>

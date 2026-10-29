@@ -27,8 +27,8 @@ export function UserBubble({
     return (
         <div className="ml-auto grid w-fit max-w-full justify-items-end gap-1 md:max-w-xl">
             <div className="grid gap-1 rounded-md bg-primary px-4 py-3 text-primary-foreground">
-                {lines.map((line) => (
-                    <p key={line} className="wrap-anywhere">
+                {lines.map((line, index) => (
+                    <p key={index} className="wrap-anywhere">
                         {line}
                     </p>
                 ))}

@@ -40,7 +40,7 @@ test("login, question, clarification, conditional answer, reasoned mode, source,
     }
 
     // B-3: the holding map.
-    await page.getByRole("tab", { name: "Gerekçeli" }).click();
+    await page.getByRole("button", { name: "Gerekçeli" }).click();
     await expect(page.getByRole("heading", { name: "Koşullar olaya uyuyor mu?" })).toBeVisible();
     await expectNoHorizontalScroll(page);
 
@@ -56,5 +56,5 @@ test("login, question, clarification, conditional answer, reasoned mode, source,
     // Thumbs down, with the report form.
     await page.getByRole("button", { name: "Hatalı" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Gönder" }).click();
-    await expect(page.getByText("Geri bildiriminiz alındı.")).toBeVisible();
+    await expect(page.getByText("Geri bildiriminiz alındı: hatalı.")).toBeVisible();
 });

@@ -12,7 +12,7 @@ E2E_EMAIL=e2e@example.test E2E_PASSWORD='...' BASE_URL=http://localhost:3000 pnp
 ```
 
 Ortam değişkenleri: `E2E_EMAIL`, `E2E_PASSWORD` (gerekli, repoya yazılmaz), `BASE_URL`
-(varsayılan `http://localhost:3000`), `E2E_VIDEO=1`, `E2E_CHANNEL=chromium`, `E2E_RETRIES`.
+(varsayılan `http://localhost:3000`, `pnpm start`'ın portu; dashboard da 3000'de açıldığı için ikisi birlikte koşarken bunu `PORT` ile başka porta alıp `BASE_URL`'i ayarla), `E2E_VIDEO=1`, `E2E_CHANNEL=chromium`, `E2E_RETRIES`.
 Çıktı: `.output/` (gitignore'lu). Tarayıcı `pnpm exec playwright install chromium` ile iner.
 
 | Dosya           | Ne dener                                                                                                                                                                                                                             |

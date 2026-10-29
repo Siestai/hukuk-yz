@@ -44,6 +44,40 @@ describe("loadSourceText", () => {
         expect(text.slice(start, end)).toBe("en az altı aylık");
     });
 
+    describe("with offsets", () => {
+        const text = "İşçinin en az altı aylık kıdemi olmalıdır.";
+        const load = (offsets: Partial<CitationRef>) =>
+            loadSourceText(
+                apiReturning({ status: "found", version: { text } }),
+                { ...citation, ...offsets },
+                "2026-10-01",
+            );
+
+        it("uses offsets that cut out the quote", async () => {
+            expect((await load({ char_start: 8, char_end: 24 }))?.highlight).toEqual({
+                start: 8,
+                end: 24,
+            });
+        });
+
+        it.each([
+            ["negative", { char_start: -3, char_end: 24 }],
+            ["empty", { char_start: 8, char_end: 8 }],
+            ["reversed", { char_start: 24, char_end: 8 }],
+            ["past the end", { char_start: 8, char_end: 500 }],
+            ["fractional", { char_start: 8.5, char_end: 24 }],
+            ["pointing at other text", { char_start: 0, char_end: 8 }],
+        ])("looks the quote up when the offsets are %s", async (_name, offsets) => {
+            expect((await load(offsets))?.highlight).toEqual({ start: 8, end: 24 });
+        });
+
+        it("shows no highlight when offsets are bad and there is no quote", async () => {
+            expect(
+                (await load({ char_start: 5, char_end: 500, quote: null }))?.highlight,
+            ).toBeNull();
+        });
+    });
+
     it("falls back to the quote when the article is not published", async () => {
         const result = await loadSourceText(
             apiReturning({ status: "not_found" }),

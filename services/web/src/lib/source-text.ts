@@ -23,9 +23,26 @@ export function findQuote(text: string, quote: string): { start: number; end: nu
     return match ? { start: match.index, end: match.index + match[0].length } : null;
 }
 
+const squash = (value: string) => value.split(/\s+/).filter(Boolean).join(" ");
+
+/**
+ * The stated offsets when they lie inside the text and, if the answer quotes the passage, cut
+ * out that quote (the text may have been amended since the offsets were taken); else the quote's place.
+ */
 function highlightOf(text: string, citation: CitationRef): SourceText["highlight"] {
     const { char_start: start, char_end: end, quote } = citation;
-    if (start != null && end != null && end <= text.length) return { start, end };
+    if (
+        start != null &&
+        end != null &&
+        Number.isInteger(start) &&
+        Number.isInteger(end) &&
+        start >= 0 &&
+        start < end &&
+        end <= text.length &&
+        (!quote || squash(text.slice(start, end)) === squash(quote))
+    ) {
+        return { start, end };
+    }
     return quote ? findQuote(text, quote) : null;
 }
 

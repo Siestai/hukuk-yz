@@ -2,7 +2,7 @@
 
 import { Button, Card, Input, Progress } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type {
     CitationRef,
@@ -49,6 +49,14 @@ export function QuestionCard({
     const [position, setPosition] = useState(0);
     const [given, setGiven] = useState<Record<string, ClarificationAnswer>>({});
     const question = questions[position];
+    const heading = useRef<HTMLHeadingElement>(null);
+
+    // The next question replaces the last one under the user's finger or cursor: move focus to
+    // it so a screen reader reads it. Not on the first question, which arrives with the turn.
+    useEffect(() => {
+        if (position > 0) heading.current?.focus();
+    }, [position]);
+
     if (!question) return null;
 
     function answer(value: ClarificationAnswer) {
@@ -72,7 +80,11 @@ export function QuestionCard({
                     <p className="text-sm text-ink-2">
                         {t("progress", { index: position + 1, total: questions.length })}
                     </p>
-                    <h3 className="mt-1 font-serif text-lg font-semibold text-ink">
+                    <h3
+                        ref={heading}
+                        tabIndex={-1}
+                        className="mt-1 font-serif text-lg font-semibold text-ink focus:outline-none"
+                    >
                         {question.text}
                     </h3>
                 </div>

@@ -121,7 +121,12 @@
       "thumbUp": "👍",
       "thumbDown": "👎",
       "report": "Hata bildir",
-      "sent": "Geri bildiriminiz alındı.",
+      "sent": {
+        "up": "Geri bildiriminiz alındı: faydalı.",
+        "down": "Geri bildiriminiz alındı: hatalı.",
+        "report": "Hata bildiriminiz alındı."
+      },
+      "copyFailed": "Kopyalanamadı. Metni elle seçip kopyalayabilirsiniz.",
       "copy": "Kopyala",
       "copied": "Kopyalandı",
       "dialog": {

@@ -8,7 +8,7 @@
     "build": "next build && node ../../packages/web-core/scripts/copy-standalone.mjs",
     "start": "node ../../packages/web-core/scripts/start.mjs",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
     "e2e": "playwright test --config e2e/playwright.config.ts"
   },

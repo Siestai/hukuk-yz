@@ -36,6 +36,32 @@ describe("readEvents", () => {
     });
 });
 
+describe("readEvents with a broken stream", () => {
+    it("yields an error event and the done event after it", async () => {
+        const events = await collect(
+            readEvents(
+                body(
+                    'data: {"type":"error","code":"chat_unavailable","params":{}}\n\n',
+                    'data: {"type":"done"}\n\n',
+                ),
+            ),
+        );
+        expect(events.map((event) => event.type)).toEqual(["error", "done"]);
+    });
+
+    it("ends without a done event when the body stops early", async () => {
+        const events = await collect(
+            readEvents(body('data: {"type":"step","node":"a","label":"x"}\n\n')),
+        );
+        expect(events.map((event) => event.type)).toEqual(["step"]);
+    });
+
+    it("keeps the event of a final block without the blank line", async () => {
+        const events = await collect(readEvents(body('data: {"type":"done"}')));
+        expect(events).toEqual([{ type: "done" }]);
+    });
+});
+
 describe("sendMessage", () => {
     it("throws the code of an error response", async () => {
         vi.stubGlobal(
@@ -49,6 +75,20 @@ describe("sendMessage", () => {
         await expect(
             collect(sendMessage("c1", { text: "x", mode: "short", skip: false })),
         ).rejects.toBeInstanceOf(ApiFailure);
+    });
+
+    it("lets an abort through as it is, not as a lost connection", async () => {
+        const controller = new AbortController();
+        controller.abort();
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockRejectedValue(new DOMException("aborted", "AbortError")),
+        );
+        await expect(
+            collect(
+                sendMessage("c1", { text: "x", mode: "short", skip: false }, controller.signal),
+            ),
+        ).rejects.toMatchObject({ name: "AbortError" });
     });
 
     it("reports a lost connection as upstream_unavailable", async () => {
