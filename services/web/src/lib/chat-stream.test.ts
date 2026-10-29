@@ -23,6 +23,32 @@ async function collect(events: AsyncGenerator<ChatEvent>) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("readEvents", () => {
+    it.each(["\n", "\r\n"])("preserves every byte split with %j separators", async (newline) => {
+        const expected: ChatEvent[] = [
+            { type: "step", node: "a", label: "İşçi ücreti öğreniliyor" },
+            { type: "done" },
+        ];
+        const bytes = new TextEncoder().encode(
+            `: ping${newline}${newline}` +
+                expected
+                    .map((event) => `data: ${JSON.stringify(event)}${newline}${newline}`)
+                    .join(""),
+        );
+        const check = async (chunks: Uint8Array[]) => {
+            const stream = new ReadableStream<Uint8Array>({
+                start(controller) {
+                    chunks.forEach((chunk) => controller.enqueue(chunk));
+                    controller.close();
+                },
+            });
+            expect(await collect(readEvents(stream))).toEqual(expected);
+        };
+        for (let split = 0; split <= bytes.length; split++) {
+            await check([bytes.slice(0, split), bytes.slice(split)]);
+        }
+        await check(Array.from(bytes, (_, index) => bytes.slice(index, index + 1)));
+    });
+
     it("joins an event split across chunks and skips comments", async () => {
         const events = await collect(
             readEvents(

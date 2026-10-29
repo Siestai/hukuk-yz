@@ -40,6 +40,8 @@
     "step": "{label}...",
     "stream": {
       "retry": "Tekrar dene",
+      "restart": "Netleştirmeyi yeniden başlat",
+      "restartExplanation": "Yanıt tamamlanamadı. İlk sorunuzdan netleştirmeyi yeniden başlatıp bilgileri tekrar girebilirsiniz.",
       "connectionLost": "Bağlantı koptu."
     },
     "facts": {

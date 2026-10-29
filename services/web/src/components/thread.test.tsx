@@ -74,21 +74,27 @@ describe("Thread", () => {
         expect(onOpenCitation).toHaveBeenCalledWith(citation, "2020-01-01");
     });
 
-    it("offers retry for a failed clarification reply", async () => {
+    it.each([false, true])("offers recovery for a failed reply, restart=%s", async (restart) => {
         const onRetry = vi.fn();
         renderWithIntl(
             <Thread
                 turns={[]}
                 live={null}
                 partial={null}
-                failure={{ code: "clarification_not_pending", params: {} }}
+                failure={{ code: "clarification_not_pending", params: {}, restart }}
                 mode="short"
                 onSend={vi.fn()}
                 onRetry={onRetry}
                 onOpenCitation={vi.fn()}
             />,
         );
-        await userEvent.click(screen.getByRole("button", { name: "Tekrar dene" }));
+        await userEvent.click(
+            screen.getByRole("button", {
+                name: restart ? "Netleştirmeyi yeniden başlat" : "Tekrar dene",
+            }),
+        );
         expect(onRetry).toHaveBeenCalledOnce();
+        if (restart)
+            expect(screen.getByText(/bilgileri tekrar girebilirsiniz/)).toBeInTheDocument();
     });
 });

@@ -16,7 +16,11 @@ import type {
     Turn,
 } from "./chat-types";
 
-export type Failure = { code: string | undefined; params: Record<string, unknown> };
+export type Failure = {
+    code: string | undefined;
+    params: Record<string, unknown>;
+    restart?: boolean;
+};
 
 /** The user turn as it is shown before the server has answered. */
 function sentTurn(body: MessageRequest): Turn {
@@ -40,10 +44,30 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
     const [turns, setTurns] = useState<Turn[]>(initial?.turns ?? []);
     const [conversations, setConversations] = useState(initialList);
     const [live, setLive] = useState<LiveTurn | null>(null);
-    const [failure, setFailure] = useState<Failure | null>(null);
+    const [failure, setFailure] = useState<Failure | null>(
+        initial?.turns.at(-1)?.role === "user"
+            ? { code: "upstream_unavailable", params: {} }
+            : null,
+    );
     // What a stream that broke off had already delivered; shown above the error, gone on the next run.
     const [partial, setPartial] = useState<LiveTurn | null>(null);
-    const lastBody = useRef<MessageRequest | null>(null);
+    const lastBody = useRef<MessageRequest | null>(
+        initial?.turns.at(-1)?.role === "user"
+            ? {
+                  text: initial.turns.at(-1)?.text,
+                  clarification_answers: initial.turns.at(-1)?.clarification_answers,
+                  skip: initial.turns.at(-1)?.skipped ?? false,
+                  mode: "short",
+              }
+            : null,
+    );
+    // Replaying a consumed clarification can return 409. The existing text-message contract
+    // lets the user explicitly restart clarification from the latest question, even after reload.
+    const restartText = turns.findLast((turn) => turn.role === "user" && turn.text)?.text;
+    const [clarificationRequest, setClarificationRequest] = useState(
+        initial?.turns.at(-1)?.role === "user" && !initial.turns.at(-1)?.text,
+    );
+    const restart = Boolean(failure && clarificationRequest && restartText);
     const stream = useRef<AbortController | null>(null);
     const busy = live !== null;
 
@@ -53,6 +77,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
             const controller = new AbortController();
             stream.current = controller;
             lastBody.current = body;
+            setClarificationRequest(!body.text);
             setFailure(null);
             setPartial(null);
             if (showSent) setTurns((previous) => [...previous, sentTurn(body)]);
@@ -107,6 +132,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
         setFailure(null);
         setPartial(null);
         lastBody.current = null;
+        setClarificationRequest(false);
     }, []);
 
     useEffect(() => () => stream.current?.abort(), []);
@@ -117,12 +143,22 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
         conversationId,
         turns,
         live,
-        failure,
+        failure: failure ? { ...failure, restart } : null,
         partial,
         busy,
         /** Sends a question, the answers to the open questions, or the skip. */
         send: (reply: Reply, mode: ChatMode) => run({ skip: false, ...reply, mode }, true),
-        /** Sends the last request again, without a second bubble. */
-        retry: () => (lastBody.current ? run(lastBody.current, false) : undefined),
+        /** A failed clarification starts again; plain questions can be sent again directly. */
+        retry: () => {
+            const body = lastBody.current;
+            return body
+                ? run(
+                      restart && restartText
+                          ? { text: restartText, mode: body.mode, skip: false }
+                          : body,
+                      false,
+                  )
+                : undefined;
+        },
     };
 }

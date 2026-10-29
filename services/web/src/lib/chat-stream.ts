@@ -19,7 +19,7 @@ export async function* readEvents(body: ReadableStream<Uint8Array>): AsyncGenera
     try {
         for (;;) {
             const { done, value } = await reader.read();
-            buffer += decoder.decode(value, { stream: !done }).replaceAll("\r\n", "\n");
+            buffer = (buffer + decoder.decode(value, { stream: !done })).replaceAll("\r\n", "\n");
             let end = buffer.indexOf("\n\n");
             while (end >= 0) {
                 const event = parse(buffer.slice(0, end));

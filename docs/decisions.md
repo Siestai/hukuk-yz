@@ -80,6 +80,10 @@
 - **Ajan çerçevesi** (Orhan onayı, Themis önerisi): LangGraph iskelet + düğümlerde Pydantic AI tipli çağrılar; sabit iş akışı, dar LLM düğümleri; "okunanlar" kodla üretilir; atıf kapısı kodla. `deepagents` ana yoldan çıkar (2026-10-03 kaydını değiştirir). Görevler: 14 arama, 15 sözleşme + eval, 16 web, 17 ajan, 18 bağlama.
 - **Ortak web kodu `packages/web-core`** (Themis, Görev 16): iki arayüz (dashboard-web, `services/web`) için ortak API istemcisi ve üretilmiş OpenAPI tipleri, oturum/proxy, güvenlik başlıkları, hata kodu çevirisi, giriş formu ve test kurulumu `packages/web-core`'a taşındı; yeni `services/web` (chat) onu kullanır. Kopya yok.
 
+### 2026-10-29
+
+- **Chat bağlantı kurtarması (Görev 16, PR82; Codex, Orhan'ın düzeltme talebi):** md. 1–4'ün olgu/netleştirme akışını ve Görev 16'nın bağlantı kurtarma kabulünü korumak için, kesilen netleştirmede kullanıcı son metin sorusundan netleştirmeyi açıkça yeniden başlatabilir; bilgilerin tekrar girileceği belirtilir. Son kullanıcı turu yeniden yüklemede de kurtarma seçeneğini açar. Mevcut API'nin metin mesajı yolu kullanılır; Görev 15'e idempotency/replay sözleşmesi eklenmez. SSE ayrıştırıcısı UTF-8 ve CRLF sınırlarını chunk'tan bağımsız işler.
+
 ## Açık öneriler (karar bekliyor)
 
 - **2026-10-01, Baran (WP grubu):** Yüksek riskli / acil vakalarda (ör. SGK tespiti sonrası "ne yapalım") sistem otomatik cevap vermesin, uzman insana (Baran/İbrahim) eskalasyon yapsın. Bu eskalasyon ayrı paket veya kredi olarak ücretlendirilsin. Themis olumlu görüş bildirdi (hibrit model: makine + insan onayı). Tetikleme kullanıcı seçimi değil sistem tespiti olmalı: konu sınıfı + süre işliyor mu + belirsizlik düzeyi. Fiyatlandırma, SLA ve kapsam kararı Orhan + Baran + İbrahim'de.

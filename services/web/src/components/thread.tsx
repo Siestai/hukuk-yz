@@ -136,8 +136,9 @@ export function Thread({
                                 : null}{" "}
                             {errorMessage(failure.code, failure.params)}
                         </p>
+                        {failure.restart ? <p>{t("stream.restartExplanation")}</p> : null}
                         <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-                            {t("stream.retry")}
+                            {t(failure.restart ? "stream.restart" : "stream.retry")}
                         </Button>
                     </div>
                 ) : null}

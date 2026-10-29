@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { sendMessage } from "./chat-stream";
-import type { ChatEvent, ConversationDetail } from "./chat-types";
+import type { ChatEvent, ConversationDetail, Reply } from "./chat-types";
 import { useChatSession } from "./use-chat-session";
 
 vi.mock("./chat-client", () => ({
@@ -108,6 +108,65 @@ describe("useChatSession", () => {
             mode: "short",
         });
     });
+
+    it.each([
+        { reload: false, reply: { skip: true } },
+        { reload: true, reply: { skip: true } },
+        {
+            reload: false,
+            reply: { clarification_answers: [{ question_id: "q1", value: "30+", unknown: false }] },
+        },
+        {
+            reload: true,
+            reply: { clarification_answers: [{ question_id: "q1", value: "30+", unknown: false }] },
+        },
+    ] satisfies { reload: boolean; reply: Reply }[])(
+        "restarts accepted interrupted clarification: %j",
+        async ({ reload, reply }) => {
+            const initial = {
+                id: "c1",
+                turns: [
+                    { id: "question", role: "user", text: "ilk soru" },
+                    { id: "clarify", role: "assistant", clarification: { questions: [] } },
+                    ...(reload
+                        ? [
+                              {
+                                  id: "reply",
+                                  role: "user",
+                                  skipped: reply.skip ?? false,
+                                  clarification_answers: reply.clarification_answers,
+                              },
+                          ]
+                        : []),
+                ],
+            } as unknown as ConversationDetail;
+            vi.mocked(sendMessage).mockImplementation(async function* (_id, body) {
+                // Real fixture contract: accepted replies leave no pending clarification.
+                if (!body.text) {
+                    if (reload) throw new ApiFailure("clarification_not_pending");
+                    yield { type: "step", node: "understand", label: "Soru okunuyor" };
+                    throw new TypeError("connection lost after acceptance");
+                }
+                yield {
+                    type: "clarification",
+                    clarification: { questions: [], index: 0, total: 0 },
+                };
+                yield { type: "done", turn_id: "restarted" } as ChatEvent;
+            });
+            const { result } = renderHook(() => useChatSession(initial, []));
+            if (!reload) await act(async () => result.current.send(reply, "short"));
+            expect(result.current.failure).not.toBeNull();
+            expect(result.current.failure).toMatchObject({ restart: true });
+            await act(async () => result.current.retry());
+            expect(result.current.failure).toBeNull();
+            expect(result.current.turns.at(-1)?.id).toBe("restarted");
+            expect(result.current.turns.filter((turn) => turn.role === "user")).toHaveLength(2);
+            expect(vi.mocked(sendMessage).mock.calls.at(-1)?.[1]).toMatchObject({
+                text: "ilk soru",
+                skip: false,
+            });
+        },
+    );
 
     it("aborts the stream on unmount", async () => {
         const signals: AbortSignal[] = [];
