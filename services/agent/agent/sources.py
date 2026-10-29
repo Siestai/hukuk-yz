@@ -118,7 +118,7 @@ def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | No
     words = _WORD.findall(quote)
     if not words:
         return None
-    pattern = re.compile(r"\s+".join(re.escape(w) for w in words))
+    pattern = re.compile(r"(?<!\w)" + r"\s+".join(re.escape(w) for w in words) + r"(?!\w)")
     for passage in source.passages:
         found = pattern.search(passage.text)
         if found is None:
@@ -129,21 +129,42 @@ def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | No
     return None
 
 
-def checked_sub(source: ReadSource, sub: str | None) -> str | None:
-    """`sub` when the paragraph it names is in the text read of `source` (its number stands in
-    brackets, "(1)"; "2-a" is paragraph 2); None otherwise, so that a paragraph the model made up
-    is never cited (md. 25)."""
-    if not sub:
+def _paragraphs(source: ReadSource, sub: str) -> list[Passage]:
+    passages = []
+    for passage in source.passages:
+        markers = list(re.finditer(r"(?m)^[ \t]*\(([1-9]\d*)\)", passage.text))
+        for index, marker in enumerate(markers):
+            if marker[1] != sub:
+                continue
+            end = markers[index + 1].start() if index + 1 < len(markers) else len(passage.text)
+            passages.append(
+                Passage(
+                    char_start=passage.char_start + marker.end()
+                    if passage.char_start is not None
+                    else None,
+                    text=passage.text[marker.end() : end],
+                )
+            )
+    return passages
+
+
+def checked_sub(source: ReadSource, sub: str | None, quote: str | None = None) -> str | None:
+    """Keep only a numeric paragraph whose read text contains the quote.
+
+    Lettered clauses require their own boundaries; until the KB supplies those, cite the
+    article instead of inferring a clause from its paragraph marker (md. 25).
+    """
+    if not sub or not re.fullmatch(r"[1-9]\d*", sub):
         return None
-    number = re.escape(sub.split("-")[0].strip())
-    marker = re.compile(rf"(?<!\w)\({number}\)")
-    return sub if any(marker.search(p.text) for p in source.passages) else None
+    passages = _paragraphs(source, sub)
+    paragraph = source.model_copy(update={"passages": passages})
+    return sub if passages and (quote is None or locate(paragraph, quote) is not None) else None
 
 
 def valid_on(source: ReadSource, day: date) -> bool:
-    """The text of `source` is in force on `day`; a bound that was not recorded does not bind."""
+    """The text of `source` is in force on `day`; valid_to is exclusive, as in task 14."""
     return (source.valid_from is None or source.valid_from <= day) and (
-        source.valid_to is None or day <= source.valid_to
+        source.valid_to is None or day < source.valid_to
     )
 
 
@@ -156,9 +177,13 @@ def citation(
 ) -> CitationRef:
     """A citation of `source`, with `sub` ("1": the paragraph) and `quote` if given. The caller
     has checked the quote with `locate`."""
+    sub = checked_sub(source, sub, quote)
     suffix = f"/{sub}" if sub else ""
     start = end = None
-    if quote is not None and (where := locate(source, quote)) is not None:
+    quote_source = (
+        source.model_copy(update={"passages": _paragraphs(source, sub)}) if sub else source
+    )
+    if quote is not None and (where := locate(quote_source, quote)) is not None:
         start, end = where
     return CitationRef(
         source_id=source.source_id,

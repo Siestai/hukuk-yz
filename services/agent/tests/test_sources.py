@@ -85,15 +85,17 @@ def test_valid_on_respects_the_bounds_that_are_recorded() -> None:
     assert valid_on(read, date(2022, 6, 1))
     assert not valid_on(read, date(2019, 12, 31))
     assert not valid_on(read, date(2025, 1, 1))
+    assert not valid_on(read, date(2024, 12, 31))
+    assert valid_on(read, date(2020, 1, 1))
     assert valid_on(source(M18_1), date(1999, 1, 1))
 
 
-def test_a_citation_takes_label_and_ref_from_the_source_and_the_paragraph_from_the_caller() -> None:
-    ref = citation(source(M18_1, M18_4), sub="4", quote=M18_4, used_for="Önceki süreler")
+def test_a_citation_takes_metadata_from_the_source_and_checks_the_requested_paragraph() -> None:
+    ref = citation(source(M18_1, f"(4) {M18_4}"), sub="4", quote=M18_4, used_for="Önceki süreler")
 
     assert ref.label == "4857 sayılı İş Kanunu m.18/4"
     assert ref.ref == "4857 m.18/4"
-    assert (ref.char_start, ref.char_end) == (len(M18_1) + 1, len(M18_1) + 1 + len(M18_4))
+    assert (ref.char_start, ref.char_end) == (len(M18_1) + 5, len(M18_1) + 5 + len(M18_4))
     assert ref.verification == "not_applicable"
     assert ref.review_status == "approved"
 
@@ -121,7 +123,7 @@ def test_a_paragraph_is_cited_only_when_its_number_stands_in_the_text_read() -> 
     read = source(f"(1) {M18_1}", f"(4) {M18_4}")
 
     assert checked_sub(read, "4") == "4"
-    assert checked_sub(read, "1-a") == "1-a"
+    assert checked_sub(read, "1-a") is None
     assert checked_sub(read, "99") is None
     assert checked_sub(read, None) is None
     assert checked_sub(source(M18_1), "1") is None
@@ -134,3 +136,29 @@ def test_the_models_are_shown_no_more_than_what_is_recorded_as_read() -> None:
 
     assert [len(p.text) for p in cut.passages] == [MAX_SOURCE_CHARS - 10, 10]
     assert shown(source(M18_1)).passages == source(M18_1).passages
+
+
+def test_a_quote_in_another_paragraph_cannot_support_the_requested_sub() -> None:
+    read = source(f"(1) {M18_1}\n(4) {M18_4}")
+    assert checked_sub(read, "1", M18_4) is None
+    assert checked_sub(read, "4", M18_4) == "4"
+    assert citation(read, sub="1", quote=M18_4).ref == "4857 m.18"
+    assert checked_sub(read, "4-invented", M18_4) is None
+
+
+def test_literal_quote_does_not_match_inside_a_word_or_cross_unread_passages() -> None:
+    assert locate(source("işçinin kıdemi"), "işçi") is None
+    assert locate(source("önceki hizmet", "süresi sayılır"), "hizmet süresi") is None
+    assert locate(source("önceki hizmet süresi"), "Hizmet süresi") is None
+
+
+def test_inline_footnote_markers_do_not_prove_a_paragraph() -> None:
+    assert checked_sub(source(f"{M18_1} (99) dipnot"), "99") is None
+
+
+def test_repeated_quote_offsets_point_to_the_verified_paragraph() -> None:
+    text = f"(1) {M18_4}\n(4) {M18_4}"
+    ref = citation(source(text), sub="4", quote=M18_4)
+    assert ref.ref == "4857 m.18/4"
+    assert ref.char_start == text.rindex(M18_4)
+    assert ref.char_end == len(text)

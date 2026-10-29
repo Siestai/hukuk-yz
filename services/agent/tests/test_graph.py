@@ -347,3 +347,68 @@ async def test_the_models_are_called_in_the_order_of_the_graph() -> None:
     await turn(graph, answer_all(thread))
 
     assert [k for k, _ in script.calls] == ["intake", "holding", "draft"]
+
+
+async def test_truncated_required_text_constrains_the_answer_and_cannot_support_a_quote() -> None:
+    from agent.sources import MAX_SOURCE_CHARS
+
+    kb = FakeKb(
+        [
+            hit(
+                "statute:4857:m18",
+                "4857 m.18",
+                "4857 sayılı İş Kanunu m.18",
+                f"(1) {M18_1}",
+                "x" * MAX_SOURCE_CHARS,
+                f"(4) {M18_4}",
+            ),
+        ]
+    )
+    script = Script(
+        holding={"rows": [row("statute:4857:m18", M18_1), row("statute:4857:m18", M18_4)]}
+    )
+    graph = make_graph(script, kb)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+    events = await turn(graph, answer_all(thread))
+    answer = only(events, AnswerEvent).answer
+    state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    assert "4857 m.18" in state["unread"]
+    assert answer.status == "conditional"
+    assert "4857 m.18" in answer.status_note
+    assert len(answer.holding_map.rows) == 1
+    assert state["gate"]["rows_dropped"] == 1
+    assert M18_4 not in script.of("holding")[0]
+
+
+async def test_question_text_is_not_in_structured_logs(caplog) -> None:  # type: ignore[no-untyped-def]
+    import logging
+
+    from agent.logging_setup import JsonFormatter
+
+    caplog.set_level(logging.INFO)
+    graph = make_graph(Script())
+    question = "PRIVATE_QUESTION_SENTINEL 5 ay kıdem"
+    await turn(graph, RunRequest(thread_id=unique_thread(), text=question))
+    records = [r for r in caplog.records if r.name.startswith("agent")]
+    assert records
+    serialized = "\n".join(JsonFormatter().format(r) for r in records)
+    assert question not in serialized
+    assert "PRIVATE_QUESTION_SENTINEL" not in serialized
+    assert '"question_chars"' in serialized
+
+
+async def test_an_expired_required_source_is_unread_even_if_kb_returns_it(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from agent.nodes import _read_ref
+    from agent.topics import SourceRef
+
+    kb = FakeKb()
+    expired = hit(
+        "statute:4857:m18", "4857 m.18", "4857 sayılı İş Kanunu m.18", M18_1, valid_to=TODAY
+    )
+
+    async def stale_search(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return [expired]
+
+    monkeypatch.setattr(kb, "search", stale_search)
+    assert await _read_ref(kb, SourceRef(ref="4857 m.18", category="statute"), TODAY) is None

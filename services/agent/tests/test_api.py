@@ -3,6 +3,7 @@
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -17,6 +18,7 @@ from agent_fakes import (
     scripted,
     unique_thread,
 )
+from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import SecretStr
 
 from agent.api import create_app
@@ -28,9 +30,20 @@ from hukuk_models import ErrorCode
 KEY = {"X-Service-Key": "agent-service-key-for-tests"}
 
 
-@pytest.fixture
-def database_url() -> str:
-    return require_database_url()
+@pytest.fixture(params=["memory", "postgres"])
+def database_url(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
+    if request.param == "postgres":
+        return require_database_url()
+
+    async def ping() -> None:
+        pass
+
+    @asynccontextmanager
+    async def memory_database(url: str) -> AsyncIterator[SimpleNamespace]:
+        yield SimpleNamespace(saver=InMemorySaver(), ping=ping)
+
+    monkeypatch.setattr("agent.api.open_database", memory_database)
+    return "memory"
 
 
 @asynccontextmanager
@@ -177,3 +190,75 @@ async def test_a_request_must_carry_one_of_text_answers_or_skip(
 async def test_health_and_readiness(client: httpx.AsyncClient) -> None:
     assert (await client.get("/healthz")).json() == {"status": "ok"}
     assert (await client.get("/readyz")).json() == {"status": "ok"}
+
+
+async def test_model_failure_after_clarification_has_error_done_and_cannot_resume(
+    database_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent.llm import Llm
+
+    original = Llm.run
+
+    async def fail_holding(
+        self: Llm, tier: Any, output_type: Any, instructions: str, prompt: str
+    ) -> Any:
+        if output_type.__name__ == "HoldingDraft":
+            raise RuntimeError("model unavailable")
+        return await original(self, tier, output_type, instructions, prompt)
+
+    monkeypatch.setattr(Llm, "run", fail_holding)
+    thread = unique_thread()
+    async with serve(database_url) as client:
+        await client.post("/run", headers=KEY, json={"thread_id": thread, "text": QUESTION})
+        response = await client.post("/run", headers=KEY, json={"thread_id": thread, "skip": True})
+        retry = await client.post("/run", headers=KEY, json={"thread_id": thread, "skip": True})
+    assert [n for n, _ in events(response)][-2:] == ["error", "done"]
+    assert events(response)[-2][1]["code"] == ErrorCode.internal_error
+    assert len(events(response)[-1][1]["trace_id"]) == 32
+    assert retry.status_code == 409
+
+
+async def test_provider_exception_payload_is_not_logged(
+    database_url: str,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import logging
+
+    from agent.logging_setup import JsonFormatter
+
+    monkeypatch.setattr("agent.api.configure_logging", lambda level: None)
+    caplog.set_level(logging.INFO)
+    private = "PRIVATE_QUESTION_SENTINEL"
+    async with serve(database_url, kb=FailingKb(RuntimeError(private))) as client:
+        response = await client.post(
+            "/run", headers=KEY, json={"thread_id": unique_thread(), "text": private}
+        )
+    assert events(response)[-2][1]["code"] == ErrorCode.internal_error
+    assert private not in "\n".join(JsonFormatter().format(r) for r in caplog.records)
+
+
+@pytest.mark.parametrize("error", [KbUnavailable("down"), RuntimeError("down")])
+async def test_retrieve_failure_after_resume_cannot_be_resumed_again(
+    database_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+) -> None:
+    kb = FakeKb()
+    thread = unique_thread()
+    async with serve(database_url, kb=kb) as client:
+        first = await client.post("/run", headers=KEY, json={"thread_id": thread, "text": QUESTION})
+        assert events(first)[-2][0] == "clarification"
+        monkeypatch.setattr(kb, "search", FailingKb(error).search)
+        failed = await client.post("/run", headers=KEY, json={"thread_id": thread, "skip": True})
+        retry = await client.post("/run", headers=KEY, json={"thread_id": thread, "skip": True})
+    kinds = [name for name, _ in events(failed)]
+    assert kinds[-2:] == ["error", "done"] and "answer" not in kinds
+    assert any(body.get("node") == "retrieve" for _, body in events(failed))
+    assert events(failed)[-2][1]["code"] == ErrorCode.internal_error
+    assert events(failed)[-2][1]["params"] == (
+        {"reason": "kb_unavailable"} if isinstance(error, KbUnavailable) else {}
+    )
+    assert len(events(failed)[-1][1]["trace_id"]) == 32
+    assert retry.status_code == 409

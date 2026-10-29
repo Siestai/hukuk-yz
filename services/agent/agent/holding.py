@@ -5,8 +5,9 @@ word (docs/architecture.md §5.1, item 6)."""
 from datetime import date
 
 from agent.llm_schemas import HoldingDraft
-from agent.sources import ReadSource, checked_sub, citation, locate, valid_on
+from agent.sources import ReadSource, citation, locate, valid_on
 from hukuk_models.chat import HoldingRow
+from hukuk_models.formal_turkish import progressive_forms
 
 # A shorter quote is found in any text and proves nothing.
 MIN_QUOTE_WORDS = 3
@@ -26,13 +27,14 @@ def verify_rows(
             or not valid_on(source, applied_on)
             or len(quote.split()) < MIN_QUOTE_WORDS
             or locate(source, quote) is None
+            or progressive_forms([row.condition, row.fact_value or ""])
         ):
             continue
         rows.append(
             HoldingRow(
                 condition=row.condition,
                 condition_quote=quote,
-                citation=citation(source, sub=checked_sub(source, row.sub), quote=quote),
+                citation=citation(source, sub=row.sub, quote=quote),
                 fact_value=row.fact_value,
                 result=row.result,
             )

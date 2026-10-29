@@ -84,6 +84,10 @@
 
 - **Chat bağlantı kurtarması (Görev 16, PR82; Codex, Orhan'ın düzeltme talebi):** md. 1–4'ün olgu/netleştirme akışını ve Görev 16'nın bağlantı kurtarma kabulünü korumak için, kesilen netleştirmede kullanıcı son metin sorusundan netleştirmeyi açıkça yeniden başlatabilir; bilgilerin tekrar girileceği belirtilir. Son kullanıcı turu yeniden yüklemede de kurtarma seçeneğini açar. Mevcut API'nin metin mesajı yolu kullanılır; Görev 15'e idempotency/replay sözleşmesi eklenmez. SSE ayrıştırıcısı UTF-8 ve CRLF sınırlarını chunk'tan bağımsız işler.
 
+### 2026-10-29
+
+- **Görev 17 inceleme düzeltmeleri** (uygulama; md. 4, 25, 31): fıkra atfı, okunan metindeki fıkra sınırı ve alıntıyla birlikte doğrulanır; bent sınırı doğrulanamıyorsa madde düzeyinde kalır. Eval fixture alıntılarına yapay fıkra işareti eklenmez. Modelin tarih olguları da soru metnine bağlanır; kesilen zorunlu metin eksik kaynak sayılır. Soru metni ve sağlayıcı hatasının içeriği yapılandırılmış loga yazılmaz. Gerçek model eval'i ayrı yetkilendirme ve üç vaka tablosu bekler; görev henüz tamamlandı sayılmaz.
+
 ## Açık öneriler (karar bekliyor)
 
 - **2026-10-01, Baran (WP grubu):** Yüksek riskli / acil vakalarda (ör. SGK tespiti sonrası "ne yapalım") sistem otomatik cevap vermesin, uzman insana (Baran/İbrahim) eskalasyon yapsın. Bu eskalasyon ayrı paket veya kredi olarak ücretlendirilsin. Themis olumlu görüş bildirdi (hibrit model: makine + insan onayı). Tetikleme kullanıcı seçimi değil sistem tespiti olmalı: konu sınıfı + süre işliyor mu + belirsizlik düzeyi. Fiyatlandırma, SLA ve kapsam kararı Orhan + Baran + İbrahim'de.

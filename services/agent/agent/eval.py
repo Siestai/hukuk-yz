@@ -74,8 +74,9 @@ class FixtureKb:
                 valid_to=ref.valid_to,
             ),
         )
-        # The paragraph number stands in the text as in the law's own, so that a `sub` can be read.
-        text = f"({sub.removeprefix('/').split('-')[0]}) {ref.quote}" if sub else ref.quote
+        # The fixtures contain quoted excerpts, not paragraph boundaries. Preserve the
+        # literal text and its original offsets; never invent a marker to validate a sub.
+        text = ref.quote
         if all(m.text != text for m in hit.matches):
             hit.matches.append(
                 KbMatch(
@@ -104,7 +105,13 @@ class FixtureKb:
             h
             for h in self._hits.values()
             if (not categories or h.category in categories)
-            and (as_of is None or (h.valid_from or as_of) <= as_of <= (h.valid_to or as_of))
+            and (
+                as_of is None
+                or (
+                    (h.valid_from is None or h.valid_from <= as_of)
+                    and (h.valid_to is None or as_of < h.valid_to)
+                )
+            )
             and rank(h) > 0
         ]
         return sorted(found, key=rank, reverse=True)[:limit]

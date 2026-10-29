@@ -38,14 +38,20 @@ def rows(result: str = "met") -> list[HoldingRow]:
 
 def facts(known: bool) -> CaseFacts:
     every = [
-        {"key": f.key, "value": "x", "status": "known"} for f in TOPIC.facts if f.question or known
+        {
+            "key": f.key,
+            "value": "03.10.2026" if f.key == "bildirim_tarihi" else "x",
+            "status": "known",
+        }
+        for f in TOPIC.facts
+        if f.question or known
     ]
     chosen = every if known else [{"key": "kidem", "value": "5 ay", "status": "known"}]
     return build_facts(
         TOPIC,
         IntakeOutput.model_validate({"topic": "ise_iade", "title": "t", "facts": chosen}),
         None,
-        question="",
+        question="03.10.2026",
         today=DAY,
     )
 
@@ -252,3 +258,52 @@ def test_an_unread_must_read_source_is_named_in_the_note_of_a_conditional_answer
 
     assert result.answer is not None
     assert "Okunamayan kaynaklar bulunmaktadır: 2020/8." in result.answer.status_note
+
+
+def test_point_quote_in_another_paragraph_does_not_keep_model_sub() -> None:
+    output = draft()
+    output["points"][0]["citations"] = [
+        {"source_id": "statute:4857:m18", "sub": "1", "quote": M18_4}
+    ]
+    result = check(output)
+    assert result.answer is not None
+    assert result.answer.points[0].citations[0].ref == "4857 m.18"
+
+
+def test_fallback_never_returns_informal_holding_rows() -> None:
+    informal = rows()[0].model_copy(update={"condition": "Kıdem aranıyorsa"})
+    assert (
+        not_answered(
+            topic=TOPIC,
+            facts=facts(False),
+            rows=[informal],
+            read=read(),
+            applied_on=DAY,
+            date_assumed=False,
+        )
+        is None
+    )
+
+
+def test_the_expiry_day_is_not_a_valid_citation_date() -> None:
+    expired = read()[0].model_copy(update={"valid_to": DAY})
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=rows(),
+        read=[expired],
+        applied_on=DAY,
+        date_assumed=False,
+    )
+    assert result.answer is None
+    assert result.drops.citations == result.drops.points == 1
+
+
+def test_missing_info_citation_purpose_is_also_checked_for_formal_tense() -> None:
+    output = draft()
+    output["missing_info"][0]["citations"] = [
+        {"source_id": "statute:4857:m18", "used_for": "Kıdem aranıyorsa"}
+    ]
+    assert progressive_in(DraftOutput.model_validate(output)) == ["aranıyorsa"]
+    assert check(output).answer is None

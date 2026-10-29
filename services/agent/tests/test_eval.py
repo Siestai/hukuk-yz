@@ -1,13 +1,16 @@
 """The eval runner: the fixture knowledge base, the answers to the questions, and the smoke run
 with fake models that CI runs."""
 
+import json
 from datetime import date
 from pathlib import Path
 
+import pytest
 from agent_fakes import INTAKE_SB016, FailingKb, Script, draft, row, scripted
 
 from agent.eval import (
     FixtureKb,
+    amain,
     answers_for,
     build_eval_graph,
     render,
@@ -54,7 +57,9 @@ def test_the_case_answers_the_questions_it_has_facts_for_and_says_unknown_to_the
     ]
 
 
-async def test_the_smoke_run_scores_the_cases_with_fake_models() -> None:
+async def test_the_smoke_run_scores_the_cases_with_fake_models(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = Script(
         intake=INTAKE_SB016,
         holding={"rows": [row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde")]},
@@ -86,6 +91,20 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models() -> None:
     assert table.splitlines()[0].startswith("vaka")
     assert "SB-016" in table.splitlines()[1]
 
+    # Exercise the CLI parser and JSON/table output with the same non-network provider.
+    monkeypatch.setattr("agent.eval.Models", lambda fast, strong: Models(model, model))
+    monkeypatch.setattr("agent.eval.Tracing.from_settings", lambda settings: Tracing())
+    report = tmp_path / "eval.json"
+    assert (
+        await amain([str(CASES), "--kb", "fixtures", "--case", "SB-016", "--json", str(report)])
+        == 0
+    )
+    saved = json.loads(report.read_text())
+    assert [r["case_id"] for r in saved] == ["SB-016"]
+    assert saved[0]["metrics"]["schema"] == saved[0]["metrics"]["formal_mode"] == 1.0
+    assert saved[0]["error"] is None and saved[0]["cost"] is None
+    assert "SB-016" in capsys.readouterr().out
+
 
 async def test_a_case_that_stops_before_the_gate_is_reported_not_fatal() -> None:
     model = scripted(Script(intake=INTAKE_SB016))
@@ -97,3 +116,47 @@ async def test_a_case_that_stops_before_the_gate_is_reported_not_fatal() -> None
     assert result.answer is None and result.error == "kb_unavailable"
     assert (result.dropped, result.fell_back) == (0, False)
     assert "kb_unavailable" in render(results)
+
+
+async def test_fixture_kb_preserves_literal_quotes_and_original_offsets() -> None:
+    from hukuk_models.chat import CitationRef
+
+    kb = FixtureKb()
+    ref = CitationRef(
+        source_id="statute:test",
+        category="statute",
+        label="Test m.1/7",
+        ref="9999 m.1/7",
+        review_status="approved",
+        verification="not_applicable",
+        quote="Kaynakta bulunan özgün alıntı",
+        char_start=20,
+        char_end=47,
+    )
+    kb._add(ref)
+    hit = (await kb.search("9999 m.1"))[0]
+    assert hit.matches[0].text == ref.quote
+    assert hit.matches[0].char_start == ref.char_start
+    assert hit.matches[0].text is not None
+    assert not hit.matches[0].text.startswith("(7)")
+
+
+async def test_fixture_kb_uses_the_same_exclusive_valid_to_as_task14() -> None:
+    from hukuk_models.chat import CitationRef
+
+    kb = FixtureKb()
+    kb._add(
+        CitationRef(
+            source_id="statute:expired",
+            category="statute",
+            label="Test m.1",
+            ref="9999 m.1",
+            review_status="approved",
+            verification="not_applicable",
+            quote="Kaynakta bulunan özgün alıntı",
+            valid_from=date(2020, 1, 1),
+            valid_to=date(2026, 10, 3),
+        )
+    )
+    assert await kb.search("9999 m.1", as_of=date(2026, 10, 3)) == []
+    assert len(await kb.search("9999 m.1", as_of=date(2026, 10, 2))) == 1

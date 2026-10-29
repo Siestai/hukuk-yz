@@ -81,7 +81,7 @@ def labour_law_hits() -> list[KbHit]:
             "4857 sayılı İş Kanunu m.18",
             f"(1) {M18_1}",
             f"(4) {M18_4}",
-            f"(5) {M18_UNDERGROUND}",
+            f"(1) {M18_UNDERGROUND}",
         ),
         hit("statute:4857:m17", "4857 m.17", "4857 sayılı İş Kanunu m.17", M17_4),
         hit(
@@ -121,7 +121,13 @@ class FakeKb:
             for h in self.hits
             if found(h)
             and (not categories or h.category in categories)
-            and (as_of is None or ((h.valid_from or as_of) <= as_of <= (h.valid_to or as_of)))
+            and (
+                as_of is None
+                or (
+                    (h.valid_from is None or h.valid_from <= as_of)
+                    and (h.valid_to is None or as_of < h.valid_to)
+                )
+            )
         ][:limit]
 
 

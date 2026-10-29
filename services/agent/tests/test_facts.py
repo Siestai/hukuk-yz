@@ -101,8 +101,11 @@ def test_only_unknown_critical_facts_are_asked_in_the_order_of_the_template() ->
 
 
 def test_nothing_is_asked_when_every_critical_fact_is_known() -> None:
-    every = [IntakeFact(key=k, value="x", status="known") for k in [f.key for f in TOPIC.facts]]
-    facts = build(TOPIC, intake(*every), None)
+    every = [
+        IntakeFact(key=k, value="03.10.2026" if k == "bildirim_tarihi" else "x", status="known")
+        for k in [f.key for f in TOPIC.facts]
+    ]
+    facts = build(TOPIC, intake(*every), None, "03.10.2026")
 
     assert clarification_for(TOPIC, facts, {}) is None
 
@@ -177,3 +180,27 @@ def test_an_event_date_the_question_does_not_name_or_in_the_future_is_unknown(
 )
 def test_the_forms_of_a_date_in_a_question(text: str) -> None:
     assert stated_in(date(2026, 10, 3), f"Fesih {text} günüdür")
+
+
+@pytest.mark.parametrize("value", ["2027-01-05", "2026-10-13", "invalid"])
+def test_date_fact_cannot_bypass_the_event_date_grounding(value: str) -> None:
+    out = intake(IntakeFact(key="bildirim_tarihi", value=value, status="known"))
+    facts = build(TOPIC, out, None, "Bildirim 3.10.2026 günü yapıldı; 05.01.2027 gelecek tarihtir")
+    assert facts.event_date is None
+    assert statuses(facts)["bildirim_tarihi"] == "unknown"
+    assert "bildirim_tarihi" in critical_unknown(TOPIC, facts)
+
+
+def test_a_future_clarification_date_stays_unknown_and_clears_the_old_event_date() -> None:
+    facts = build(TOPIC, intake(), None).model_copy(update={"event_date": date(2020, 1, 1)})
+    clarification = clarification_for(TOPIC, facts, {})
+    assert clarification is not None
+    done = apply_answers(
+        TOPIC,
+        clarification,
+        [ClarificationAnswer(question_id="q3", value="2027-01-05")],
+        facts,
+        today=TODAY,
+    )
+    assert done.event_date is None
+    assert statuses(done)["bildirim_tarihi"] == "unknown"

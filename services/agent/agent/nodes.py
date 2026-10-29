@@ -19,7 +19,16 @@ from agent.kb import KbClient
 from agent.llm import Llm
 from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
 from agent.plan import Plan, make_plan
-from agent.sources import ReadSource, as_read_source, citation, covers, merge, shown, split_ref
+from agent.sources import (
+    ReadSource,
+    as_read_source,
+    citation,
+    covers,
+    merge,
+    shown,
+    split_ref,
+    valid_on,
+)
 from agent.topics import SourceRef, Topic, get_topic, load_topics
 from agent.trace import current_trace
 from hukuk_models.chat import (
@@ -95,7 +104,14 @@ async def _read_ref(kb: KbClient, ref: SourceRef, as_of: date) -> ReadSource | N
         split_ref(ref.ref)[0], categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT
     )
     return next(
-        (s for h in hits if covers(h.ref, ref.ref) and (s := as_read_source(h)) is not None), None
+        (
+            s
+            for h in hits
+            if covers(h.ref, ref.ref)
+            and (s := as_read_source(h)) is not None
+            and valid_on(s, as_of)
+        ),
+        None,
     )
 
 
@@ -182,6 +198,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 clarification,
                 answers,
                 CaseFacts.model_validate(state["facts"]),
+                today=deps.today(),
             )
             _facts_event(facts)
             rec.output = {"answered": len(answers)}
@@ -214,7 +231,13 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             for query in made.queries:
                 hits = await deps.kb.search(query, as_of=made.as_of, limit=SEARCH_LIMIT)
                 read = merge(read, [s for h in hits if (s := as_read_source(h)) is not None])
+            truncated = {s.source_id for s in read if shown(s).passages != s.passages}
             read = [shown(s) for s in read]
+            for ref in made.must_read:
+                if ref.ref not in unread and any(
+                    covers(s.ref, ref.ref) and s.source_id in truncated for s in read
+                ):
+                    unread.append(ref.ref)
             rec.output = {"read": [s.ref for s in read], "unread": unread}
             return {"read": _dumps(list(read)), "unread": unread}
 

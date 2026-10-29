@@ -90,10 +90,11 @@ async def turn_events(graph: Graph, request: RunRequest, trace: Trace) -> AsyncI
                 else:
                     yield AnswerEvent.model_validate({"answer": answer})
     except KbUnavailable:
-        logger.exception("knowledge base unavailable", extra={"fields": fields})
+        logger.error("knowledge base unavailable", extra={"fields": fields})
         yield ErrorEvent(code=ErrorCode.internal_error, params={"reason": "kb_unavailable"})
-    except Exception:
-        logger.exception("run failed", extra={"fields": fields})
+    except Exception as exc:
+        # Provider exceptions may embed prompts or personal data. Log only their type.
+        logger.error("run failed: %s", type(exc).__name__, extra={"fields": fields})
         yield ErrorEvent(code=ErrorCode.internal_error)
     logger.info(
         "run done",

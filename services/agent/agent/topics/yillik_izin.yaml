@@ -10,7 +10,7 @@ facts:
     critical: true
     question:
       text: İşçi işe hangi tarihte başladı?
-      why: İzin süresi, işçinin hizmet süresine göre belirlenmektedir (4857 m.53).
+      why: 4857 m.53 kapsamındaki izin koşullarını kaynak metinle karşılaştırmak için işe giriş tarihi sorulmaktadır.
       kind: date
       basis:
         - {ref: "4857 m.53", category: statute}
@@ -19,7 +19,7 @@ facts:
     critical: true
     question:
       text: İşçi on sekiz yaş ve altında veya elli yaş ve üzerinde mi?
-      why: İşçinin yaşı, izin süresini etkileyebilmektedir (4857 m.53).
+      why: 4857 m.53 kapsamındaki yaş koşulunu kaynak metinle karşılaştırmak için sorulmaktadır.
       kind: choice
       options:
         - {value: evet, label: Evet}
@@ -31,7 +31,7 @@ facts:
     critical: true
     question:
       text: İşçi yer altı işlerinde mi çalışmaktadır?
-      why: İşin niteliği, izin süresini etkileyebilmektedir (4857 m.53).
+      why: 4857 m.53 kapsamındaki işin niteliğine ilişkin koşulları kaynak metinle karşılaştırmak için sorulmaktadır.
       kind: choice
       options:
         - {value: evet, label: Evet}
@@ -43,7 +43,7 @@ facts:
     critical: true
     question:
       text: İş sözleşmesi veya toplu iş sözleşmesi daha uzun izin öngörmekte midir?
-      why: Sözleşmede öngörülen izin süresi, kanundaki süreyi etkileyebilmektedir (4857 m.53).
+      why: 4857 m.53 kapsamında sözleşme koşullarını kaynak metinle karşılaştırmak için sorulmaktadır.
       kind: choice
       options:
         - {value: evet, label: Evet}

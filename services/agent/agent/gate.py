@@ -15,7 +15,7 @@ from pydantic import BaseModel, ValidationError
 
 from agent.facts import critical_unknown
 from agent.llm_schemas import CitationPick, DraftOutput
-from agent.sources import ReadSource, checked_sub, citation, locate, summarize, valid_on
+from agent.sources import ReadSource, citation, locate, summarize, valid_on
 from agent.topics import Topic
 from hukuk_models.chat import (
     Answer,
@@ -53,7 +53,15 @@ def draft_texts(draft: DraftOutput) -> list[str]:
     texts = [draft.headline, draft.reasoning_summary]
     texts += [p.text for p in draft.points]
     texts += [t for m in draft.missing_info for t in (m.condition, m.result)]
-    texts += [c.used_for for p in draft.points for c in p.citations if c.used_for]
+    texts += [
+        c.used_for
+        for picks in [
+            *[p.citations for p in draft.points],
+            *[m.citations for m in draft.missing_info],
+        ]
+        for c in picks
+        if c.used_for
+    ]
     return texts
 
 
@@ -84,7 +92,7 @@ def _cite(
             cited.append(
                 citation(
                     source,
-                    sub=checked_sub(source, pick.sub),
+                    sub=pick.sub,
                     quote=quote or None,
                     used_for=pick.used_for,
                 )
@@ -199,6 +207,7 @@ def not_answered(
 ) -> Answer | None:
     """The answer given when the draft could not pass the gate twice: it says so and shows the
     holding map rows that were verified. None when there is no verified row to show."""
+    rows = [r for r in rows if not progressive_forms([r.condition, r.fact_value or ""])]
     if not rows:
         return None
     return Answer(

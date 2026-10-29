@@ -81,3 +81,21 @@ def test_a_paragraph_the_text_does_not_have_is_left_out_of_the_citation() -> Non
 
     assert dropped == 0
     assert rows[0].citation.ref == "4857 m.18"
+
+
+def test_a_quote_in_a_different_paragraph_is_cited_at_article_level() -> None:
+    rows, dropped = verify(row("statute:4857:m18", M18_4, sub="1"))
+    assert dropped == 0
+    assert rows[0].citation.ref == "4857 m.18"
+
+
+def test_informal_holding_text_is_dropped_before_it_can_reach_the_fallback() -> None:
+    candidate = row("statute:4857:m18", M18_4)
+    for field in ("condition", "fact_value"):
+        assert verify({**candidate, field: "İşçi çalışıyordu"}) == ([], 1)
+
+
+def test_the_expiry_day_is_not_a_valid_holding_source_date() -> None:
+    draft = HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_1)]})
+    expired = READ[0].model_copy(update={"valid_to": DAY})
+    assert verify_rows(draft, [expired], DAY) == ([], 1)

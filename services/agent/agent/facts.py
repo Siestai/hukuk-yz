@@ -85,7 +85,12 @@ def build_facts(
     earlier = {f.key: f for f in previous.facts} if previous else {}
     facts = []
     for tf in topic.facts:
-        fact = _extracted(tf, extracted) or earlier.get(tf.key)
+        fact = _extracted(tf, extracted)
+        if fact is not None and tf.question is not None and tf.question.kind == "date":
+            day = parse_date(fact.value or "")
+            if day is None or day > today or not stated_in(day, question):
+                fact = None
+        fact = fact or earlier.get(tf.key)
         facts.append(fact or Fact(key=tf.key, label=tf.label, status="unknown"))
     event_date = _stated_event_date(extracted, question, today) or (
         previous.event_date if previous else None
@@ -141,7 +146,7 @@ def clarification_for(
 
 
 def _answered_fact(
-    tf: TopicFact, question: ClarificationQuestion, answer: ClarificationAnswer
+    tf: TopicFact, question: ClarificationQuestion, answer: ClarificationAnswer, today: date
 ) -> Fact:
     """The fact after the answer; an unusable answer ("Bilmiyorum", a value that is no option or
     no date) leaves it unknown."""
@@ -157,7 +162,7 @@ def _answered_fact(
         return Fact(key=tf.key, label=tf.label, value=option.label, status=status)
     if kind == "date":
         day = parse_date(value)
-        if day is None:
+        if day is None or day > today:
             return unknown
         return Fact(key=tf.key, label=tf.label, value=day.strftime("%d.%m.%Y"), status="known")
     return Fact(key=tf.key, label=tf.label, value=value, status="known") if value else unknown
@@ -168,6 +173,8 @@ def apply_answers(
     clarification: Clarification,
     answers: list[ClarificationAnswer],
     facts: CaseFacts,
+    *,
+    today: date | None = None,
 ) -> CaseFacts:
     """`facts` with the answers filled in; a question that got no answer stays as it is."""
     by_id = {q.id: q for q in clarification.questions}
@@ -176,8 +183,13 @@ def apply_answers(
         question = by_id.get(answer.question_id)
         tf = topic.fact(question.fact_key) if question else None
         if question is not None and tf is not None:
-            updated[tf.key] = _answered_fact(tf, question, answer)
+            updated[tf.key] = _answered_fact(tf, question, answer, today or date.today())
     merged = [updated[f.key] for f in facts.facts]
     return facts.model_copy(
-        update={"facts": merged, "event_date": event_date_of(topic, merged) or facts.event_date}
+        update={
+            "facts": merged,
+            "event_date": event_date_of(topic, merged)
+            if topic.event_date_fact
+            else facts.event_date,
+        }
     )
