@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from agent import prompts
 from agent.facts import apply_answers, build_facts, clarification_for, critical_unknown
-from agent.gate import GateDrops, check_draft, not_answered, progressive_in
+from agent.gate import GateDrops, check_draft, holding_issue, not_answered, progressive_in
 from agent.holding import verify_rows
 from agent.kb import KbClient
 from agent.llm import Llm
@@ -274,12 +274,13 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             issue_counts: dict[str, int] = {}
             answer = None
             attempts = 0
-            for attempt in range(1, DRAFT_ATTEMPTS + 1):
+            blocked = holding_issue(rows)
+            if blocked:
+                code, feedback = blocked
+                issues = [feedback]
+                issue_counts = {code: 1}
+            for attempt in range(1, 1 if blocked else DRAFT_ATTEMPTS + 1):
                 attempts = attempt
-                if not rows:
-                    issues = ["doğrulanan hüküm haritası satırı yoktur"]
-                    issue_counts = {"no_verified_rows": 1}
-                    break
                 output = await deps.llm.run(
                     "strong",
                     DraftOutput,

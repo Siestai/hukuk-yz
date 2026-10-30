@@ -50,6 +50,23 @@ class GateResult:
     issue_counts: dict[str, int] = field(default_factory=dict)
 
 
+def holding_issue(rows: Sequence[HoldingRow]) -> tuple[str, str] | None:
+    """No row or explicit inapplicability cannot support an ordinary rights answer.
+
+    not_met is different: the rule applies, but its condition is not satisfied.
+    Mixed and unknown rows remain eligible for the normal draft gate.
+    """
+    if not rows:
+        return "no_verified_rows", "doğrulanan hüküm haritası satırı yoktur"
+    if all(r.result == "not_applicable" for r in rows):
+        return (
+            "all_holdings_not_applicable",
+            "doğrulanan hükümlerin tamamı uygulanamaz olarak işaretlenmiştir; "
+            "bu kaynaklarla soruya cevap verilemez",
+        )
+    return None
+
+
 def draft_texts(draft: DraftOutput) -> list[str]:
     """Every sentence the model wrote in the draft (the quotes are the sources' own words)."""
     texts = [draft.headline, draft.reasoning_summary]
@@ -147,6 +164,9 @@ def check_draft(
         issues.append(feedback)
         issue_counts[code] = count
 
+    if issue := holding_issue(rows):
+        reject(*issue)
+
     if forms := progressive_in(draft, rows, facts):
         reject("progressive_form", f"-iyor kipi kullanılmıştır: {', '.join(forms)}", len(forms))
     if draft.status == "definite":
@@ -190,8 +210,6 @@ def check_draft(
         )
         for m in draft.missing_info
     ]
-    if not rows:
-        reject("no_verified_rows", "doğrulanan hüküm haritası satırı yoktur")
     if issues:
         return GateResult(None, issues, drops, issue_counts)
 
@@ -235,9 +253,15 @@ def not_answered(
     rows = [r for r in rows if not progressive_forms([r.condition, r.fact_value or ""])]
     if not rows:
         return None
+    note = _status_note("conditional", date_assumed, unread)
+    if all(r.result == "not_applicable" for r in rows):
+        note = note.replace(
+            "Eksik bilgiler nedeniyle koşullu cevaptır.",
+            "Doğrulanan hükümler bu soruya uygulanabilir bir cevap için yeterli değildir.",
+        )
     return Answer(
         status="conditional",
-        status_note=_status_note("conditional", date_assumed, unread),
+        status_note=note,
         headline=NOT_ANSWERED,
         fact_chips=_chips(topic, facts),
         points=[

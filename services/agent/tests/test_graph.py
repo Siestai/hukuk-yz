@@ -560,3 +560,53 @@ async def test_reinstatement_asks_about_contractual_shortening_without_assuming_
     facts = only(events, FactsEvent).facts
     assert next(f for f in facts.facts if f.key == "kisaltma").status == "unknown"
     assert only(events, AnswerEvent).answer.status == "conditional"
+
+
+@pytest.mark.parametrize(
+    "results",
+    [
+        [],
+        ["not_applicable"],
+        ["not_applicable", "not_applicable"],
+        ["not_applicable", "met"],
+        ["not_applicable", "unknown"],
+        ["unknown"],
+        ["not_met"],
+        ["met"],
+    ],
+)
+async def test_inapplicable_holdings_skip_strong_model_and_use_existing_fallback(
+    results: list[str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    caplog.set_level(logging.INFO)
+    script = Script(holding={"rows": [row("statute:4857:m18", M18_4, r) for r in results]})
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+    events = await turn(graph, answer_all(thread))
+    state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    assert isinstance(only(events, DoneEvent), DoneEvent)
+    if not results:
+        assert only(events, ErrorEvent).code == ErrorCode.answer_not_verified
+        assert not script.of("draft")
+    elif all(r == "not_applicable" for r in results):
+        assert [k for k, _ in script.calls] == ["intake", "holding"]
+        answer = only(events, AnswerEvent).answer
+        assert Answer.model_validate(answer.model_dump()) == answer
+        assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
+        assert all(m.fact_key is None and not m.citations for m in answer.missing_info)
+        assert [r.model_dump(mode="json") for r in answer.holding_map.rows] == state["rows"]
+        assert {s.source_id for s in answer.read_sources.items} == {
+            s["source_id"] for s in state["read"]
+        }
+        assert state["gate"]["fallback"] and state["gate"]["attempts"] == 0
+        assert state["gate"]["issues"]
+        record = next(r for r in caplog.records if r.getMessage() == "node draft")
+        assert record.fields["output"]["issue_counts"] == {"all_holdings_not_applicable": 1}  # type: ignore[attr-defined]
+    else:
+        assert len(script.of("draft")) == 1
+        assert only(events, AnswerEvent).answer.headline != "Doğrulanmış kaynakla cevap verilemedi."
+        assert not state["gate"]["fallback"]

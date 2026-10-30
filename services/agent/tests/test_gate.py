@@ -335,3 +335,44 @@ def test_issue_counts_use_fixed_codes_while_feedback_keeps_details(
     if status == "definite":
         assert private in " ".join(result.issues)
     assert private not in str(result.issue_counts)
+
+
+@pytest.mark.parametrize(
+    ("results", "blocked"),
+    [
+        ([], True),
+        (["not_applicable"], True),
+        (["not_applicable", "not_applicable"], True),
+        (["not_applicable", "met"], False),
+        (["not_applicable", "unknown"], False),
+        (["unknown"], False),
+        (["not_met"], False),
+        (["met"], False),
+    ],
+)
+def test_holding_applicability_controls_ordinary_draft(results: list[str], blocked: bool) -> None:
+    verified = [r for value in results for r in rows(value)]
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=verified,
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+    )
+    assert (result.answer is None) is blocked
+    if results and blocked:
+        assert result.issue_counts == {"all_holdings_not_applicable": 1}
+        fallback = not_answered(
+            topic=TOPIC,
+            facts=facts(False),
+            rows=verified,
+            read=read(),
+            applied_on=DAY,
+            date_assumed=False,
+        )
+        assert fallback is not None
+        assert fallback.holding_map.rows == verified
+        assert all(m.fact_key is None for m in fallback.missing_info)
+        assert fallback.read_sources.items[0].source_id == read()[0].source_id
