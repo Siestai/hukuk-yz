@@ -14,10 +14,12 @@ from app import chat
 from app.auth import hash_password
 from app.chat import ChatStore, load_scenarios, open_store
 from app.db import make_engine
-from app.main import app
+from app.main import create_app
 from app.models.user import AppUser, UserRole
 from app.settings import Settings
 from hukuk_models.chat import Answer, AnswerEvent, ChatEvent, DoneEvent, ErrorEvent
+
+app = create_app(chat_backend="fixture")
 
 PASSWORD = "correct horse battery"
 FIXTURES = Path(__file__).parents[3] / "eval" / "fixtures"

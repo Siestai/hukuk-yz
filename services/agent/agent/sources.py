@@ -41,6 +41,7 @@ class ReadSource(BaseModel):
     valid_from: date | None
     valid_to: date | None
     passages: list[Passage]
+    complete: bool = False
 
 
 # What the models are shown of one source, at most; the rest counts as not read.
@@ -82,6 +83,7 @@ def as_read_source(hit: KbHit) -> ReadSource | None:
         valid_from=hit.valid_from,
         valid_to=hit.valid_to,
         passages=passages,
+        complete=hit.complete,
     )
 
 
@@ -92,6 +94,11 @@ def merge(read: Iterable[ReadSource], new: Iterable[ReadSource]) -> list[ReadSou
         have = merged.get(source.source_id)
         if have is None:
             merged[source.source_id] = source.model_copy(deep=True)
+            continue
+        if source.complete and not have.complete:
+            merged[source.source_id] = source.model_copy(deep=True)
+            continue
+        if have.complete:
             continue
         seen = {(p.char_start, p.text) for p in have.passages}
         have.passages += [p for p in source.passages if (p.char_start, p.text) not in seen]
@@ -108,7 +115,9 @@ def shown(source: ReadSource) -> ReadSource:
             break
         passages.append(passage.model_copy(update={"text": passage.text[:left]}))
         left -= len(passage.text)
-    return source.model_copy(update={"passages": passages})
+    return source.model_copy(
+        update={"passages": passages, "complete": source.complete and passages == source.passages}
+    )
 
 
 def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | None:

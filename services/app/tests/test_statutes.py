@@ -282,3 +282,32 @@ async def test_golden_queries_through_the_database_and_the_api(
         elif failure := check_golden(q, response.json()):
             failures.append(failure)
     assert not failures, "\n".join(failures)
+
+
+async def test_service_key_reads_full_published_article_without_session(
+    client: httpx.AsyncClient,
+    statutes_published: dict[str, uuid.UUID],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from pydantic import SecretStr
+
+    from app.settings import Settings, get_settings
+
+    original = get_settings()
+    configured = Settings.model_validate(
+        {**original.model_dump(), "kb_service_key": SecretStr("test-kb-key-18")}
+    )
+    app.dependency_overrides[get_settings] = lambda: configured
+    try:
+        path = "/statutes/4857/articles/18?as_of=2020-01-01"
+        assert (await client.get(path)).status_code == 401
+        assert (await client.get(path, headers={"X-Service-Key": "wrong"})).status_code == 401
+        response = await client.get(path, headers={"X-Service-Key": "test-kb-key-18"})
+        assert response.status_code == 200
+        assert response.json()["version"]["text"] == "Madde 18 yeni metin."
+        assert uuid.UUID(response.json()["version"]["id"])
+        assert (
+            await client.get("/review/decisions", headers={"X-Service-Key": "test-kb-key-18"})
+        ).status_code == 401
+    finally:
+        app.dependency_overrides.pop(get_settings, None)

@@ -96,3 +96,23 @@ describe("loadSourceText", () => {
         expect(await loadSourceText(apiReturning(undefined), decision, "2026-10-01")).toBeNull();
     });
 });
+
+it("reads a real version UUID citation by its statute reference", async () => {
+    const GET = vi.fn().mockResolvedValue({
+        data: { status: "found", version: { text: "Tam madde metni." } },
+    });
+    const result = await loadSourceText(
+        { GET } as never,
+        {
+            ...citation,
+            source_id: "a5044bdb-ed04-4ccc-9957-a10673fe0648",
+            ref: "4857 m.18/1",
+            quote: "madde",
+        },
+        "2026-10-03",
+    );
+    expect(GET).toHaveBeenCalledWith("/statutes/{number}/articles/{article_no}", {
+        params: { path: { number: "4857", article_no: "18" }, query: { as_of: "2026-10-03" } },
+    });
+    expect(result?.origin).toBe("kb");
+});

@@ -162,3 +162,41 @@ def test_repeated_quote_offsets_point_to_the_verified_paragraph() -> None:
     assert ref.ref == "4857 m.18/4"
     assert ref.char_start == text.rindex(M18_4)
     assert ref.char_end == len(text)
+
+
+def test_search_excerpts_are_not_complete_and_truncation_revokes_completeness() -> None:
+    from agent.kb import KbHit, KbMatch
+    from agent.sources import MAX_SOURCE_CHARS, as_read_source, shown
+
+    hit = KbHit(
+        source_id="synthetic",
+        category="statute",
+        title="Test",
+        ref="4857 m.18",
+        review_status="approved",
+        matches=[KbMatch(chunk_id="1", text="Short excerpt", char_start=90)],
+    )
+    partial = as_read_source(hit)
+    assert partial is not None and not partial.complete
+    full = as_read_source(
+        hit.model_copy(
+            update={
+                "complete": True,
+                "matches": [KbMatch(chunk_id="1", text="a" * (MAX_SOURCE_CHARS + 1), char_start=0)],
+            }
+        )
+    )
+    assert full is not None and full.complete
+    clipped = shown(full)
+    assert not clipped.complete
+    assert len(clipped.passages[0].text) == MAX_SOURCE_CHARS
+
+
+def test_full_read_replaces_search_excerpts_without_duplicate_budget_truncation() -> None:
+    partial = source("A matched excerpt")
+    full = source("x" * (MAX_SOURCE_CHARS - 1)).model_copy(update={"complete": True})
+    for left, right in ((partial, full), (full, partial)):
+        result = merge([left], [right])
+        assert len(result) == 1
+        assert result[0].passages == full.passages
+        assert shown(result[0]).complete

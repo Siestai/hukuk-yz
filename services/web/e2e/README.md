@@ -22,3 +22,19 @@ Ortam değişkenleri: `E2E_EMAIL`, `E2E_PASSWORD` (gerekli, repoya yazılmaz), `
 
 İki proje koşar: `chromium` (masaüstü) ve `chromium-mobile` (telefon: yatay kaydırma, dokunma). Fixture arka ucun
 durumu bellektedir; her koşu kendi konuşmasını açar, sıfırlama gerekmez.
+
+## Gerçek ajan köprüsü (çevrimdışı model)
+
+`E2E_BACKEND=agent` yalnız `agent.spec.ts` çalıştırır; fixture senaryolarının
+assertion'ları değiştirilmez. App `CHAT_BACKEND=agent`, agent ise
+`PYTHONPATH=services/agent/tests TEST_STATUTE_VERSION_ID=<sentetik-sürüm-uuid> TEST_STATUTE_QUOTE=<test-metnindeki-alıntı>` ile
+`uv run uvicorn serve:app --port 8182` üzerinden açılır. Bu yardımcı gerçek grafı,
+Postgres checkpoint'lerini ve HTTP KB istemcisini kullanır; yalnız model scripted'dir.
+Veritabanı yalnız sentetik test verisi içermelidir. Servis anahtarları ortamdan gelir.
+`APP_BASE_URL=http://localhost:8181`, app tarafında
+`AGENT_BASE_URL=http://localhost:8182` kullanılır. Web `PORT=3318` ile açılır.
+
+`E2E_BACKEND=agent BASE_URL=http://localhost:3318 E2E_EMAIL=... E2E_PASSWORD=... pnpm e2e`
+
+Bu koşu hukuki doğruluk veya gerçek model kabulü değildir; ücretli model koşusu
+ayrı maliyet korumalı orkestrasyonla yapılmalıdır.

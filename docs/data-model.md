@@ -287,3 +287,13 @@ Memory'deki `value` case anahtarıyla şifreli tutulur. `forget` ve case silme b
 - `valid_from` çıkarımı başarısız olduğunda varsayılan davranış: inceleme ekranına düşsün (öneri) / RG tarihini kullan.
 - Çalışma ve Toplum özetleri `internal_only` kalırsa inceleme ekranında gösterilsin mi? (Faydalı, ama kullanıcıya gitmemeli.)
 - Çok kiracılı KB: org'a özel kaynak (kendi TİS'i) ortak KB'ye mi, org scope'una mı? Öneri: `source.org_id` nullable; null = ortak.
+
+## Chat kalıcılığı (Görev 18, md. 25, 31)
+
+Migration 0016: `chat_conversation` kullanıcıya aittir; `chat_turn` sözleşmedeki
+Turn JSONB verisini, modu, trace_id ve süreyi saklar. Model/token/maliyet alanları
+terminal `done.usage` alanından alınır; sağlayıcı metrikleri gelmediğinde NULL kalır; sıfır maliyet uydurulmaz.
+`chat_feedback` tur ve kullanıcı FK'leriyle yorum, düzeltme, tür ve puanı saklar.
+Admin tüm konuşmaları okuyabilir; diğer roller yalnız kendi konuşmalarını görür.
+Yeni metin soruları UTC gününde kullanıcı başına sayılır; PostgreSQL kilidi eşzamanlı
+kota kontrolünü serileştirir. Netleştirme cevapları yeni soru sayılmaz.

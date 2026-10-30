@@ -257,3 +257,23 @@ async def test_a_capital_dotted_i_query_finds_the_lowercase_text(
     configure(True)
     app.dependency_overrides[get_embedder] = lambda: None
     assert len(await search(client, headers, q="İADE")) == 1
+
+
+async def test_search_service_key_is_scoped_to_kb(
+    client: httpx.AsyncClient,
+    configure: SettingsFor,
+) -> None:
+    from pydantic import SecretStr
+
+    from app.settings import get_settings
+
+    configure(False)
+    original = app.dependency_overrides[get_settings]()
+    original.kb_service_key = SecretStr("test-kb-key-18")
+    app.dependency_overrides[get_settings] = lambda: original
+    assert (
+        await client.get("/kb/search?q=test", headers={"X-Service-Key": "wrong"})
+    ).status_code == 401
+    response = await client.get("/kb/search?q=test", headers={"X-Service-Key": "test-kb-key-18"})
+    assert response.status_code == 200
+    assert response.json()["results"] == []

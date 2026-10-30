@@ -31,6 +31,7 @@ from hukuk_models.chat import (
     DoneEvent,
     ErrorEvent,
     MessageRequest,
+    RunUsage,
 )
 
 logger = logging.getLogger("agent")
@@ -108,7 +109,16 @@ async def turn_events(graph: Graph, request: RunRequest, trace: Trace) -> AsyncI
             }
         },
     )
-    yield DoneEvent(trace_id=trace.trace_id)
+    yield DoneEvent(
+        trace_id=trace.trace_id,
+        usage=RunUsage(
+            models=list(dict.fromkeys(m for r in trace.records for m in r.models)),
+            input_tokens=trace.input_tokens,
+            output_tokens=trace.output_tokens,
+            cost=trace.cost,
+            latency_ms=int(trace.seconds * 1000),
+        ),
+    )
 
 
 async def run_events(graph: Graph, tracing: Tracing, request: RunRequest) -> AsyncIterator[Any]:

@@ -1,6 +1,7 @@
 """ORM models of the knowledge base (data owner: app). Importing registers all tables."""
 
 from app.models.admin_act import AdminAct, AdminActVersion
+from app.models.chat import ChatConversation, ChatFeedback, ChatTurn
 from app.models.chunk import Chunk
 from app.models.common import (
     Base,
@@ -32,6 +33,9 @@ __all__ = [
     "CalcMethod",
     "CalcParameterVersion",
     "Chunk",
+    "ChatConversation",
+    "ChatFeedback",
+    "ChatTurn",
     "CollectiveAgreement",
     "Decision",
     "DecisionVerification",

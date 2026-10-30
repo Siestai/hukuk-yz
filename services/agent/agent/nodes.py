@@ -15,7 +15,7 @@ from agent import prompts
 from agent.facts import apply_answers, build_facts, clarification_for, critical_unknown
 from agent.gate import GateDrops, check_draft, holding_issue, not_answered, progressive_in
 from agent.holding import verify_rows
-from agent.kb import KbClient
+from agent.kb import HttpKbClient, KbClient
 from agent.llm import Llm
 from agent.llm_schemas import HoldingDraft, IntakeOutput, draft_output_type
 from agent.plan import Plan, make_plan
@@ -100,9 +100,12 @@ async def _read_ref(kb: KbClient, ref: SourceRef, as_of: date) -> ReadSource | N
     paragraphs of the article the search returns with it; None when the knowledge base does not
     have it."""
     # The künye of the article, so that the hit holds its other paragraphs too.
-    hits = await kb.search(
-        split_ref(ref.ref)[0], categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT
-    )
+    if ref.category == "statute" and isinstance(kb, HttpKbClient):
+        hits = await kb.read_article(split_ref(ref.ref)[0], as_of)
+    else:
+        hits = await kb.search(
+            split_ref(ref.ref)[0], categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT
+        )
     return next(
         (
             s

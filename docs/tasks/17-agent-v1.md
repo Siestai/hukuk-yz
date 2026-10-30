@@ -49,8 +49,8 @@ Skill'ler: `task-pr-hygiene`.
 
 ## Uygulama notları (şemadan sapmalar)
 
-- **Komşu fıkralar (graf 4. madde):** `app`'te `/statutes/{number}/articles/{article_no}?as_of=` okuma endpoint'i vardır, ancak oturum ister ve yalnız yayımlanmış maddeleri okur. Agent v1 bu endpoint'e henüz bağlı değildir; zorunlu maddeyi madde künyesiyle (`4857 m.18`) arar ve yalnız aramanın döndürdüğü parçaları okur. Tam madde/komşu fıkra okuması, servis anahtarı desteği ve arama kayıtlarının okuma endpoint'iyle eşlenmesi Görev 18'de tamamlanacaktır; v1 tam fıkra kapsamı garantisi vermez.
-- **`/kb/search` kimliği:** Görev 14 sözleşmesi oturum ister; agent `X-Service-Key` gönderir. Servis anahtarı ile çağrıyı kabul etmeyi Görev 18 `app` tarafına ekler (`18-chat-wiring.md`); o zamana kadar agent yalnız fixture KB (`--kb fixtures`) ile çalışır.
+- **Görev 17 teslimindeki komşu fıkra sınırı (graf 4. madde):** `app`'te `/statutes/{number}/articles/{article_no}?as_of=` okuma endpoint'i vardır, ancak oturum ister ve yalnız yayımlanmış maddeleri okur. Agent v1 bu endpoint'e henüz bağlı değildir; zorunlu maddeyi madde künyesiyle (`4857 m.18`) arar ve yalnız aramanın döndürdüğü parçaları okur. Tam madde/komşu fıkra okuması, servis anahtarı desteği ve arama kayıtlarının okuma endpoint'iyle eşlenmesi Görev 18'de tamamlanacaktır; v1 tam fıkra kapsamı garantisi vermez.
+- **Görev 17 teslimindeki `/kb/search` kimliği:** Görev 14 sözleşmesi oturum ister; agent `X-Service-Key` gönderir. Servis anahtarı ile çağrıyı kabul etmeyi Görev 18 `app` tarafına ekler (`18-chat-wiring.md`); o zamana kadar agent yalnız fixture KB (`--kb fixtures`) ile çalışır.
 - **Fıkra (`sub`):** model fıkra adı verebilir; kod yalnız okunan metinde satır başındaki sayısal fıkra işaretini (`(1)`) ve alıntının aynı fıkrada geçtiğini doğrularsa atıfa yazar. Bentler ve doğrulanamayan fıkralar için atıf madde düzeyinde kalır.
 - **Okunanlar:** modele gösterilen metin kaynak başına en çok 6000 karakterdir; "okunanlar" yalnız modele gösterilen metni sayar. Zorunlu kaynak bu sınırda kesilirse okunamayanlar listesinde de görünür.
 - **Okunamayan zorunlu kaynak:** cevap `definite` olamaz; `status_note` okunamayan kaynakları yazar.
@@ -62,3 +62,12 @@ Skill'ler: `task-pr-hygiene`.
 - **İz kaydı mahremiyeti (md. 31):** kullanıcı sorusu yerine karakter sayısı kaydedilir. Sağlayıcı hata metni/traceback istemi içerebileceğinden hata logunda yalnız hata sınıfı bulunur. Kapının ayrıntılı geri bildirimi yalnız iç durumda ve modelin tekrar isteminde tutulur; düğüm loguna sabit hata kodları ve adetleri, düşen atıf/nokta/satır sayıları, deneme sayısı ve fallback bilgisi yazılır.
 
 - **Geçerlilik sınırı (md. 4):** Görev 14 ile aynı aralık kullanılır: `valid_from <= as_of < valid_to`; bitiş günü eski sürüm atıfta kullanılamaz.
+
+### Görev 18 bağlantı notu
+
+Görev 18, HTTP KB istemcisini `results` yanıtına, servis anahtarını yalnız KB okuma
+yollarına ve zorunlu mevzuatı tarihli tam madde endpoint'ine bağlar. Madde sürümü
+kimliği arama ve okuma arasında korunur; arama parçaları tam okuma sayılmaz,
+kesilen metin de tamlık niteliğini kaybeder. Yukarıdaki Görev 17 teslim sınırları
+tarihsel durumu anlatır. Bu bağlantı, açık SB-001 semantik bulgularını kapatmaz
+ve gerçek model kabulünün yerine geçmez.

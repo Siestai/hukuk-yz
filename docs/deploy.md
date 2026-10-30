@@ -179,3 +179,18 @@ dosya yanlışsa uygulama onu sunmaz (SHA-256 kontrolü).
 Bu belge sunucuda denenmedi; Docker imajı CI'da derlenir ve `/healthz` kontrol edilir ama Dokploy
 alan adı ve ağ ayarı, `FORWARDED_ALLOW_IPS` değeri ve Traefik'in tek proxy olması ilk yayında
 elle doğrulanmalıdır. Aktarım komutu ve yedek komutu da sunucuda denenmedi (aktarım yerelde tam Drive kopyasıyla denendi, sayılar PR'da).
+
+## Chat ve ajan (Görev 18)
+
+`web` tarayıcı girişidir; yalnız `APP_API_URL` ile app'e bağlanır.
+`CHAT_BACKEND=agent`, `AGENT_BASE_URL=http://agent:8000`,
+`CHAT_DAILY_LIMIT=50`, `AGENT_TIMEOUT_SECONDS=180` app ayarlarıdır.
+`AGENT_SERVICE_KEY` app → agent, `KB_SERVICE_KEY` agent → app içindir;
+aynı değerleri ilgili iki servise secret olarak verin, repoya yazmayın.
+Agent anahtarı en az 16 karakter ve gerçek rastgele değer olmalıdır.
+Agent'ın portu dışarı açılmaz; app tek chat veri yazarıdır, agent checkpoint'leri
+aynı Postgres'in `agent` şemasında kalır. Önce `alembic upgrade head` çalışır.
+Web alan adı ve sağlayıcı anahtarları dağıtım ortamında tanımlanır.
+`CHAT_BACKEND=fixture` eski bellek içi UI senaryolarını korur; kalıcı beta için agent
+modu gerekir. Docker derlemesi CI'da kontrol edilir; yerel daemon yoksa gerçek
+imaj çalıştırma doğrulanmış sayılmaz.

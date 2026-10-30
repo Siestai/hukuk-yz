@@ -10,7 +10,7 @@ from datetime import date
 from typing import Protocol
 
 import httpx
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, SecretStr
 
 from hukuk_models.chat import CitationCategory, ReviewStatus, Verification
 
@@ -32,6 +32,8 @@ class KbHit(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     source_id: str
+    parent_id: str | None = None
+    version_id: str | None = None
     category: CitationCategory
     title: str
     ref: str
@@ -41,12 +43,13 @@ class KbHit(BaseModel):
     valid_to: date | None = None
     score: float = 0.0
     matches: list[KbMatch] = []
+    complete: bool = False
 
 
 class KbSearchResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    items: list[KbHit]
+    items: list[KbHit] = Field(validation_alias=AliasChoices("results", "items"))
 
 
 class KbClient(Protocol):
@@ -91,9 +94,60 @@ class HttpKbClient:
         try:
             response = await self._http.get("/kb/search", params=params)
             response.raise_for_status()
-            return KbSearchResponse.model_validate(response.json()).items
+            hits = KbSearchResponse.model_validate(response.json()).items
+            # One source parent can contain many articles/versions. Keep the read unit identity
+            # so search and full article reads merge without collapsing unrelated articles.
+            return [
+                h.model_copy(update={"source_id": h.version_id or h.parent_id or h.source_id})
+                for h in hits
+            ]
         except (httpx.HTTPError, ValueError) as exc:
             raise KbUnavailable(str(exc)) from exc
+
+    async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
+        import re
+        from urllib.parse import quote
+
+        match = re.fullmatch(r"(\d+) m\.(.+)", ref)
+        if match is None:
+            return []
+        number, article = match.groups()
+        try:
+            response = await self._http.get(
+                f"/statutes/{number}/articles/{quote(article, safe='')}",
+                params={"as_of": as_of.isoformat()},
+            )
+            if response.status_code == 404:
+                return []
+            response.raise_for_status()
+            data = response.json()
+            if data["status"] != "found":
+                return []
+            version = data.get("version")
+            if not version or not version.get("text") or not version.get("id"):
+                return []
+            return [
+                KbHit(
+                    source_id=str(version["id"]),
+                    category="statute",
+                    title=f"{number} m.{article}",
+                    ref=ref,
+                    review_status="approved",
+                    valid_from=version.get("valid_from"),
+                    valid_to=version.get("valid_to"),
+                    complete=True,
+                    matches=[
+                        KbMatch(
+                            chunk_id=str(version["id"]),
+                            text=version["text"],
+                            char_start=0,
+                            char_end=len(version["text"]),
+                        )
+                    ],
+                )
+            ]
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            raise KbUnavailable("article read failed") from exc
 
     async def aclose(self) -> None:
         await self._http.aclose()

@@ -52,10 +52,15 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     embedding_model: str = "text-embedding-3-large"
 
-    # The chat backend (task 15): "fixture" answers from the hand-made cases of `eval/fixtures`
-    # (kept in memory, no model); "none" answers /chat/* with 503. The real agent comes in task 17.
-    chat_backend: Literal["fixture", "none"] = "none"
+    # Chat: "agent" persists turns and calls the graph over HTTP; "fixture" keeps the
+    # in-memory UI scenarios. "none" disables conversation creation and model requests.
+    chat_backend: Literal["fixture", "agent", "none"] = "none"
     # Where the fixture backend reads its cases from; unset: `eval/fixtures` of the checkout.
+    agent_base_url: str = "http://agent:8000"
+    agent_service_key: SecretStr | None = None
+    kb_service_key: SecretStr | None = None
+    chat_daily_limit: int = 50
+    agent_timeout_seconds: float = 180.0
     chat_fixtures_dir: Path | None = None
     # Pause between the stream events of the fixture backend, so that a UI shows its live steps.
     chat_fixture_step_delay_seconds: float = 0.0

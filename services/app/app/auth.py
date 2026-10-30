@@ -19,6 +19,7 @@ the JSON rule.
 
 import asyncio
 import hashlib
+import hmac
 import math
 import re
 import secrets
@@ -272,3 +273,17 @@ async def logout(response: Response, auth: CurrentSession, db: Db) -> None:
 @router.get("/me")
 async def me(user: CurrentUser) -> UserOut:
     return _user_out(user)
+
+
+async def kb_reader(
+    request: Request, db: Db, settings: Annotated[Settings, Depends(get_settings)]
+) -> None:
+    """Only KB read routes accept the agent key; session access retains its role check."""
+    key = request.headers.get("x-service-key")
+    if key is not None:
+        if settings.kb_service_key is None or not hmac.compare_digest(
+            key.encode(), settings.kb_service_key.get_secret_value().encode()
+        ):
+            raise _unauthorized()
+        return
+    await current_session(_request_token(request), db)

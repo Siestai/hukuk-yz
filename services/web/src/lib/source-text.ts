@@ -12,6 +12,7 @@ export type SourceText = {
     origin: "kb" | "quote";
 };
 
+const STATUTE_REF = /^(\d+) m\.(\d+(?:\/[A-Za-z])?)/;
 const STATUTE_ID = /^statute:(\d+):m(.+)$/;
 
 /** Where `quote` sits in `text`, ignoring differences in white space; null when it is not there. */
@@ -56,7 +57,9 @@ export async function loadSourceText(
     citation: CitationRef,
     asOf: string,
 ): Promise<SourceText | null> {
-    const statute = STATUTE_ID.exec(citation.source_id);
+    const statute =
+        STATUTE_ID.exec(citation.source_id) ??
+        (citation.category === "statute" ? STATUTE_REF.exec(citation.ref) : null);
     if (statute) {
         const [, number = "", article = ""] = statute;
         const { data } = await api

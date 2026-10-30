@@ -554,3 +554,42 @@ async def test_chunk_embedding_roundtrip(conn: AsyncConnection) -> None:
     ).one()
     assert row[0] == 1024
     assert row[1] is True
+
+
+def test_chat_migration_round_trip(alembic_config: Config, database_url: str) -> None:
+    command.upgrade(alembic_config, "head")
+    expected = {"chat_conversation", "chat_turn", "chat_feedback"}
+    assert expected <= _tables(database_url)
+    command.downgrade(alembic_config, "0015")
+    assert not expected & _tables(database_url)
+    command.upgrade(alembic_config, "head")
+    assert expected <= _tables(database_url)
+
+
+async def test_chat_constraints_reject_invalid_rows(conn: AsyncConnection) -> None:
+    user_id, conversation_id = uuid.uuid4(), uuid.uuid4()
+    await conn.execute(
+        text(
+            "INSERT INTO app_user (id,email,display_name,role,password_hash) "
+            "VALUES (:id,'chat-schema@example.test','Synthetic','user','x')"
+        ),
+        {"id": user_id},
+    )
+    await conn.execute(
+        text(
+            "INSERT INTO chat_conversation (id,user_id,title,created_at,updated_at) "
+            "VALUES (:id,:user,'',now(),now())"
+        ),
+        {"id": conversation_id, "user": user_id},
+    )
+    for role, mode in (("system", "short"), ("user", "invalid")):
+        async with conn.begin_nested() as savepoint:
+            with pytest.raises(IntegrityError):
+                await conn.execute(
+                    text(
+                        "INSERT INTO chat_turn (conversation_id,role,mode,payload,created_at) "
+                        "VALUES (:id,:role,:mode,'{}',now())"
+                    ),
+                    {"id": conversation_id, "role": role, "mode": mode},
+                )
+            await savepoint.rollback()

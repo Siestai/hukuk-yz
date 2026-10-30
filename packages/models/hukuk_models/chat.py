@@ -305,6 +305,14 @@ class ErrorEvent(ChatModel):
     params: dict[str, str | int] = {}
 
 
+class RunUsage(ChatModel):
+    models: list[str]
+    input_tokens: Annotated[int, Field(ge=0)]
+    output_tokens: Annotated[int, Field(ge=0)]
+    cost: Annotated[float, Field(ge=0)] | None = None
+    latency_ms: Annotated[int, Field(ge=0)]
+
+
 class DoneEvent(ChatModel):
     """The last event. `turn_id` is the assistant turn the feedback goes to (None when the
     stream ended in an error)."""
@@ -312,6 +320,7 @@ class DoneEvent(ChatModel):
     type: Literal["done"] = "done"
     turn_id: uuid.UUID | None = None
     trace_id: str | None = None
+    usage: RunUsage | None = None
 
 
 AnyChatEvent = StepEvent | FactsEvent | ClarificationEvent | AnswerEvent | ErrorEvent | DoneEvent
@@ -423,3 +432,9 @@ class Feedback(FeedbackIn):
     id: uuid.UUID
     turn_id: uuid.UUID
     created_at: datetime
+
+
+class FeedbackExport(Feedback):
+    """Admin-only feedback export, including the submitting user's identity."""
+
+    user_id: uuid.UUID

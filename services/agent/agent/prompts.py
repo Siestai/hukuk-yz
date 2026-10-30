@@ -130,7 +130,10 @@ def sources_block(read: list[ReadSource]) -> str:
     for s in read:
         text = " […] ".join(p.text for p in s.passages)
         label = "onaylanmadı" if s.review_status == "analyzed" else "onaylı"
-        blocks.append(f"[source_id: {s.source_id}] {s.ref} ({s.category}, {label})\n{text}")
+        extent = "tam metin" if s.complete else "yalnız gösterilen parçalar; tam okuma değildir"
+        blocks.append(
+            f"[source_id: {s.source_id}] {s.ref} ({s.category}, {label}, {extent})\n{text}"
+        )
     return "\n\n".join(blocks)
 
 

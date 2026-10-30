@@ -5,14 +5,16 @@ import re
 from datetime import date
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 
-from app.auth import Db, current_user
+from app.auth import Db, kb_reader
 from app.errors import ApiError
 from app.kb import article_as_of, statute_is_published
+from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
 from hukuk_ingest.statutes.timeline import UNKNOWN_ARTICLE
 from hukuk_models import ArticleAsOf, ErrorCode
 
-router = APIRouter(prefix="/statutes", tags=["statutes"], dependencies=[Depends(current_user)])
+router = APIRouter(prefix="/statutes", tags=["statutes"], dependencies=[Depends(kb_reader)])
 
 # "gecici-4" / "ek-2" / "18-a" / "gecici-79-2" are accepted next to the canonical "Geçici 4" /
 # "Ek 2" / "18/A" / "Geçici 79 (2)"; the match is on the Turkish-lowercased text.
@@ -64,4 +66,21 @@ async def get_article(number: str, article_no: str, as_of: str, db: Db) -> Artic
     result = await article_as_of(db, number, normalize_article_no(article_no), day)
     if result["status"] == UNKNOWN_ARTICLE and not await statute_is_published(db, number):
         raise ApiError(404, ErrorCode.statute_not_found, {"number": number})
+    if version := result.get("version"):
+        # API identity for citation/read matching; the pure timeline result remains unchanged.
+        version["id"] = await db.scalar(
+            select(StatuteArticleVersion.id)
+            .join(StatuteArticle, StatuteArticle.id == StatuteArticleVersion.article_id)
+            .join(Statute, Statute.id == StatuteArticle.statute_id)
+            .where(
+                Statute.number == number,
+                Statute.kind == "kanun",
+                StatuteArticle.article_no == normalize_article_no(article_no),
+                StatuteArticleVersion.valid_from == date.fromisoformat(version["valid_from"]),
+                StatuteArticleVersion.text == version["text"],
+                StatuteArticleVersion.valid_to
+                == (date.fromisoformat(version["valid_to"]) if version["valid_to"] else None),
+                StatuteArticleVersion.superseded_at.is_(None),
+            )
+        )
     return ArticleAsOf.model_validate(result)

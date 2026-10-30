@@ -24,6 +24,9 @@ CHUNK_MIGRATION = VERSIONS / "0014_chunk_search_index.py"
 # Tables created by later migrations (0004: decision_verification; 0005: users and sessions;
 # 0007: login_attempt).
 LATER_TABLES = {
+    "chat_conversation",
+    "chat_turn",
+    "chat_feedback",
     "decision_verification",
     "app_user",
     "user_session",
@@ -276,3 +279,16 @@ def test_chunk_search_columns_and_indexes_are_in_orm_and_migration() -> None:
     assert embedding.dialect_options["postgresql"]["ops"] == {"embedding": "vector_cosine_ops"}
     assert "ix_chunk_source_id" in source and "ix_chunk_embedding" in source
     assert "hnsw (embedding vector_cosine_ops)" in source
+
+
+def test_chat_tables_columns_and_checks_match_migration() -> None:
+    migration = _load_migration(VERSIONS / "0016_chat.py")
+    assert (migration.revision, migration.down_revision) == ("0016", "0015")
+    source = (VERSIONS / "0016_chat.py").read_text()
+    for name in ("chat_conversation", "chat_turn", "chat_feedback"):
+        table = Base.metadata.tables[name]
+        assert f'"{name}"' in source
+        assert all(f'"{c.name}"' in source for c in table.columns)
+        assert all(
+            str(c.name) in source for c in table.constraints if isinstance(c, CheckConstraint)
+        )
