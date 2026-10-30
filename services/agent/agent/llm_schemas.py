@@ -38,6 +38,8 @@ class RowDraft(LlmModel):
     condition_quote: str
     fact_value: str | None = None
     result: HoldingResult
+    # All facts that can reverse this row, including exceptions and aggregation inputs.
+    depends_on_facts: list[str] = []
 
 
 class HoldingDraft(LlmModel):

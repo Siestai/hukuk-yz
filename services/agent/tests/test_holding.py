@@ -99,3 +99,38 @@ def test_the_expiry_day_is_not_a_valid_holding_source_date() -> None:
     draft = HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_1)]})
     expired = READ[0].model_copy(update={"valid_to": DAY})
     assert verify_rows(draft, [expired], DAY) == ([], 1)
+
+
+def test_declared_dependencies_preserve_unknown_without_erasing_known_results() -> None:
+    from agent.facts import build_facts
+    from agent.llm_schemas import IntakeOutput
+    from agent.topics import get_topic
+
+    facts = build_facts(
+        get_topic("ise_iade"),
+        IntakeOutput.model_validate(
+            {
+                "topic": "ise_iade",
+                "title": "Kıdem",
+                "facts": [
+                    {"key": "kidem", "value": "5 ay", "status": "known"},
+                ],
+            }
+        ),
+        None,
+        question="5 ay",
+        today=DAY,
+    )
+    for result in ("met", "not_met", "unknown", "not_applicable"):
+        for dependencies, expected in (
+            (["kidem"], result),
+            (["kidem", "onceki_donem"], "unknown" if result in ("met", "not_met") else result),
+            (["missing_key"], "unknown" if result in ("met", "not_met") else result),
+        ):
+            candidate = {**row("statute:4857:m18", M18_1, result), "depends_on_facts": dependencies}
+            verified, dropped = verify_rows(
+                HoldingDraft.model_validate({"rows": [candidate]}), READ, DAY, facts=facts
+            )
+            assert dropped == 0
+            assert verified[0].result == expected
+            assert verified[0].condition_quote == M18_1

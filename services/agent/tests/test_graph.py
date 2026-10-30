@@ -9,6 +9,7 @@ from agent_fakes import (
     INTAKE_SB016,
     M18_1,
     M18_4,
+    M102_5,
     FakeKb,
     Script,
     answer_all,
@@ -312,7 +313,9 @@ async def test_a_topic_with_all_facts_known_does_not_stop() -> None:
                 points=[
                     {
                         "text": "Peşin ödeme indirimi uygulanmaktadır.",
-                        "citations": [{"source_id": "statute:5510:m102", "sub": "5"}],
+                        "citations": [
+                            {"source_id": "statute:5510:m102", "sub": "5", "quote": M102_5}
+                        ],
                     }
                 ],
             )
@@ -610,3 +613,24 @@ async def test_inapplicable_holdings_skip_strong_model_and_use_existing_fallback
         assert len(script.of("draft")) == 1
         assert only(events, AnswerEvent).answer.headline != "Doğrulanmış kaynakla cevap verilemedi."
         assert not state["gate"]["fallback"]
+
+
+async def test_holding_node_uses_declared_dependencies_after_skip() -> None:
+    script = Script(
+        holding={
+            "rows": [
+                {
+                    **row("statute:4857:m18", M18_1, "not_met"),
+                    "depends_on_facts": ["kidem", "onceki_donem", "yer_alti", "kisaltma"],
+                },
+                {**row("statute:4857:m18", M18_1, "not_met"), "depends_on_facts": ["kidem"]},
+            ]
+        }
+    )
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+    events = await turn(graph, RunRequest(thread_id=thread, skip=True))
+    answer = only(events, AnswerEvent).answer
+    assert [r.result for r in answer.holding_map.rows] == ["unknown", "not_met"]
+    assert answer.headline != "Doğrulanmış kaynakla cevap verilemedi."

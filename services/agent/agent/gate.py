@@ -96,6 +96,9 @@ def progressive_in(
     return progressive_forms(texts)
 
 
+# This gate checks quote presence and provenance, not whether the claim follows from it.
+# In particular, a genuine but irrelevant quote can still pass. Support and threshold
+# fidelity are model instructions, with real-model/legal review still required.
 def _cite(
     picks: list[CitationPick], sources: dict[str, ReadSource], applied_on: date, drops: GateDrops
 ) -> list[CitationRef]:
@@ -105,7 +108,7 @@ def _cite(
         quote = pick.quote.strip() if pick.quote else None
         if source is None or not valid_on(source, applied_on):
             drops.citations += 1
-        elif quote and locate(source, quote) is None:
+        elif not quote or locate(source, quote) is None:
             drops.citations += 1
         else:
             cited.append(
@@ -201,15 +204,23 @@ def check_draft(
             drops.points += 1
     if not points:
         reject("no_verified_points", "atıfı doğrulanan nokta kalmamıştır")
-    missing_info = [
-        MissingInfo(
-            fact_key=m.fact_key,
-            condition=m.condition,
-            result=m.result,
-            citations=_cite(m.citations, sources, applied_on, drops),
+    missing_info = []
+    for m in draft.missing_info:
+        cited = _cite(m.citations, sources, applied_on, drops)
+        if m.citations and len(cited) != len(m.citations):
+            reject(
+                "unsupported_branch",
+                "koşullu dalın dayanak alıntısı doğrulanamamıştır; hukuki sonuç uydurma, "
+                "okunan destek yoksa kaynak yetersizliğini belirt",
+            )
+        missing_info.append(
+            MissingInfo(
+                fact_key=m.fact_key,
+                condition=m.condition,
+                result=m.result,
+                citations=cited,
+            )
         )
-        for m in draft.missing_info
-    ]
     if issues:
         return GateResult(None, issues, drops, issue_counts)
 

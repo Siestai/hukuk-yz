@@ -257,7 +257,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     prompts.HOLDING_INSTRUCTIONS,
                     prompts.holding_prompt(topic, facts, read, question=state["question"]),
                 )
-                rows, dropped = verify_rows(draft, read, applied_on)
+                rows, dropped = verify_rows(draft, read, applied_on, facts=facts)
             rec.output = {"rows": len(rows), "dropped": dropped}
             return {"rows": _dumps(list(rows)), "gate": {"rows_dropped": dropped}}
 

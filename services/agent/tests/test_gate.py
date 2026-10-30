@@ -376,3 +376,21 @@ def test_holding_applicability_controls_ordinary_draft(results: list[str], block
         assert fallback.holding_map.rows == verified
         assert all(m.fact_key is None for m in fallback.missing_info)
         assert fallback.read_sources.items[0].source_id == read()[0].source_id
+
+
+def test_conditional_branch_with_invalid_quote_cannot_keep_its_consequence() -> None:
+    output = draft()
+    output["missing_info"][0]["citations"] = [
+        {"source_id": "statute:4857:m18", "quote": "Okunmamış bir hüküm metni"}
+    ]
+    result = check(output)
+    assert result.answer is None
+    assert result.issue_counts["unsupported_branch"] == 1
+
+
+def test_source_id_without_quote_cannot_support_a_claim() -> None:
+    output = draft()
+    output["points"][0]["citations"] = [{"source_id": "statute:4857:m18"}]
+    result = check(output)
+    assert result.answer is None
+    assert result.drops.citations == 1

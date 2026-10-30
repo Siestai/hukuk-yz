@@ -34,6 +34,13 @@ hüküm için bir satır yazarsın: hükmün koşulu, olgunun bu koşul için de
 - condition_quote, kaynak metinde BİREBİR geçen en az üç kelimelik bir parça olmalı; kaynaktan \
 kopyala, değiştirme, kısaltma, özetleme. Birebir geçmeyen satır silinir.
 - result: met (koşul sağlanıyor), not_met, not_applicable veya unknown (olgu bilinmiyorsa).
+- depends_on_facts: bu satırın sonucunu değiştirebilecek bütün olgu anahtarlarını yaz; \
+istisna, önceki dönem/süre birleştirme ve alternatif koşul girdilerini de kapsa. Bunlardan biri \
+bilinmiyorsa genel koşulun sonucu unknown kalır; bilinmeyeni hayır veya yok sayma. Yalnız \
+bilinen temel değerin eşik altında olması genel koşula not_met demeye yetmez. Bağımsız ve \
+bilinen bir alt koşul için met/not_met korunur; ilgisiz bilinmeyen olgu sonucu değiştirmez.
+- Sayısal eşiğin birimini, eşitlik dahil olup olmadığını ve sınırını alıntıdaki gibi koru; \
+"en az" ifadesini "aşarsa" biçimine çevirme.
 - Kaynakta olmayan hüküm yazma; madde veya karar numarası uydurma.
 {REGISTER}"""
 
@@ -42,10 +49,21 @@ Sen cevap taslağı yazan adımsın. Yalnız verilen hüküm haritası satırlar
 dayanırsın; kaynakta olmayan iddia kurmaz, madde veya karar numarası uydurmaz, tutar veya gün \
 hesaplamazsın (hesap ayrı bir motorda yapılır).
 - Kullanıcının sorusunu yanıtla; ilgisiz kaynaklardan başka bir konuya geçme.
-- Her noktanın citations alanında okunan kaynağın source_id'si (ve varsa sub, quote) bulunmalı; \
-quote kaynak metninden birebir olmalı. Atfı olmayan nokta silinir.
+- Her noktanın citations alanında okunan kaynağın source_id'si ve birebir quote bulunmalı; \
+varsa sub ekle. quote kaynak metninden birebir olmalı. Atfı olmayan nokta silinir.
 - Bilinmeyen kritik olgu varsa status "conditional" olmalı ve missing_info neye göre değiştiğini \
 koşul -> sonuç olarak söylemeli. Bilinmeyen olgu varken "definite" yazma.
+- Her iddia ve missing_info içindeki her koşullu hukuki sonuç, yalnız geçerli source_id ile \
+değil, o sonucu gerçekten destekleyen okunan alıntıyla dayanmalıdır. Birden çok kural \
+birleştiriliyorsa her gerekli kuralın alıntısını ver. Aynı kaynakta geçen ilgisiz bir alıntı \
+dayanak değildir. Soru sorulmuş olması veya tuzak notu hukuki sonucun kaynağı değildir.
+- Okunan destek yetersizse hukuki sonuç icat etme; ilgili dalda bu kaynaklarla sonucun \
+belirlenemediğini söyle, ilgisiz alıntı ekleme. Kaynak eksikliği bilinen olguyu değiştirmez.
+- headline, points, reasoning_summary ve missing_info aynı varsayımlarla tutarlı olmalı. \
+Sonucu değiştirebilecek bilinmeyen istisna/önceki dönem varsa kısa sonuç da belirsizliği ve \
+gerekli varsayımları açıkça taşımalı; başka bir dalda belirsizlik yazmak kesin reddi düzeltmez.
+- Eşik ve birim alıntıda nasılsa öyle kalmalı; kapsayıcı sınırı dışlayıcı yapma. Koşullu dalda \
+eşik sonucu söylersen hem eşiğin hem varsa birleştirme kuralının alıntısını göster.
 - status "definite" ise missing_info boş olur.
 - Verilen tuzak ve ayrımları gözet; kesin söylenemeyen şeyi kesin söyleme.
 - headline tek cümlelik sonuçtur; points kısa ve ayrı noktalardır (en önemli üçü başta); \
@@ -125,6 +143,7 @@ def draft_prompt(
             "source_id": r.citation.source_id,
             "ref": r.citation.ref,
             "condition": r.condition,
+            "condition_quote": r.condition_quote,
             "fact_value": r.fact_value,
             "result": r.result,
         }
