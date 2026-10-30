@@ -52,12 +52,22 @@ def test_the_cost_of_an_unknown_model_is_unknown() -> None:
         "REQUEST_INVENTED",
         "REQUEST_MISSING",
         "REWRITE_STRUCTURE",
+        "REQUEST_WIRE_VALID",
+        "REQUEST_WIRE_MISSING",
+        "REQUEST_WIRE_UNKNOWN",
+        "REQUEST_WIRE_NULL",
+        "REQUEST_WIRE_REWRITE",
+        "REQUEST_WIRE_REWRITE_CITATION",
     ],
 )
+@pytest.mark.parametrize("private_retries_zero", [False, True])
 async def test_conditional_register_contract_reaches_openai_typed_payload(
     instruction_name: str,
+    private_retries_zero: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import json
+    import socket
 
     import httpx2 as httpx
     from agent_fakes import draft
@@ -72,9 +82,28 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
     from agent.topics import get_topic
     from hukuk_models.chat import CaseFacts, Fact
 
+    def no_socket(*args: object, **kwargs: object) -> None:
+        raise AssertionError("sockets disabled")
+
+    monkeypatch.setattr(socket.socket, "connect", no_socket)
+    monkeypatch.setattr(socket.socket, "connect_ex", no_socket)
+    monkeypatch.setattr(socket, "getaddrinfo", no_socket)
+    if private_retries_zero:
+        monkeypatch.setattr("agent.llm.RETRIES", 0)
+    max_calls = 1 if private_retries_zero else 3
     constrained = instruction_name.startswith("REQUEST") or instruction_name == "REWRITE_STRUCTURE"
-    invalid = instruction_name in {"REQUEST_INVENTED", "REQUEST_MISSING", "REWRITE_STRUCTURE"}
+    invalid = instruction_name in {
+        "REQUEST_INVENTED",
+        "REQUEST_MISSING",
+        "REWRITE_STRUCTURE",
+        "REQUEST_WIRE_MISSING",
+        "REQUEST_WIRE_UNKNOWN",
+        "REQUEST_WIRE_NULL",
+        "REQUEST_WIRE_REWRITE_CITATION",
+    }
     instructions = getattr(prompts, instruction_name, prompts.DRAFT_INSTRUCTIONS)
+    if "REWRITE" in instruction_name:
+        instructions = prompts.REWRITE_INSTRUCTIONS
     original = "Kayıt çalışıyorsa ne olur?"
     payload = draft(missing=False)
     payload["missing_info"] = [
@@ -88,7 +117,10 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
             facts=[Fact(key=k, label=k, status="unknown") for k in ("bildirim_tarihi", "kisaltma")],
         )
         original_output = (
-            DraftOutput.model_validate(payload) if instruction_name == "REWRITE_STRUCTURE" else None
+            DraftOutput.model_validate(payload)
+            if instruction_name
+            in {"REWRITE_STRUCTURE", "REQUEST_WIRE_REWRITE", "REQUEST_WIRE_REWRITE_CITATION"}
+            else None
         )
         output_type = draft_output_type(get_topic("ise_iade"), facts, original=original_output)
         if instruction_name == "REQUEST_INVENTED":
@@ -97,6 +129,18 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
             payload["missing_info"].pop()
         elif instruction_name == "REWRITE_STRUCTURE":
             payload["points"][0]["citations"][0]["source_id"] = "changed"
+    expected = DraftOutput.model_validate(payload).model_dump()
+    if instruction_name.startswith("REQUEST_WIRE"):
+        entries = payload["missing_info"]
+        payload["missing_info"] = {"critical": {entry["fact_key"]: entry for entry in entries}}
+        if instruction_name == "REQUEST_WIRE_MISSING":
+            del payload["missing_info"]["critical"]["kisaltma"]
+        elif instruction_name == "REQUEST_WIRE_UNKNOWN":
+            payload["missing_info"]["critical"]["invented"] = entries[0]
+        elif instruction_name == "REQUEST_WIRE_NULL":
+            payload["missing_info"]["critical"]["kisaltma"]["fact_key"] = None
+        elif instruction_name == "REQUEST_WIRE_REWRITE_CITATION":
+            payload["points"][0]["citations"][0]["quote"] = "changed"
     prompt = prompts.rewrite_prompt(
         json.dumps(payload, ensure_ascii=False), ["çalışıyorsa"], question=original
     )
@@ -106,7 +150,7 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
         assert request.url.host == "offline.invalid"
         body = json.loads(request.content)
         calls.append(body)
-        assert len(calls) <= (3 if invalid else 1)
+        assert len(calls) <= (max_calls if invalid else 1)
         system = body["messages"][0]["content"]
         assert system == instructions
         for text in (
@@ -125,6 +169,14 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
         missing_properties = tool["parameters"]["$defs"][missing_name]["properties"]
         assert "question" not in missing_properties
         if constrained:
+            schema = tool["parameters"]
+            assert "missing_info" in schema["required"]
+            assert schema["properties"]["missing_info"] == {"$ref": "#/$defs/MissingInfoCoverage"}
+            assert schema["$defs"]["CriticalMissingInfo"]["required"] == [
+                "bildirim_tarihi",
+                "kisaltma",
+            ]
+            assert schema["$defs"]["CriticalMissingInfo"]["additionalProperties"] is False
             variants = missing_properties["fact_key"]["anyOf"]
             assert next(v["enum"] for v in variants if "enum" in v) == [
                 f.key for f in get_topic("ise_iade").facts
@@ -183,5 +235,5 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
                 result = await Llm(Models(model, model)).run(
                     "strong", output_type, instructions, prompt
                 )
-                assert result.model_dump() == DraftOutput.model_validate(payload).model_dump()
-    assert len(calls) == (3 if invalid else 1)
+                assert result.model_dump() == expected
+    assert len(calls) == (max_calls if invalid else 1)

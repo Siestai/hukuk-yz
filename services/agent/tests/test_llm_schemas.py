@@ -1,5 +1,6 @@
 """Request-local draft contracts; these tests do not establish legal source support."""
 
+import json
 from copy import deepcopy
 from typing import Any
 
@@ -7,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from agent.llm_schemas import DraftOutput, draft_output_type
-from agent.topics import Topic, get_topic
+from agent.topics import Topic, TopicFact, get_topic
 from hukuk_models.chat import CaseFacts, Fact
 
 
@@ -112,8 +113,6 @@ def test_invented_fact_key_is_rejected_by_actual_parser() -> None:
 
 
 def test_single_fact_topic_also_exposes_an_enum() -> None:
-    from agent.topics import TopicFact
-
     topic = Topic(
         id="one", title="Tek", description="Tek", facts=[TopicFact(key="key", label="Olgu")]
     )
@@ -124,3 +123,98 @@ def test_single_fact_topic_also_exposes_an_enum() -> None:
     assert contract.model_validate(payload("key", None))
     with pytest.raises(ValidationError):
         contract.model_validate(payload("invented"))
+
+
+def test_critical_coverage_is_required_in_generation_schema() -> None:
+    contract = draft_output_type(
+        get_topic("ise_iade"), case(bildirim_tarihi="unknown", kisaltma="unknown", kidem="known")
+    )
+    schema = contract.model_json_schema()
+    assert "missing_info" in schema["required"]
+    assert schema["properties"]["missing_info"] == {
+        "$ref": "#/$defs/MissingInfoCoverage",
+        "title": "Missing Info",
+    }
+    coverage = schema["$defs"]["MissingInfoCoverage"]
+    assert "critical" in coverage["required"]
+    critical = schema["$defs"]["CriticalMissingInfo"]
+    assert set(critical["required"]) == {"bildirim_tarihi", "kisaltma"}
+    assert set(critical["properties"]) == {"bildirim_tarihi", "kisaltma"}
+    assert critical["additionalProperties"] is False
+
+
+def test_wire_conversion_is_lossless_and_rewrite_preserves_order() -> None:
+    facts = case(bildirim_tarihi="unknown", kisaltma="unknown")
+    original = DraftOutput.model_validate(payload(None, "kisaltma", "bildirim_tarihi", "kisaltma"))
+    contract = draft_output_type(get_topic("ise_iade"), facts, original=original)
+    data = original.model_dump()
+    entries = data["missing_info"]
+    data["missing_info"] = {
+        "critical": {"bildirim_tarihi": entries[2], "kisaltma": entries[1]},
+        "additional": [entries[0], entries[3]],
+    }
+    assert contract.model_validate_json(json.dumps(data)).model_dump() == original.model_dump()
+    changed = deepcopy(data)
+    changed["missing_info"]["critical"]["kisaltma"]["fact_key"] = None
+    with pytest.raises(ValidationError):
+        contract.model_validate(changed)
+
+
+async def test_concurrent_request_schema_isolation() -> None:
+    import asyncio
+
+    async def parse(key: str) -> None:
+        contract = draft_output_type(get_topic("ise_iade"), case(**{key: "unknown"}))
+        await asyncio.sleep(0)
+        schema = contract.model_json_schema()
+        assert schema["$defs"]["CriticalMissingInfo"]["required"] == [key]
+        entry = payload(key)["missing_info"][0]
+        data = payload()
+        data["missing_info"] = {"critical": {key: entry}}
+        assert contract.model_validate(data).missing_info[0].fact_key == key
+        other = "kisaltma" if key == "bildirim_tarihi" else "bildirim_tarihi"
+        data["missing_info"] = {"critical": {other: entry}}
+        with pytest.raises(ValidationError):
+            contract.model_validate(data)
+
+    await asyncio.gather(parse("bildirim_tarihi"), parse("kisaltma"))
+
+
+def test_known_and_general_generation_shapes() -> None:
+    topic = get_topic("ise_iade")
+    known = draft_output_type(topic, case(**{f.key: "known" for f in topic.facts}))
+    assert known.model_json_schema()["properties"]["missing_info"]["type"] == "array"
+    assert known.model_validate(payload()).missing_info == []
+    noncritical = Topic(
+        id="noncritical",
+        title="Olgu",
+        description="Olgu",
+        facts=[TopicFact(key="key", label="Olgu", critical=False)],
+    )
+    optional = draft_output_type(noncritical, case(key="unknown"))
+    assert optional.model_json_schema()["properties"]["missing_info"]["type"] == "array"
+    assert optional.model_validate(payload("key"))
+    general = draft_output_type(get_topic("genel"), case(olay_tarihi="unknown", statu="known"))
+    data = payload()
+    entry = payload("olay_tarihi")["missing_info"][0]
+    data["missing_info"] = {"critical": {"olay_tarihi": entry}, "additional": []}
+    assert general.model_validate(data).missing_info[0].fact_key == "olay_tarihi"
+    data["missing_info"]["critical"]["invented"] = entry
+    with pytest.raises(ValidationError):
+        general.model_validate(data)
+
+
+def test_additional_entries_cannot_replace_required_critical_properties() -> None:
+    contract = draft_output_type(get_topic("ise_iade"), case(kisaltma="unknown"))
+    data = payload()
+    entry = payload("kisaltma")["missing_info"][0]
+    for critical in ({}, {"kisaltma": None}):
+        data["missing_info"] = {"critical": critical, "additional": [entry]}
+        with pytest.raises(ValidationError):
+            contract.model_validate(data)
+    data["missing_info"] = {
+        "critical": {"kisaltma": entry},
+        "additional": payload("invented")["missing_info"],
+    }
+    with pytest.raises(ValidationError):
+        contract.model_validate(data)

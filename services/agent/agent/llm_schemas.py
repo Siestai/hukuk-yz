@@ -5,7 +5,7 @@ written by code from these."""
 from datetime import date
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, create_model, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, create_model, model_validator
 
 from agent.topics import Topic
 from hukuk_models.chat import AnswerStatus, CaseFacts, FactStatus, HoldingResult
@@ -80,7 +80,8 @@ def draft_output_type(
 ) -> type[DraftOutput]:
     """Request-local key vocabulary and coverage; rewrite may change generated words only.
 
-    Coverage is a typed validation rule, not a claim of semantic source support.
+    Critical coverage is visible in the generation schema, not a claim of source support.
+    The internal/public draft still serializes missing_info as an array.
     No shared model or schema is mutated.
     """
     from agent.facts import critical_unknown
@@ -107,10 +108,62 @@ def draft_output_type(
                 raise ValueError("Rewrite changed identifiers, citations or structure")
             return self
 
+    missing_annotation: Any = list[missing_type]
+    missing_default: Any = []
+    if required:
+        # Each required property carries the actual generated entry, never a coverage flag.
+        # Keep the enum on additional entries; no null/invented key can replace a critical entry.
+        critical_types = {
+            key: create_model(
+                f"CriticalMissing_{key}",
+                __base__=MissingDraft,
+                fact_key=(Annotated[Literal[key], Field(json_schema_extra={"enum": [key]})], ...),
+            )
+            for key in critical_unknown(topic, facts)
+        }
+        critical_fields: dict[str, Any] = {
+            key: (entry, ...) for key, entry in critical_types.items()
+        }
+        critical_type = create_model(
+            "CriticalMissingInfo",
+            __base__=LlmModel,
+            **critical_fields,
+        )
+        wire_type = create_model(
+            "MissingInfoCoverage",
+            __base__=LlmModel,
+            critical=(critical_type, ...),
+            additional=(list[missing_type], []),
+        )
+
+        def from_wire(value: Any) -> Any:
+            # Arrays remain valid internal input, with the same coverage validator below.
+            # The provider is offered only the keyed object schema.
+            if not isinstance(value, dict):
+                return value
+            wire = wire_type.model_validate(value).model_dump()
+            entries = wire["critical"]
+            additional = wire["additional"]
+            if original is None:
+                return [*entries.values(), *additional]
+            # A rewrite retains the original array order, including nulls and duplicates.
+            ordered = []
+            for entry in original.missing_info:
+                if entry.fact_key in entries:
+                    ordered.append(entries.pop(entry.fact_key))
+                elif additional:
+                    ordered.append(additional.pop(0))
+            return [*ordered, *entries.values(), *additional]
+
+        missing_annotation = Annotated[
+            list[missing_type], BeforeValidator(from_wire, json_schema_input_type=wire_type)
+        ]
+        missing_default = ...
+
     return create_model(
         "RequestDraftOutput",
         __base__=RequestDraftOutput,
-        missing_info=(list[missing_type], []),
+        missing_info=(missing_annotation, missing_default),
     )
 
 

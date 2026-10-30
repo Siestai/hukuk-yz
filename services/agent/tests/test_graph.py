@@ -676,11 +676,17 @@ async def test_holding_node_uses_declared_dependencies_after_skip() -> None:
     assert answer.headline != "Doğrulanmış kaynakla cevap verilemedi."
 
 
-@pytest.mark.parametrize("formal", [False, True])
+@pytest.mark.parametrize(("formal", "complete"), [(False, False), (True, False), (True, True)])
+@pytest.mark.parametrize("private_retries_zero", [False, True])
 async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_gate(
     formal: bool,
+    complete: bool,
+    private_retries_zero: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Transport/schema/register regression only; synthetic draft is not legal acceptance."""
+    import socket
+
     import httpx2 as httpx
     from openai import AsyncOpenAI
     from pydantic_ai.models import override_allow_model_requests
@@ -688,6 +694,15 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
     from pydantic_ai.providers.openai import OpenAIProvider
     from test_holding import recorded_holding
 
+    def no_socket(*args: object, **kwargs: object) -> None:
+        raise AssertionError("sockets disabled")
+
+    monkeypatch.setattr(socket.socket, "connect", no_socket)
+    monkeypatch.setattr(socket.socket, "connect_ex", no_socket)
+    monkeypatch.setattr(socket, "getaddrinfo", no_socket)
+    if private_retries_zero:
+        monkeypatch.setattr("agent.llm.RETRIES", 0)
+    expected_calls = 2 if not formal else (4 if complete else 3 if private_retries_zero else 5)
     recording = recorded_holding()
     holding = recording["holding"]
     if formal:
@@ -695,9 +710,11 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
             candidate["fact_value"] = candidate["fact_value"].replace(
                 "bilinmiyor", "bilinmemektedir"
             )
-    # Deliberately definite with unresolved facts: exercise rejection and fallback,
-    # without claiming that a synthetic legal answer has semantic support.
-    bad_draft = draft("definite", missing=False)
+    # The incomplete draft is deliberately definite despite unresolved facts.
+    # The complete draft exercises conversion and rewrite, without legal acceptance.
+    bad_draft = (
+        draft(headline="Belirsizlik bulunuyor.") if complete else draft("definite", missing=False)
+    )
     outputs = [recording["intake"], holding, bad_draft, bad_draft, bad_draft]
     requests: list[dict] = []  # type: ignore[type-arg]
 
@@ -706,8 +723,31 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
         body = json.loads(request.content)
         index = len(requests)
         requests.append(body)
-        assert index < (5 if formal else 2), "unexpected model retry"
+        assert index < expected_calls, "unexpected model retry"
         tool_name = body["tools"][0]["function"]["name"]
+        output = outputs[index]
+        if complete and index == 3:
+            assert "Yasak biçimler" in body["messages"][-1]["content"]
+            output = {**output, "headline": "Belirsizlik bulunmaktadır."}
+        if index >= 2:
+            schema = body["tools"][0]["function"]["parameters"]
+            required = schema["$defs"]["CriticalMissingInfo"]["required"]
+            assert set(required) == {
+                "isci_sayisi",
+                "sozlesme_turu",
+                "bildirim_tarihi",
+                "onceki_donem",
+                "yer_alti",
+                "kisaltma",
+            }
+            entries = output["missing_info"]
+            output = {
+                **output,
+                "missing_info": {
+                    "critical": {e["fact_key"]: e for e in entries if e["fact_key"] in required},
+                    "additional": [e for e in entries if e["fact_key"] not in required],
+                },
+            }
         return httpx.Response(
             200,
             json={
@@ -728,7 +768,7 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
                                     "type": "function",
                                     "function": {
                                         "name": tool_name,
-                                        "arguments": json.dumps(outputs[index]),
+                                        "arguments": json.dumps(output),
                                     },
                                 }
                             ],
@@ -759,10 +799,24 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
             await turn(graph, ask(thread))
             events = await turn(graph, RunRequest(thread_id=thread, skip=True))
         state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
-    assert len(requests) == (5 if formal else 2)
+    assert len(requests) == expected_calls
     assert state["gate"]["rows_dropped"] == (0 if formal else 3)
     assert state["question"] == ask(thread).text
-    if formal:
+    if formal and complete:
+        answer = only(events, AnswerEvent).answer
+        assert not any(isinstance(e, ErrorEvent) for e in events)
+        assert {m.fact_key for m in answer.missing_info} >= {
+            "isci_sayisi",
+            "sozlesme_turu",
+            "bildirim_tarihi",
+            "onceki_donem",
+            "yer_alti",
+            "kisaltma",
+        }
+        assert answer.status == "conditional"
+        assert answer.headline == "Belirsizlik bulunmaktadır."
+        assert not state["gate"]["fallback"]
+    elif formal:
         # Missing coverage exhausts the existing two typed retries. The real graph
         # reports its existing honest provider/validation error, never an answer.
         assert only(events, ErrorEvent).code == ErrorCode.internal_error
