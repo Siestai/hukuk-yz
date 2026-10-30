@@ -96,3 +96,8 @@
 ### 2026-10-29 — Görev 17 bağımsız inceleme takibi
 
 - **Tarih düzeltmesi ve log mahremiyeti** (Orhan'ın PR81 takip talebi; md. 4, 31): aynı konudaki yeni olay tarihi, şablondaki tarih olgusuyla birlikte güncellenir. Açıkça bilinmiyor verilen, doğrulanamayan veya çelişen tarih düzeltmesi önceki tarihi geri getirmez; netleştirme ister. Tarih verilmemiş turda önceki olgu korunur. Kapının ayrıntılı hata metni modelin tekrar isteminde ve iç durumda kalır; düğüm izine yalnız sabit hata kodları ve adetler yazılır. Gerçek model değerlendirmesi ve Postgres kabul kapısı bu düzeltmenin yerel sahte model testlerinden ayrı kalır.
+
+### 2026-10-30 (Görev 17, çevrimdışı hata düzeltmesi)
+
+- **Soru bağlamının korunması:** Hüküm haritası ve taslak düğümlerine özgün kullanıcı sorusu olay verisi olarak aktarılır. Genel şablonun tarih/statü olguları sorunun konusunu taşımadığından, yalnız arama parçalarına dayanmak konu kaymasına yol açabilir. Kaynak uygunluğunu gözetme talimatı da korunur; bu değişiklik hukuki uygunluğun deterministik doğrulaması değildir (md. 22, 23, 25).
+- **Eksik netleştirme:** İşe iade şablonunun mevcut tuzak kuralında zaten istenen toplu/bireysel sözleşmeyle kıdem şartının kısaltılması sorusu kritik olgu olarak eklenmiştir. Kaynak metni veya künye eklenmemiştir; bilinmeyen yanıt koşullu yolda kalır. Ücret değişikliği ve TİS alacağı için yeni özel şablonlar bu düzeltmenin kapsamında değildir; genel şablonun bu vakalarda özel eval beklentilerini karşılamadığı açıktır.

@@ -255,7 +255,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     "fast",
                     HoldingDraft,
                     prompts.HOLDING_INSTRUCTIONS,
-                    prompts.holding_prompt(topic, facts, read),
+                    prompts.holding_prompt(topic, facts, read, question=state["question"]),
                 )
                 rows, dropped = verify_rows(draft, read, applied_on)
             rec.output = {"rows": len(rows), "dropped": dropped}
@@ -284,7 +284,15 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     "strong",
                     DraftOutput,
                     prompts.DRAFT_INSTRUCTIONS,
-                    prompts.draft_prompt(topic, facts, rows, read, state["unread"], issues),
+                    prompts.draft_prompt(
+                        topic,
+                        facts,
+                        rows,
+                        read,
+                        state["unread"],
+                        issues,
+                        question=state["question"],
+                    ),
                 )
                 if forms := progressive_in(output):
                     output = await deps.llm.run(

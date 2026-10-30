@@ -91,10 +91,11 @@ def test_only_unknown_critical_facts_are_asked_in_the_order_of_the_template() ->
         "bildirim_tarihi",
         "onceki_donem",
         "yer_alti",
+        "kisaltma",
     ]
     clarification = clarification_for(TOPIC, facts, {})
     assert clarification is not None
-    assert [q.id for q in clarification.questions] == ["q1", "q2", "q3", "q4"]
+    assert [q.id for q in clarification.questions] == ["q1", "q2", "q3", "q4", "q5"]
     assert clarification.questions[0].text == "İş sözleşmesi belirsiz süreli mi?"
     assert clarification.questions[0].input.allow_unknown
     assert clarification.questions[0].source_refs == []

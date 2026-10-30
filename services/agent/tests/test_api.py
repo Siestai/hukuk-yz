@@ -102,7 +102,7 @@ async def test_a_turn_streams_steps_facts_and_the_clarification_then_the_answer(
     assert names == ["step", "facts", "step", "clarification", "done"]
     assert events(first)[0][1]["label"] == "Olay kaydediliyor"
     questions = events(first)[3][1]["clarification"]["questions"]
-    assert len(questions) == 5
+    assert len(questions) == 6
 
     answers = [{"question_id": q["id"], "unknown": True} for q in questions]
     answers[2] = {"question_id": "q3", "value": "2026-10-03"}

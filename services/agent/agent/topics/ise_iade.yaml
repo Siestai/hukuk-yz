@@ -71,6 +71,18 @@ facts:
         - {value: hayir, label: Hayır, assumed_never: true}
       basis:
         - {ref: "4857 m.18/1", category: statute}
+  - key: kisaltma
+    label: Sözleşmeyle kıdem şartının kısaltılması
+    critical: true
+    question:
+      text: Toplu veya bireysel iş sözleşmesinde altı aylık kıdem şartını kısaltan bir hüküm var mı?
+      why: >-
+        Kıdem şartının değerlendirilmesi için toplu veya bireysel sözleşmede bu süreyi kısaltan
+        bir hüküm bulunup bulunmadığı bilinmelidir.
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
 event_date_fact: bildirim_tarihi
 must_read:
   - {ref: "4857 m.15", category: statute}

@@ -73,7 +73,14 @@ def test_a_topic_names_what_to_read(topic_id: str) -> None:
 
 def test_sb001_asks_what_the_eval_case_wants_asked() -> None:
     asked = [f.key for f in get_topic("ise_iade").facts if f.critical]
-    assert asked == ["isci_sayisi", "sozlesme_turu", "bildirim_tarihi", "onceki_donem", "yer_alti"]
+    assert asked == [
+        "isci_sayisi",
+        "sozlesme_turu",
+        "bildirim_tarihi",
+        "onceki_donem",
+        "yer_alti",
+        "kisaltma",
+    ]
     assert get_topic("ise_iade").event_date_fact == "bildirim_tarihi"
 
 

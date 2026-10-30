@@ -20,7 +20,14 @@ from agent.trace import Tracing
 from hukuk_models.chat import ClarificationAnswer
 
 QUESTION = "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerekçesi ile birlikte açıkla"
-ANSWERS = {"q1": "gte_30", "q2": "belirsiz", "q3": "2026-10-03", "q4": "hayir", "q5": "hayir"}
+ANSWERS = {
+    "q1": "gte_30",
+    "q2": "belirsiz",
+    "q3": "2026-10-03",
+    "q4": "hayir",
+    "q5": "hayir",
+    "q6": "hayir",
+}
 
 M18_1 = (
     "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin "
@@ -267,7 +274,7 @@ def ask(thread: str) -> RunRequest:
 
 
 def answer_all(thread: str, **override: str | None) -> RunRequest:
-    """Answers q1..q5; an override of None answers "Bilmiyorum"."""
+    """Answers q1..q6; an override of None answers "Bilmiyorum"."""
     given = {**ANSWERS, **override}
     return RunRequest(
         thread_id=thread,

@@ -68,8 +68,9 @@ async def test_sb001_stops_at_the_clarification_and_goes_on_after_the_answers() 
         "bildirim_tarihi",
         "onceki_donem",
         "yer_alti",
+        "kisaltma",
     ]
-    assert clarification.total == 5
+    assert clarification.total == 6
     assert not any(isinstance(e, AnswerEvent) for e in first)
     assert (await graph.aget_state({"configurable": {"thread_id": thread}})).next == ("clarify",)
     # The "neden soruyorum" carries the statute the knowledge base resolved, never a made-up one.
@@ -96,7 +97,14 @@ async def test_sb001_stops_at_the_clarification_and_goes_on_after_the_answers() 
     assert {c.fact_key for c in answer.fact_chips} == {"kidem", *ANSWERS_KEYS}
 
 
-ANSWERS_KEYS = {"isci_sayisi", "sozlesme_turu", "bildirim_tarihi", "onceki_donem", "yer_alti"}
+ANSWERS_KEYS = {
+    "isci_sayisi",
+    "sozlesme_turu",
+    "bildirim_tarihi",
+    "onceki_donem",
+    "yer_alti",
+    "kisaltma",
+}
 
 
 async def test_the_search_uses_the_event_date_of_the_answers() -> None:
@@ -474,3 +482,68 @@ async def test_holding_rejection_logs_counts_and_keeps_private_text_out(
     assert outputs["node draft"]["issue_counts"] == {}
     assert outputs["node draft"]["rows_dropped"] == 1
     assert outputs["node draft"]["fallback"] is False
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Sözleşmedeki kış desteği yatırılmadı; hangi bilgiler gerekir?",
+        "Aylık kazancım azaltılmak istenirse nasıl değerlendirilir?",
+        "İşyerindeki değişiklik hakkında bilgi istiyorum; neyin değiştiği henüz belli değil.",
+    ],
+)
+async def test_original_question_reaches_both_reasoning_nodes_without_inventing_facts(
+    question: str,
+) -> None:
+    script = Script(intake={"topic": "genel", "title": "Genel soru", "facts": []})
+
+    # An unrelated hit may be returned by search; preserving the question must not
+    # depend on the source matching it or on the intake title retaining its meaning.
+    class BroadKb(FakeKb):
+        async def search(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            return labour_law_hits()[:1]
+
+    graph = make_graph(script, BroadKb())
+    thread = unique_thread()
+    first = await turn(graph, RunRequest(thread_id=thread, text=question))
+    clarification = only(first, ClarificationEvent).clarification
+    assert [q.fact_key for q in clarification.questions] == ["olay_tarihi", "statu"]
+    await turn(graph, RunRequest(thread_id=thread, skip=True))
+    for kind in ("holding", "draft"):
+        assert question in script.of(kind)[0]
+    state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    assert state["topic"] == "genel"
+    assert all(f["status"] == "unknown" for f in state["facts"]["facts"])
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Yedi haftalık çalışan işine dönmek istiyor.",
+        "Fesih sonrası iş güvencesi için hangi bilgiler gerekir?",
+        "Çalışma süresini bilmiyorum; işe iade koşullarını öğrenmek istiyorum.",
+    ],
+)
+async def test_reinstatement_asks_about_contractual_shortening_without_assuming_it(
+    question: str,
+) -> None:
+    script = Script(intake={"topic": "ise_iade", "title": "İş güvencesi", "facts": []})
+    graph = make_graph(script)
+    thread = unique_thread()
+    events = await turn(graph, RunRequest(thread_id=thread, text=question))
+    clarification = only(events, ClarificationEvent).clarification
+    asked = {q.fact_key: q for q in clarification.questions}
+    assert "kisaltma" in asked
+    assert asked["kisaltma"].input.allow_unknown
+    events = await turn(
+        graph,
+        RunRequest(
+            thread_id=thread,
+            clarification_answers=[
+                ClarificationAnswer(question_id=asked["kisaltma"].id, unknown=True)
+            ],
+        ),
+    )
+    facts = only(events, FactsEvent).facts
+    assert next(f for f in facts.facts if f.key == "kisaltma").status == "unknown"
+    assert only(events, AnswerEvent).answer.status == "conditional"

@@ -42,7 +42,7 @@ async def test_a_thread_resumes_after_a_restart(database_url: str) -> None:
     thread = unique_thread()
     async with open_database(database_url) as db:
         first = await turn(build_graph(deps(), db.saver), ask(thread))
-        assert only(first, ClarificationEvent).clarification.total == 5
+        assert only(first, ClarificationEvent).clarification.total == 6
 
     async with open_database(database_url) as db:
         await db.ping()

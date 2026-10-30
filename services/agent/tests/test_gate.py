@@ -312,7 +312,7 @@ def test_missing_info_citation_purpose_is_also_checked_for_formal_tense() -> Non
 @pytest.mark.parametrize(
     ("status", "has_rows", "expected"),
     [
-        ("definite", True, {"critical_unknown": 5, "unread_source": 1, "unknown_holding": 1}),
+        ("definite", True, {"critical_unknown": 6, "unread_source": 1, "unknown_holding": 1}),
         ("conditional", False, {"missing_conditions": 1, "no_verified_rows": 1}),
     ],
 )
