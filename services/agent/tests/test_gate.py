@@ -5,13 +5,13 @@ from datetime import date
 import pytest
 from agent_fakes import M18_1, M18_4, draft, hit, row
 
-from agent.facts import build_facts
+from agent.facts import build_facts, critical_unknown
 from agent.gate import check_draft, not_answered, progressive_in
 from agent.holding import verify_rows
 from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
 from agent.sources import ReadSource, as_read_source
 from agent.topics import get_topic
-from hukuk_models.chat import CaseFacts, HoldingRow
+from hukuk_models.chat import CaseFacts, Fact, HoldingRow
 
 TOPIC = get_topic("ise_iade")
 DAY = date(2026, 10, 3)
@@ -313,7 +313,11 @@ def test_missing_info_citation_purpose_is_also_checked_for_formal_tense() -> Non
     ("status", "has_rows", "expected"),
     [
         ("definite", True, {"critical_unknown": 6, "unread_source": 1, "unknown_holding": 1}),
-        ("conditional", False, {"missing_conditions": 1, "no_verified_rows": 1}),
+        (
+            "conditional",
+            False,
+            {"missing_conditions": 1, "no_verified_rows": 1, "uncovered_critical_facts": 6},
+        ),
     ],
 )
 def test_issue_counts_use_fixed_codes_while_feedback_keeps_details(
@@ -394,3 +398,65 @@ def test_source_id_without_quote_cannot_support_a_claim() -> None:
     result = check(output)
     assert result.answer is None
     assert result.drops.citations == 1
+
+
+@pytest.mark.parametrize("omitted", [("bildirim_tarihi", "kisaltma"), ("kisaltma",)])
+def test_conditional_rejects_omitted_critical_fact_keys(omitted: tuple[str, ...]) -> None:
+    output = draft()
+    required = critical_unknown(TOPIC, facts(False))
+    assert len(required) == 6
+    output["missing_info"] = [
+        {"fact_key": key, "condition": key, "result": "Bilgi gerekmektedir."}
+        for key in required
+        if key not in omitted
+    ]
+    # Duplicates, null keys and known/unrelated keys cannot replace a missing critical key.
+    output["missing_info"] += [output["missing_info"][0]] + [
+        {"fact_key": key, "condition": "Ek bilgi", "result": "Bilgi gerekmektedir."}
+        for key in (None, "kidem", "unrelated")
+    ]
+    result = check(output)
+    assert result.answer is None
+    assert result.issue_counts == {"uncovered_critical_facts": len(omitted)}
+    assert all(key in " ".join(result.issues) for key in omitted)
+    assert all(key not in str(result.issue_counts) for key in omitted)
+
+
+@pytest.mark.parametrize("known", [False, True])
+@pytest.mark.parametrize("no_facts", [False, True])
+def test_conditional_coverage_uses_actual_critical_unknowns_only(
+    known: bool, no_facts: bool
+) -> None:
+    topic = TOPIC.model_copy(update={"facts": [], "event_date_fact": None}) if no_facts else TOPIC
+    case = facts(known)
+    case = case.model_copy(
+        update={
+            "facts": [
+                *case.facts,
+                Fact(key="unrelated", label="Ek", value="x", status="known"),
+                Fact(key="noncritical", label="Ek", status="unknown"),
+            ]
+        }
+    )
+    output = draft()
+    output["missing_info"] = [
+        {
+            "fact_key": key,
+            "condition": "Eksik bilgi",
+            "result": "Okunan kaynaklarla sonuç belirlenememektedir.",
+        }
+        for key in [*critical_unknown(topic, case), None, "noncritical"]
+    ]
+    result = check_draft(
+        DraftOutput.model_validate(output),
+        topic=topic,
+        facts=case,
+        rows=rows("unknown"),
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+        unread=["Okunamayan kaynak"],
+    )
+    assert result.issues == []
+    assert result.answer is not None
+    assert all(not item.citations for item in result.answer.missing_info)

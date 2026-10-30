@@ -190,10 +190,22 @@ def check_draft(
                 "unknown_holding",
                 "hüküm haritasında sonucu bilinmeyen satır varken kesin cevap verilemez",
             )
-    elif not draft.missing_info:
-        reject(
-            "missing_conditions", "koşullu cevap neye bağlı olduğunu (missing_info) söylemelidir"
-        )
+    else:
+        if not draft.missing_info:
+            reject(
+                "missing_conditions",
+                "koşullu cevap neye bağlı olduğunu (missing_info) söylemelidir",
+            )
+        represented = {m.fact_key for m in draft.missing_info}
+        uncovered = [key for key in critical_unknown(topic, facts) if key not in represented]
+        if uncovered:
+            reject(
+                "uncovered_critical_facts",
+                "missing_info içinde her bilinmeyen kritik olgunun fact_key değeri bulunmalıdır; "
+                f"eksik anahtarlar: {', '.join(uncovered)}. Okunan destek yoksa hukuki sonuç "
+                "veya atıf uydurma; netleştirme iste veya kaynak yetersizliğini belirt.",
+                len(uncovered),
+            )
 
     points = []
     for p in draft.points:

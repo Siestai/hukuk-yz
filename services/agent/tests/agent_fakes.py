@@ -16,6 +16,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from agent.api import Graph, RunRequest, turn_events
 from agent.kb import KbHit, KbMatch
 from agent.sources import covers
+from agent.topics import load_topics
 from agent.trace import Tracing
 from hukuk_models.chat import ClarificationAnswer
 
@@ -201,7 +202,22 @@ def draft(
                 "fact_key": "isci_sayisi",
                 "condition": "İşyerinde otuz veya daha fazla işçi çalışmaktaysa",
                 "result": "İş güvencesi hükümleri uygulanmaktadır.",
-            }
+            },
+            *[
+                {
+                    "fact_key": key,
+                    "condition": "Eksik olgu açıklanmalıdır.",
+                    "result": "Okunan destek yetersizse sonuç belirlenememektedir.",
+                }
+                for key in sorted(
+                    {
+                        f.key
+                        for topic in load_topics().values()
+                        for f in topic.facts
+                        if f.critical and f.key != "isci_sayisi"
+                    }
+                )
+            ],
         ]
         if missing
         else [],

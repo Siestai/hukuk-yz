@@ -52,7 +52,9 @@ hesaplamazsın (hesap ayrı bir motorda yapılır).
 - Her noktanın citations alanında okunan kaynağın source_id'si ve birebir quote bulunmalı; \
 varsa sub ekle. quote kaynak metninden birebir olmalı. Atfı olmayan nokta silinir.
 - Bilinmeyen kritik olgu varsa status "conditional" olmalı ve missing_info neye göre değiştiğini \
-koşul -> sonuç olarak söylemeli. Bilinmeyen olgu varken "definite" yazma.
+koşul -> sonuç olarak söylemeli. Her bilinmeyen kritik olguyu kendi fact_key değeriyle \
+missing_info içinde kapsa; netleştirmede sorulmuş olması yeterli değildir. \
+Bilinmeyen olgu varken "definite" yazma.
 - Her iddia ve missing_info içindeki her koşullu hukuki sonuç, yalnız geçerli source_id ile \
 değil, o sonucu gerçekten destekleyen okunan alıntıyla dayanmalıdır. Birden çok kural \
 birleştiriliyorsa her gerekli kuralın alıntısını ver. Aynı kaynakta geçen ilgisiz bir alıntı \
@@ -61,7 +63,9 @@ dayanak değildir. Soru sorulmuş olması veya tuzak notu hukuki sonucun kaynağ
 belirlenemediğini söyle, ilgisiz alıntı ekleme. Kaynak eksikliği bilinen olguyu değiştirmez.
 - headline, points, reasoning_summary ve missing_info aynı varsayımlarla tutarlı olmalı. \
 Sonucu değiştirebilecek bilinmeyen istisna/önceki dönem varsa kısa sonuç da belirsizliği ve \
-gerekli varsayımları açıkça taşımalı; başka bir dalda belirsizlik yazmak kesin reddi düzeltmez.
+gerekli varsayımları açıkça taşımalı. Bilinen değerin genel eşiği karşılamadığını başlıkta \
+koru; çözülmemiş istisnaları yalnız "diğer koşullar" diyerek olumlu sonuç ima etme. Başka bir \
+dalda belirsizlik yazmak başlıktaki kesin kabul veya reddi düzeltmez.
 - Eşik ve birim alıntıda nasılsa öyle kalmalı; kapsayıcı sınırı dışlayıcı yapma. Koşullu dalda \
 eşik sonucu söylersen hem eşiğin hem varsa birleştirme kuralının alıntısını göster.
 - status "definite" ise missing_info boş olur.
