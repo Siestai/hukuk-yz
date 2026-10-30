@@ -2,6 +2,7 @@
 quote."""
 
 from datetime import date
+from typing import Any
 
 from agent_fakes import M18_1, M18_4, hit, row
 
@@ -134,3 +135,55 @@ def test_declared_dependencies_preserve_unknown_without_erasing_known_results() 
             assert dropped == 0
             assert verified[0].result == expected
             assert verified[0].condition_quote == M18_1
+
+
+# Sanitized typed outputs and the literal shown passage from the finished recorded run.
+# No provider envelopes, identifiers, usage, credentials or private-file dependency.
+def recorded_holding() -> dict[str, Any]:
+    import json
+    from pathlib import Path
+
+    recording: dict[str, Any] = json.loads(
+        (Path(__file__).parent / "fixtures/holding_register.json").read_text()
+    )
+    return recording
+
+
+def test_recorded_unknown_rows_require_formal_generated_values_without_losing_data() -> None:
+    from agent_fakes import draft
+
+    from agent.gate import progressive_in
+    from agent.llm_schemas import DraftOutput
+
+    recording = recorded_holding()
+    source = as_read_source(
+        hit("statute:4857:m18", "4857 m.18", "4857 m.18", recording["source_text"])
+    )
+    assert source is not None
+    original = HoldingDraft.model_validate(recording["holding"])
+    assert len(original.rows) == 3
+    assert verify_rows(original, [source], DAY) == ([], 3)
+    for value in ("bilinmemektedir", "belirsiz"):
+        formal = original.model_copy(deep=True)
+        for candidate in formal.rows:
+            assert candidate.fact_value is not None
+            candidate.fact_value = candidate.fact_value.replace("bilinmiyor", value)
+        rows, dropped = verify_rows(formal, [source], DAY)
+        assert dropped == 0 and len(rows) == 3
+        for before, after, verified in zip(original.rows, formal.rows, rows, strict=True):
+            assert after.depends_on_facts == before.depends_on_facts
+            assert after.condition_quote == before.condition_quote == verified.condition_quote
+            assert after.condition == before.condition == verified.condition
+            assert after.result == before.result == verified.result == "unknown"
+            assert verified.fact_value is not None
+            assert verified.fact_value == after.fact_value
+            assert verified.fact_value.replace(value, "bilinmiyor") == before.fact_value
+            assert verified.citation.quote == before.condition_quote
+            # The excerpt has no paragraph marker: the recorded sub="1" is not verified.
+            assert verified.citation.ref == "4857 m.18"
+        assert progressive_in(DraftOutput.model_validate(draft()), rows) == []
+        for field in ("condition", "fact_value"):
+            invalid = formal.model_copy(deep=True)
+            for candidate in invalid.rows:
+                setattr(candidate, field, "Olgu bilinmiyor")
+            assert verify_rows(invalid, [source], DAY) == ([], 3)

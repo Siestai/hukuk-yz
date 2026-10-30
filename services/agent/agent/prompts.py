@@ -41,6 +41,12 @@ bilinen temel değerin eşik altında olması genel koşula not_met demeye yetme
 bilinen bir alt koşul için met/not_met korunur; ilgisiz bilinmeyen olgu sonucu değiştirmez.
 - Sayısal eşiğin birimini, eşitlik dahil olup olmadığını ve sınırını alıntıdaki gibi koru; \
 "en az" ifadesini "aşarsa" biçimine çevirme.
+- Resmi dil kuralı, ürettiğin condition ve fact_value alanlarının tamamı için geçerlidir; \
+alan içindeki kısa olgu etiketleri de bu kapsamdadır. Bilinmeyen olgu için fact_value içinde \
+"bilinmiyor" yerine "bilinmemektedir" veya "belirsiz" yaz; olgunun anlamını, bilinen değerleri, \
+result=unknown ve depends_on_facts değerlerini koru. Bu dil kuralı için \
+condition_quote ve kullanıcıdan alınan özgün olgu metnini değiştirme; \
+condition_quote kaynaktan birebir kalır, fact_value ise olgunun anlamını resmi dille ifade eder.
 - Kaynakta olmayan hüküm yazma; madde veya karar numarası uydurma.
 {REGISTER}"""
 

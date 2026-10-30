@@ -634,3 +634,107 @@ async def test_holding_node_uses_declared_dependencies_after_skip() -> None:
     answer = only(events, AnswerEvent).answer
     assert [r.result for r in answer.holding_map.rows] == ["unknown", "not_met"]
     assert answer.headline != "Doğrulanmış kaynakla cevap verilemedi."
+
+
+@pytest.mark.parametrize("formal", [False, True])
+async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_gate(
+    formal: bool,
+) -> None:
+    """Transport/schema/register regression only; synthetic draft is not legal acceptance."""
+    import httpx2 as httpx
+    from openai import AsyncOpenAI
+    from pydantic_ai.models import override_allow_model_requests
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.providers.openai import OpenAIProvider
+    from test_holding import recorded_holding
+
+    recording = recorded_holding()
+    holding = recording["holding"]
+    if formal:
+        for candidate in holding["rows"]:
+            candidate["fact_value"] = candidate["fact_value"].replace(
+                "bilinmiyor", "bilinmemektedir"
+            )
+    # Deliberately definite with unresolved facts: exercise rejection and fallback,
+    # without claiming that a synthetic legal answer has semantic support.
+    bad_draft = draft("definite", missing=False)
+    outputs = [recording["intake"], holding, bad_draft, bad_draft]
+    requests: list[dict] = []  # type: ignore[type-arg]
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == "offline.invalid"
+        body = json.loads(request.content)
+        index = len(requests)
+        requests.append(body)
+        assert index < (4 if formal else 2), "unexpected model retry"
+        tool_name = body["tools"][0]["function"]["name"]
+        return httpx.Response(
+            200,
+            json={
+                "id": f"offline-{index}",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "offline-replay",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "tool_calls",
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": f"tool-{index}",
+                                    "type": "function",
+                                    "function": {
+                                        "name": tool_name,
+                                        "arguments": json.dumps(outputs[index]),
+                                    },
+                                }
+                            ],
+                        },
+                    }
+                ],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        provider = OpenAIProvider(
+            openai_client=AsyncOpenAI(
+                api_key="offline-placeholder",
+                base_url="https://offline.invalid/v1",
+                http_client=client,
+                max_retries=0,
+            )
+        )
+        model = OpenAIChatModel("offline-replay", provider=provider)
+        kb = FakeKb([hit("statute:4857:m18", "4857 m.18", "4857 m.18", recording["source_text"])])
+        graph = build_graph(
+            Deps(llm=Llm(Models(model, model)), kb=kb, today=lambda: TODAY), InMemorySaver()
+        )
+        thread = unique_thread()
+        # Only this injected MockTransport model is enabled; no real HTTP transport exists.
+        with override_allow_model_requests(True):
+            await turn(graph, ask(thread))
+            events = await turn(graph, RunRequest(thread_id=thread, skip=True))
+        state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    assert len(requests) == (4 if formal else 2)
+    assert state["gate"]["rows_dropped"] == (0 if formal else 3)
+    assert state["gate"]["fallback"]
+    assert state["gate"]["attempts"] == (2 if formal else 0)
+    assert state["question"] == ask(thread).text
+    if formal:
+        assert len(state["rows"]) == 3
+        assert all(r["result"] == "unknown" for r in state["rows"])
+        assert "kritik olgu bilinmezken kesin cevap verilemez" in " ".join(state["gate"]["issues"])
+        answer = only(events, AnswerEvent).answer
+        assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
+        prompt = requests[2]["messages"][-1]["content"]
+        for candidate in holding["rows"]:
+            assert candidate["condition_quote"] in prompt
+            assert candidate["fact_value"] in prompt
+    else:
+        assert state["rows"] == []
+        assert only(events, ErrorEvent).code == ErrorCode.answer_not_verified
+        assert not any(isinstance(e, AnswerEvent) for e in events)

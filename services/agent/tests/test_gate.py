@@ -460,3 +460,30 @@ def test_conditional_coverage_uses_actual_critical_unknowns_only(
     assert result.issues == []
     assert result.answer is not None
     assert all(not item.citations for item in result.answer.missing_info)
+
+
+def test_register_checks_generated_values_without_rewriting_user_or_source_text() -> None:
+    original = "İşçi çalışıyor ve önceki dönemini bilmiyor"
+    source = as_read_source(hit("statute:4857:m18", "4857 m.18", "4857 m.18", original))
+    assert source is not None
+    candidate = {
+        **row("statute:4857:m18", original, "unknown"),
+        "condition": "Önceki çalışma süresi belirsizdir",
+        "fact_value": "Önceki dönem bilinmemektedir",
+        "depends_on_facts": ["onceki_donem"],
+    }
+    case = facts(False)
+    case.facts.append(Fact(key="verbatim", label="Özgün metin", value=original, status="known"))
+    before = case.model_dump()
+    verified, dropped = verify_rows(
+        HoldingDraft.model_validate({"rows": [candidate]}), [source], DAY, facts=case
+    )
+    assert dropped == 0
+    output = DraftOutput.model_validate(draft())
+    assert progressive_in(output, verified, case) == []
+    for field in ("condition", "fact_value"):
+        informal = verified[0].model_copy(update={field: "Olgu bilinmiyor"})
+        assert progressive_in(output, [informal], case) == ["bilinmiyor"]
+    assert case.model_dump() == before
+    assert verified[0].condition_quote == verified[0].citation.quote == original
+    assert source.passages[0].text == original
