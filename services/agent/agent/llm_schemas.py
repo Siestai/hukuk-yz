@@ -3,11 +3,12 @@ words; everything else of an `Answer` (read sources, citations, chips, dates, di
 written by code from these."""
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, create_model, model_validator
 
-from hukuk_models.chat import AnswerStatus, FactStatus, HoldingResult
+from agent.topics import Topic
+from hukuk_models.chat import AnswerStatus, CaseFacts, FactStatus, HoldingResult
 
 
 class LlmModel(BaseModel):
@@ -72,3 +73,58 @@ class DraftOutput(LlmModel):
     points: Annotated[list[PointDraft], Field(min_length=1)]
     missing_info: list[MissingDraft] = []
     reasoning_summary: str
+
+
+def draft_output_type(
+    topic: Topic, facts: CaseFacts, *, original: DraftOutput | None = None
+) -> type[DraftOutput]:
+    """Request-local key vocabulary and coverage; rewrite may change generated words only.
+
+    Coverage is a typed validation rule, not a claim of semantic source support.
+    No shared model or schema is mutated.
+    """
+    from agent.facts import critical_unknown
+
+    keys = tuple(f.key for f in topic.facts)
+    key_type = (
+        Annotated[Literal[keys], Field(json_schema_extra={"enum": list(keys)})] | None
+        if keys
+        else type(None)
+    )
+    missing_type = create_model(
+        "RequestMissingDraft", __base__=MissingDraft, fact_key=(key_type, None)
+    )
+    required = frozenset(critical_unknown(topic, facts))
+    frozen = _rewrite_structure(original) if original is not None else None
+
+    class RequestDraftOutput(DraftOutput):
+        @model_validator(mode="after")
+        def request_contract(self) -> Self:
+            represented = {m.fact_key for m in self.missing_info}
+            if uncovered := required - represented:
+                raise ValueError(f"Missing critical unknown facts: {sorted(uncovered)}")
+            if frozen is not None and _rewrite_structure(self) != frozen:
+                raise ValueError("Rewrite changed identifiers, citations or structure")
+            return self
+
+    return create_model(
+        "RequestDraftOutput",
+        __base__=RequestDraftOutput,
+        missing_info=(list[missing_type], []),
+    )
+
+
+def _rewrite_structure(draft: DraftOutput) -> dict[str, Any]:
+    data = draft.model_dump(mode="json")
+    for field in ("headline", "reasoning_summary"):
+        data.pop(field)
+    for point in data["points"]:
+        point.pop("text")
+    for missing in data["missing_info"]:
+        missing.pop("condition")
+        missing.pop("result")
+    # used_for is generated language; all other citation fields are immutable.
+    for item in [*data["points"], *data["missing_info"]]:
+        for pick in item["citations"]:
+            pick.pop("used_for")
+    return data

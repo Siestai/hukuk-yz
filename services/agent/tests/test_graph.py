@@ -121,7 +121,7 @@ async def test_the_search_uses_the_event_date_of_the_answers() -> None:
 
 
 async def test_skipping_the_questions_gives_a_conditional_answer() -> None:
-    graph = make_graph(Script(drafts=[draft("definite", missing=False), draft()]))
+    graph = make_graph(Script(drafts=[draft("definite"), draft()]))
     thread = unique_thread()
     await turn(graph, ask(thread))
 
@@ -243,10 +243,17 @@ async def test_a_progressive_form_is_corrected_once(
         bad["missing_info"][0][field] = "Kayıt karşılayabiliyorsa."
     original_run = Llm.run
     rewrite_instructions: list[str] = []
+    draft_types: list[type] = []
 
     async def checked_run[T](
         self: Llm, tier: Tier, output_type: type[T], instructions: str, prompt: str
     ) -> T:
+        if issubclass(output_type, DraftOutput):
+            schema = output_type.model_json_schema()
+            key_schema = schema["$defs"]["RequestMissingDraft"]["properties"]["fact_key"]
+            assert any("kisaltma" in branch.get("enum", []) for branch in key_schema["anyOf"])
+            if instructions == prompts.DRAFT_INSTRUCTIONS:
+                draft_types.append(output_type)
         if "Yasak biçimler:" in prompt:
             rewrite_instructions.append(instructions)
             assert "-iyorsa/-ıyorsa/-uyorsa/-üyorsa" in instructions
@@ -273,6 +280,7 @@ async def test_a_progressive_form_is_corrected_once(
     )
     attempts = 1 if compliant else 2
     assert len(script.of("draft")) == attempts
+    assert all(t is draft_types[0] for t in draft_types)
     assert len(script.of("rewrite")) == attempts
     assert rewrite_instructions == [prompts.REWRITE_INSTRUCTIONS] * attempts
     rewrite_prompt = script.of("rewrite")[0]
@@ -284,7 +292,7 @@ async def test_a_progressive_form_is_corrected_once(
 
 
 async def test_definite_is_refused_while_a_critical_fact_is_unknown() -> None:
-    script = Script(drafts=[draft("definite", missing=False), draft()])
+    script = Script(drafts=[draft("definite"), draft()])
     graph = make_graph(script)
     thread = unique_thread()
     await turn(graph, ask(thread))
@@ -298,7 +306,7 @@ async def test_definite_is_refused_while_a_critical_fact_is_unknown() -> None:
 
 
 async def test_a_draft_that_cannot_pass_twice_ends_in_the_not_answered_answer() -> None:
-    script = Script(drafts=[draft("definite", missing=False)])
+    script = Script(drafts=[draft("definite")])
     graph = make_graph(script)
     thread = unique_thread()
     await turn(graph, ask(thread))
@@ -690,7 +698,7 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
     # Deliberately definite with unresolved facts: exercise rejection and fallback,
     # without claiming that a synthetic legal answer has semantic support.
     bad_draft = draft("definite", missing=False)
-    outputs = [recording["intake"], holding, bad_draft, bad_draft]
+    outputs = [recording["intake"], holding, bad_draft, bad_draft, bad_draft]
     requests: list[dict] = []  # type: ignore[type-arg]
 
     def respond(request: httpx.Request) -> httpx.Response:
@@ -698,7 +706,7 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
         body = json.loads(request.content)
         index = len(requests)
         requests.append(body)
-        assert index < (4 if formal else 2), "unexpected model retry"
+        assert index < (5 if formal else 2), "unexpected model retry"
         tool_name = body["tools"][0]["function"]["name"]
         return httpx.Response(
             200,
@@ -751,22 +759,45 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
             await turn(graph, ask(thread))
             events = await turn(graph, RunRequest(thread_id=thread, skip=True))
         state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
-    assert len(requests) == (4 if formal else 2)
-    assert state["gate"]["rows_dropped"] == (0 if formal else 3)
-    assert state["gate"]["fallback"]
-    assert state["gate"]["attempts"] == (2 if formal else 0)
+    assert len(requests) == (5 if formal else 2)
     assert state["question"] == ask(thread).text
     if formal:
+        # Missing coverage exhausts the existing two typed retries. The real graph
+        # reports its existing honest provider/validation error, never an answer.
+        assert only(events, ErrorEvent).code == ErrorCode.internal_error
+        assert not any(isinstance(e, AnswerEvent) for e in events)
+        assert "attempts" not in state["gate"]
+        schema = requests[2]["tools"][0]["function"]["parameters"]
+        missing = schema["$defs"]["RequestMissingDraft"]["properties"]["fact_key"]
+        assert any("bildirim_tarihi" in branch.get("enum", []) for branch in missing["anyOf"])
         assert len(state["rows"]) == 3
-        assert all(r["result"] == "unknown" for r in state["rows"])
-        assert "kritik olgu bilinmezken kesin cevap verilemez" in " ".join(state["gate"]["issues"])
-        answer = only(events, AnswerEvent).answer
-        assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
-        prompt = requests[2]["messages"][-1]["content"]
-        for candidate in holding["rows"]:
-            assert candidate["condition_quote"] in prompt
-            assert candidate["fact_value"] in prompt
     else:
         assert state["rows"] == []
+        assert state["gate"]["fallback"]
+        assert state["gate"]["attempts"] == 0
         assert only(events, ErrorEvent).code == ErrorCode.answer_not_verified
         assert not any(isinstance(e, AnswerEvent) for e in events)
+
+
+@pytest.mark.parametrize("change", ["fact_key", "citation", "structure"])
+async def test_rewrite_mutation_exhausts_validation_without_publishing(change: str) -> None:
+    from copy import deepcopy
+
+    bad = draft(headline="Kayıt çalışıyor.")
+    rewrite = deepcopy(bad)
+    rewrite["headline"] = "Kayıt çalışmaktadır."
+    if change == "fact_key":
+        rewrite["missing_info"][0]["fact_key"] = "bildirim_tarihi"
+    elif change == "citation":
+        rewrite["points"][0]["citations"][0]["source_id"] = "changed"
+    else:
+        rewrite["points"].append(deepcopy(rewrite["points"][0]))
+    script = Script(drafts=[bad], rewrite=rewrite)
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+    events = await turn(graph, answer_all(thread))
+    assert only(events, ErrorEvent).code == ErrorCode.internal_error
+    assert not any(isinstance(e, AnswerEvent) for e in events)
+    assert len(script.of("draft")) == 1
+    assert len(script.of("rewrite")) == 3

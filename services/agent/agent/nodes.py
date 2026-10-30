@@ -17,7 +17,7 @@ from agent.gate import GateDrops, check_draft, holding_issue, not_answered, prog
 from agent.holding import verify_rows
 from agent.kb import KbClient
 from agent.llm import Llm
-from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
+from agent.llm_schemas import HoldingDraft, IntakeOutput, draft_output_type
 from agent.plan import Plan, make_plan
 from agent.sources import (
     ReadSource,
@@ -267,6 +267,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
         read = [ReadSource.model_validate(s) for s in state["read"]]
         rows = [HoldingRow.model_validate(r) for r in state["rows"]]
         made = Plan.model_validate(state["plan"])
+        output_type = draft_output_type(topic, facts)
         async with trace().node("draft", {"rows": len(rows), "sources": len(read)}) as rec:
             _step("draft")
             drops = GateDrops(rows=state["gate"].get("rows_dropped", 0))
@@ -283,7 +284,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 attempts = attempt
                 output = await deps.llm.run(
                     "strong",
-                    DraftOutput,
+                    output_type,
                     prompts.DRAFT_INSTRUCTIONS,
                     prompts.draft_prompt(
                         topic,
@@ -298,7 +299,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 if forms := progressive_in(output):
                     output = await deps.llm.run(
                         "strong",
-                        DraftOutput,
+                        draft_output_type(topic, facts, original=output),
                         prompts.REWRITE_INSTRUCTIONS,
                         prompts.rewrite_prompt(
                             output.model_dump_json(), forms, question=state["question"]

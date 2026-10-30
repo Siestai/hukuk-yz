@@ -65,6 +65,7 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
         holding={"rows": [row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde")]},
         drafts=[
             draft(
+                missing=False,
                 points=[
                     {
                         "text": "Peşin ödeme indirimi onbeş gün içinde uygulanmaktadır.",

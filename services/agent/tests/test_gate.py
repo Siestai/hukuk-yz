@@ -172,7 +172,7 @@ def test_no_verified_row_is_no_answer() -> None:
 def test_the_calculations_of_the_template_are_added_by_code() -> None:
     topic = get_topic("kidem_ihbar")
     result = check_draft(
-        DraftOutput.model_validate(draft()),
+        DraftOutput.model_validate(draft(topic_id="kidem_ihbar")),
         topic=topic,
         facts=build_facts(
             topic,

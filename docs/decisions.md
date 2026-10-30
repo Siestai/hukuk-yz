@@ -105,3 +105,7 @@
 ### 2026-10-30 — Görev 17 koşullu resmi dil sözleşmesi adayı
 
 - **Çevrimdışı aday** (Orhan'ın dar talebi; Görev 17 kip kapısı, md. 22–23, 25): ortak dil talimatında koşullu ve yeterlikli koşullu -iyor biçimleri ile üretilen alanların kapsamı açıklaştırılır. Birebir kaynak/kullanıcı metni, atıf, yapı ve hukuki anlam korunur. Kapı, şema ve tekrar sayısı değişmez. Sahte model testleri yalnız talimat taşımasını gösterir; gerçek model itaati ve hukuki doğruluk kanıtlanmış değildir. Eksik kaynak kapsamı ve desteklenmeyen bildirim/kısaltma çıkarımları ayrı kabul açıklarıdır.
+
+### 2026-10-30 — Görev 17 istek bazlı taslak sözleşmesi
+
+- **Dar çevrimdışı uygulama** (Orhan'ın uygulama yetkisi; md. 1–4, 22–23, 25): ortak `ChatAnswer` ve statik `DraftOutput` korunur. Taslak ve kapı tekrarı, konu kartındaki olgu anahtarlarından türetilen istek bazlı Pydantic alt modelini kullanır; sağlayıcı şemasında anahtarlar enum, boş konuda yalnız null olur. Mevcut `critical_unknown` kümesinin kapsamı tip doğrulamasında aranır; bilinen/uygulanmayan olgular zorunlu değildir. Rewrite aynı kısıtları taşır; yalnız üretilen dil alanları değişebilir, durum, anahtarlar, atıflar (üretilen `used_for` açıklaması hariç), liste sayısı ve sırası korunur. Mevcut iki typed retry veya kapı denemesi artırılmaz; tip doğrulaması tükenirse mevcut servis hata yolu kullanılır. Bu sözleşme kaynakların semantik desteğini veya model kalitesini kanıtlamaz; gerçek model eval'i, kaynak kapsamı ve Görev 17/18/demo kabulü açık kalır.

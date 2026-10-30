@@ -43,7 +43,16 @@ def test_the_cost_of_an_unknown_model_is_unknown() -> None:
 
 @pytest.mark.parametrize(
     "instruction_name",
-    ["INTAKE_INSTRUCTIONS", "HOLDING_INSTRUCTIONS", "DRAFT_INSTRUCTIONS", "REWRITE_INSTRUCTIONS"],
+    [
+        "INTAKE_INSTRUCTIONS",
+        "HOLDING_INSTRUCTIONS",
+        "DRAFT_INSTRUCTIONS",
+        "REWRITE_INSTRUCTIONS",
+        "REQUEST_VALID",
+        "REQUEST_INVENTED",
+        "REQUEST_MISSING",
+        "REWRITE_STRUCTURE",
+    ],
 )
 async def test_conditional_register_contract_reaches_openai_typed_payload(
     instruction_name: str,
@@ -53,16 +62,41 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
     import httpx2 as httpx
     from agent_fakes import draft
     from openai import AsyncOpenAI
+    from pydantic_ai.exceptions import UnexpectedModelBehavior
     from pydantic_ai.models import override_allow_model_requests
     from pydantic_ai.models.openai import OpenAIChatModel
     from pydantic_ai.providers.openai import OpenAIProvider
 
     from agent import prompts
-    from agent.llm_schemas import DraftOutput
+    from agent.llm_schemas import DraftOutput, draft_output_type
+    from agent.topics import get_topic
+    from hukuk_models.chat import CaseFacts, Fact
 
-    instructions = getattr(prompts, instruction_name)
+    constrained = instruction_name.startswith("REQUEST") or instruction_name == "REWRITE_STRUCTURE"
+    invalid = instruction_name in {"REQUEST_INVENTED", "REQUEST_MISSING", "REWRITE_STRUCTURE"}
+    instructions = getattr(prompts, instruction_name, prompts.DRAFT_INSTRUCTIONS)
     original = "Kayıt çalışıyorsa ne olur?"
-    payload = draft()
+    payload = draft(missing=False)
+    payload["missing_info"] = [
+        {"fact_key": key, "condition": "Bilinmezse", "result": "Belirlenememektedir."}
+        for key in ("bildirim_tarihi", "kisaltma")
+    ]
+    output_type = DraftOutput
+    if constrained:
+        facts = CaseFacts(
+            title="Olay",
+            facts=[Fact(key=k, label=k, status="unknown") for k in ("bildirim_tarihi", "kisaltma")],
+        )
+        original_output = (
+            DraftOutput.model_validate(payload) if instruction_name == "REWRITE_STRUCTURE" else None
+        )
+        output_type = draft_output_type(get_topic("ise_iade"), facts, original=original_output)
+        if instruction_name == "REQUEST_INVENTED":
+            payload["missing_info"][0]["fact_key"] = "fesih_olayinin_varligi_ve_bildirim_tarihi"
+        elif instruction_name == "REQUEST_MISSING":
+            payload["missing_info"].pop()
+        elif instruction_name == "REWRITE_STRUCTURE":
+            payload["points"][0]["citations"][0]["source_id"] = "changed"
     prompt = prompts.rewrite_prompt(
         json.dumps(payload, ensure_ascii=False), ["çalışıyorsa"], question=original
     )
@@ -72,7 +106,7 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
         assert request.url.host == "offline.invalid"
         body = json.loads(request.content)
         calls.append(body)
-        assert len(calls) == 1
+        assert len(calls) <= (3 if invalid else 1)
         system = body["messages"][0]["content"]
         assert system == instructions
         for text in (
@@ -87,7 +121,21 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
         assert body["messages"][1]["content"] == prompt
         tool = body["tools"][0]["function"]
         assert tool["parameters"]["additionalProperties"] is False
-        assert "question" not in tool["parameters"]["$defs"]["MissingDraft"]["properties"]
+        missing_name = "RequestMissingDraft" if constrained else "MissingDraft"
+        missing_properties = tool["parameters"]["$defs"][missing_name]["properties"]
+        assert "question" not in missing_properties
+        if constrained:
+            variants = missing_properties["fact_key"]["anyOf"]
+            assert next(v["enum"] for v in variants if "enum" in v) == [
+                f.key for f in get_topic("ise_iade").facts
+            ]
+            if len(calls) == 1:
+                print(
+                    json.dumps(
+                        {"scenario": instruction_name, "provider_schema": tool["parameters"]},
+                        ensure_ascii=False,
+                    )
+                )
         return httpx.Response(
             200,
             json={
@@ -128,8 +176,12 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
         )
         model = OpenAIChatModel("offline", provider=provider)
         with override_allow_model_requests(True):
-            result = await Llm(Models(model, model)).run(
-                "strong", DraftOutput, instructions, prompt
-            )
-    assert result == DraftOutput.model_validate(payload)
-    assert len(calls) == 1
+            if invalid:
+                with pytest.raises(UnexpectedModelBehavior):
+                    await Llm(Models(model, model)).run("strong", output_type, instructions, prompt)
+            else:
+                result = await Llm(Models(model, model)).run(
+                    "strong", output_type, instructions, prompt
+                )
+                assert result.model_dump() == DraftOutput.model_validate(payload).model_dump()
+    assert len(calls) == (3 if invalid else 1)

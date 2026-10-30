@@ -16,7 +16,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from agent.api import Graph, RunRequest, turn_events
 from agent.kb import KbHit, KbMatch
 from agent.sources import covers
-from agent.topics import load_topics
+from agent.topics import get_topic
 from agent.trace import Tracing
 from hukuk_models.chat import ClarificationAnswer
 
@@ -188,6 +188,7 @@ def draft(
     *,
     points: list[dict[str, Any]] | None = None,
     missing: bool = True,
+    topic_id: str = "ise_iade",
     headline: str = "İşe iade davası açılamamaktadır.",
 ) -> dict[str, Any]:
     cited = [{"source_id": "statute:4857:m18", "sub": "1", "quote": M18_1}]
@@ -212,8 +213,7 @@ def draft(
                 for key in sorted(
                     {
                         f.key
-                        for topic in load_topics().values()
-                        for f in topic.facts
+                        for f in get_topic(topic_id).facts
                         if f.critical and f.key != "isci_sayisi"
                     }
                 )
