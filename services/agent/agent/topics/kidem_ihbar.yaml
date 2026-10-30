@@ -1,0 +1,75 @@
+# Konu kartları SB-010 (ücret türü, tazminat), SB-029 (kıdem tazminatı koşulları), SB-001 (1475 m.14/1).
+id: kidem_ihbar
+title: Kıdem ve ihbar tazminatı
+description: >-
+  Kıdem tazminatının hak doğumu (1475 m.14: her geçen tam yıl, fesih halleri) ve ihbar tazminatı
+  (4857 m.17: bildirim süreleri), tazminata esas ücret.
+facts:
+  - key: fesih_tarihi
+    label: Fesih tarihi
+    critical: true
+    question:
+      text: İş sözleşmesi hangi tarihte sona erdi?
+      why: >-
+        Uygulanacak metin, olayın gerçekleştiği tarihte yürürlükte olan metindir; bildirim
+        süreleri 4857 m.17'ye göre kıdeme bağlıdır.
+      kind: date
+      basis:
+        - {ref: "4857 m.17", category: statute}
+  - key: fesih_nedeni
+    label: Fesih nedeni
+    critical: true
+    question:
+      text: İş sözleşmesi nasıl sona erdi?
+      why: >-
+        Kıdem tazminatı 1475 m.14'te sayılan fesih hallerinde doğmaktadır; ihbar tazminatı ise
+        bildirim şartına uymayan tarafa karşı doğmaktadır (4857 m.17/4) ve işçinin haklı
+        feshinde doğmamaktadır.
+      kind: choice
+      options:
+        - {value: isveren, label: İşveren feshetti}
+        - {value: isci_hakli, label: İşçi haklı nedenle feshetti}
+        - {value: isci_emeklilik, label: İşçi emeklilik şartlarını tamamlayarak ayrıldı}
+        - {value: isci_istifa, label: İşçi nedensiz istifa etti}
+        - {value: diger, label: Diğer}
+      basis:
+        - {ref: "1475 m.14/1", category: statute}
+        - {ref: "4857 m.17/4", category: statute}
+  - key: hizmet_suresi
+    label: Çalışma süresi
+    critical: true
+    question:
+      text: İşçi aynı işverende toplam ne kadar süre çalıştı?
+      why: >-
+        Kıdem tazminatı "her geçen tam yıl" için hesaplanmaktadır (1475 m.14/1); bildirim süresi
+        çalışma süresine göre iki, dört, altı veya sekiz haftadır (4857 m.17/2).
+      kind: text
+      basis:
+        - {ref: "1475 m.14/1", category: statute}
+        - {ref: "4857 m.17/2", category: statute}
+  - key: ucret
+    label: Ücret
+event_date_fact: fesih_tarihi
+must_read:
+  - {ref: "1475 m.14", category: statute}
+  - {ref: "4857 m.17", category: statute}
+  - {ref: "4857 m.24", category: statute}
+queries:
+  - kıdem tazminatı her geçen tam yıl için otuz günlük ücret
+  - bildirim süresine ilişkin ücret tutarında tazminat bildirim şartına uymayan taraf
+  - emeklilik için yaş dışındaki şartları tamamlayan işçinin kıdem tazminatı
+traps:
+  - Kıdem tazminatı ücret şeklinden bağımsız olarak son ücret üzerinden hesaplanır; ücretin günlük veya aylık belirlenmesi hak doğumunu değiştirmez.
+  - Kıdem hesabında çıplak ücrete ek para ve para ile ölçülebilir menfaatler de girer; ihbar tazminatında da giydirilmiş ücret esastır (4857 m.17 son).
+  - İhbar tazminatı işçinin kendi haklı feshinde doğmaz.
+  - Emeklilik için yaş dışındaki şartlarla ayrılmada kıdem tazminatı 1475 m.14/1-5 ve 506 m.60/A'dan 5510 m.104/1 ile 5510 m.28'e uzanan zincire bağlıdır; 2016 girişliye eski sigortalılık süresi şartı uygulanmaz.
+calculations:
+  - title: Kıdem tazminatı
+    needs:
+      - Çalışma süresi (işe giriş ve çıkış tarihi)
+      - Son brüt ücret
+      - Ücret dışı düzenli ödemeler (giydirilmiş ücret)
+  - title: İhbar tazminatı
+    needs:
+      - Kıdeme göre bildirim süresi
+      - Giydirilmiş brüt ücret

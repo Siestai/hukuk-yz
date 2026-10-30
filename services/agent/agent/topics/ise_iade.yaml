@@ -1,0 +1,106 @@
+# Konu kartı SB-001 (işe iade, altı aylık kıdem şartı); eval vakası eval/cases/SB-001.yaml.
+id: ise_iade
+title: İşe iade
+description: >-
+  İş güvencesi ve işe iade davası: 4857 m.18-21 kapsamı (otuz işçi, altı ay kıdem, belirsiz süreli
+  sözleşme), fesih bildirimi, arabuluculuk ve dava süresi.
+facts:
+  - key: kidem
+    label: Kıdem
+  - key: isci_sayisi
+    label: İşçi sayısı
+    critical: true
+    question:
+      text: İşyerinde kaç işçi çalışmaktadır?
+      why: >-
+        İş güvencesi yalnız otuz veya daha fazla işçi çalıştıran işyerlerinde uygulanmaktadır
+        (4857 m.18/1). Aynı işverenin aynı işkolundaki işyerleri birlikte sayılmaktadır (m.18/4).
+      kind: choice
+      options:
+        - {value: lt_30, label: "30'dan az"}
+        - {value: gte_30, label: 30 veya fazla}
+      basis:
+        - {ref: "4857 m.18/1", category: statute}
+        - {ref: "4857 m.18/4", category: statute}
+  - key: sozlesme_turu
+    label: Sözleşme türü
+    critical: true
+    question:
+      text: İş sözleşmesi belirsiz süreli mi?
+      why: İş güvencesi belirsiz süreli iş sözleşmesiyle çalışan işçiye tanınmaktadır (4857 m.18/1).
+      kind: choice
+      options:
+        - {value: belirsiz, label: Belirsiz süreli}
+        - {value: belirli, label: Belirli süreli}
+      basis:
+        - {ref: "4857 m.18/1", category: statute}
+  - key: bildirim_tarihi
+    label: Bildirimin ulaştığı tarih
+    critical: true
+    question:
+      text: Fesih bildirimi hangi tarihte işçiye ulaştı?
+      why: >-
+        Altı aylık kıdem, fesih bildiriminin işçiye ulaştığı tarihe göre belirlenmektedir
+        (9. HD E.2016/28920 K.2017/17860).
+      kind: date
+      basis:
+        - {ref: "9. HD E.2016/28920 K.2017/17860", category: decision}
+  - key: onceki_donem
+    label: Önceki çalışma
+    critical: true
+    question:
+      text: İşçi aynı işverenin yanında önceki dönemlerde veya başka işyerlerinde de çalışmış mıydı?
+      why: >-
+        Aynı işverenin bir veya değişik işyerlerinde geçen süreler kıdemde birleştirilmektedir
+        (4857 m.18/4).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
+      basis:
+        - {ref: "4857 m.18/4", category: statute}
+  - key: yer_alti
+    label: Yer altı işi
+    critical: true
+    question:
+      text: İşçi yer altı işlerinde mi çalışmaktadır?
+      why: Yer altı işlerinde çalışan işçilerde kıdem şartı aranmamaktadır (4857 m.18/1 son cümle).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
+      basis:
+        - {ref: "4857 m.18/1", category: statute}
+  - key: kisaltma
+    label: Sözleşmeyle kıdem şartının kısaltılması
+    critical: true
+    question:
+      text: Toplu veya bireysel iş sözleşmesinde altı aylık kıdem şartını kısaltan bir hüküm var mı?
+      why: >-
+        Kıdem şartının değerlendirilmesi için toplu veya bireysel sözleşmede bu süreyi kısaltan
+        bir hüküm bulunup bulunmadığı bilinmelidir.
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
+event_date_fact: bildirim_tarihi
+must_read:
+  - {ref: "4857 m.15", category: statute}
+  - {ref: "4857 m.17", category: statute}
+  - {ref: "4857 m.18", category: statute}
+  - {ref: "4857 m.20", category: statute}
+  - {ref: "4857 m.21", category: statute}
+  - {ref: "7036 m.3", category: statute}
+  - {ref: "1475 m.14", category: statute}
+  - {ref: "9. HD E.2016/28920 K.2017/17860", category: decision}
+  - {ref: "7. HD E.2014/12921 K.2014/18766", category: decision}
+queries:
+  - işe iade altı aylık kıdem şartı otuz işçi belirsiz süreli iş sözleşmesi
+  - fesih bildiriminin ulaştığı tarihte altı ay kıdem bildirim önelleri
+traps:
+  - Altı ay, fesih bildiriminin işçiye ulaştığı tarihte dolmuş olmalıdır; bildirim önelleri sonunda dolacak olması yetmez.
+  - Kıdem şartı ile işçi sayısı şartı ayrıdır; yer altı işi, toplu veya bireysel sözleşmeyle kısaltma ve süre birleştirme önce sorulur.
+  - 4857 m.18/5 işveren vekillerine ilişkindir; deneme süresinin kıdeme dahil olması Yargıtay içtihadıdır, m.18/2 yalnız m.66 sürelerini sayar.
+  - 9. HD E.2016/28920 K.2017/17860 dürüstlük kuralını anar ancak o olayda uygulamamıştır; "dürüstlük kuralıyla korunur" gibi kesin cümle kurulmaz.
+  - Altı ayın hangi gün dolduğu kaynakta yazılı değildir; sınır günleri kesin söylenmez.
+  - Dava açılamasa da bildirim süresi (m.17/2-a) ve ihbar tazminatı (m.17/4) ayrıca değerlendirilir; kıdem tazminatı 1475 m.14/1 uyarınca her geçen tam yıl için doğar.

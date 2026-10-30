@@ -1021,7 +1021,7 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "http_error" | "internal_error";
+        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "answer_not_verified" | "http_error" | "internal_error";
         /** ErrorEvent */
         ErrorEvent: {
             code: components["schemas"]["ErrorCode"];

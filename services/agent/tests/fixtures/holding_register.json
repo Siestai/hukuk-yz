@@ -1,0 +1,57 @@
+{
+  "intake": {
+    "topic": "ise_iade",
+    "title": "5 ay kıdemle işe iade",
+    "event_date": null,
+    "facts": [
+      {
+        "key": "kidem",
+        "value": "5 ay",
+        "status": "known"
+      }
+    ]
+  },
+  "holding": {
+    "rows": [
+      {
+        "source_id": "statute:4857:m18",
+        "sub": "1",
+        "condition": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren",
+        "condition_quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin",
+        "fact_value": "Kıdem: 5 ay; işçi sayısı: bilinmiyor; sözleşme türü: bilinmiyor",
+        "result": "unknown",
+        "depends_on_facts": [
+          "isci_sayisi",
+          "sozlesme_turu",
+          "kidem",
+          "onceki_donem",
+          "yer_alti",
+          "kisaltma"
+        ]
+      },
+      {
+        "source_id": "statute:4857:m18",
+        "sub": "1",
+        "condition": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+        "condition_quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+        "fact_value": "Yer altı işi: bilinmiyor",
+        "result": "unknown",
+        "depends_on_facts": [
+          "yer_alti"
+        ]
+      },
+      {
+        "source_id": "statute:4857:m18",
+        "sub": "1",
+        "condition": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+        "condition_quote": "aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir",
+        "fact_value": "Önceki çalışma: bilinmiyor",
+        "result": "unknown",
+        "depends_on_facts": [
+          "onceki_donem"
+        ]
+      }
+    ]
+  },
+  "source_text": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren […] aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir […] Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz […] Otuz veya daha fazla işçi çalıştıran işyerlerinde […] belirsiz süreli iş sözleşmesini […] en az altı aylık kıdemi olan işçinin"
+}

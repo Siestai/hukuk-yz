@@ -1,6 +1,6 @@
 # Görev 17: Ajan v1 (`services/agent`, LangGraph)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: uygulandı; gerçek model eval tablosu, CI imaj doğrulaması ve PR onayı beklenmektedir. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/architecture.md` §2 (agent durumsuz, `POST /run`, sınır kuralları), §4.1, §5.1 (atıf kapısı), Themis araştırması "Ana app ajanı: tasarım" (15.10; özet aşağıda), `docs/tasks/14-kb-search.md` (`/kb/search`), `docs/tasks/15-chat-contract-eval.md` (çıktı şeması, eval), gereksinim md. 4, 22, 23, 25, 33.
 Skill'ler: `task-pr-hygiene`.
 
@@ -46,3 +46,19 @@ Skill'ler: `task-pr-hygiene`.
 - `ruff`, `mypy`, `pytest` yeşil; graf testleri sahte LLM (Pydantic AI `TestModel`/`FunctionModel`) ve sahte `/kb/search` ile: SB-001 akışı interrupt'ta durur, cevaplar sonrası devam eder; atlama koşullu cevap verir; okunmamış kaynağa atıf kapıda düşer; uydurma alıntılı harita satırı düşer; "-iyor" taraması çalışır.
 - Docker image ve compose servisi (`agent`), CI'da build.
 - Gerçek LLM ile (Themis, yerel yığın + yerel KB örneği) 3 vaka eval koşusu, tablo PR'da; doğrulanamayan açıkça yazılır.
+
+## Uygulama notları (şemadan sapmalar)
+
+- **Komşu fıkralar (graf 4. madde):** `app`'te `/statutes/{number}/articles/{article_no}?as_of=` okuma endpoint'i vardır, ancak oturum ister ve yalnız yayımlanmış maddeleri okur. Agent v1 bu endpoint'e henüz bağlı değildir; zorunlu maddeyi madde künyesiyle (`4857 m.18`) arar ve yalnız aramanın döndürdüğü parçaları okur. Tam madde/komşu fıkra okuması, servis anahtarı desteği ve arama kayıtlarının okuma endpoint'iyle eşlenmesi Görev 18'de tamamlanacaktır; v1 tam fıkra kapsamı garantisi vermez.
+- **`/kb/search` kimliği:** Görev 14 sözleşmesi oturum ister; agent `X-Service-Key` gönderir. Servis anahtarı ile çağrıyı kabul etmeyi Görev 18 `app` tarafına ekler (`18-chat-wiring.md`); o zamana kadar agent yalnız fixture KB (`--kb fixtures`) ile çalışır.
+- **Fıkra (`sub`):** model fıkra adı verebilir; kod yalnız okunan metinde satır başındaki sayısal fıkra işaretini (`(1)`) ve alıntının aynı fıkrada geçtiğini doğrularsa atıfa yazar. Bentler ve doğrulanamayan fıkralar için atıf madde düzeyinde kalır.
+- **Okunanlar:** modele gösterilen metin kaynak başına en çok 6000 karakterdir; "okunanlar" yalnız modele gösterilen metni sayar. Zorunlu kaynak bu sınırda kesilirse okunamayanlar listesinde de görünür.
+- **Okunamayan zorunlu kaynak:** cevap `definite` olamaz; `status_note` okunamayan kaynakları yazar.
+- **Olay tarihi:** modelin verdiği tarih (olgu içindeki tarih dahil), soru metninde geçmiyorsa veya gelecekteyse bilinmiyor sayılır ve sorulur. Yeni olay tarihi şablondaki tarih olgusuyla birlikte güncellenir. Açık bilinmiyor/geçersiz/çelişkili düzeltme önceki tarihi geri getirmez; tarih verilmemiş tur önceki olguyu korur. Gelecekteki netleştirme tarihi de bilinmiyor kalır.
+- **Hata kodu:** doğrulanmış cevap üretilemezse `answer_not_verified` hata olayı ve `done` gönderilir (Görev 15 sözleşmesi); kod ortak `ErrorCode` listesindedir.
+- **Eval koşucusu:** `FixtureKb`, `--kb`, `--case`, `--json` şema dışıdır; PR açıklamasında listelenir.
+
+- **Fixture KB sınırı:** `eval/fixtures/*.answer.json` içindeki alıntılar, alıntıdaki özgün metin ve konumla kullanılır; fıkra işareti uydurulmaz. Bu parçalar tam madde/karar metni değildir; eksik zorunlu kaynaklar cevabı koşullu kılar. Gerçek modelle bu fixture KB üzerinde üç vaka koşusu ayrıca yetkilendirilip yapılacaktır; bu koşu gerçek HTTP KB bütünleşmesini doğrulamaz.
+- **İz kaydı mahremiyeti (md. 31):** kullanıcı sorusu yerine karakter sayısı kaydedilir. Sağlayıcı hata metni/traceback istemi içerebileceğinden hata logunda yalnız hata sınıfı bulunur. Kapının ayrıntılı geri bildirimi yalnız iç durumda ve modelin tekrar isteminde tutulur; düğüm loguna sabit hata kodları ve adetleri, düşen atıf/nokta/satır sayıları, deneme sayısı ve fallback bilgisi yazılır.
+
+- **Geçerlilik sınırı (md. 4):** Görev 14 ile aynı aralık kullanılır: `valid_from <= as_of < valid_to`; bitiş günü eski sürüm atıfta kullanılamaz.

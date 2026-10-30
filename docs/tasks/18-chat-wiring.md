@@ -11,7 +11,7 @@ Web'deki chat'in gerçek ajanla çalışması; konuşmalar, cevaplar ve geri bil
 ## Kapsam
 
 1. **Şema (migration):** `chat_conversation` (user_id, title, timestamps), `chat_turn` (conversation_id, role, payload JSONB = sözleşmedeki `Turn`, mode, trace_id, model, tokens, cost, latency_ms), `chat_feedback` (turn_id, user_id, rating, point_index, kind, comment, correction, created_at). Kullanıcı yalnız kendi konuşmalarını görür (admin hepsini, API'de).
-2. **`app` chat endpoint'leri** (Görev 15'teki yollar): `CHAT_BACKEND=agent` iken `agent` `/run`'a köprü (SSE geçişi), olayları kaydeder; `fixture` modu testler için kalır. Agent'a servis anahtarıyla gidilir; agent `app`'in `/kb/search` ve okuma endpoint'lerini servis anahtarıyla çağırır.
+2. **`app` chat endpoint'leri** (Görev 15'teki yollar): `CHAT_BACKEND=agent` iken `agent` `/run`'a köprü (SSE geçişi), olayları kaydeder; `fixture` modu testler için kalır. Agent'a servis anahtarıyla gidilir; agent `app`'in `/kb/search` ve okuma endpoint'lerini servis anahtarıyla çağırır. Görev 17'de ertelenen `/kb/search` `X-Service-Key` kabulü ve `/statutes/{number}/articles/{article_no}?as_of=` ile tam madde/komşu fıkra okuması bu görevde bağlanır; mevcut oturum yetkileri korunur.
 3. **Kota:** kullanıcı başına günlük soru sınırı (`CHAT_DAILY_LIMIT`, varsayılan 50), aşılınca hata kodu.
 4. **Geri bildirim dışa aktarımı:** `GET /chat/feedback?since=` (admin) JSON; Themis bunu soru bankasına / eval vakalarına çevirir.
 5. **Compose / deploy:** `agent` servisi compose'da; env örnekleri (`.env.example`), `docs/deploy.md`'ye web + agent bölümleri (alan adı ve sırlar repoda değil).

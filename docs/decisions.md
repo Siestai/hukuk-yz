@@ -84,7 +84,28 @@
 
 - **Chat bağlantı kurtarması (Görev 16, PR82; Codex, Orhan'ın düzeltme talebi):** md. 1–4'ün olgu/netleştirme akışını ve Görev 16'nın bağlantı kurtarma kabulünü korumak için, kesilen netleştirmede kullanıcı son metin sorusundan netleştirmeyi açıkça yeniden başlatabilir; bilgilerin tekrar girileceği belirtilir. Son kullanıcı turu yeniden yüklemede de kurtarma seçeneğini açar. Mevcut API'nin metin mesajı yolu kullanılır; Görev 15'e idempotency/replay sözleşmesi eklenmez. SSE ayrıştırıcısı UTF-8 ve CRLF sınırlarını chunk'tan bağımsız işler.
 
+### 2026-10-29
+
+- **Görev 17 inceleme düzeltmeleri** (uygulama; md. 4, 25, 31): fıkra atfı, okunan metindeki fıkra sınırı ve alıntıyla birlikte doğrulanır; bent sınırı doğrulanamıyorsa madde düzeyinde kalır. Eval fixture alıntılarına yapay fıkra işareti eklenmez. Modelin tarih olguları da soru metnine bağlanır; kesilen zorunlu metin eksik kaynak sayılır. Soru metni ve sağlayıcı hatasının içeriği yapılandırılmış loga yazılmaz. Gerçek model eval'i ayrı yetkilendirme ve üç vaka tablosu bekler; görev henüz tamamlandı sayılmaz.
+
 ## Açık öneriler (karar bekliyor)
 
 - **2026-10-01, Baran (WP grubu):** Yüksek riskli / acil vakalarda (ör. SGK tespiti sonrası "ne yapalım") sistem otomatik cevap vermesin, uzman insana (Baran/İbrahim) eskalasyon yapsın. Bu eskalasyon ayrı paket veya kredi olarak ücretlendirilsin. Themis olumlu görüş bildirdi (hibrit model: makine + insan onayı). Tetikleme kullanıcı seçimi değil sistem tespiti olmalı: konu sınıfı + süre işliyor mu + belirsizlik düzeyi. Fiyatlandırma, SLA ve kapsam kararı Orhan + Baran + İbrahim'de.
 - **2026-10-01, İbrahim:** Marka/isim/tasarım. Şu an sıfır. Palet yönü: lacivert temelli (SGK/ÇSGB akrabalığı), kurumsal ama soru sormaya cesaretlendiren. Themis isim adayı listesi çıkaracak, Orhan'la gruba sunulacak.
+
+### 2026-10-29 — Görev 17 bağımsız inceleme takibi
+
+- **Tarih düzeltmesi ve log mahremiyeti** (Orhan'ın PR81 takip talebi; md. 4, 31): aynı konudaki yeni olay tarihi, şablondaki tarih olgusuyla birlikte güncellenir. Açıkça bilinmiyor verilen, doğrulanamayan veya çelişen tarih düzeltmesi önceki tarihi geri getirmez; netleştirme ister. Tarih verilmemiş turda önceki olgu korunur. Kapının ayrıntılı hata metni modelin tekrar isteminde ve iç durumda kalır; düğüm izine yalnız sabit hata kodları ve adetler yazılır. Gerçek model değerlendirmesi ve Postgres kabul kapısı bu düzeltmenin yerel sahte model testlerinden ayrı kalır.
+
+### 2026-10-30 (Görev 17, çevrimdışı hata düzeltmesi)
+
+- **Soru bağlamının korunması:** Hüküm haritası ve taslak düğümlerine özgün kullanıcı sorusu olay verisi olarak aktarılır. Genel şablonun tarih/statü olguları sorunun konusunu taşımadığından, yalnız arama parçalarına dayanmak konu kaymasına yol açabilir. Kaynak uygunluğunu gözetme talimatı da korunur; bu değişiklik hukuki uygunluğun deterministik doğrulaması değildir (md. 22, 23, 25).
+- **Eksik netleştirme:** İşe iade şablonunun mevcut tuzak kuralında zaten istenen toplu/bireysel sözleşmeyle kıdem şartının kısaltılması sorusu kritik olgu olarak eklenmiştir. Kaynak metni veya künye eklenmemiştir; bilinmeyen yanıt koşullu yolda kalır. Ücret değişikliği ve TİS alacağı için yeni özel şablonlar bu düzeltmenin kapsamında değildir; genel şablonun bu vakalarda özel eval beklentilerini karşılamadığı açıktır.
+
+### 2026-10-30 — Görev 17 koşullu resmi dil sözleşmesi adayı
+
+- **Çevrimdışı aday** (Orhan'ın dar talebi; Görev 17 kip kapısı, md. 22–23, 25): ortak dil talimatında koşullu ve yeterlikli koşullu -iyor biçimleri ile üretilen alanların kapsamı açıklaştırılır. Birebir kaynak/kullanıcı metni, atıf, yapı ve hukuki anlam korunur. Kapı, şema ve tekrar sayısı değişmez. Sahte model testleri yalnız talimat taşımasını gösterir; gerçek model itaati ve hukuki doğruluk kanıtlanmış değildir. Eksik kaynak kapsamı ve desteklenmeyen bildirim/kısaltma çıkarımları ayrı kabul açıklarıdır.
+
+### 2026-10-30 — Görev 17 istek bazlı taslak sözleşmesi
+
+- **Dar çevrimdışı uygulama** (Orhan'ın uygulama yetkisi; md. 1–4, 22–23, 25): ortak `ChatAnswer` ve statik `DraftOutput` korunur. Taslak ve kapı tekrarı, konu kartındaki olgu anahtarlarından türetilen istek bazlı Pydantic alt modelini kullanır; sağlayıcı şemasında anahtarlar enum, boş konuda yalnız null olur. Mevcut `critical_unknown` kümesinin kapsamı tip doğrulamasında aranır; bilinen/uygulanmayan olgular zorunlu değildir. Rewrite aynı kısıtları taşır; yalnız üretilen dil alanları değişebilir, durum, anahtarlar, atıflar (üretilen `used_for` açıklaması hariç), liste sayısı ve sırası korunur. Mevcut iki typed retry veya kapı denemesi artırılmaz; tip doğrulaması tükenirse mevcut servis hata yolu kullanılır. Bu sözleşme kaynakların semantik desteğini veya model kalitesini kanıtlamaz; gerçek model eval'i, kaynak kapsamı ve Görev 17/18/demo kabulü açık kalır.

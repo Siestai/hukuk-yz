@@ -57,6 +57,9 @@ class ErrorCode(StrEnum):
     # the fixture backend knows only the hand-made questions of eval/fixtures
     chat_no_fixture = "chat_no_fixture"
     clarification_not_pending = "clarification_not_pending"  # answers or skip with no open question
+    # the agent could not give an answer whose sources it could verify (md. 25); the stream ends
+    # with this error and `done`
+    answer_not_verified = "answer_not_verified"
     http_error = "http_error"  # a framework error with no code of its own (e.g. 400, 413)
     internal_error = "internal_error"
 

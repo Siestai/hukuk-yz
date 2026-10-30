@@ -67,6 +67,35 @@ services:
       timeout: 5s
       retries: 5
 
+  # The chat agent (task 17): called by `app` only, never exposed. It keeps its graph state in the
+  # `agent` schema of the same database. Set ANTHROPIC_API_KEY (or the key of the provider named
+  # in AGENT_MODEL_*) in the .env to let it answer; without it the service starts and /run fails.
+  agent:
+    build:
+      context: ../..
+      dockerfile: services/agent/Dockerfile
+    env_file:
+      - path: ../../.env
+        required: false
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      APP_BASE_URL: http://app:8000
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Browser entry point: the only service that is exposed in production (docs/deploy.md). No
   # database credentials: it talks to `app` over HTTP only.
   dashboard-web:

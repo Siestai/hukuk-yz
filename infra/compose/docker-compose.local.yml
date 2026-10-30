@@ -7,6 +7,9 @@ services:
   app:
     ports:
       - "127.0.0.1:8000:8000"
+  agent:
+    ports:
+      - "127.0.0.1:${AGENT_HOST_PORT:-8001}:8000"
   dashboard-web:
     ports:
       - "127.0.0.1:${DASHBOARD_HOST_PORT:-3000}:3000"
