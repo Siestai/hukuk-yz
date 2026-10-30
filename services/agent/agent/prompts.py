@@ -9,7 +9,15 @@ from hukuk_models.chat import CaseFacts, HoldingRow
 
 REGISTER = (
     'Dil: resmi Türkçe; geniş zaman ve -mektedir / -maktadır kipi kullan; "-iyor" kipini '
-    '(örneğin "yapılıyor", "bulunuyor") hiçbir cümlede kullanma.'
+    '(örneğin "yapılıyor", "bulunuyor") hiçbir cümlede kullanma. '
+    "Yasak, koşullu -iyorsa/-ıyorsa/-uyorsa/-üyorsa ve yeterlikli koşullu biçimleri de kapsar "
+    '(örneğin "karşılayabiliyorsa"). Anlamı koruyan resmi koşul kur: '
+    '"çalışıyorsa" → "çalışmakta ise", "karşılayabiliyorsa" → "karşılayabilmekte ise". '
+    "Kural, üretilen title, condition, fact_value, headline, points.text, reasoning_summary, "
+    "missing_info.condition/result ve tüm citations.used_for metinlerinde geçerlidir; "
+    "üretilen soru cümleleri de dahildir. Kaynak ve kullanıcıdan alınan birebir metinleri, "
+    "özgün soruyu, olguları, atıfların source_id/sub/quote değerlerini, "
+    "yapıyı ve hukuki anlamı koru."
 )
 
 INTAKE_INSTRUCTIONS = f"""\

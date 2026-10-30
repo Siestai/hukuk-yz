@@ -101,3 +101,7 @@
 
 - **Soru bağlamının korunması:** Hüküm haritası ve taslak düğümlerine özgün kullanıcı sorusu olay verisi olarak aktarılır. Genel şablonun tarih/statü olguları sorunun konusunu taşımadığından, yalnız arama parçalarına dayanmak konu kaymasına yol açabilir. Kaynak uygunluğunu gözetme talimatı da korunur; bu değişiklik hukuki uygunluğun deterministik doğrulaması değildir (md. 22, 23, 25).
 - **Eksik netleştirme:** İşe iade şablonunun mevcut tuzak kuralında zaten istenen toplu/bireysel sözleşmeyle kıdem şartının kısaltılması sorusu kritik olgu olarak eklenmiştir. Kaynak metni veya künye eklenmemiştir; bilinmeyen yanıt koşullu yolda kalır. Ücret değişikliği ve TİS alacağı için yeni özel şablonlar bu düzeltmenin kapsamında değildir; genel şablonun bu vakalarda özel eval beklentilerini karşılamadığı açıktır.
+
+### 2026-10-30 — Görev 17 koşullu resmi dil sözleşmesi adayı
+
+- **Çevrimdışı aday** (Orhan'ın dar talebi; Görev 17 kip kapısı, md. 22–23, 25): ortak dil talimatında koşullu ve yeterlikli koşullu -iyor biçimleri ile üretilen alanların kapsamı açıklaştırılır. Birebir kaynak/kullanıcı metni, atıf, yapı ve hukuki anlam korunur. Kapı, şema ve tekrar sayısı değişmez. Sahte model testleri yalnız talimat taşımasını gösterir; gerçek model itaati ve hukuki doğruluk kanıtlanmış değildir. Eksik kaynak kapsamı ve desteklenmeyen bildirim/kısaltma çıkarımları ayrı kabul açıklarıdır.
