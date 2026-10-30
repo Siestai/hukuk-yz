@@ -145,7 +145,12 @@ def test_critical_coverage_is_required_in_generation_schema() -> None:
 
 def test_wire_conversion_is_lossless_and_rewrite_preserves_order() -> None:
     facts = case(bildirim_tarihi="unknown", kisaltma="unknown")
-    original = DraftOutput.model_validate(payload(None, "kisaltma", "bildirim_tarihi", "kisaltma"))
+    original_data = payload(None, "kisaltma", "bildirim_tarihi", "kisaltma")
+    for index, entry in enumerate(original_data["missing_info"]):
+        entry["condition"] = f"Koşul {index} bilinmezse"
+        entry["result"] = f"Sonuç {index} belirsizdir."
+        entry["citations"] = [{"source_id": f"source-{index}", "quote": f"quote-{index}"}]
+    original = DraftOutput.model_validate(original_data)
     contract = draft_output_type(get_topic("ise_iade"), facts, original=original)
     data = original.model_dump()
     entries = data["missing_info"]
@@ -154,6 +159,16 @@ def test_wire_conversion_is_lossless_and_rewrite_preserves_order() -> None:
         "additional": [entries[0], entries[3]],
     }
     assert contract.model_validate_json(json.dumps(data)).model_dump() == original.model_dump()
+    changed_citation = deepcopy(data)
+    changed_citation["missing_info"]["additional"][1]["citations"][0]["quote"] = "changed"
+    with pytest.raises(ValidationError, match="Rewrite changed"):
+        contract.model_validate(changed_citation)
+    changed_order = deepcopy(data)
+    critical = changed_order["missing_info"]["critical"]
+    additional = changed_order["missing_info"]["additional"]
+    critical["kisaltma"], additional[1] = additional[1], critical["kisaltma"]
+    with pytest.raises(ValidationError, match="Rewrite changed"):
+        contract.model_validate(changed_order)
     changed = deepcopy(data)
     changed["missing_info"]["critical"]["kisaltma"]["fact_key"] = None
     with pytest.raises(ValidationError):

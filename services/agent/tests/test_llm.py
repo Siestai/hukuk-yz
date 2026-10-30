@@ -130,6 +130,11 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
         elif instruction_name == "REWRITE_STRUCTURE":
             payload["points"][0]["citations"][0]["source_id"] = "changed"
     expected = DraftOutput.model_validate(payload).model_dump()
+    prompt_draft = (
+        original_output.model_dump_json()
+        if constrained and original_output is not None
+        else json.dumps(payload, ensure_ascii=False)
+    )
     if instruction_name.startswith("REQUEST_WIRE"):
         entries = payload["missing_info"]
         payload["missing_info"] = {"critical": {entry["fact_key"]: entry for entry in entries}}
@@ -141,9 +146,7 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
             payload["missing_info"]["critical"]["kisaltma"]["fact_key"] = None
         elif instruction_name == "REQUEST_WIRE_REWRITE_CITATION":
             payload["points"][0]["citations"][0]["quote"] = "changed"
-    prompt = prompts.rewrite_prompt(
-        json.dumps(payload, ensure_ascii=False), ["çalışıyorsa"], question=original
-    )
+    prompt = prompts.rewrite_prompt(prompt_draft, ["çalışıyorsa"], question=original)
     calls = []
 
     def respond(request: httpx.Request) -> httpx.Response:
@@ -163,6 +166,10 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
         ):
             assert text in system
         assert body["messages"][1]["content"] == prompt
+        outgoing_draft = json.loads(body["messages"][1]["content"].rsplit("\n\n", 1)[1])
+        assert isinstance(outgoing_draft["missing_info"], list)
+        if constrained and original_output is not None:
+            assert outgoing_draft == original_output.model_dump()
         tool = body["tools"][0]["function"]
         assert tool["parameters"]["additionalProperties"] is False
         missing_name = "RequestMissingDraft" if constrained else "MissingDraft"
