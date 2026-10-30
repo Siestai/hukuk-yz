@@ -760,6 +760,7 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
             events = await turn(graph, RunRequest(thread_id=thread, skip=True))
         state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
     assert len(requests) == (5 if formal else 2)
+    assert state["gate"]["rows_dropped"] == (0 if formal else 3)
     assert state["question"] == ask(thread).text
     if formal:
         # Missing coverage exhausts the existing two typed retries. The real graph
@@ -771,6 +772,11 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
         missing = schema["$defs"]["RequestMissingDraft"]["properties"]["fact_key"]
         assert any("bildirim_tarihi" in branch.get("enum", []) for branch in missing["anyOf"])
         assert len(state["rows"]) == 3
+        assert all(r["result"] == "unknown" for r in state["rows"])
+        prompt = requests[2]["messages"][-1]["content"]
+        for candidate in holding["rows"]:
+            assert candidate["condition_quote"] in prompt
+            assert candidate["fact_value"] in prompt
     else:
         assert state["rows"] == []
         assert state["gate"]["fallback"]
