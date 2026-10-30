@@ -299,7 +299,9 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                         "strong",
                         DraftOutput,
                         prompts.REWRITE_INSTRUCTIONS,
-                        f"Yasak biçimler: {', '.join(forms)}\n\n{output.model_dump_json()}",
+                        prompts.rewrite_prompt(
+                            output.model_dump_json(), forms, question=state["question"]
+                        ),
                     )
                 result = check_draft(
                     output,
