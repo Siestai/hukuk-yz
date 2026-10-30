@@ -1,8 +1,8 @@
 import { QueueError } from "@/components/review-queue/queue-error";
 import { CardsHelp } from "@/components/review-queue/queue-item-parts";
 import { QueuePagination } from "@/components/review-queue/queue-pagination";
-import type { components } from "@/lib/api/schema";
-import type { Settled } from "@/lib/api/settle";
+import type { components } from "@hukuk/web-core/api/schema";
+import type { Settled } from "@hukuk/web-core/api/settle";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";
 import { StatuteCards } from "./statute-cards";
 import { StatuteEmpty } from "./statute-empty";

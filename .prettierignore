@@ -7,3 +7,4 @@ next-env.d.ts
 pnpm-lock.yaml
 services/dashboard-web/content
 services/dashboard-web/e2e/.output
+services/web/e2e/.output

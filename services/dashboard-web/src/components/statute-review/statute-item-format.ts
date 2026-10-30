@@ -1,6 +1,6 @@
 import { useFormatter, useTranslations } from "next-intl";
 
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import { useArticleLabel } from "./use-article-label";
 import { useStatuteReasonHelp } from "./use-statute-reason-help";
 import { useCommon } from "@/lib/use-common";

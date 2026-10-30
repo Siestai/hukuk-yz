@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { readRepoFile } from "@/test/reason-codes";
-import { ApiFailure } from "./api/review-client";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import {
     BULK_FAILURE_CODES,
     bulkFailureCode,

@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/app-shell";
-import { UpstreamUnavailableError } from "@/lib/api/errors";
+import { UpstreamUnavailableError } from "@hukuk/web-core/api/errors";
 import { getPendingFiles } from "@/lib/api/files";
 import { getReviewSummary } from "@/lib/api/review";
-import { createServerApi } from "@/lib/api/server";
+import { createServerApi } from "@hukuk/web-core/api/server";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
     const api = await createServerApi();

@@ -2,8 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactElement, ReactNode } from "react";
 
-import messages from "../../messages/tr.json";
-import { formats, timeZone } from "../i18n/formats";
+import { messages } from "@/i18n/messages";
+import { formats, timeZone } from "@hukuk/web-core/i18n/formats";
 
 function IntlWrapper({ children }: { children: ReactNode }) {
     return (

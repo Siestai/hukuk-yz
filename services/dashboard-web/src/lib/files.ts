@@ -1,4 +1,4 @@
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import { MAX_QUERY_LENGTH, oneOf, pick, type RawParams } from "@/lib/queue-params";
 
 export type FileOut = components["schemas"]["FileOut"];

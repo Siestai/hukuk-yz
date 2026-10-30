@@ -1,4 +1,4 @@
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 
 export type TimelineVersion = components["schemas"]["TimelineVersion"];
 export type TimelineGap = components["schemas"]["TimelineGap"];

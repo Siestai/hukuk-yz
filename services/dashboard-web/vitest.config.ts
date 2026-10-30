@@ -14,7 +14,7 @@ export default defineConfig({
     },
     test: {
         environment: "jsdom",
-        setupFiles: ["./src/test/setup.ts"],
+        setupFiles: ["@hukuk/web-core/test/setup"],
         css: false,
         // Playwright specs run against a live stack (`pnpm e2e`), not here.
         exclude: [...configDefaults.exclude, "e2e/**"],

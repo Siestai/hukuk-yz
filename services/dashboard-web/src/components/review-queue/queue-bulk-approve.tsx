@@ -1,5 +1,5 @@
-import type { components } from "@/lib/api/schema";
-import type { Settled } from "@/lib/api/settle";
+import type { components } from "@hukuk/web-core/api/schema";
+import type { Settled } from "@hukuk/web-core/api/settle";
 import type { QueueParams } from "@/lib/queue-params";
 import { BulkApproveButton } from "./bulk-approve-button";
 import { isQueueApplication } from "./queue-item-format";

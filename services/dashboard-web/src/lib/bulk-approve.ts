@@ -1,5 +1,5 @@
-import { ApiFailure } from "@/lib/api/review-client";
-import type { components } from "@/lib/api/schema";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
+import type { components } from "@hukuk/web-core/api/schema";
 import { apiQuery, type QueueParams } from "@/lib/queue-params";
 import { isStatuteState, type QueueState } from "@/lib/queue-state";
 

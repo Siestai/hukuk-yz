@@ -3,8 +3,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../messages/tr.json";
-import { formats, timeZone } from "@/i18n/formats";
+import { messages } from "@/i18n/messages";
+import { formats, timeZone } from "@hukuk/web-core/i18n/formats";
 import { renderWithIntl } from "@/test/intl";
 import { FlashStatus } from "./flash-status";
 

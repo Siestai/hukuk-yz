@@ -15,14 +15,14 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
 import { approveFile } from "@/lib/api/files-client";
-import { ApiFailure } from "@/lib/api/review-client";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import { approvalBody, initialValues, type ApprovalValues } from "@/lib/file-approval";
 import { readMatches, readSuggestions } from "@/lib/file-suggestions";
 import { ACTIVE_SCANS, DOC_TYPES, type FileOut } from "@/lib/files";
 import { useEnumLabels } from "@/lib/use-enum-labels";
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { ApprovalField } from "./approval-field";
 import { ApprovalMatches } from "./approval-matches";
 import { DeleteFileDialog } from "./delete-file-dialog";

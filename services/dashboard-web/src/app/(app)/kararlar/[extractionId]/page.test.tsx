@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../../../messages/tr.json";
-import { formats, timeZone } from "@/i18n/formats";
-import { isUpstreamUnavailable } from "@/lib/api/errors";
+import { messages } from "@/i18n/messages";
+import { formats, timeZone } from "@hukuk/web-core/i18n/formats";
+import { isUpstreamUnavailable } from "@hukuk/web-core/api/errors";
 import DecisionPage from "./page";
 
 const ID = "3f0c9b1e-8a52-4a53-9d7c-2f4f6b1d9a10";
@@ -19,7 +19,7 @@ const redirect = vi.hoisted(() =>
         throw new Error(`NEXT_REDIRECT ${path}`);
     }),
 );
-vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
+vi.mock("@hukuk/web-core/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
 vi.mock("next/navigation", () => ({
     notFound,
     redirect,

@@ -2,7 +2,7 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "@hukuk/ui";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import { detailHref, type QueueParams } from "@/lib/queue-params";
 import { useEnumLabels } from "@/lib/use-enum-labels";
 

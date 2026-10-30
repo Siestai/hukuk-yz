@@ -4,11 +4,11 @@ import { Button } from "@hukuk/ui";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
 
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import { useCommon } from "@/lib/use-common";
 import { useDates } from "@/lib/use-dates";
 import { useEnumLabels } from "@/lib/use-enum-labels";
-import { useErrorMessage } from "@/lib/use-error-message";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { ReopenDialog } from "./reopen-dialog";
 import { useReviewSession } from "./review-session";
 

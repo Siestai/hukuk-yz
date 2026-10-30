@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { QueueTabs } from "@/components/review-queue/queue-tabs";
 import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import type { StatuteQueueParams } from "@/lib/statute-queue-params";

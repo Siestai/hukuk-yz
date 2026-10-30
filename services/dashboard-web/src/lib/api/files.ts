@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
-import { createServerApi } from "./server";
+import { createServerApi } from "@hukuk/web-core/api/server";
 
 /**
  * How many files wait for approval, for the menu and the list tab. Null when the count could not

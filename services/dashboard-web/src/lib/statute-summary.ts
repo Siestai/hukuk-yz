@@ -1,4 +1,4 @@
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import { BANDS, type Band } from "@/lib/queue-params";
 import { STATUTES, type StatuteNo } from "@/lib/statute-queue-params";
 

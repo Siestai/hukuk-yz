@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { infoTip, renderWithIntl } from "@/test/intl";
 import { QueueActions } from "./queue-actions";
 import { QueueNavigationProvider } from "./queue-navigation";

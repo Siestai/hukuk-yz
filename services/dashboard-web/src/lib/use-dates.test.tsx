@@ -3,8 +3,8 @@ import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import messages from "../../messages/tr.json";
-import { formats, timeZone } from "@/i18n/formats";
+import { messages } from "@/i18n/messages";
+import { formats, timeZone } from "@hukuk/web-core/i18n/formats";
 import { useDates } from "./use-dates";
 
 function wrapper({ children }: { children: ReactNode }) {

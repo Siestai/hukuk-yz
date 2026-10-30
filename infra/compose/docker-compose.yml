@@ -52,6 +52,8 @@ services:
       ARCHIVE_ROOT: /archive
       # Uploaded files (task 12): the same volume as the worker's, which scans them.
       FILE_STORE_ROOT: /filestore
+      # Chat API (task 15): "fixture" plays the hand-made cases, "none" answers 503.
+      CHAT_BACKEND: ${CHAT_BACKEND:-none}
     volumes:
       - ${ARCHIVE_HOST_DIR:-../../data/drive}:/archive:ro
       - filestore:/filestore
@@ -71,6 +73,19 @@ services:
     build:
       context: ../..
       dockerfile: services/dashboard-web/Dockerfile
+    environment:
+      APP_API_URL: http://app:8000
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # The chat UI (task 16), same shape as dashboard-web: HTTP to `app` only.
+  web:
+    build:
+      context: ../..
+      dockerfile: services/web/Dockerfile
     environment:
       APP_API_URL: http://app:8000
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}

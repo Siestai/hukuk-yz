@@ -1,14 +1,5 @@
-import { getRequestConfig } from "next-intl/server";
+import { requestConfig } from "@hukuk/web-core/i18n/request-config";
 
-import { formats, timeZone } from "./formats";
-import { defaultLocale } from "./locale";
+import { messages } from "./messages";
 
-export default getRequestConfig(async () => {
-    const locale = defaultLocale;
-    return {
-        locale,
-        messages: (await import(`../../messages/${locale}.json`)).default,
-        formats,
-        timeZone,
-    };
-});
+export default requestConfig(messages);

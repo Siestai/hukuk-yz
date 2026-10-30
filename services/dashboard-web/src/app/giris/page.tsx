@@ -1,9 +1,9 @@
 import { Logo } from "@hukuk/ui";
+import { LoginForm } from "@hukuk/web-core/components/login-form";
 import { getLocale, getTranslations } from "next-intl/server";
 
-import { safeNextPath } from "@/lib/next-path";
+import { safeNextPath } from "@hukuk/web-core/lib/next-path";
 import { pickQuote } from "@/lib/quotes";
-import { LoginForm } from "./login-form";
 
 // A new quote on every load: the page must not be cached.
 export const dynamic = "force-dynamic";

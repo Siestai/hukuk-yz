@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, type RefObject } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
 import { deleteFile } from "@/lib/api/files-client";
-import { ApiFailure } from "@/lib/api/review-client";
-import { useErrorMessage } from "@/lib/use-error-message";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 
 /** Asks before a pending file is deleted; on success the list is shown, on refusal the reason. */
 export function DeleteFileDialog({

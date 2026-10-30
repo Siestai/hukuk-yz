@@ -2,7 +2,7 @@ import { act, fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { MAX_JOURNAL_ISSUE } from "@/lib/queue-params";
 import { infoTip, openTipText, renderWithIntl } from "@/test/intl";
 import { QueueFilters } from "./queue-filters";

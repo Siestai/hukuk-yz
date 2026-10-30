@@ -4,7 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { WELCOME_STORAGE_KEY } from "@/lib/welcome-store";
 import { renderWithIntl } from "@/test/intl";
 import { WelcomeCard } from "./queue-welcome-card";

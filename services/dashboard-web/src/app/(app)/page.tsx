@@ -20,8 +20,8 @@ import { WelcomeToggle } from "@/components/review-queue/queue-welcome-toggle";
 import { TopReasons } from "@/components/review-queue/top-reasons";
 import { TotalsCard } from "@/components/review-queue/totals-card";
 import { getReviewSummary } from "@/lib/api/review";
-import { createServerApi } from "@/lib/api/server";
-import { settle } from "@/lib/api/settle";
+import { createServerApi } from "@hukuk/web-core/api/server";
+import { settle } from "@hukuk/web-core/api/settle";
 import {
     apiQuery,
     parseNotice,

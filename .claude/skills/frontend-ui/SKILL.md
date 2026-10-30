@@ -17,7 +17,7 @@ The frontend is a thin client of the `app` API. Bring these rules in from the fi
 
 ## Design tokens and theming
 
-- Fonts are vendored (`services/dashboard-web/src/fonts`, `next/font/local`, OFL), never fetched at build time.
+- Fonts are vendored (`packages/ui/src/fonts`, `next/font/local`, OFL), never fetched at build time.
 - Color, typography, spacing, radius and shadow come **only** from design tokens: CSS variables, mapped into the Tailwind theme.
 - No hard-coded values in components: no hex/rgb/hsl/oklch/`color-mix` colors, no inline `style` attribute, no arbitrary Tailwind values such as `bg-[#123456]` or `p-[13px]`. Tailwind's default palette and radius scale are reset in `styles.css`, so only token utilities exist.
 - Shared components and tokens live in `packages/ui`. If shadcn/ui is used, it reads the same tokens.
@@ -61,6 +61,6 @@ Run from the repo root (`pnpm` is pinned by `packageManager`; Node from `.nvmrc`
 
 - `pnpm install --frozen-lockfile`
 - `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm format:check`
-- `pnpm openapi`: regenerate `services/dashboard-web/openapi.json` and `src/lib/api/schema.d.ts` after any API change (commit both; CI checks they are current).
+- `pnpm openapi`: regenerate `packages/web-core/openapi.json` and `src/api/schema.d.ts` (shared by both apps) after any API change (commit both; CI checks they are current).
 
 Next.js here is version 16 and differs from older versions (for example `middleware.ts` is now `proxy.ts`). Before using a Next API, check the docs shipped in `services/dashboard-web/node_modules/next/dist/docs/`.

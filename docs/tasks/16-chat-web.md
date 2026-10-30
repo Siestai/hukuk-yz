@@ -1,6 +1,6 @@
 # Görev 16: Chat web arayüzü v1 (`services/web`, Alternatif B)
 
-Durum: taslak. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: uygulandı; PR inceleme düzeltmeleri tamamlandı, DB'li entegrasyon doğrulaması bekliyor. PR Orhan'ın onayında. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: `docs/decisions.md` 2026-10-27 (Alternatif B, kapalı beta), `docs/design/chat-ui/alt-B.png` (mobil), `alt-D.png` (masaüstü üç sütun), `docs/tasks/15-chat-contract-eval.md` (sözleşme, fixture backend), `services/dashboard-web` (auth, i18n, token, responsive kalıpları), `packages/ui`.
 Skill'ler: `task-pr-hygiene`, `frontend-ui` (bağlayıcı).
 
@@ -41,3 +41,13 @@ Kapalı beta kullanıcısının giriş yapıp ajana soru sorduğu, netleştirme 
 - Playwright e2e (fixture backend, yerel yığın): giriş → yeni soru (SB-001) → olay kartı + 1/N soru → iki soru cevapla, gerisini atla → koşullu cevap, "Tamamlanması gereken bilgiler" açık → mod Gerekçeli → tablo → dayanağa dokun → vurgulu metin → 👎 geri bildirim gönderildi. Telefon projesinde yatay kaydırma yok.
 - 360/768/1440 ekran görüntüleri (üç ekran + dayanak paneli) PR açıklamasında; Themis B tasarımıyla karşılaştırır.
 - Kod tabanında hardcode renk / metin yok (mevcut lint kuralları web'e de uygulanır).
+
+## İnceleme düzeltmeleri (2026-10-29)
+
+- Production derlemesi test dosyalarını ve servis dışındaki fixture importlarını dışlar; ayrı `tsconfig.typecheck.json` testleri de kontrol eder.
+- Yeni soru, yeni istek ve unmount önceki SSE isteğini iptal eder; geç gelen olaylar ve konuşma listesi yanıtları yeni ekranı değiştirmez.
+- Her gönderim hatasında tekrar deneme sunulur; gelen kısmi olgular/netleştirme korunur. Metin sorusunun tekrar denemesi son gövdeyi yeniden gönderir, arayüzde ikinci kullanıcı balonu oluşturmaz. Fixture API idempotent değildir: kabul edilmiş netleştirmeyi tekrar göndermek `clarification_not_pending` döndürebilir. Bu nedenle başarısız netleştirmede açık bir “Netleştirmeyi yeniden başlat” eylemi son metin sorusunu aynı konuşmada yeniden gönderir; kullanıcı bilgileri tekrar girer. Son turu kullanıcı olan konuşma yeniden açıldığında da kurtarma eylemi görünür. İstek kimliğiyle idempotency sözleşmesi bu görevin kapsamında değildir.
+- Dayanak tarihi ilgili cevaptan (netleştirmede olay tarihinden) taşınır; tarih yoksa Türkiye günü kullanılır. Kaynak yüklemesi tarihi de izler.
+- Mod seçici `aria-pressed` düğme grubudur; Tab ve Enter ile çalışır. Soru başlığı odaklanır, ilerleme canlı duyurulur.
+- Kopyalama hatası çevrilir, başarı etiketi sıfırlanır; gönderilmiş/bekleyen geri bildirim düğmeleri kilitlenir. Alıntı sınırları ve metin eşleşmesi doğrulanır; Next sıkıştırması kapalıdır.
+- Gerçek PostgreSQL oturumu ve KB entegrasyonu yerel DB yokluğu nedeniyle ayrıca doğrulanmalıdır. DB'siz görsel harness gerçek fixture chat router'ını kullanır; giriş ve KB taklitleri bu entegrasyon kabulünün yerine geçmez.

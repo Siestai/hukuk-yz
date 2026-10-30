@@ -1,6 +1,6 @@
 import { QueueError } from "@/components/review-queue/queue-error";
 import { ACTIVE_SCANS, type FileListParams, type FileListResponse } from "@/lib/files";
-import type { Settled } from "@/lib/api/settle";
+import type { Settled } from "@hukuk/web-core/api/settle";
 import { FileCards } from "./file-cards";
 import { FileEmpty } from "./file-empty";
 import { FilePagination } from "./file-pagination";

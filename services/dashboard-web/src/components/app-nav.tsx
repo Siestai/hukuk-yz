@@ -2,7 +2,7 @@ import { Badge } from "@hukuk/ui";
 import { useFormatter, useTranslations } from "next-intl";
 
 import { HelpTip } from "./help-tip";
-import { LogoutButton } from "./logout-button";
+import { LogoutButton } from "@hukuk/web-core/components/logout-button";
 import { NavLink } from "./nav-link";
 
 export type AppNavProps = {
@@ -80,7 +80,7 @@ export function AppNav({ user, pending, pendingFiles, onNavigate }: AppNavProps)
                     <p className="text-sm font-medium text-ink">{user.display_name}</p>
                     <p className="text-xs text-ink-2">{roleLabel[user.role]}</p>
                 </div>
-                <LogoutButton />
+                <LogoutButton label={t("nav.logout")} />
             </div>
         </>
     );

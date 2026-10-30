@@ -1,9 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
-import { isUpstreamUnavailable } from "@/lib/api/errors";
-import { settle } from "@/lib/api/settle";
+import { messages } from "@/i18n/messages";
+import { isUpstreamUnavailable } from "@hukuk/web-core/api/errors";
+import { settle } from "@hukuk/web-core/api/settle";
 import { infoTip, renderWithIntl } from "@/test/intl";
 import { QueueResults } from "./queue-results";
 

@@ -1,6 +1,6 @@
 import { useFormatter, useTranslations } from "next-intl";
 
-import type { components } from "@/lib/api/schema";
+import type { components } from "@hukuk/web-core/api/schema";
 import type { QueueStatus } from "@/lib/queue-params";
 import { isApplication } from "@/lib/decision-fields";
 import { useCommon } from "@/lib/use-common";

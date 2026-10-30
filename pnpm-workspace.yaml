@@ -1,6 +1,8 @@
 packages:
   - services/dashboard-web
   - packages/ui
+  - packages/web-core
+  - services/web
 
 # Only unrs-resolver (eslint import resolver) runs an install script; the others ship prebuilt
 # binaries through optional dependencies and need no build.

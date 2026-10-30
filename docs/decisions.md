@@ -78,6 +78,11 @@
 - **Betada onaysız kaynak** (Orhan): `analyzed` durumdaki kaynaklar aranır ve "onaylanmadı" etiketiyle gösterilir; `rejected` hiçbir zaman. Açık yayından önce ayarla kapatılır (`KB_SEARCH_INCLUDE_UNREVIEWED`).
 - **Embedding: OpenAI** (Orhan): `text-embedding-3-large`, 1024 boyut (mevcut şema).
 - **Ajan çerçevesi** (Orhan onayı, Themis önerisi): LangGraph iskelet + düğümlerde Pydantic AI tipli çağrılar; sabit iş akışı, dar LLM düğümleri; "okunanlar" kodla üretilir; atıf kapısı kodla. `deepagents` ana yoldan çıkar (2026-10-03 kaydını değiştirir). Görevler: 14 arama, 15 sözleşme + eval, 16 web, 17 ajan, 18 bağlama.
+- **Ortak web kodu `packages/web-core`** (Themis, Görev 16): iki arayüz (dashboard-web, `services/web`) için ortak API istemcisi ve üretilmiş OpenAPI tipleri, oturum/proxy, güvenlik başlıkları, hata kodu çevirisi, giriş formu ve test kurulumu `packages/web-core`'a taşındı; yeni `services/web` (chat) onu kullanır. Kopya yok.
+
+### 2026-10-29
+
+- **Chat bağlantı kurtarması (Görev 16, PR82; Codex, Orhan'ın düzeltme talebi):** md. 1–4'ün olgu/netleştirme akışını ve Görev 16'nın bağlantı kurtarma kabulünü korumak için, kesilen netleştirmede kullanıcı son metin sorusundan netleştirmeyi açıkça yeniden başlatabilir; bilgilerin tekrar girileceği belirtilir. Son kullanıcı turu yeniden yüklemede de kurtarma seçeneğini açar. Mevcut API'nin metin mesajı yolu kullanılır; Görev 15'e idempotency/replay sözleşmesi eklenmez. SSE ayrıştırıcısı UTF-8 ve CRLF sınırlarını chunk'tan bağımsız işler.
 
 ## Açık öneriler (karar bekliyor)
 

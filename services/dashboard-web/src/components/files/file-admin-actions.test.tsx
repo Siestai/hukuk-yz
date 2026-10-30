@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import messages from "../../../messages/tr.json";
+import { messages } from "@/i18n/messages";
 import { FILE_ID } from "@/test/file-fixtures";
 import { renderWithIntl } from "@/test/intl";
 import { FileAdminActions } from "./file-admin-actions";
@@ -10,7 +10,7 @@ import { FileAdminActions } from "./file-admin-actions";
 const refresh = vi.hoisted(() => vi.fn());
 const POST = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ POST }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ POST }) }));
 
 const { actions } = messages.files.detail;
 const path = {

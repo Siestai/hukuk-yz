@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { formats } from "../../i18n/formats";
-import messages from "../../../messages/tr.json";
-import { isUpstreamUnavailable } from "@/lib/api/errors";
+import { formats } from "@hukuk/web-core/i18n/formats";
+import { messages } from "@/i18n/messages";
+import { isUpstreamUnavailable } from "@hukuk/web-core/api/errors";
 import AppLayout from "./layout";
 
 const get = vi.fn();
@@ -16,8 +16,8 @@ const redirect = vi.hoisted(() =>
         throw new Error(`NEXT_REDIRECT ${path}`);
     }),
 );
-vi.mock("@/lib/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
-vi.mock("@/lib/api/client", () => ({ createApiClient: () => ({ POST: post }) }));
+vi.mock("@hukuk/web-core/api/server", () => ({ createServerApi: async () => ({ GET: get }) }));
+vi.mock("@hukuk/web-core/api/client", () => ({ createApiClient: () => ({ POST: post }) }));
 const pathname = vi.hoisted(() => vi.fn(() => "/"));
 vi.mock("next/navigation", () => ({
     redirect,

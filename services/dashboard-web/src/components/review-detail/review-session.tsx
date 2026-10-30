@@ -12,9 +12,9 @@ import {
     type ReactNode,
 } from "react";
 
-import { createApiClient } from "@/lib/api/client";
+import { createApiClient } from "@hukuk/web-core/api/client";
+import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import {
-    ApiFailure,
     locate,
     neighbour,
     nextAfter,

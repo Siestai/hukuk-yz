@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
-import { createServerApi } from "./server";
+import { createServerApi } from "@hukuk/web-core/api/server";
 
 /** Shared by the layout badge and the queue page, so one request fetches it once. */
 export const getReviewSummary = cache(async () => {
