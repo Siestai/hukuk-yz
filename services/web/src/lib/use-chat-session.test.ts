@@ -283,12 +283,16 @@ it.each([
     },
 );
 
-it.each([false, true])(
-    "preserves completed source error without retry, reload=%s",
-    async (reload) => {
+it.each(
+    ["answer_not_verified", "internal_error", "chat_unavailable", "upstream_unavailable"].flatMap(
+        (code) => [false, true].map((reload) => ({ code, reload })),
+    ),
+)(
+    "preserves completed durable error without retry: $code, reload=$reload",
+    async ({ code, reload }) => {
         const error = {
             type: "error",
-            code: "answer_not_verified",
+            code,
             params: { reason: "no_verified_rows", count: 0 },
         } as const;
         const initial = {
@@ -299,7 +303,7 @@ it.each([false, true])(
             turns: reload ? [{ id: "u1", role: "user", text: "soru" }] : [],
         } as unknown as ConversationDetail;
         vi.mocked(sendMessage).mockImplementation(
-            finishing([error, { type: "done", turn_id: null }]),
+            finishing([error as ChatEvent, { type: "done", turn_id: null }]),
         );
         const { result } = renderHook(() => useChatSession(initial, []));
         if (!reload) await act(async () => result.current.send({ text: "soru" }, "short"));
@@ -309,10 +313,48 @@ it.each([false, true])(
             retryable: false,
         });
         expect(result.current.turns.map((t) => t.role)).toEqual(["user"]);
+        expect(result.current.failure?.restart).toBe(false);
         const calls = vi.mocked(sendMessage).mock.calls.length;
+        expect(calls).toBe(reload ? 0 : 1);
         await act(async () => result.current.retry());
         expect(sendMessage).toHaveBeenCalledTimes(calls);
         await act(async () => result.current.send({ text: "yeni soru" }, "short"));
         expect(sendMessage).toHaveBeenCalledTimes(calls + 1);
+        const newBody = vi.mocked(sendMessage).mock.calls.at(-1)?.[1];
+        expect(newBody).toMatchObject({ text: "yeni soru", mode: "short" });
+        expect(newBody?.request_id).toEqual(expect.any(String));
+        if (!reload)
+            expect(newBody?.request_id).not.toBe(
+                vi.mocked(sendMessage).mock.calls[0]?.[1].request_id,
+            );
+    },
+);
+
+it.each([false, true])(
+    "resumes interrupted durable error with the same request id, done=%s",
+    async (done) => {
+        const initial = {
+            id: "c1",
+            durable_delivery: true,
+            turns: [],
+        } as unknown as ConversationDetail;
+        vi.mocked(sendMessage)
+            .mockImplementationOnce(
+                finishing([
+                    { type: "error", code: "internal_error", params: {} },
+                    // A missing done is an interrupted delivery, even after an error event.
+                    ...(done ? [{ type: "done", turn_id: null } as ChatEvent] : []),
+                ]),
+            )
+            .mockImplementationOnce(finishing([{ type: "done", turn_id: null }]));
+        const { result } = renderHook(() => useChatSession(initial, []));
+        await act(async () => result.current.send({ text: "soru" }, "short"));
+        const original = vi.mocked(sendMessage).mock.calls[0]?.[1];
+        expect(original?.request_id).toEqual(expect.any(String));
+        expect(result.current.failure?.retryable).toBe(!done);
+        await act(async () => result.current.retry());
+        expect(sendMessage).toHaveBeenCalledTimes(done ? 1 : 2);
+        if (!done) expect(vi.mocked(sendMessage).mock.calls[1]?.[1]).toEqual(original);
+        expect(result.current.turns.map((turn) => turn.role)).toEqual(["user"]);
     },
 );

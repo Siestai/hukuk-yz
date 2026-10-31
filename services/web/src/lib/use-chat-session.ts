@@ -113,10 +113,11 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 const turn = toTurn(current, new Date().toISOString());
                 if (turn) setTurns((previous) => [...previous, turn]);
                 if (current.error) {
-                    const terminalSourceError =
-                        current.finished && current.error.code === "answer_not_verified";
-                    setFailure({ ...current.error, retryable: !terminalSourceError });
-                    if (terminalSourceError) lastBody.current = null;
+                    const terminalError =
+                        current.finished &&
+                        (durableDelivery || current.error.code === "answer_not_verified");
+                    setFailure({ ...current.error, retryable: !terminalError });
+                    if (terminalError) lastBody.current = null;
                 } else if (!current.finished)
                     setFailure({ code: "upstream_unavailable", params: {} });
                 if (!turn && (current.facts || current.clarification)) setPartial(current);

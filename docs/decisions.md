@@ -154,3 +154,13 @@
   sorulabilir; gerçek yarım teslim aynı istek kimliğiyle kurtarılabilir.
   Fixture modunun açık yeniden başlatma yolu korunur. Bu teslim düzeltmesi
   SB001 kaynak/başlık/desteklenmeyen sonuç bulgularını kapatmaz.
+
+
+### 2026-10-31 — Görev 18 tamamlanmış hata politikası
+
+- **Canlı teslim ile hidrasyon eşitliği** (dar inceleme düzeltmesi; md. 25, 31):
+  kalıcı teslimde `error` + `done` tüm hata kodları için terminaldir. Yeniden
+  deneme gövdesi temizlenir; otomatik yeni istek veya model çağrısı başlatılmaz.
+  Kullanıcı yeni soru sorabilir. `done` gelmeyen kesinti ve bekleyen teslim aynı
+  istek kimliğiyle sürdürülür; fixture yeniden başlatma davranışı korunur.
+  SB001 kaynak/başlık/desteklenmeyen sonuç bulguları açık kalır.
