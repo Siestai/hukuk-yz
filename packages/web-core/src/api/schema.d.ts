@@ -947,6 +947,7 @@ export interface components {
              */
             id: string;
             pending_request?: components["schemas"]["MessageRequest"] | null;
+            terminal_error?: components["schemas"]["ErrorEvent"] | null;
             /** Title */
             title: string;
             /** Turns */

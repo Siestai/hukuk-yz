@@ -409,6 +409,8 @@ class Conversation(ChatModel):
 class ConversationDetail(Conversation):
     turns: list[Turn]
     pending_request: MessageRequest | None = None
+    # Completed delivery failure; not an assistant turn or a request awaiting resume.
+    terminal_error: ErrorEvent | None = None
 
 
 class ConversationList(ChatModel):

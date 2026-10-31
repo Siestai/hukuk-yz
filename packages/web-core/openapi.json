@@ -938,6 +938,16 @@
               }
             ]
           },
+          "terminal_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"

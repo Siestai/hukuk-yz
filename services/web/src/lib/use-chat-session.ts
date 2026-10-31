@@ -20,6 +20,7 @@ export type Failure = {
     code: string | undefined;
     params: Record<string, unknown>;
     restart?: boolean;
+    retryable?: boolean;
 };
 
 /** The user turn as it is shown before the server has answered. */
@@ -45,16 +46,18 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
     const [conversations, setConversations] = useState(initialList);
     const [live, setLive] = useState<LiveTurn | null>(null);
     const [failure, setFailure] = useState<Failure | null>(
-        initial?.turns.at(-1)?.role === "user"
-            ? { code: "upstream_unavailable", params: {} }
-            : null,
+        initial?.terminal_error
+            ? { ...initial.terminal_error, retryable: false }
+            : initial?.turns.at(-1)?.role === "user"
+              ? { code: "upstream_unavailable", params: {} }
+              : null,
     );
     // What a stream that broke off had already delivered; shown above the error, gone on the next run.
     const [partial, setPartial] = useState<LiveTurn | null>(null);
     const [durable, setDurable] = useState(initial?.durable_delivery ?? false);
     const lastBody = useRef<MessageRequest | null>(
         initial?.pending_request ??
-            (initial?.turns.at(-1)?.role === "user"
+            (!initial?.terminal_error && initial?.turns.at(-1)?.role === "user"
                 ? {
                       text: initial.turns.at(-1)?.text,
                       clarification_answers: initial.turns.at(-1)?.clarification_answers,
@@ -109,8 +112,12 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 if (controller.signal.aborted) return;
                 const turn = toTurn(current, new Date().toISOString());
                 if (turn) setTurns((previous) => [...previous, turn]);
-                if (current.error) setFailure(current.error);
-                else if (!current.finished)
+                if (current.error) {
+                    const terminalSourceError =
+                        current.finished && current.error.code === "answer_not_verified";
+                    setFailure({ ...current.error, retryable: !terminalSourceError });
+                    if (terminalSourceError) lastBody.current = null;
+                } else if (!current.finished)
                     setFailure({ code: "upstream_unavailable", params: {} });
                 if (!turn && (current.facts || current.clarification)) setPartial(current);
             } catch (error) {

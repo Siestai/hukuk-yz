@@ -27,6 +27,7 @@ from hukuk_models.chat import (
     ClarificationEvent,
     ClarificationQuestion,
     DoneEvent,
+    ErrorEvent,
     QuestionInput,
     Turn,
 )
@@ -350,6 +351,7 @@ async def test_failed_resume_retries_same_delivery_after_reload_at_full_quota(
     retried = await client.post(f"/chat/conversations/{id}/messages", json=pending)
     assert retried.status_code == 200
     assert detail["pending_request"] == pending
+    assert detail["terminal_error"] is None
     assert {k: pending[k] for k in reply} == {
         k: ([{**a, "unknown": False} for a in v] if k == "clarification_answers" else v)
         for k, v in reply.items()
@@ -580,7 +582,10 @@ async def test_real_auth_small_pool_parallel_kb_and_tcp_disconnect(
                     await asyncio.sleep(0.02)
             # A terminal gate error is a completed request and replays its honest error,
             # never another graph execution. Its identity also survives reload.
-            retry_body = (await client.get(f"/chat/conversations/{id}")).json()["pending_request"]
+            detail = (await client.get(f"/chat/conversations/{id}")).json()
+            assert detail["pending_request"] is None
+            assert detail["terminal_error"]["code"] == "answer_not_verified"
+            retry_body = row.delivery["body"]
             replay = await client.post(f"/chat/conversations/{id}/messages", json=retry_body)
             assert '"code":"answer_not_verified"' in replay.text
             async with target.state.engine.connect() as conn:
@@ -653,3 +658,48 @@ async def test_stream_admission_is_bounded_and_slots_return(
     assert (
         await client.post(f"/chat/conversations/{ids[4]}/messages", json={"text": "q"})
     ).status_code == 200
+
+
+async def test_completed_terminal_error_readback_and_duplicate_replay(
+    stack: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    from hukuk_models import ErrorCode
+
+    client, user, other, settings, app = stack
+    id = (await client.post("/chat/conversations")).json()["id"]
+    body = {"text": "Question", "request_id": str(uuid.uuid4())}
+    error = ErrorEvent(
+        code=ErrorCode.answer_not_verified, params={"reason": "no_verified_rows", "count": 0}
+    )
+    calls = []
+    real_client = httpx.AsyncClient
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, content=_sse(error) + _sse(DoneEvent()))
+
+    monkeypatch.setattr(
+        httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handle))
+    )
+    first = await client.post(f"/chat/conversations/{id}/messages", json=body)
+    detail = (await client.get(f"/chat/conversations/{id}")).json()
+    assert detail["pending_request"] is None
+    assert detail["terminal_error"] == error.model_dump(mode="json")
+    assert [t["role"] for t in detail["turns"]] == ["user"]
+    settings.chat_daily_limit = 1
+    replay = await client.post(f"/chat/conversations/{id}/messages", json=body)
+    assert [
+        json.loads(line[6:]) for line in replay.text.splitlines() if line.startswith("data: ")
+    ] == [json.loads(line[6:]) for line in first.text.splitlines() if line.startswith("data: ")]
+    assert len(calls) == 1
+    assert (await client.get(f"/chat/conversations/{id}")).json() == detail
+    assert (
+        await client.post(f"/chat/conversations/{id}/messages", json={"text": "New"})
+    ).status_code == 429
+    settings.chat_daily_limit = 2
+    assert (
+        await client.post(f"/chat/conversations/{id}/messages", json={"text": "New"})
+    ).status_code == 200
+    assert len(calls) == 2

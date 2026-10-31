@@ -282,3 +282,37 @@ it.each([
         expect(result.current.turns.at(-1)?.id).toBe("saved");
     },
 );
+
+it.each([false, true])(
+    "preserves completed source error without retry, reload=%s",
+    async (reload) => {
+        const error = {
+            type: "error",
+            code: "answer_not_verified",
+            params: { reason: "no_verified_rows", count: 0 },
+        } as const;
+        const initial = {
+            id: "c1",
+            durable_delivery: true,
+            pending_request: null,
+            terminal_error: reload ? error : null,
+            turns: reload ? [{ id: "u1", role: "user", text: "soru" }] : [],
+        } as unknown as ConversationDetail;
+        vi.mocked(sendMessage).mockImplementation(
+            finishing([error, { type: "done", turn_id: null }]),
+        );
+        const { result } = renderHook(() => useChatSession(initial, []));
+        if (!reload) await act(async () => result.current.send({ text: "soru" }, "short"));
+        expect(result.current.failure).toMatchObject({
+            code: error.code,
+            params: error.params,
+            retryable: false,
+        });
+        expect(result.current.turns.map((t) => t.role)).toEqual(["user"]);
+        const calls = vi.mocked(sendMessage).mock.calls.length;
+        await act(async () => result.current.retry());
+        expect(sendMessage).toHaveBeenCalledTimes(calls);
+        await act(async () => result.current.send({ text: "yeni soru" }, "short"));
+        expect(sendMessage).toHaveBeenCalledTimes(calls + 1);
+    },
+);

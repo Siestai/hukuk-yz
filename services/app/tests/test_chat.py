@@ -126,6 +126,9 @@ async def test_complete_flow(client: httpx.AsyncClient, user: dict[str, str], ca
     detail = (await client.get(f"/chat/conversations/{conversation}", headers=user)).json()
     assert [t["role"] for t in detail["turns"]] == ["user", "assistant", "user", "assistant"]
     assert detail["title"] == raw["facts"]["title"]
+    assert detail["terminal_error"] is None
+    assert detail["pending_request"] is None
+    assert detail["durable_delivery"] is False
     listed = (await client.get("/chat/conversations", headers=user)).json()["items"]
     assert [c["id"] for c in listed] == [conversation]
 

@@ -142,3 +142,15 @@
   aynıysa tam metindir. Eksik/değişmiş sürüm açık alıntı gösterimine düşer.
   Geçici/Ek, harfli madde ve sayısal fıkra ekleri ayrı ayrıştırılır.
 - Gerçek-model kabulü ve önceki SB001 semantik bulguları açık kalır.
+
+### 2026-10-31 — Görev 18 tamamlanmış hata teslimi
+
+- **Terminal hata hidrasyonu** (Orhan'ın dar üretim düzeltmesi talebi; md. 25, 31):
+  tamamlanmış `error` + `done(turn_id=null)` teslimi bekleyen istek değildir.
+  Konuşma detayı son tamamlanmış teslimin tipli hata kodunu ve güvenli
+  parametrelerini `terminal_error` ile taşır; assistant cevap/tur uydurulmaz.
+  Kaynak yetersizliği canlı akışta ve yeniden yüklemede Türkçe gösterilir,
+  tamamlanmış kaynak hatası tekrar model çağrısına yönlendirmez. Yeni soru
+  sorulabilir; gerçek yarım teslim aynı istek kimliğiyle kurtarılabilir.
+  Fixture modunun açık yeniden başlatma yolu korunur. Bu teslim düzeltmesi
+  SB001 kaynak/başlık/desteklenmeyen sonuç bulgularını kapatmaz.

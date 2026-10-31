@@ -118,18 +118,23 @@ async def get_conversation(
         .where(ChatTurn.conversation_id == row.id)
         .order_by(ChatTurn.created_at, ChatTurn.id)
     )
+    delivery = row.delivery
+    completed = bool(delivery and delivery["status"] == "completed")
+    terminal_error = None
+    if delivery and completed:
+        terminal_error = next(
+            (
+                ErrorEvent.model_validate(e)
+                for e in reversed(delivery.get("events", []))
+                if e["type"] == "error"
+            ),
+            None,
+        )
     return ConversationDetail(
         **record(row).model_dump(),
         turns=[Turn.model_validate(t.payload) for t in turns],
-        pending_request=(
-            row.delivery["body"]
-            if row.delivery
-            and (
-                row.delivery["status"] != "completed"
-                or not row.delivery["events"][-1].get("turn_id")
-            )
-            else None
-        ),
+        pending_request=delivery["body"] if delivery and not completed else None,
+        terminal_error=terminal_error,
     )
 
 
