@@ -352,6 +352,7 @@ class MessageRequest(ChatModel):
     """A question (`text`), the answers to the open questions, or the choice to skip them. The
     mode is only the presentation the user has open."""
 
+    request_id: uuid.UUID | None = None
     text: Annotated[str, Field(min_length=1, max_length=4000)] | None = None
     clarification_answers: Annotated[list[ClarificationAnswer], Field(min_length=1)] | None = None
     skip: bool = False
@@ -397,6 +398,7 @@ class Turn(ChatModel):
 
 
 class Conversation(ChatModel):
+    durable_delivery: bool = False
     id: uuid.UUID
     # Empty until the first question is understood; then the title of the case facts.
     title: str
@@ -406,6 +408,7 @@ class Conversation(ChatModel):
 
 class ConversationDetail(Conversation):
     turns: list[Turn]
+    pending_request: MessageRequest | None = None
 
 
 class ConversationList(ChatModel):

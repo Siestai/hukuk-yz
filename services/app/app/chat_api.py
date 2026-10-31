@@ -1,5 +1,7 @@
 """Database chat API and validated agent SSE bridge (task 18)."""
 
+import asyncio
+import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -10,7 +12,8 @@ import anyio
 import httpx
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.auth import CurrentUser, Db, require_role
 from app.chat import EVENT_STREAM, EventStreamResponse, _now, _sse
@@ -38,16 +41,31 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 async def pinned_db(request: Request) -> AsyncIterator[AsyncSession]:
-    async with request.app.state.engine.connect() as connection:
-        async with AsyncSession(bind=connection, expire_on_commit=False) as session:
-            try:
-                yield session
-            finally:
-                # Clear session locks even when a browser disconnect cancels the stream.
-                with anyio.CancelScope(shield=True):
-                    await session.rollback()
-                    await connection.execute(text("SELECT pg_advisory_unlock_all()"))
-                    await connection.commit()
+    # A bounded, separate connection budget keeps stream locks out of the KB/auth pool.
+    # NullPool makes every lock connection disposable, including cancellation cleanup.
+    if not hasattr(request.app.state, "chat_connections"):
+        request.app.state.chat_connections = asyncio.Semaphore(4)
+    slots = request.app.state.chat_connections
+    if slots.locked():
+        raise ApiError(503, ErrorCode.chat_unavailable)
+    await slots.acquire()
+    engine = create_async_engine(
+        request.app.state.engine.url.render_as_string(hide_password=False), poolclass=NullPool
+    )
+    try:
+        async with engine.connect() as connection:
+            async with AsyncSession(bind=connection, expire_on_commit=False) as session:
+                try:
+                    yield session
+                finally:
+                    with anyio.CancelScope(shield=True):
+                        await session.rollback()
+                        await connection.execute(text("SELECT pg_advisory_unlock_all()"))
+                        await connection.commit()
+    finally:
+        with anyio.CancelScope(shield=True):
+            await engine.dispose()
+        slots.release()
 
 
 PinnedDb = Annotated[AsyncSession, Depends(pinned_db)]
@@ -56,7 +74,11 @@ Config = Annotated[Settings, Depends(get_settings)]
 
 def record(row: ChatConversation) -> Conversation:
     return Conversation(
-        id=row.id, title=row.title, created_at=row.created_at, updated_at=row.updated_at
+        id=row.id,
+        durable_delivery=True,
+        title=row.title,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
     )
 
 
@@ -97,7 +119,17 @@ async def get_conversation(
         .order_by(ChatTurn.created_at, ChatTurn.id)
     )
     return ConversationDetail(
-        **record(row).model_dump(), turns=[Turn.model_validate(t.payload) for t in turns]
+        **record(row).model_dump(),
+        turns=[Turn.model_validate(t.payload) for t in turns],
+        pending_request=(
+            row.delivery["body"]
+            if row.delivery
+            and (
+                row.delivery["status"] != "completed"
+                or not row.delivery["events"][-1].get("turn_id")
+            )
+            else None
+        ),
     )
 
 
@@ -133,6 +165,7 @@ async def bridge(
     started = time.monotonic()
     fields: dict[str, Any] = {}
     failed = False
+    events: list[dict[str, Any]] = []
     done = False
     try:
         assert settings.agent_service_key is not None
@@ -175,7 +208,6 @@ async def bridge(
                                 if turn.facts:
                                     conv.title = turn.facts.title
                                 conv.updated_at = turn.created_at
-                                await db.commit()
                                 event = DoneEvent(
                                     turn_id=turn.id, trace_id=event.trace_id, usage=event.usage
                                 )
@@ -183,13 +215,22 @@ async def bridge(
                                 raise ValueError("agent ended without a result")
                             else:
                                 event = DoneEvent(trace_id=event.trace_id, usage=event.usage)
+                            events.append(ChatEvent(event).model_dump(mode="json"))
+                            conv.delivery = {
+                                **(conv.delivery or {}),
+                                "status": "completed",
+                                "events": events,
+                            }
+                            await db.commit()
                             done = True
                             yield _sse(event)
                             return
+                        events.append(ChatEvent(event).model_dump(mode="json"))
                         yield _sse(event)
         if not done:
             raise ValueError("agent stream ended without done")
-    except Exception:
+    except Exception as exc:
+        logging.getLogger("app").error("chat delivery failed: %s", type(exc).__name__)
         await db.rollback()
         yield _sse(ErrorEvent(code=ErrorCode.chat_unavailable))
         yield _sse(DoneEvent())
@@ -200,6 +241,39 @@ async def bridge(
             {"key": str(conversation_id)},
         )
         await db.commit()
+
+
+class DeliveryResponse(EventStreamResponse):
+    """Own delivery until completion, before FastAPI closes its DB dependency."""
+
+    def __init__(self, db: Any, conv: ChatConversation, body: MessageRequest, settings: Settings):
+        self.queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+        self.delivery = (db, conv, body, settings)
+        super().__init__(
+            self.events(), headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+        )
+
+    async def events(self) -> AsyncIterator[bytes]:
+        while (event := await self.queue.get()) is not None:
+            yield event
+
+    async def produce(self) -> None:
+        with anyio.CancelScope(shield=True):
+            try:
+                async for event in bridge(*self.delivery):
+                    self.queue.put_nowait(event)
+            finally:
+                self.queue.put_nowait(None)
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        async with anyio.create_task_group() as group:
+            group.start_soon(self.produce)
+            await super().__call__(scope, receive, send)
+
+
+async def replay_events(events: list[dict[str, Any]]) -> AsyncIterator[bytes]:
+    for event in events:
+        yield _sse(ChatEvent.model_validate(event).root)
 
 
 @router.post(
@@ -226,6 +300,28 @@ async def post_message(
     if not locked:
         raise ApiError(409, ErrorCode.clarification_not_pending)
     try:
+        delivery = conv.delivery
+        # An explicit delivery id can only replay the identical request, never a new input.
+        if delivery and (
+            str(body.request_id) == delivery["body"]["request_id"]
+            or (
+                body.request_id is None
+                and delivery["status"] != "completed"
+                and body.model_dump(mode="json", exclude={"request_id"})
+                == {k: v for k, v in delivery["body"].items() if k != "request_id"}
+            )
+        ):
+            saved = MessageRequest.model_validate(delivery["body"])
+            if body.model_dump(exclude={"request_id"}) != saved.model_dump(exclude={"request_id"}):
+                raise ApiError(409, ErrorCode.clarification_not_pending)
+            if delivery["status"] == "completed":
+                return EventStreamResponse(replay_events(delivery["events"]))
+            return DeliveryResponse(db, conv, saved, settings)
+        if body.request_id is not None and await db.get(ChatTurn, body.request_id) is not None:
+            # An older consumed delivery cannot become the input of a newer interrupt.
+            raise ApiError(409, ErrorCode.clarification_not_pending)
+        if delivery and delivery["status"] != "completed" and body.text is None:
+            raise ApiError(409, ErrorCode.clarification_not_pending)
         if body.text is None:
             last = await db.scalar(
                 select(ChatTurn)
@@ -260,8 +356,10 @@ async def post_message(
             )
             if (count or 0) >= settings.chat_daily_limit:
                 raise ApiError(429, ErrorCode.chat_daily_limit)
+        body = body.model_copy(update={"request_id": body.request_id or uuid.uuid4()})
+        conv.delivery = {"body": body.model_dump(mode="json"), "status": "pending"}
         turn = Turn(
-            id=uuid.uuid4(),
+            id=body.request_id,
             role="user",
             created_at=_now(),
             text=body.text,
@@ -279,10 +377,7 @@ async def post_message(
         )
         await db.commit()
         raise
-    return EventStreamResponse(
-        bridge(db, conv, body, settings),
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return DeliveryResponse(db, conv, body, settings)
 
 
 @router.post("/turns/{turn_id}/feedback", status_code=201)

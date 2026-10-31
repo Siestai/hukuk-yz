@@ -881,6 +881,11 @@
             "title": "Created At",
             "type": "string"
           },
+          "durable_delivery": {
+            "default": false,
+            "title": "Durable Delivery",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -913,10 +918,25 @@
             "title": "Created At",
             "type": "string"
           },
+          "durable_delivery": {
+            "default": false,
+            "title": "Durable Delivery",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "pending_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "title": {
             "title": "Title",
@@ -3046,6 +3066,18 @@
             ],
             "title": "Mode",
             "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
           },
           "skip": {
             "default": false,

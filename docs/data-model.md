@@ -297,3 +297,17 @@ terminal `done.usage` alanından alınır; sağlayıcı metrikleri gelmediğinde
 Admin tüm konuşmaları okuyabilir; diğer roller yalnız kendi konuşmalarını görür.
 Yeni metin soruları UTC gününde kullanıcı başına sayılır; PostgreSQL kilidi eşzamanlı
 kota kontrolünü serileştirir. Netleştirme cevapları yeni soru sayılmaz.
+
+### Chat teslim kaydı (0017; Görev 18)
+
+`chat_conversation.delivery` nullable JSONB'dir. Son teslimin `body` alanı
+`MessageRequest` (kalıcı UUID `request_id` dahil), `status` alanı `pending` veya
+`completed`, tamamlandığında `events` alanı kaydedilmiş assistant sonucu ile
+terminal olaydır. Kullanıcı turu ve kota rezervasyonu aynı transaction'da bu
+kayıtla commit edilir; yeniden teslim aynı turu kullanır. API assistant sonucu olmayan
+isteği `pending_request` ile sahibine/admin'e döndürür; tamamlanmış ajan hatası
+yeniden yürütülmez, aynı hata makbuzu sunulur. Ajan, kendi checkpoint
+şemasında ayrı `delivery:<thread>:<request>` makbuzunu `started`/`completed` ve
+olaylarıyla tutar. `started` durumundaki belirsiz süreç kaybı tekrar graph
+çalıştırmaz; tamamlanmış makbuz yeniden sunulur. Bunlar kişisel konuşma
+verileridir, yayımlanmış KB sürümleri değildir.

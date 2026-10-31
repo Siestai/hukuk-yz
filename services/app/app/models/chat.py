@@ -14,6 +14,7 @@ from app.models.common import Base, UuidPkMixin
 class ChatConversation(UuidPkMixin, Base):
     __tablename__ = "chat_conversation"
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"), index=True)
+    delivery: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     title: Mapped[str]
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]

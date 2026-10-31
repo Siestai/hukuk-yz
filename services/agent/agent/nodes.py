@@ -60,6 +60,7 @@ class State(TypedDict, total=False):
     """The graph state: JSON only, so that the Postgres checkpoint can hold it. `facts` and
     `topic` stay across the turns of a thread; the rest is made anew for every question."""
 
+    delivery: dict[str, Any]
     question: str
     topic: str
     facts: dict[str, Any]

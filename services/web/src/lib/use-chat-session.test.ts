@@ -240,3 +240,45 @@ describe("useChatSession", () => {
         expect(result.current.turns.map((turn) => turn.role)).toEqual(["user"]);
     });
 });
+
+it.each([
+    { skip: true },
+    { clarification_answers: [{ question_id: "q1", value: "30+", unknown: false }] },
+])(
+    "retries durable delivery after reload with selected facts and its original identity: %j",
+    async (reply) => {
+        const pending = {
+            ...reply,
+            mode: "detailed",
+            request_id: "a5044bdb-ed04-4ccc-9957-a10673fe0648",
+        };
+        const initial = {
+            id: "c1",
+            durable_delivery: true,
+            pending_request: pending,
+            turns: [
+                { id: "question", role: "user", text: "original" },
+                { id: "clarify", role: "assistant", clarification: { questions: [] } },
+                {
+                    id: "reply",
+                    role: "user",
+                    skipped: "skip" in reply,
+                    clarification_answers:
+                        "clarification_answers" in reply ? reply.clarification_answers : null,
+                },
+            ],
+        } as unknown as ConversationDetail;
+        vi.mocked(sendMessage).mockImplementation(
+            finishing([
+                { type: "answer", answer: { headline: "x" } } as unknown as ChatEvent,
+                { type: "done", turn_id: "saved" } as ChatEvent,
+            ]),
+        );
+        const { result } = renderHook(() => useChatSession(initial, []));
+        expect(result.current.failure?.restart).toBe(false);
+        await act(async () => result.current.retry());
+        expect(vi.mocked(sendMessage).mock.calls[0]?.[1]).toEqual(pending);
+        expect(result.current.turns.filter((t) => t.role === "user")).toHaveLength(2);
+        expect(result.current.turns.at(-1)?.id).toBe("saved");
+    },
+);

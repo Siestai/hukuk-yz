@@ -194,3 +194,11 @@ Web alan adı ve sağlayıcı anahtarları dağıtım ortamında tanımlanır.
 `CHAT_BACKEND=fixture` eski bellek içi UI senaryolarını korur; kalıcı beta için agent
 modu gerekir. Docker derlemesi CI'da kontrol edilir; yerel daemon yoksa gerçek
 imaj çalıştırma doğrulanmış sayılmaz.
+
+Chat SSE kilit bağlantıları normal app KB/auth havuzunu kullanmaz. Her app ve
+agent sürecinde en çok dört etkin teslim vardır; kapasite doluyken 503 döner.
+Toplam DB bütçesinde worker başına dört app kilit bağlantısı ve dört agent thread
+kilit bağlantısı normal app/checkpoint havuzlarına ek olarak hesaba katılır.
+Tarayıcı kopsa da kabul edilmiş teslim upstream zaman aşımına kadar tamamlanır;
+istemci aynı `request_id` ile tekrar deneyebilir. Süreç çökmesi sonrası tüketimi
+belirsiz makbuz 409 verir; otomatik ikinci graph yürütmesi yapılmaz.

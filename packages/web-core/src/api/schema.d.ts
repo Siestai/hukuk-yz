@@ -912,6 +912,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * Durable Delivery
+             * @default false
+             */
+            durable_delivery: boolean;
+            /**
              * Id
              * Format: uuid
              */
@@ -932,10 +937,16 @@ export interface components {
              */
             created_at: string;
             /**
+             * Durable Delivery
+             * @default false
+             */
+            durable_delivery: boolean;
+            /**
              * Id
              * Format: uuid
              */
             id: string;
+            pending_request?: components["schemas"]["MessageRequest"] | null;
             /** Title */
             title: string;
             /** Turns */
@@ -1596,6 +1607,8 @@ export interface components {
              * @enum {string}
              */
             mode: "short" | "detailed" | "reasoned";
+            /** Request Id */
+            request_id?: string | null;
             /**
              * Skip
              * @default false

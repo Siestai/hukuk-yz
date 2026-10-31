@@ -284,7 +284,11 @@ def test_chunk_search_columns_and_indexes_are_in_orm_and_migration() -> None:
 def test_chat_tables_columns_and_checks_match_migration() -> None:
     migration = _load_migration(VERSIONS / "0016_chat.py")
     assert (migration.revision, migration.down_revision) == ("0016", "0015")
-    source = (VERSIONS / "0016_chat.py").read_text()
+    source = (VERSIONS / "0016_chat.py").read_text() + (
+        VERSIONS / "0017_chat_delivery.py"
+    ).read_text()
+    delivery_migration = _load_migration(VERSIONS / "0017_chat_delivery.py")
+    assert (delivery_migration.revision, delivery_migration.down_revision) == ("0017", "0016")
     for name in ("chat_conversation", "chat_turn", "chat_feedback"):
         table = Base.metadata.tables[name]
         assert f'"{name}"' in source

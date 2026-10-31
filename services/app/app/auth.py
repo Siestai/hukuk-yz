@@ -136,7 +136,8 @@ async def current_session(
     user, session = row.tuple()
     if session.last_seen_at is None or now - session.last_seen_at > LAST_SEEN_INTERVAL:
         session.last_seen_at = now
-        await db.commit()
+    # Authentication must never retain a transaction for the lifetime of an SSE response.
+    await db.commit()
     return user, session
 
 

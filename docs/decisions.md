@@ -123,3 +123,22 @@
   SB-001 başlık/gövde çelişkisi ve alıntılarca desteklenmeyen iki sonuç bulgusu
   açıktır; tam kaynak getirmek bunları giderdiğinin kanıtı değildir. Gerçek model
   değerlendirmesi ayrı, maliyet korumalı koşuda yapılmalıdır.
+
+### 2026-10-31 — Görev 18 bağımsız inceleme düzeltmeleri
+
+- **İdempotent teslim (S1; md. 1–4, 25, 31):** kalıcı konuşma teslim kaydı,
+  istek kimliğini, seçilmiş bilgileri ve tamamlanmış sonucu tutar. Yeniden deneme
+  yeni kullanıcı turu veya kota tüketmez. Ajan checkpoint alanında ayrı teslim
+  makbuzu tutulur; tüketilmiş isteğin tamamlanmış olayları tekrar sunulur.
+  Süreç kaybıyla yarım kalmış tüketimin durumu belirsizse ikinci graph yürütülmez.
+  Fixture modunun eski açık yeniden başlatma davranışı korunur.
+- **Akış kapasitesi (S2):** auth transaction'ı kimlik doğrulama biter bitmez
+  kapatılır. App akış kilitleri normal KB/auth havuzundan ayrıdır; süreç başına
+  dört teslim kabul edilir, doluyken 503 döner. Ajanın dört yürütme yeri ve
+  checkpoint havuzundan bağımsız thread kilit bağlantıları vardır. TCP kopması
+  kabul edilmiş teslimi iptal etmez; kilit tamamlanana veya upstream zaman
+  aşımına kadar tutulur. Yeniden bağlanan istemci eşzamanlı graph başlatamaz.
+- **Atıf sadakati (S3/S4; md. 4, 25):** UUID kaynak yalnız dönen sürüm kimliği
+  aynıysa tam metindir. Eksik/değişmiş sürüm açık alıntı gösterimine düşer.
+  Geçici/Ek, harfli madde ve sayısal fıkra ekleri ayrı ayrıştırılır.
+- Gerçek-model kabulü ve önceki SB001 semantik bulguları açık kalır.
