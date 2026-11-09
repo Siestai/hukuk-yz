@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.settings import REPO_ROOT, Settings, VerifySettings
+from app.settings import REPO_ROOT, ChatRouteSettings, Settings, VerifySettings
 
 
 def test_the_cache_dir_defaults_to_the_gitignored_data_dir_whatever_the_cwd(
@@ -65,3 +65,11 @@ def test_a_short_or_placeholder_service_key_is_refused(
         Settings()
     monkeypatch.setenv(name, "a-real-secret-of-sufficient-length")
     assert Settings().model_dump()[name.lower()].get_secret_value().startswith("a-real")
+
+
+def test_the_chat_route_backend_needs_no_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("CHAT_BACKEND", raising=False)
+    assert ChatRouteSettings().chat_backend == "none"
+    monkeypatch.setenv("CHAT_BACKEND", "fixture")
+    assert ChatRouteSettings().chat_backend == "fixture"

@@ -20,7 +20,7 @@ from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.review_statutes import router as review_statutes_router
 from app.search import router as search_router
-from app.settings import get_settings
+from app.settings import ChatRouteSettings, get_settings
 from app.statutes import router as statutes_router
 from hukuk_models import HealthResponse
 
@@ -86,7 +86,7 @@ def create_app(*, chat_backend: str | None = None) -> FastAPI:
         search_router,
     ):
         application.include_router(router)
-    backend = chat_backend if chat_backend is not None else get_settings().chat_backend
+    backend = chat_backend if chat_backend is not None else ChatRouteSettings().chat_backend
     application.include_router(
         fixture_chat_router if backend == "fixture" else persistent_chat_router
     )

@@ -92,6 +92,16 @@ def get_settings() -> Settings:
     return Settings()
 
 
+class ChatRouteSettings(BaseSettings):
+    """The chat backend alone, read when the app is built. Kept apart from `Settings` so that
+    building the app (and its OpenAPI schema) needs no DATABASE_URL. Same variable and values
+    as `Settings.chat_backend`."""
+
+    model_config = SettingsConfigDict(extra="ignore", env_ignore_empty=True)
+
+    chat_backend: Literal["fixture", "agent", "none"] = "none"
+
+
 class VerifySettings(BaseSettings):
     """Official-source verification (task 06). Kept apart from `Settings` so that a run on a
     machine without a database (`--keys`) needs no DATABASE_URL. An empty variable counts as
