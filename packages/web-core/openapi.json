@@ -329,6 +329,18 @@
             ],
             "title": "Heading"
           },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
           "text": {
             "title": "Text",
             "type": "string"
@@ -869,6 +881,11 @@
             "title": "Created At",
             "type": "string"
           },
+          "durable_delivery": {
+            "default": false,
+            "title": "Durable Delivery",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -901,10 +918,35 @@
             "title": "Created At",
             "type": "string"
           },
+          "durable_delivery": {
+            "default": false,
+            "title": "Durable Delivery",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "pending_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terminal_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "title": {
             "title": "Title",
@@ -1191,6 +1233,16 @@
             "default": "done",
             "title": "Type",
             "type": "string"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunUsage"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "DoneEvent",
@@ -1280,6 +1332,7 @@
           "file_has_newer_version",
           "file_processed",
           "invalid_date",
+          "chat_daily_limit",
           "chat_unavailable",
           "chat_no_fixture",
           "clarification_not_pending",
@@ -1310,6 +1363,11 @@
             "default": {},
             "title": "Params",
             "type": "object"
+          },
+          "retryable": {
+            "default": false,
+            "title": "Retryable",
+            "type": "boolean"
           },
           "type": {
             "const": "error",
@@ -1507,6 +1565,97 @@
           "created_at"
         ],
         "title": "Feedback",
+        "type": "object"
+      },
+      "FeedbackExport": {
+        "additionalProperties": false,
+        "description": "Admin-only feedback export, including the submitting user's identity.",
+        "properties": {
+          "comment": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Comment",
+            "type": "string"
+          },
+          "correction": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Correction",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wrong_source",
+                  "wrong_conclusion",
+                  "missing",
+                  "unclear",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "point_index": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Point Index"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "turn_id": {
+            "format": "uuid",
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "turn_id",
+          "created_at",
+          "user_id"
+        ],
+        "title": "FeedbackExport",
         "type": "object"
       },
       "FeedbackIn": {
@@ -2933,6 +3082,18 @@
             "title": "Mode",
             "type": "string"
           },
+          "request_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
           "skip": {
             "default": false,
             "title": "Skip",
@@ -3699,6 +3860,53 @@
         "title": "ReviewSummary",
         "type": "object"
       },
+      "RunUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "input_tokens": {
+            "minimum": 0.0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "output_tokens": {
+            "minimum": 0.0,
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "models",
+          "input_tokens",
+          "output_tokens",
+          "latency_ms"
+        ],
+        "title": "RunUsage",
+        "type": "object"
+      },
       "StatuteBulkApproveRequest": {
         "description": "Same contract as `BulkApproveRequest`; the cursor is the id of the last article of the\nprevious call (`next_cursor`), the run goes in id order.",
         "properties": {
@@ -4313,6 +4521,18 @@
               }
             ],
             "title": "Heading"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
           },
           "kind": {
             "const": "version",
@@ -5315,6 +5535,152 @@
           }
         },
         "summary": "Post Message",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/chat/feedback": {
+      "get": {
+        "operationId": "export_feedback_chat_feedback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 1000,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeedbackExport"
+                  },
+                  "title": "Response Export Feedback Chat Feedback Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Export Feedback",
         "tags": [
           "chat"
         ]

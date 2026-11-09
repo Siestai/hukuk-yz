@@ -12,6 +12,14 @@ export type SourceText = {
     origin: "kb" | "quote";
 };
 
+// Article suffix letters belong to the article; numeric slash suffixes are paragraphs.
+const STATUTE_REF =
+    /^(\d+)\s+m\.\s*((?:(?:Geçici|Gecici|Ek)\s*)?\d+(?:\/[A-Za-zÇĞİÖŞÜçğıöşü])?(?:\s*\(\d+\))?)(?:\/\d+)?$/iu;
+const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const canonicalArticle = (article: string) =>
+    article.replace(/^(Geçici|Gecici|Ek)\s*/iu, (prefix) =>
+        /^(ek)/iu.test(prefix) ? "Ek " : "Geçici ",
+    );
 const STATUTE_ID = /^statute:(\d+):m(.+)$/;
 
 /** Where `quote` sits in `text`, ignoring differences in white space; null when it is not there. */
@@ -56,16 +64,22 @@ export async function loadSourceText(
     citation: CitationRef,
     asOf: string,
 ): Promise<SourceText | null> {
-    const statute = STATUTE_ID.exec(citation.source_id);
+    const statute =
+        STATUTE_ID.exec(citation.source_id) ??
+        (citation.category === "statute" ? STATUTE_REF.exec(citation.ref) : null);
     if (statute) {
         const [, number = "", article = ""] = statute;
         const { data } = await api
             .GET("/statutes/{number}/articles/{article_no}", {
-                params: { path: { number, article_no: article }, query: { as_of: asOf } },
+                params: {
+                    path: { number, article_no: canonicalArticle(article) },
+                    query: { as_of: asOf },
+                },
             })
             .catch(() => ({ data: undefined }));
         const text = data?.status === "found" ? data.version?.text : undefined;
-        if (text) return { text, highlight: highlightOf(text, citation), origin: "kb" };
+        if (text && (!UUID.test(citation.source_id) || data?.version?.id === citation.source_id))
+            return { text, highlight: highlightOf(text, citation), origin: "kb" };
     }
     if (!citation.quote) return null;
     return {

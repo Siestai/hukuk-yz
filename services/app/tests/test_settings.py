@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.settings import REPO_ROOT, Settings, VerifySettings
+from app.settings import REPO_ROOT, ChatRouteSettings, Settings, VerifySettings
 
 
 def test_the_cache_dir_defaults_to_the_gitignored_data_dir_whatever_the_cwd(
@@ -52,3 +52,24 @@ def test_search_settings_default_to_the_public_safe_values(monkeypatch: pytest.M
     assert settings.embedding_model == "text-embedding-3-large"
     monkeypatch.setenv("KB_SEARCH_INCLUDE_UNREVIEWED", "true")
     assert Settings().kb_search_include_unreviewed is True
+
+
+@pytest.mark.parametrize("name", ["AGENT_SERVICE_KEY", "KB_SERVICE_KEY"])
+@pytest.mark.parametrize("value", ["short-key", "change-me-change-me-please"])
+def test_a_short_or_placeholder_service_key_is_refused(
+    monkeypatch: pytest.MonkeyPatch, name: str, value: str
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValidationError, match=name):
+        Settings()
+    monkeypatch.setenv(name, "a-real-secret-of-sufficient-length")
+    assert Settings().model_dump()[name.lower()].get_secret_value().startswith("a-real")
+
+
+def test_the_chat_route_backend_needs_no_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("CHAT_BACKEND", raising=False)
+    assert ChatRouteSettings().chat_backend == "none"
+    monkeypatch.setenv("CHAT_BACKEND", "fixture")
+    assert ChatRouteSettings().chat_backend == "fixture"

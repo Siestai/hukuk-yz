@@ -20,6 +20,7 @@ export type Failure = {
     code: string | undefined;
     params: Record<string, unknown>;
     restart?: boolean;
+    retryable?: boolean;
 };
 
 /** The user turn as it is shown before the server has answered. */
@@ -45,21 +46,25 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
     const [conversations, setConversations] = useState(initialList);
     const [live, setLive] = useState<LiveTurn | null>(null);
     const [failure, setFailure] = useState<Failure | null>(
-        initial?.turns.at(-1)?.role === "user"
-            ? { code: "upstream_unavailable", params: {} }
-            : null,
+        initial?.terminal_error
+            ? { ...initial.terminal_error, retryable: false }
+            : initial?.turns.at(-1)?.role === "user"
+              ? { code: "upstream_unavailable", params: {} }
+              : null,
     );
     // What a stream that broke off had already delivered; shown above the error, gone on the next run.
     const [partial, setPartial] = useState<LiveTurn | null>(null);
+    const [durable, setDurable] = useState(initial?.durable_delivery ?? false);
     const lastBody = useRef<MessageRequest | null>(
-        initial?.turns.at(-1)?.role === "user"
-            ? {
-                  text: initial.turns.at(-1)?.text,
-                  clarification_answers: initial.turns.at(-1)?.clarification_answers,
-                  skip: initial.turns.at(-1)?.skipped ?? false,
-                  mode: "short",
-              }
-            : null,
+        initial?.pending_request ??
+            (!initial?.terminal_error && initial?.turns.at(-1)?.role === "user"
+                ? {
+                      text: initial.turns.at(-1)?.text,
+                      clarification_answers: initial.turns.at(-1)?.clarification_answers,
+                      skip: initial.turns.at(-1)?.skipped ?? false,
+                      mode: "short",
+                  }
+                : null),
     );
     // Replaying a consumed clarification can return 409. The existing text-message contract
     // lets the user explicitly restart clarification from the latest question, even after reload.
@@ -67,7 +72,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
     const [clarificationRequest, setClarificationRequest] = useState(
         initial?.turns.at(-1)?.role === "user" && !initial.turns.at(-1)?.text,
     );
-    const restart = Boolean(failure && clarificationRequest && restartText);
+    const restart = Boolean(!durable && failure && clarificationRequest && restartText);
     const stream = useRef<AbortController | null>(null);
     const busy = live !== null;
 
@@ -85,11 +90,19 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
             setLive(current);
             try {
                 let id = conversationId;
+                let durableDelivery = durable;
                 if (!id) {
-                    id = (await createConversation(api)).id;
+                    const created = await createConversation(api);
+                    id = created.id;
+                    durableDelivery = created.durable_delivery ?? false;
+                    setDurable(durableDelivery);
                     if (controller.signal.aborted) return;
                     setConversationId(id);
                     window.history.replaceState(null, "", `/konusmalar/${id}`);
+                }
+                if (durableDelivery) {
+                    body = { ...body, request_id: body.request_id ?? crypto.randomUUID() };
+                    lastBody.current = body;
                 }
                 for await (const event of sendMessage(id, body, controller.signal)) {
                     if (controller.signal.aborted) return;
@@ -99,8 +112,16 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 if (controller.signal.aborted) return;
                 const turn = toTurn(current, new Date().toISOString());
                 if (turn) setTurns((previous) => [...previous, turn]);
-                if (current.error) setFailure(current.error);
-                else if (!current.finished)
+                if (current.error) {
+                    // A durable delivery says itself whether it is still pending on the server.
+                    const terminalError =
+                        current.finished &&
+                        (durableDelivery
+                            ? !current.error.retryable
+                            : current.error.code === "answer_not_verified");
+                    setFailure({ ...current.error, retryable: !terminalError });
+                    if (terminalError) lastBody.current = null;
+                } else if (!current.finished)
                     setFailure({ code: "upstream_unavailable", params: {} });
                 if (!turn && (current.facts || current.clarification)) setPartial(current);
             } catch (error) {
@@ -121,12 +142,13 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 () => undefined,
             );
         },
-        [api, conversationId],
+        [api, conversationId, durable],
     );
 
     const reset = useCallback(() => {
         stream.current?.abort();
         setConversationId(null);
+        setDurable(false);
         setTurns([]);
         setLive(null);
         setFailure(null);

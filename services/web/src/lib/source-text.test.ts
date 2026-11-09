@@ -96,3 +96,71 @@ describe("loadSourceText", () => {
         expect(await loadSourceText(apiReturning(undefined), decision, "2026-10-01")).toBeNull();
     });
 });
+
+it("reads a real version UUID citation by its statute reference", async () => {
+    const GET = vi.fn().mockResolvedValue({
+        data: {
+            status: "found",
+            version: { id: "a5044bdb-ed04-4ccc-9957-a10673fe0648", text: "Tam madde metni." },
+        },
+    });
+    const result = await loadSourceText(
+        { GET } as never,
+        {
+            ...citation,
+            source_id: "a5044bdb-ed04-4ccc-9957-a10673fe0648",
+            ref: "4857 m.18/1",
+            quote: "madde",
+        },
+        "2026-10-03",
+    );
+    expect(GET).toHaveBeenCalledWith("/statutes/{number}/articles/{article_no}", {
+        params: { path: { number: "4857", article_no: "18" }, query: { as_of: "2026-10-03" } },
+    });
+    expect(result?.origin).toBe("kb");
+});
+
+const versionId = "a5044bdb-ed04-4ccc-9957-a10673fe0648";
+it.each([undefined, "b5044bdb-ed04-4ccc-9957-a10673fe0648"])(
+    "keeps an old answer's quote when publication returns version %s",
+    async (id) => {
+        const result = await loadSourceText(
+            apiReturning({
+                status: "found",
+                version: { id, text: "Republished different full text" },
+            }),
+            { ...citation, source_id: versionId },
+            "2026-10-01",
+        );
+        expect(result).toEqual({
+            text: citation.quote,
+            highlight: { start: 0, end: citation.quote!.length },
+            origin: "quote",
+        });
+    },
+);
+it.each([
+    ["5510 m.Geçici 4/2", "5510", "Geçici 4"],
+    ["5510 m.Geçici4/2", "5510", "Geçici 4"],
+    ["5510 m.Ek 2/1", "5510", "Ek 2"],
+    ["5510 m.Ek2", "5510", "Ek 2"],
+    ["4857 m.18/A/2", "4857", "18/A"],
+    ["4857 m.18/2", "4857", "18"],
+    ["5510 m.Geçici 79 (2)/3", "5510", "Geçici 79 (2)"],
+])(
+    "reads canonical UUID article %s without confusing the paragraph",
+    async (ref, number, article) => {
+        const GET = vi.fn().mockResolvedValue({
+            data: { status: "found", version: { id: versionId, text: "Tam metin" } },
+        });
+        const result = await loadSourceText(
+            { GET } as never,
+            { ...citation, source_id: versionId, ref },
+            "2026-10-01",
+        );
+        expect(GET).toHaveBeenCalledWith("/statutes/{number}/articles/{article_no}", {
+            params: { path: { number, article_no: article }, query: { as_of: "2026-10-01" } },
+        });
+        expect(result?.origin).toBe("kb");
+    },
+);

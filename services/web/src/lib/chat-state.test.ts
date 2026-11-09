@@ -18,8 +18,14 @@ describe("applyEvent", () => {
     });
 
     it("keeps the error code and its parameters", () => {
-        const live = play([{ type: "error", code: "chat_unavailable", params: { n: 2 } }]);
-        expect(live.error).toEqual({ code: "chat_unavailable", params: { n: 2 } });
+        const live = play([
+            { type: "error", code: "chat_unavailable", params: { n: 2 }, retryable: false },
+        ]);
+        expect(live.error).toEqual({
+            code: "chat_unavailable",
+            params: { n: 2 },
+            retryable: false,
+        });
     });
 });
 
@@ -42,7 +48,7 @@ describe("toTurn", () => {
         expect(
             toTurn(
                 play([
-                    { type: "error", code: "internal_error", params: {} },
+                    { type: "error", code: "internal_error", params: {}, retryable: false },
                     { type: "done", turn_id: "t1" },
                 ]),
                 "x",

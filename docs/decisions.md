@@ -109,3 +109,66 @@
 ### 2026-10-30 — Görev 17 istek bazlı taslak sözleşmesi
 
 - **Dar çevrimdışı uygulama** (Orhan'ın uygulama yetkisi; md. 1–4, 22–23, 25): ortak `ChatAnswer` ve statik `DraftOutput` korunur. Taslak ve kapı tekrarı, konu kartındaki olgu anahtarlarından türetilen istek bazlı Pydantic alt modelini kullanır; sağlayıcı şemasında anahtarlar enum, boş konuda yalnız null olur. Mevcut `critical_unknown` kümesinin kapsamı tip doğrulamasında aranır; bilinen/uygulanmayan olgular zorunlu değildir. Rewrite aynı kısıtları taşır; yalnız üretilen dil alanları değişebilir, durum, anahtarlar, atıflar (üretilen `used_for` açıklaması hariç), liste sayısı ve sırası korunur. Mevcut iki typed retry veya kapı denemesi artırılmaz; tip doğrulaması tükenirse mevcut servis hata yolu kullanılır. Bu sözleşme kaynakların semantik desteğini veya model kalitesini kanıtlamaz; gerçek model eval'i, kaynak kapsamı ve Görev 17/18/demo kabulü açık kalır.
+
+### 2026-10-30 — Görev 18 bağlantı uygulaması
+
+- **Kalıcılık ve kota** (uygulama, md. 25, 31): ajan modunda kullanıcı girdisi SSE
+  başlamadan kaydedilir; başarılı assistant sonucu terminal olayda kalıcılaşır.
+  Hatalı/yarım akış tamamlanmış cevap olarak kaydedilmez. Günlük kota UTC gününde
+  yeni metin sorularını sayar, netleştirme cevaplarını saymaz.
+- **Kaynak okuma** (md. 4, 25): servis anahtarı yalnız KB okuma yollarını açar;
+  dashboard yetkisi sağlamaz. Zorunlu mevzuat arama parçalarından değil tarihli tam
+  madde endpoint'inden alınır. Eksik madde arama parçasıyla tamamlanmış sayılmaz.
+- **Açık kalite riski:** Görev 17'nin birleştirilmesi semantik kabul değildir.
+  SB-001 başlık/gövde çelişkisi ve alıntılarca desteklenmeyen iki sonuç bulgusu
+  açıktır; tam kaynak getirmek bunları giderdiğinin kanıtı değildir. Gerçek model
+  değerlendirmesi ayrı, maliyet korumalı koşuda yapılmalıdır.
+
+### 2026-10-31 — Görev 18 bağımsız inceleme düzeltmeleri
+
+- **İdempotent teslim (S1; md. 1–4, 25, 31):** kalıcı konuşma teslim kaydı,
+  istek kimliğini, seçilmiş bilgileri ve tamamlanmış sonucu tutar. Yeniden deneme
+  yeni kullanıcı turu veya kota tüketmez. Ajan checkpoint alanında ayrı teslim
+  makbuzu tutulur; tüketilmiş isteğin tamamlanmış olayları tekrar sunulur.
+  Süreç kaybıyla yarım kalmış tüketimin durumu belirsizse ikinci graph yürütülmez.
+  Fixture modunun eski açık yeniden başlatma davranışı korunur.
+- **Akış kapasitesi (S2):** auth transaction'ı kimlik doğrulama biter bitmez
+  kapatılır. App akış kilitleri normal KB/auth havuzundan ayrıdır; süreç başına
+  dört teslim kabul edilir, doluyken 503 döner. Ajanın dört yürütme yeri ve
+  checkpoint havuzundan bağımsız thread kilit bağlantıları vardır. TCP kopması
+  kabul edilmiş teslimi iptal etmez; kilit tamamlanana veya upstream zaman
+  aşımına kadar tutulur. Yeniden bağlanan istemci eşzamanlı graph başlatamaz.
+- **Atıf sadakati (S3/S4; md. 4, 25):** UUID kaynak yalnız dönen sürüm kimliği
+  aynıysa tam metindir. Eksik/değişmiş sürüm açık alıntı gösterimine düşer.
+  Geçici/Ek, harfli madde ve sayısal fıkra ekleri ayrı ayrıştırılır.
+- Gerçek-model kabulü ve önceki SB001 semantik bulguları açık kalır.
+
+### 2026-10-31 — Görev 18 tamamlanmış hata teslimi
+
+- **Terminal hata hidrasyonu** (Orhan'ın dar üretim düzeltmesi talebi; md. 25, 31):
+  tamamlanmış `error` + `done(turn_id=null)` teslimi bekleyen istek değildir.
+  Konuşma detayı son tamamlanmış teslimin tipli hata kodunu ve güvenli
+  parametrelerini `terminal_error` ile taşır; assistant cevap/tur uydurulmaz.
+  Kaynak yetersizliği canlı akışta ve yeniden yüklemede Türkçe gösterilir,
+  tamamlanmış kaynak hatası tekrar model çağrısına yönlendirmez. Yeni soru
+  sorulabilir; gerçek yarım teslim aynı istek kimliğiyle kurtarılabilir.
+  Fixture modunun açık yeniden başlatma yolu korunur. Bu teslim düzeltmesi
+  SB001 kaynak/başlık/desteklenmeyen sonuç bulgularını kapatmaz.
+
+
+### 2026-10-31 — Görev 18 tamamlanmış hata politikası
+
+- **Canlı teslim ile hidrasyon eşitliği** (dar inceleme düzeltmesi; md. 25, 31):
+  kalıcı teslimde `error` + `done` tüm hata kodları için terminaldir. Yeniden
+  deneme gövdesi temizlenir; otomatik yeni istek veya model çağrısı başlatılmaz.
+  Kullanıcı yeni soru sorabilir. `done` gelmeyen kesinti ve bekleyen teslim aynı
+  istek kimliğiyle sürdürülür; fixture yeniden başlatma davranışı korunur.
+  SB001 kaynak/başlık/desteklenmeyen sonuç bulguları açık kalır.
+
+### 2026-11-09 — Görev 18 kapsamı
+
+- **Görev 18 bağlantı işi olarak kabul edilir** (Orhan): chat'in agent'a,
+  kalıcılığa ve geri bildirime bağlanması, teslim ve hata politikası. Kabul
+  kanıtı, boş KB ile gerçek model üzerinden dürüst kaynak yetersizliği yolu ve
+  entegrasyon testleridir. Onaylı kaynaklarla esaslı SB-001 cevabı (onaylı
+  kaynak kümesi, atıf ve başlık desteği, semantik eval) Görev 19'a taşınır.

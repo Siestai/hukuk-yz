@@ -116,6 +116,9 @@ class FixtureKb:
         ]
         return sorted(found, key=rank, reverse=True)[:limit]
 
+    async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
+        return await self.search(ref, categories=["statute"], as_of=as_of)
+
 
 @dataclass
 class CaseResult:

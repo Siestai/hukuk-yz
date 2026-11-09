@@ -287,3 +287,33 @@ Memory'deki `value` case anahtarıyla şifreli tutulur. `forget` ve case silme b
 - `valid_from` çıkarımı başarısız olduğunda varsayılan davranış: inceleme ekranına düşsün (öneri) / RG tarihini kullan.
 - Çalışma ve Toplum özetleri `internal_only` kalırsa inceleme ekranında gösterilsin mi? (Faydalı, ama kullanıcıya gitmemeli.)
 - Çok kiracılı KB: org'a özel kaynak (kendi TİS'i) ortak KB'ye mi, org scope'una mı? Öneri: `source.org_id` nullable; null = ortak.
+
+## Chat kalıcılığı (Görev 18, md. 25, 31)
+
+Migration 0016: `chat_conversation` kullanıcıya aittir; `chat_turn` sözleşmedeki
+Turn JSONB verisini, modu, trace_id ve süreyi saklar. Model/token/maliyet alanları
+terminal `done.usage` alanından alınır; sağlayıcı metrikleri gelmediğinde NULL kalır; sıfır maliyet uydurulmaz.
+`chat_feedback` tur ve kullanıcı FK'leriyle yorum, düzeltme, tür ve puanı saklar.
+Admin tüm konuşmaları okuyabilir ama yalnız konuşma sahibi mesaj gönderebilir; diğer roller yalnız kendi konuşmalarını görür.
+Yeni metin soruları UTC gününde kullanıcı başına sayılır; PostgreSQL kilidi eşzamanlı
+kota kontrolünü serileştirir. Netleştirme cevapları yeni soru sayılmaz.
+
+### Chat teslim kaydı (0017; Görev 18)
+
+`chat_conversation.delivery` nullable JSONB'dir. Son teslimin `body` alanı
+`MessageRequest` (kalıcı UUID `request_id` dahil), `status` alanı `pending` veya
+`completed`, tamamlandığında `events` alanı kaydedilmiş assistant sonucu ile
+terminal olaydır. Kullanıcı turu ve kota rezervasyonu aynı transaction'da bu
+kayıtla commit edilir; yeniden teslim aynı turu kullanır. API assistant sonucu olmayan
+isteği `pending_request` ile sahibine/admin'e döndürür; tamamlanmış ajan hatası
+yeniden yürütülmez, aynı hata makbuzu sunulur. Ajan, kendi checkpoint
+şemasında ayrı `delivery:<thread>:<request>` makbuzunu `started`/`completed` ve
+olaylarıyla tutar. `started` durumundaki belirsiz süreç kaybı tekrar graph
+çalıştırmaz; tamamlanmış makbuz yeniden sunulur. Bunlar kişisel konuşma
+verileridir, yayımlanmış KB sürümleri değildir.
+
+### Chat turu `request_id` (0018; Görev 18)
+
+`chat_turn.request_id` nullable UUID'dir: istemcinin teslim kimliği (idempotency anahtarı).
+Tur kimliği sunucuda üretilir; `(conversation_id, request_id)` kısmi benzersiz indekstir,
+böylece başka kullanıcının aynı `request_id` değeri çakışmaz ve varlığı sızmaz.

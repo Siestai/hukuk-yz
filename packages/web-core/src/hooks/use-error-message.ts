@@ -63,6 +63,10 @@ export function useErrorMessage() {
                 return t("invalid_response");
             case "not_found":
                 return t("not_found");
+            case "answer_not_verified":
+                return t("answer_not_verified");
+            case "chat_daily_limit":
+                return t("chat_daily_limit");
             case "chat_unavailable":
                 return t("chat_unavailable");
             case "chat_no_fixture":

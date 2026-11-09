@@ -107,6 +107,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Feedback */
+        get: operations["export_feedback_chat_feedback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chat/turns/{turn_id}/feedback": {
         parameters: {
             query?: never;
@@ -700,6 +717,8 @@ export interface components {
             footnotes: unknown[];
             /** Heading */
             heading: string | null;
+            /** Id */
+            id?: string | null;
             /** Text */
             text: string;
             /**
@@ -893,6 +912,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * Durable Delivery
+             * @default false
+             */
+            durable_delivery: boolean;
+            /**
              * Id
              * Format: uuid
              */
@@ -913,10 +937,17 @@ export interface components {
              */
             created_at: string;
             /**
+             * Durable Delivery
+             * @default false
+             */
+            durable_delivery: boolean;
+            /**
              * Id
              * Format: uuid
              */
             id: string;
+            pending_request?: components["schemas"]["MessageRequest"] | null;
+            terminal_error?: components["schemas"]["ErrorEvent"] | null;
             /** Title */
             title: string;
             /** Turns */
@@ -983,6 +1014,7 @@ export interface components {
              * @enum {string}
              */
             type: "done";
+            usage?: components["schemas"]["RunUsage"] | null;
         };
         /** DuplicateOut */
         DuplicateOut: {
@@ -1021,7 +1053,7 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "answer_not_verified" | "http_error" | "internal_error";
+        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_daily_limit" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "answer_not_verified" | "http_error" | "internal_error";
         /** ErrorEvent */
         ErrorEvent: {
             code: components["schemas"]["ErrorCode"];
@@ -1032,6 +1064,11 @@ export interface components {
             params: {
                 [key: string]: string | number;
             };
+            /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -1113,6 +1150,48 @@ export interface components {
              * Format: uuid
              */
             turn_id: string;
+        };
+        /**
+         * FeedbackExport
+         * @description Admin-only feedback export, including the submitting user's identity.
+         */
+        FeedbackExport: {
+            /**
+             * Comment
+             * @default
+             */
+            comment: string;
+            /**
+             * Correction
+             * @default
+             */
+            correction: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind?: ("wrong_source" | "wrong_conclusion" | "missing" | "unclear" | "other") | null;
+            /** Point Index */
+            point_index?: number | null;
+            /** Rating */
+            rating?: ("up" | "down") | null;
+            /**
+             * Turn Id
+             * Format: uuid
+             */
+            turn_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
         };
         /** FeedbackIn */
         FeedbackIn: {
@@ -1534,6 +1613,8 @@ export interface components {
              * @enum {string}
              */
             mode: "short" | "detailed" | "reasoned";
+            /** Request Id */
+            request_id?: string | null;
             /**
              * Skip
              * @default false
@@ -1818,6 +1899,19 @@ export interface components {
             /** Top Reasons */
             top_reasons: components["schemas"]["ReasonCount"][];
         };
+        /** RunUsage */
+        RunUsage: {
+            /** Cost */
+            cost?: number | null;
+            /** Input Tokens */
+            input_tokens: number;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Models */
+            models: string[];
+            /** Output Tokens */
+            output_tokens: number;
+        };
         /**
          * StatuteBulkApproveRequest
          * @description Same contract as `BulkApproveRequest`; the cursor is the id of the last article of the
@@ -2065,6 +2159,8 @@ export interface components {
             footnotes: unknown[];
             /** Heading */
             heading: string | null;
+            /** Id */
+            id?: string | null;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -2853,6 +2949,110 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    export_feedback_chat_feedback_get: {
+        parameters: {
+            query?: {
+                since?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackExport"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

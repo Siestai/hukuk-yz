@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import ColumnElement, and_, func, literal_column, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import Db, current_user
+from app.auth import Db, kb_reader
 from app.chunk_index import APPROVED_PARENTS, EXTRACTION, INDEXED_STATUSES, review_status
 from app.embeddings import Embedder, get_embedder
 from app.models.chunk import Chunk
@@ -37,7 +37,7 @@ from hukuk_models import KbCategory, KbCourtLevel, KbSearchMatch, KbSearchRespon
 
 logger = logging.getLogger("app")
 
-router = APIRouter(prefix="/kb", tags=["kb"], dependencies=[Depends(current_user)])
+router = APIRouter(prefix="/kb", tags=["kb"], dependencies=[Depends(kb_reader)])
 
 MATCHES_PER_RECORD = 3
 # Candidates per ranking: enough records after grouping, never more than the HNSW scan returns

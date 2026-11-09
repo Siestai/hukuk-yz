@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
+import anyio
 from fastapi import Depends, FastAPI, Header, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from langgraph.graph.state import CompiledStateGraph
@@ -31,6 +32,7 @@ from hukuk_models.chat import (
     DoneEvent,
     ErrorEvent,
     MessageRequest,
+    RunUsage,
 )
 
 logger = logging.getLogger("agent")
@@ -108,7 +110,16 @@ async def turn_events(graph: Graph, request: RunRequest, trace: Trace) -> AsyncI
             }
         },
     )
-    yield DoneEvent(trace_id=trace.trace_id)
+    yield DoneEvent(
+        trace_id=trace.trace_id,
+        usage=RunUsage(
+            models=list(dict.fromkeys(m for r in trace.records for m in r.models)),
+            input_tokens=trace.input_tokens,
+            output_tokens=trace.output_tokens,
+            cost=trace.cost,
+            latency_ms=int(trace.seconds * 1000),
+        ),
+    )
 
 
 async def run_events(graph: Graph, tracing: Tracing, request: RunRequest) -> AsyncIterator[Any]:
@@ -157,16 +168,117 @@ def create_app(
     async def unauthorized(request: Request, exc: Exception) -> JSONResponse:
         return _error(401, ErrorCode.unauthorized)
 
+    # Bound graph work independently of the checkpoint pool. A disconnected downstream
+    # cannot cancel a consumed resume; its terminal receipt is checkpointed for replay.
+    slots = asyncio.Semaphore(4)
+    threads: set[str] = set()
+
     @app.post("/run", dependencies=[Depends(require_service_key)], response_model=None)
     async def run(body: RunRequest, request: Request) -> StreamingResponse | JSONResponse:
         graph: Graph = request.app.state.graph
-        if body.text is None:
-            snapshot = await graph.aget_state({"configurable": {"thread_id": body.thread_id}})
-            if not any(task.interrupts for task in snapshot.tasks):
+        if slots.locked() or body.thread_id in threads:
+            return _error(503, ErrorCode.chat_unavailable)
+        await slots.acquire()
+        threads.add(body.thread_id)
+        connection = None
+        transferred = False
+        try:
+            if hasattr(request.app.state.db, "url"):
+                from psycopg import AsyncConnection
+
+                connection = await AsyncConnection.connect(
+                    request.app.state.db.url, autocommit=True
+                )
+                cursor = await connection.execute(
+                    "SELECT pg_try_advisory_lock(hashtextextended(%s, 20))", (body.thread_id,)
+                )
+                row = await cursor.fetchone()
+                if not row or not row[0]:
+                    return _error(503, ErrorCode.chat_unavailable)
+            config: Any = {"configurable": {"thread_id": body.thread_id}}
+            receipt_config: Any = {
+                "configurable": {
+                    "thread_id": "delivery:" + body.thread_id + ":" + str(body.request_id)
+                }
+            }
+            snapshot = await graph.aget_state(config)
+            receipt = (
+                (await graph.aget_state(receipt_config)).values.get("delivery")
+                if body.request_id
+                else None
+            )
+            wire = body.model_dump(mode="json")
+            if receipt:
+                if receipt["body"] != wire or receipt["status"] != "completed":
+                    # A process loss after consumption is deliberately not a second resume.
+                    return _error(409, ErrorCode.clarification_not_pending)
+            elif body.text is None and not any(task.interrupts for task in snapshot.tasks):
                 return _error(409, ErrorCode.clarification_not_pending)
-        stream = (sse(e) async for e in run_events(graph, request.app.state.tracing, body))
-        headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
-        return StreamingResponse(stream, media_type="text/event-stream", headers=headers)
+            if body.request_id and not receipt:
+                await graph.aupdate_state(
+                    receipt_config, {"delivery": {"body": wire, "status": "started"}}
+                )
+
+            queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+
+            async def produce() -> None:
+                with anyio.CancelScope(shield=True):
+                    try:
+                        if receipt:
+                            for event in receipt["events"]:
+                                queue.put_nowait(sse(ChatEvent.model_validate(event).root))
+                        else:
+                            saved = []
+                            async for event in run_events(graph, request.app.state.tracing, body):
+                                saved.append(ChatEvent(event).model_dump(mode="json"))
+                                # Persist the terminal receipt before delivering done.
+                                if event.type == "done" and body.request_id:
+                                    await graph.aupdate_state(
+                                        receipt_config,
+                                        {
+                                            "delivery": {
+                                                "body": wire,
+                                                "status": "completed",
+                                                "events": saved,
+                                            }
+                                        },
+                                    )
+                                queue.put_nowait(sse(event))
+                    finally:
+                        queue.put_nowait(None)
+
+            async def stream() -> AsyncIterator[bytes]:
+                while (event := await queue.get()) is not None:
+                    yield event
+
+            class DeliveryResponse(StreamingResponse):
+                async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+                    try:
+                        async with anyio.create_task_group() as group:
+                            group.start_soon(produce)
+                            await super().__call__(scope, receive, send)
+                    finally:
+                        with anyio.CancelScope(shield=True):
+                            if connection:
+                                await connection.close()
+                        threads.discard(body.thread_id)
+                        slots.release()
+
+            response = DeliveryResponse(
+                stream(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+            # Ownership of the lock and capacity passes to the stream generator.
+            transferred = True
+            return response
+        finally:
+            if not transferred:
+                with anyio.CancelScope(shield=True):
+                    if connection:
+                        await connection.close()
+                threads.discard(body.thread_id)
+                slots.release()
 
     @app.get("/healthz")
     async def healthz() -> HealthResponse:

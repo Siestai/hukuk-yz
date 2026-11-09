@@ -262,3 +262,55 @@ async def test_retrieve_failure_after_resume_cannot_be_resumed_again(
     )
     assert len(events(failed)[-1][1]["trace_id"]) == 32
     assert retry.status_code == 409
+
+
+async def test_delivery_replays_consumed_checkpoint_without_running_again(
+    client: httpx.AsyncClient,
+) -> None:
+    import uuid
+
+    thread = unique_thread()
+    first = await client.post(
+        "/run",
+        headers=KEY,
+        json={"thread_id": thread, "text": QUESTION, "request_id": str(uuid.uuid4())},
+    )
+    assert events(first)[-2][0] == "clarification"
+    body = {"thread_id": thread, "skip": True, "request_id": str(uuid.uuid4())}
+    result = await client.post("/run", headers=KEY, json=body)
+    assert events(result)[-2][0] == "answer"
+    replay = await client.post("/run", headers=KEY, json=body)
+    assert replay.status_code == 200
+    assert events(replay) == events(result)
+    changed = await client.post(
+        "/run", headers=KEY, json={**body, "skip": False, "text": "Different"}
+    )
+    assert changed.status_code == 409
+
+
+async def test_started_receipt_never_resumes_an_uncertain_consumed_request(
+    client: httpx.AsyncClient,
+) -> None:
+    import uuid
+
+    thread = unique_thread()
+    await client.post("/run", headers=KEY, json={"thread_id": thread, "text": QUESTION})
+    body = {
+        "thread_id": thread,
+        "skip": True,
+        "request_id": str(uuid.uuid4()),
+        "text": None,
+        "clarification_answers": None,
+        "mode": "short",
+    }
+    graph = client._transport.app.state.graph  # type: ignore[attr-defined]
+    before = await graph.aget_state({"configurable": {"thread_id": thread}})
+    await graph.aupdate_state(
+        {"configurable": {"thread_id": "delivery:" + thread + ":" + str(body["request_id"])}},
+        {"delivery": {"body": body, "status": "started"}},
+    )
+    response = await client.post("/run", headers=KEY, json=body)
+    assert response.status_code == 409
+    after = await graph.aget_state({"configurable": {"thread_id": thread}})
+    assert before.config == after.config
+    assert before.values == after.values

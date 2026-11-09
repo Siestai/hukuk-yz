@@ -6,13 +6,13 @@ from datetime import date
 
 from fastapi import APIRouter, Depends
 
-from app.auth import Db, current_user
+from app.auth import Db, kb_reader
 from app.errors import ApiError
 from app.kb import article_as_of, statute_is_published
 from hukuk_ingest.statutes.timeline import UNKNOWN_ARTICLE
 from hukuk_models import ArticleAsOf, ErrorCode
 
-router = APIRouter(prefix="/statutes", tags=["statutes"], dependencies=[Depends(current_user)])
+router = APIRouter(prefix="/statutes", tags=["statutes"], dependencies=[Depends(kb_reader)])
 
 # "gecici-4" / "ek-2" / "18-a" / "gecici-79-2" are accepted next to the canonical "Geçici 4" /
 # "Ek 2" / "18/A" / "Geçici 79 (2)"; the match is on the Turkish-lowercased text.

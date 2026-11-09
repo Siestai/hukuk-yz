@@ -14,10 +14,12 @@ from app import chat
 from app.auth import hash_password
 from app.chat import ChatStore, load_scenarios, open_store
 from app.db import make_engine
-from app.main import app
+from app.main import create_app
 from app.models.user import AppUser, UserRole
 from app.settings import Settings
 from hukuk_models.chat import Answer, AnswerEvent, ChatEvent, DoneEvent, ErrorEvent
+
+app = create_app(chat_backend="fixture")
 
 PASSWORD = "correct horse battery"
 FIXTURES = Path(__file__).parents[3] / "eval" / "fixtures"
@@ -124,6 +126,9 @@ async def test_complete_flow(client: httpx.AsyncClient, user: dict[str, str], ca
     detail = (await client.get(f"/chat/conversations/{conversation}", headers=user)).json()
     assert [t["role"] for t in detail["turns"]] == ["user", "assistant", "user", "assistant"]
     assert detail["title"] == raw["facts"]["title"]
+    assert detail["terminal_error"] is None
+    assert detail["pending_request"] is None
+    assert detail["durable_delivery"] is False
     listed = (await client.get("/chat/conversations", headers=user)).json()["items"]
     assert [c["id"] for c in listed] == [conversation]
 

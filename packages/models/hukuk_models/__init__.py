@@ -53,6 +53,7 @@ class ErrorCode(StrEnum):
     )
     file_processed = "file_processed"  # deleting a file the knowledge base has been built from
     invalid_date = "invalid_date"  # params: field
+    chat_daily_limit = "chat_daily_limit"
     chat_unavailable = "chat_unavailable"  # no chat backend is configured (CHAT_BACKEND)
     # the fixture backend knows only the hand-made questions of eval/fixtures
     chat_no_fixture = "chat_no_fixture"
@@ -308,6 +309,7 @@ ArticleStatus = Literal["found", "gap", "not_in_force", "unknown_article"]
 
 
 class ArticleVersionOut(BaseModel):
+    id: uuid.UUID | None = None
     text: str
     heading: str | None
     valid_from: date

@@ -25,4 +25,8 @@ Web'deki chat'in gerçek ajanla çalışması; konuşmalar, cevaplar ve geri bil
 
 - Lint/type/test yeşil (Python + web). Migration ileri/geri testli.
 - Yetki testleri: başka kullanıcının konuşması 404; `user` dashboard API'lerine 403.
-- Uçtan uca: gerçek LLM ile yerel yığında SB-001 soru → netleştirme → cevap → geri bildirim kaydı; DB'de turn + feedback satırları (çıktı PR'da).
+- Uçtan uca: gerçek LLM ile yerel yığında SB-001 soru → netleştirme → cevap (boş KB'de dürüst kaynak yetersizliği) → geri bildirim kaydı; DB'de turn + feedback satırları (çıktı PR'da).
+
+## Kapsam daraltma (2026-11-09)
+
+Görev 18 bağlantı işi olarak kabul edilir: kalıcılık, akış, teslim/hata politikası, geri bildirim ve entegrasyon. Onaylı kaynaklarla esaslı SB-001 cevabı (hangi kaynakların onaylı sayılacağı, atıf ve başlık desteği, semantik eval) Görev 19'a taşınır.

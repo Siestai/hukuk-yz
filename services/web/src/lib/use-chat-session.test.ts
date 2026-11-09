@@ -240,3 +240,144 @@ describe("useChatSession", () => {
         expect(result.current.turns.map((turn) => turn.role)).toEqual(["user"]);
     });
 });
+
+it.each([
+    { skip: true },
+    { clarification_answers: [{ question_id: "q1", value: "30+", unknown: false }] },
+])(
+    "retries durable delivery after reload with selected facts and its original identity: %j",
+    async (reply) => {
+        const pending = {
+            ...reply,
+            mode: "detailed",
+            request_id: "a5044bdb-ed04-4ccc-9957-a10673fe0648",
+        };
+        const initial = {
+            id: "c1",
+            durable_delivery: true,
+            pending_request: pending,
+            turns: [
+                { id: "question", role: "user", text: "original" },
+                { id: "clarify", role: "assistant", clarification: { questions: [] } },
+                {
+                    id: "reply",
+                    role: "user",
+                    skipped: "skip" in reply,
+                    clarification_answers:
+                        "clarification_answers" in reply ? reply.clarification_answers : null,
+                },
+            ],
+        } as unknown as ConversationDetail;
+        vi.mocked(sendMessage).mockImplementation(
+            finishing([
+                { type: "answer", answer: { headline: "x" } } as unknown as ChatEvent,
+                { type: "done", turn_id: "saved" } as ChatEvent,
+            ]),
+        );
+        const { result } = renderHook(() => useChatSession(initial, []));
+        expect(result.current.failure?.restart).toBe(false);
+        await act(async () => result.current.retry());
+        expect(vi.mocked(sendMessage).mock.calls[0]?.[1]).toEqual(pending);
+        expect(result.current.turns.filter((t) => t.role === "user")).toHaveLength(2);
+        expect(result.current.turns.at(-1)?.id).toBe("saved");
+    },
+);
+
+it.each(
+    ["answer_not_verified", "internal_error", "chat_unavailable", "upstream_unavailable"].flatMap(
+        (code) => [false, true].map((reload) => ({ code, reload })),
+    ),
+)(
+    "preserves completed durable error without retry: $code, reload=$reload",
+    async ({ code, reload }) => {
+        const error = {
+            type: "error",
+            code,
+            params: { reason: "no_verified_rows", count: 0 },
+        } as const;
+        const initial = {
+            id: "c1",
+            durable_delivery: true,
+            pending_request: null,
+            terminal_error: reload ? error : null,
+            turns: reload ? [{ id: "u1", role: "user", text: "soru" }] : [],
+        } as unknown as ConversationDetail;
+        vi.mocked(sendMessage).mockImplementation(
+            finishing([error as unknown as ChatEvent, { type: "done", turn_id: null }]),
+        );
+        const { result } = renderHook(() => useChatSession(initial, []));
+        if (!reload) await act(async () => result.current.send({ text: "soru" }, "short"));
+        expect(result.current.failure).toMatchObject({
+            code: error.code,
+            params: error.params,
+            retryable: false,
+        });
+        expect(result.current.turns.map((t) => t.role)).toEqual(["user"]);
+        expect(result.current.failure?.restart).toBe(false);
+        const calls = vi.mocked(sendMessage).mock.calls.length;
+        expect(calls).toBe(reload ? 0 : 1);
+        await act(async () => result.current.retry());
+        expect(sendMessage).toHaveBeenCalledTimes(calls);
+        await act(async () => result.current.send({ text: "yeni soru" }, "short"));
+        expect(sendMessage).toHaveBeenCalledTimes(calls + 1);
+        const newBody = vi.mocked(sendMessage).mock.calls.at(-1)?.[1];
+        expect(newBody).toMatchObject({ text: "yeni soru", mode: "short" });
+        expect(newBody?.request_id).toEqual(expect.any(String));
+        if (!reload)
+            expect(newBody?.request_id).not.toBe(
+                vi.mocked(sendMessage).mock.calls[0]?.[1].request_id,
+            );
+    },
+);
+
+it.each([false, true])(
+    "resumes interrupted durable error with the same request id, done=%s",
+    async (done) => {
+        const initial = {
+            id: "c1",
+            durable_delivery: true,
+            turns: [],
+        } as unknown as ConversationDetail;
+        vi.mocked(sendMessage)
+            .mockImplementationOnce(
+                finishing([
+                    { type: "error", code: "internal_error", params: {}, retryable: false },
+                    // A missing done is an interrupted delivery, even after an error event.
+                    ...(done ? [{ type: "done", turn_id: null } as ChatEvent] : []),
+                ]),
+            )
+            .mockImplementationOnce(finishing([{ type: "done", turn_id: null }]));
+        const { result } = renderHook(() => useChatSession(initial, []));
+        await act(async () => result.current.send({ text: "soru" }, "short"));
+        const original = vi.mocked(sendMessage).mock.calls[0]?.[1];
+        expect(original?.request_id).toEqual(expect.any(String));
+        expect(result.current.failure?.retryable).toBe(!done);
+        await act(async () => result.current.retry());
+        expect(sendMessage).toHaveBeenCalledTimes(done ? 1 : 2);
+        if (!done) expect(vi.mocked(sendMessage).mock.calls[1]?.[1]).toEqual(original);
+        expect(result.current.turns.map((turn) => turn.role)).toEqual(["user"]);
+    },
+);
+
+it("offers retry with the same request id after a transient bridge error the server marked retryable", async () => {
+    const initial = {
+        id: "c1",
+        durable_delivery: true,
+        turns: [],
+    } as unknown as ConversationDetail;
+    vi.mocked(sendMessage)
+        .mockImplementationOnce(
+            finishing([
+                { type: "error", code: "chat_unavailable", params: {}, retryable: true },
+                { type: "done", turn_id: null } as ChatEvent,
+            ]),
+        )
+        .mockImplementationOnce(finishing([{ type: "done", turn_id: null }]));
+    const { result } = renderHook(() => useChatSession(initial, []));
+    await act(async () => result.current.send({ text: "soru" }, "short"));
+    const original = vi.mocked(sendMessage).mock.calls[0]?.[1];
+    expect(result.current.failure).toMatchObject({ code: "chat_unavailable", retryable: true });
+    await act(async () => result.current.retry());
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(sendMessage).mock.calls[1]?.[1]).toEqual(original);
+});

@@ -6,6 +6,7 @@ from pydantic import SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+MIN_SERVICE_KEY_LENGTH = 16
 
 
 class Settings(BaseSettings):
@@ -52,13 +53,31 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     embedding_model: str = "text-embedding-3-large"
 
-    # The chat backend (task 15): "fixture" answers from the hand-made cases of `eval/fixtures`
-    # (kept in memory, no model); "none" answers /chat/* with 503. The real agent comes in task 17.
-    chat_backend: Literal["fixture", "none"] = "none"
+    # Chat: "agent" persists turns and calls the graph over HTTP; "fixture" keeps the
+    # in-memory UI scenarios. "none" disables conversation creation and model requests.
+    chat_backend: Literal["fixture", "agent", "none"] = "none"
     # Where the fixture backend reads its cases from; unset: `eval/fixtures` of the checkout.
+    agent_base_url: str = "http://agent:8000"
+    agent_service_key: SecretStr | None = None
+    kb_service_key: SecretStr | None = None
+    chat_daily_limit: int = 50
+    agent_timeout_seconds: float = 180.0
     chat_fixtures_dir: Path | None = None
     # Pause between the stream events of the fixture backend, so that a UI shows its live steps.
     chat_fixture_step_delay_seconds: float = 0.0
+
+    @field_validator("agent_service_key", "kb_service_key")
+    @classmethod
+    def _real_key(cls, key: SecretStr | None, info: ValidationInfo) -> SecretStr | None:
+        if key is None:
+            return key
+        value = key.get_secret_value()
+        if len(value) < MIN_SERVICE_KEY_LENGTH or value.lower().startswith("change"):
+            raise ValueError(
+                f"{(info.field_name or '').upper()} must be a real secret of at least "
+                f"{MIN_SERVICE_KEY_LENGTH} characters, not a placeholder"
+            )
+        return key
 
     @field_validator("archive_root", "file_store_root", "chat_fixtures_dir")
     @classmethod
@@ -71,6 +90,16 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+class ChatRouteSettings(BaseSettings):
+    """The chat backend alone, read when the app is built. Kept apart from `Settings` so that
+    building the app (and its OpenAPI schema) needs no DATABASE_URL. Same variable and values
+    as `Settings.chat_backend`."""
+
+    model_config = SettingsConfigDict(extra="ignore", env_ignore_empty=True)
+
+    chat_backend: Literal["fixture", "agent", "none"] = "none"
 
 
 class VerifySettings(BaseSettings):

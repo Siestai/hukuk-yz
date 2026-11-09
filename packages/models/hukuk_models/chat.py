@@ -303,6 +303,16 @@ class ErrorEvent(ChatModel):
     type: Literal["error"] = "error"
     code: ErrorCode
     params: dict[str, str | int] = {}
+    # True: the delivery is still pending on the server, so the same request can be sent again.
+    retryable: bool = False
+
+
+class RunUsage(ChatModel):
+    models: list[str]
+    input_tokens: Annotated[int, Field(ge=0)]
+    output_tokens: Annotated[int, Field(ge=0)]
+    cost: Annotated[float, Field(ge=0)] | None = None
+    latency_ms: Annotated[int, Field(ge=0)]
 
 
 class DoneEvent(ChatModel):
@@ -312,6 +322,7 @@ class DoneEvent(ChatModel):
     type: Literal["done"] = "done"
     turn_id: uuid.UUID | None = None
     trace_id: str | None = None
+    usage: RunUsage | None = None
 
 
 AnyChatEvent = StepEvent | FactsEvent | ClarificationEvent | AnswerEvent | ErrorEvent | DoneEvent
@@ -343,6 +354,7 @@ class MessageRequest(ChatModel):
     """A question (`text`), the answers to the open questions, or the choice to skip them. The
     mode is only the presentation the user has open."""
 
+    request_id: uuid.UUID | None = None
     text: Annotated[str, Field(min_length=1, max_length=4000)] | None = None
     clarification_answers: Annotated[list[ClarificationAnswer], Field(min_length=1)] | None = None
     skip: bool = False
@@ -388,6 +400,7 @@ class Turn(ChatModel):
 
 
 class Conversation(ChatModel):
+    durable_delivery: bool = False
     id: uuid.UUID
     # Empty until the first question is understood; then the title of the case facts.
     title: str
@@ -397,6 +410,9 @@ class Conversation(ChatModel):
 
 class ConversationDetail(Conversation):
     turns: list[Turn]
+    pending_request: MessageRequest | None = None
+    # Completed delivery failure; not an assistant turn or a request awaiting resume.
+    terminal_error: ErrorEvent | None = None
 
 
 class ConversationList(ChatModel):
@@ -423,3 +439,9 @@ class Feedback(FeedbackIn):
     id: uuid.UUID
     turn_id: uuid.UUID
     created_at: datetime
+
+
+class FeedbackExport(Feedback):
+    """Admin-only feedback export, including the submitting user's identity."""
+
+    user_id: uuid.UUID

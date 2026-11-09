@@ -10,7 +10,8 @@ from sqlalchemy import text
 
 from app.auth import router as auth_router
 from app.chat import open_store
-from app.chat import router as chat_router
+from app.chat import router as fixture_chat_router
+from app.chat_api import router as persistent_chat_router
 from app.db import make_engine
 from app.errors import ERROR_RESPONSES
 from app.errors import install as install_error_handlers
@@ -19,7 +20,7 @@ from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.review_statutes import router as review_statutes_router
 from app.search import router as search_router
-from app.settings import get_settings
+from app.settings import ChatRouteSettings, get_settings
 from app.statutes import router as statutes_router
 from hukuk_models import HealthResponse
 
@@ -44,18 +45,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await app.state.engine.dispose()
 
 
-app = FastAPI(title="hukuk-agent", lifespan=lifespan, responses=ERROR_RESPONSES)
-install_error_handlers(app)
-app.include_router(auth_router)
-app.include_router(files_router)
-app.include_router(chat_router)
-app.include_router(review_router)
-app.include_router(review_statutes_router)
-app.include_router(statutes_router)
-app.include_router(search_router)
-
-
-@app.middleware("http")
 async def request_id_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
@@ -69,12 +58,10 @@ async def request_id_middleware(
     return response
 
 
-@app.get("/healthz")
 async def healthz() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
-@app.get("/readyz")
 async def readyz(request: Request, response: Response) -> HealthResponse:
     try:
         async with asyncio.timeout(READYZ_TIMEOUT_SECONDS):
@@ -85,3 +72,28 @@ async def readyz(request: Request, response: Response) -> HealthResponse:
         response.status_code = 503
         return HealthResponse(status="unavailable")
     return HealthResponse(status="ok")
+
+
+def create_app(*, chat_backend: str | None = None) -> FastAPI:
+    application = FastAPI(title="hukuk-agent", lifespan=lifespan, responses=ERROR_RESPONSES)
+    install_error_handlers(application)
+    for router in (
+        auth_router,
+        files_router,
+        review_router,
+        review_statutes_router,
+        statutes_router,
+        search_router,
+    ):
+        application.include_router(router)
+    backend = chat_backend if chat_backend is not None else ChatRouteSettings().chat_backend
+    application.include_router(
+        fixture_chat_router if backend == "fixture" else persistent_chat_router
+    )
+    application.middleware("http")(request_id_middleware)
+    application.get("/healthz")(healthz)
+    application.get("/readyz")(readyz)
+    return application
+
+
+app = create_app()

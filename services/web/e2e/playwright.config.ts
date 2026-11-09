@@ -8,6 +8,7 @@ const channel = process.env.E2E_CHANNEL || undefined;
 
 export default defineConfig({
     testDir: ".",
+    testMatch: process.env.E2E_BACKEND === "agent" ? "agent.spec.ts" : /^(?!agent).*\.spec\.ts$/,
     outputDir: ".output/results",
     // One stack, one in-memory chat store: the specs run one after another.
     workers: 1,

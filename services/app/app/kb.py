@@ -896,6 +896,7 @@ def _covers(start: date | None, end: date | None, day: date) -> bool:
 
 def _version_dict(v: StatuteArticleVersion) -> dict[str, Any]:
     return {
+        "id": str(v.id),
         "text": v.text,
         "heading": v.heading,
         "valid_from": v.valid_from.isoformat(),
@@ -925,6 +926,7 @@ async def article_as_of(
 
     - only published data counts: no live version rows -> `{status: unknown_article, reason:
       "not_published"}`, whether the article is unknown or merely not approved yet;
+    - `version.id` is the row identity (the API's citation key);
     - `version.amending_ref` is the label of `format_amending_ref` (the notes themselves are in
       `version.evidence["amendments"]`).
 

@@ -98,3 +98,46 @@ describe("Thread", () => {
             expect(screen.getByText(/bilgileri tekrar girebilirsiniz/)).toBeInTheDocument();
     });
 });
+
+it("shows honest source insufficiency without connection recovery", () => {
+    renderWithIntl(
+        <Thread
+            turns={[]}
+            live={null}
+            partial={null}
+            failure={{ code: "answer_not_verified", params: {}, retryable: false }}
+            mode="short"
+            onSend={vi.fn()}
+            onRetry={vi.fn()}
+            onOpenCitation={vi.fn()}
+        />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+        "Kaynaklar doğrulanmış bir yanıt oluşturmak için yetersiz.",
+    );
+    expect(screen.queryByText(/Bağlantı koptu/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tekrar dene" })).not.toBeInTheDocument();
+});
+
+it.each(["internal_error", "chat_unavailable", "upstream_unavailable"])(
+    "hides recovery for completed error %s",
+    (code) => {
+        renderWithIntl(
+            <Thread
+                turns={[]}
+                live={null}
+                partial={null}
+                failure={{ code, params: {}, retryable: false }}
+                mode="short"
+                onSend={vi.fn()}
+                onRetry={vi.fn()}
+                onOpenCitation={vi.fn()}
+            />,
+        );
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Tekrar dene" })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: "Netleştirmeyi yeniden başlat" }),
+        ).not.toBeInTheDocument();
+    },
+);

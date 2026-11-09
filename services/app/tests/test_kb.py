@@ -605,6 +605,9 @@ async def test_the_database_query_mirrors_the_pure_as_of(
             for day in sorted(_probe_dates(article)):
                 expected = _db_shape(statute_as_of(statute_record, article["article_no"], day))
                 actual = await article_as_of(session, "4857", article["article_no"], day)
+                if "version" in actual:
+                    # the row identity is API-only; the pure timeline has none
+                    assert actual["version"].pop("id")
                 assert actual == expected, (article["article_no"], day)
                 seen.add(actual["status"])
                 compared.add((article["article_no"], day))

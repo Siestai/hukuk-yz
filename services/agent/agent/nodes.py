@@ -60,6 +60,7 @@ class State(TypedDict, total=False):
     """The graph state: JSON only, so that the Postgres checkpoint can hold it. `facts` and
     `topic` stay across the turns of a thread; the rest is made anew for every question."""
 
+    delivery: dict[str, Any]
     question: str
     topic: str
     facts: dict[str, Any]
@@ -100,9 +101,12 @@ async def _read_ref(kb: KbClient, ref: SourceRef, as_of: date) -> ReadSource | N
     paragraphs of the article the search returns with it; None when the knowledge base does not
     have it."""
     # The künye of the article, so that the hit holds its other paragraphs too.
-    hits = await kb.search(
-        split_ref(ref.ref)[0], categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT
-    )
+    if ref.category == "statute":
+        hits = await kb.read_article(split_ref(ref.ref)[0], as_of)
+    else:
+        hits = await kb.search(
+            split_ref(ref.ref)[0], categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT
+        )
     return next(
         (
             s

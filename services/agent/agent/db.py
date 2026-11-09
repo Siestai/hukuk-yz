@@ -21,6 +21,7 @@ def psycopg_url(database_url: str) -> str:
 
 @dataclass(frozen=True)
 class Database:
+    url: str
     pool: AsyncConnectionPool
     saver: AsyncPostgresSaver
 
@@ -47,4 +48,4 @@ async def open_database(database_url: str) -> AsyncIterator[Database]:
     async with pool:
         saver = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
         await saver.setup()
-        yield Database(pool, saver)
+        yield Database(url, pool, saver)

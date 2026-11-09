@@ -54,6 +54,8 @@ services:
       FILE_STORE_ROOT: /filestore
       # Chat API (task 15): "fixture" plays the hand-made cases, "none" answers 503.
       CHAT_BACKEND: ${CHAT_BACKEND:-none}
+      AGENT_BASE_URL: ${AGENT_BASE_URL:-http://agent:8000}
+      CHAT_DAILY_LIMIT: ${CHAT_DAILY_LIMIT:-50}
     volumes:
       - ${ARCHIVE_HOST_DIR:-../../data/drive}:/archive:ro
       - filestore:/filestore

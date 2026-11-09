@@ -38,7 +38,9 @@
     "not_found": "Kayıt bulunamadı.",
     "chat_unavailable": "Sohbet şu an kullanılamıyor. Biraz sonra tekrar deneyin.",
     "chat_no_fixture": "Bu soru deneme sürümünde hazır değil. Hazır sorulardan birini sorun.",
-    "clarification_not_pending": "Bu soru artık cevap beklemiyor. Yeni bir soru sorun."
+    "clarification_not_pending": "Bu soru artık cevap beklemiyor. Yeni bir soru sorun.",
+    "answer_not_verified": "Kaynaklar doğrulanmış bir yanıt oluşturmak için yetersiz.",
+    "chat_daily_limit": "Günlük soru sınırına ulaştınız. Yarın tekrar deneyebilirsiniz."
   },
   "errorPage": {
     "title": "Bir sorun oluştu",
