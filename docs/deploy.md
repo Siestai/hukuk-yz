@@ -186,7 +186,7 @@ elle doğrulanmalıdır. Aktarım komutu ve yedek komutu da sunucuda denenmedi (
 `CHAT_BACKEND=agent`, `AGENT_BASE_URL=http://agent:8000`,
 `CHAT_DAILY_LIMIT=50`, `AGENT_TIMEOUT_SECONDS=180` app ayarlarıdır.
 `AGENT_SERVICE_KEY` app → agent, `KB_SERVICE_KEY` agent → app içindir;
-aynı değerleri ilgili iki servise secret olarak verin, repoya yazmayın.
+aynı değerleri ilgili iki servise secret olarak verin, repoya yazmayın; en az 16 karakter olmalı, `change` ile başlayan yer tutucular app ve agent açılışında reddedilir.
 Agent anahtarı en az 16 karakter ve gerçek rastgele değer olmalıdır.
 Agent'ın portu dışarı açılmaz; app tek chat veri yazarıdır, agent checkpoint'leri
 aynı Postgres'in `agent` şemasında kalır. Önce `alembic upgrade head` çalışır.

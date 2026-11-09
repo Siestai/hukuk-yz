@@ -86,7 +86,7 @@ def create_app(*, chat_backend: str | None = None) -> FastAPI:
         search_router,
     ):
         application.include_router(router)
-    backend = chat_backend if chat_backend is not None else os.environ.get("CHAT_BACKEND", "none")
+    backend = chat_backend if chat_backend is not None else get_settings().chat_backend
     application.include_router(
         fixture_chat_router if backend == "fixture" else persistent_chat_router
     )

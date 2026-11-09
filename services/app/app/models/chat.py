@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index
+from sqlalchemy import CheckConstraint, ForeignKey, Index, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,8 +26,17 @@ class ChatTurn(UuidPkMixin, Base):
         CheckConstraint("role IN ('user', 'assistant')", name="role"),
         CheckConstraint("mode IN ('short', 'detailed', 'reasoned')", name="mode"),
         Index("ix_chat_turn_conversation_created", "conversation_id", "created_at"),
+        Index(
+            "uq_chat_turn_conversation_request",
+            "conversation_id",
+            "request_id",
+            unique=True,
+            postgresql_where=text("request_id IS NOT NULL"),
+        ),
     )
     conversation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("chat_conversation.id"))
+    # The client's delivery id of a user turn (idempotency key); never the primary key.
+    request_id: Mapped[uuid.UUID | None]
     role: Mapped[str]
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
     mode: Mapped[str]

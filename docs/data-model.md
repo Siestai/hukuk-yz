@@ -294,7 +294,7 @@ Migration 0016: `chat_conversation` kullanıcıya aittir; `chat_turn` sözleşme
 Turn JSONB verisini, modu, trace_id ve süreyi saklar. Model/token/maliyet alanları
 terminal `done.usage` alanından alınır; sağlayıcı metrikleri gelmediğinde NULL kalır; sıfır maliyet uydurulmaz.
 `chat_feedback` tur ve kullanıcı FK'leriyle yorum, düzeltme, tür ve puanı saklar.
-Admin tüm konuşmaları okuyabilir; diğer roller yalnız kendi konuşmalarını görür.
+Admin tüm konuşmaları okuyabilir ama yalnız konuşma sahibi mesaj gönderebilir; diğer roller yalnız kendi konuşmalarını görür.
 Yeni metin soruları UTC gününde kullanıcı başına sayılır; PostgreSQL kilidi eşzamanlı
 kota kontrolünü serileştirir. Netleştirme cevapları yeni soru sayılmaz.
 
@@ -311,3 +311,9 @@ yeniden yürütülmez, aynı hata makbuzu sunulur. Ajan, kendi checkpoint
 olaylarıyla tutar. `started` durumundaki belirsiz süreç kaybı tekrar graph
 çalıştırmaz; tamamlanmış makbuz yeniden sunulur. Bunlar kişisel konuşma
 verileridir, yayımlanmış KB sürümleri değildir.
+
+### Chat turu `request_id` (0018; Görev 18)
+
+`chat_turn.request_id` nullable UUID'dir: istemcinin teslim kimliği (idempotency anahtarı).
+Tur kimliği sunucuda üretilir; `(conversation_id, request_id)` kısmi benzersiz indekstir,
+böylece başka kullanıcının aynı `request_id` değeri çakışmaz ve varlığı sızmaz.

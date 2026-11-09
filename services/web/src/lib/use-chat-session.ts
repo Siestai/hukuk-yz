@@ -113,9 +113,12 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 const turn = toTurn(current, new Date().toISOString());
                 if (turn) setTurns((previous) => [...previous, turn]);
                 if (current.error) {
+                    // A durable delivery says itself whether it is still pending on the server.
                     const terminalError =
                         current.finished &&
-                        (durableDelivery || current.error.code === "answer_not_verified");
+                        (durableDelivery
+                            ? !current.error.retryable
+                            : current.error.code === "answer_not_verified");
                     setFailure({ ...current.error, retryable: !terminalError });
                     if (terminalError) lastBody.current = null;
                 } else if (!current.finished)

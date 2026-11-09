@@ -10,7 +10,7 @@ from typing import Annotated, Any
 
 import anyio
 import httpx
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -82,9 +82,12 @@ def record(row: ChatConversation) -> Conversation:
     )
 
 
-async def owned(db: AsyncSession, id: uuid.UUID, user: AppUser) -> ChatConversation:
+async def owned(
+    db: AsyncSession, id: uuid.UUID, user: AppUser, *, write: bool = False
+) -> ChatConversation:
+    """The conversation of `user`; an admin may read the others', never write into them."""
     row = await db.get(ChatConversation, id)
-    if row is None or (row.user_id != user.id and user.role != UserRole.admin):
+    if row is None or (row.user_id != user.id and (write or user.role != UserRole.admin)):
         raise ApiError(404, ErrorCode.not_found)
     return row
 
@@ -145,11 +148,13 @@ def save_turn(
     mode: str,
     latency_ms: int | None = None,
     usage: RunUsage | None = None,
+    request_id: uuid.UUID | None = None,
 ) -> None:
     db.add(
         ChatTurn(
             id=turn.id,
             conversation_id=conversation_id,
+            request_id=request_id,
             role=turn.role,
             payload=turn.model_dump(mode="json"),
             mode=mode,
@@ -237,7 +242,8 @@ async def bridge(
     except Exception as exc:
         logging.getLogger("app").error("chat delivery failed: %s", type(exc).__name__)
         await db.rollback()
-        yield _sse(ErrorEvent(code=ErrorCode.chat_unavailable))
+        # The delivery stays pending: the same request can be resumed.
+        yield _sse(ErrorEvent(code=ErrorCode.chat_unavailable, retryable=True))
         yield _sse(DoneEvent())
     finally:
         # Session advisory lock spans commits and streaming, preventing overlapping graph resumes.
@@ -293,7 +299,7 @@ async def post_message(
     db: PinnedDb,
     settings: Config,
 ) -> EventStreamResponse:
-    conv = await owned(db, conversation_id, user)
+    conv = await owned(db, conversation_id, user, write=True)
     if settings.chat_backend != "agent" or settings.agent_service_key is None:
         raise ApiError(503, ErrorCode.chat_unavailable)
     # Pin the connection while the session-level lock is held (commits must not return it to pool).
@@ -322,7 +328,11 @@ async def post_message(
             if delivery["status"] == "completed":
                 return EventStreamResponse(replay_events(delivery["events"]))
             return DeliveryResponse(db, conv, saved, settings)
-        if body.request_id is not None and await db.get(ChatTurn, body.request_id) is not None:
+        if body.request_id is not None and await db.scalar(
+            select(ChatTurn.id).where(
+                ChatTurn.conversation_id == conv.id, ChatTurn.request_id == body.request_id
+            )
+        ):
             # An older consumed delivery cannot become the input of a newer interrupt.
             raise ApiError(409, ErrorCode.clarification_not_pending)
         if delivery and delivery["status"] != "completed" and body.text is None:
@@ -364,14 +374,14 @@ async def post_message(
         body = body.model_copy(update={"request_id": body.request_id or uuid.uuid4()})
         conv.delivery = {"body": body.model_dump(mode="json"), "status": "pending"}
         turn = Turn(
-            id=body.request_id,
+            id=uuid.uuid4(),
             role="user",
             created_at=_now(),
             text=body.text,
             clarification_answers=body.clarification_answers,
             skipped=body.skip,
         )
-        save_turn(db, conv.id, turn, body.mode)
+        save_turn(db, conv.id, turn, body.mode, request_id=body.request_id)
         conv.updated_at = turn.created_at
         await db.commit()
     except BaseException:
@@ -409,8 +419,10 @@ async def post_feedback(
 
 
 @router.get("/feedback", dependencies=[Depends(require_role("admin"))])
-async def export_feedback(db: Db, since: datetime | None = None) -> list[FeedbackExport]:
-    query = select(ChatFeedback).order_by(ChatFeedback.created_at, ChatFeedback.id)
+async def export_feedback(
+    db: Db, since: datetime | None = None, limit: Annotated[int, Query(ge=1, le=5000)] = 1000
+) -> list[FeedbackExport]:
+    query = select(ChatFeedback).order_by(ChatFeedback.created_at, ChatFeedback.id).limit(limit)
     if since is not None:
         since = since.replace(tzinfo=UTC) if since.tzinfo is None else since
         query = query.where(ChatFeedback.created_at >= since)

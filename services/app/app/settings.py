@@ -6,6 +6,7 @@ from pydantic import SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+MIN_SERVICE_KEY_LENGTH = 16
 
 
 class Settings(BaseSettings):
@@ -64,6 +65,19 @@ class Settings(BaseSettings):
     chat_fixtures_dir: Path | None = None
     # Pause between the stream events of the fixture backend, so that a UI shows its live steps.
     chat_fixture_step_delay_seconds: float = 0.0
+
+    @field_validator("agent_service_key", "kb_service_key")
+    @classmethod
+    def _real_key(cls, key: SecretStr | None, info: ValidationInfo) -> SecretStr | None:
+        if key is None:
+            return key
+        value = key.get_secret_value()
+        if len(value) < MIN_SERVICE_KEY_LENGTH or value.lower().startswith("change"):
+            raise ValueError(
+                f"{(info.field_name or '').upper()} must be a real secret of at least "
+                f"{MIN_SERVICE_KEY_LENGTH} characters, not a placeholder"
+            )
+        return key
 
     @field_validator("archive_root", "file_store_root", "chat_fixtures_dir")
     @classmethod

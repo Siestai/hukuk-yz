@@ -40,6 +40,24 @@ async def _table_names(engine: AsyncEngine) -> set[str]:
         return {row[0] for row in rows}
 
 
+def _turn_columns(url: str) -> set[str]:
+    async def run() -> set[str]:
+        engine = make_engine(url)
+        try:
+            async with engine.connect() as connection:
+                rows = await connection.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'chat_turn'"
+                    )
+                )
+                return {row[0] for row in rows}
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(run())
+
+
 def _tables(url: str) -> set[str]:
     async def run() -> set[str]:
         engine = make_engine(url)
@@ -564,6 +582,51 @@ def test_chat_migration_round_trip(alembic_config: Config, database_url: str) ->
     assert not expected & _tables(database_url)
     command.upgrade(alembic_config, "head")
     assert expected <= _tables(database_url)
+
+
+def test_chat_turn_request_id_migration_round_trip(
+    alembic_config: Config, database_url: str
+) -> None:
+    command.upgrade(alembic_config, "head")
+    assert "request_id" in _turn_columns(database_url)
+    command.downgrade(alembic_config, "0017")
+    assert "request_id" not in _turn_columns(database_url)
+    command.upgrade(alembic_config, "head")
+    assert "request_id" in _turn_columns(database_url)
+
+
+async def test_chat_turn_request_id_is_unique_within_a_conversation(
+    conn: AsyncConnection,
+) -> None:
+    user_id, request_id = uuid.uuid4(), uuid.uuid4()
+    first, second = uuid.uuid4(), uuid.uuid4()
+    await conn.execute(
+        text(
+            "INSERT INTO app_user (id,email,display_name,role,password_hash) "
+            "VALUES (:id,'chat-request@example.test','Synthetic','user','x')"
+        ),
+        {"id": user_id},
+    )
+    for conversation_id in (first, second):
+        await conn.execute(
+            text(
+                "INSERT INTO chat_conversation (id,user_id,title,created_at,updated_at) "
+                "VALUES (:id,:user,'',now(),now())"
+            ),
+            {"id": conversation_id, "user": user_id},
+        )
+    insert = text(
+        "INSERT INTO chat_turn (conversation_id,request_id,role,mode,payload,created_at) "
+        "VALUES (:conversation,:request,'user','short','{}',now())"
+    )
+    for conversation_id in (first, second):
+        await conn.execute(insert, {"conversation": conversation_id, "request": request_id})
+    for _ in range(2):  # no request id: any number of turns
+        await conn.execute(insert, {"conversation": first, "request": None})
+    async with conn.begin_nested() as savepoint:
+        with pytest.raises(IntegrityError):
+            await conn.execute(insert, {"conversation": first, "request": request_id})
+        await savepoint.rollback()
 
 
 async def test_chat_constraints_reject_invalid_rows(conn: AsyncConnection) -> None:

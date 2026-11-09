@@ -10,7 +10,7 @@ from pydantic import SecretStr
 from agent.kb import HttpKbClient, KbUnavailable
 
 BODY = {
-    "items": [
+    "results": [
         {
             "source_id": "statute:4857:m18",
             "category": "statute",
@@ -26,7 +26,7 @@ BODY = {
                 {"chunk_id": "c2", "text": None},
             ],
         }
-    ]
+    ],
 }
 
 
@@ -61,7 +61,7 @@ async def test_no_filter_is_sent_when_none_is_given() -> None:
 
     def handle(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(200, json={"items": []})
+        return httpx.Response(200, json={"results": []})
 
     assert await client(httpx.MockTransport(handle)).search("q") == []
     assert set(seen[0].url.params) == {"q", "limit"}
@@ -82,15 +82,6 @@ async def test_a_failure_or_an_unexpected_answer_is_kb_unavailable(
 
     with pytest.raises(KbUnavailable):
         await kb.search("q")
-
-
-async def test_real_search_contract_uses_results() -> None:
-    body = {"mode": "fulltext", "results": BODY["items"]}
-    hits = await client(httpx.MockTransport(lambda request: httpx.Response(200, json=body))).search(
-        "q"
-    )
-    assert hits[0].ref == "4857 m.18"
-    assert not hits[0].complete
 
 
 async def test_full_article_read_has_neighboring_paragraphs_and_stable_version_id() -> None:
@@ -150,7 +141,7 @@ async def test_missing_article_never_falls_back_to_search_excerpts(body: dict[st
 
 async def test_search_uses_read_unit_identity_instead_of_collapsing_articles() -> None:
     a = {
-        **BODY["items"][0],
+        **BODY["results"][0],
         "source_id": "same-statute",
         "parent_id": "article-18",
         "version_id": "version-18",

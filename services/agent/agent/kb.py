@@ -5,12 +5,14 @@ matching passages (`matches`); a passage of an `internal_only` chunk comes witho
 be read.
 """
 
+import re
 from collections.abc import Sequence
 from datetime import date
 from typing import Protocol
+from urllib.parse import quote
 
 import httpx
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from hukuk_models.chat import CitationCategory, ReviewStatus, Verification
 
@@ -49,7 +51,7 @@ class KbHit(BaseModel):
 class KbSearchResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    items: list[KbHit] = Field(validation_alias=AliasChoices("results", "items"))
+    items: list[KbHit] = Field(validation_alias="results")
 
 
 class KbClient(Protocol):
@@ -61,6 +63,8 @@ class KbClient(Protocol):
         as_of: date | None = None,
         limit: int = 10,
     ) -> list[KbHit]: ...
+
+    async def read_article(self, ref: str, as_of: date) -> list[KbHit]: ...
 
 
 class HttpKbClient:
@@ -105,16 +109,14 @@ class HttpKbClient:
             raise KbUnavailable(str(exc)) from exc
 
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
-        import re
-        from urllib.parse import quote
-
         match = re.fullmatch(r"(\d+) m\.(.+)", ref)
         if match is None:
             return []
         number, article = match.groups()
+        # The route takes the number as a path: a '/' ("18/A") stays a separator, not %2F.
         try:
             response = await self._http.get(
-                f"/statutes/{number}/articles/{quote(article, safe='')}",
+                f"/statutes/{number}/articles/{quote(article, safe='/')}",
                 params={"as_of": as_of.isoformat()},
             )
             if response.status_code == 404:

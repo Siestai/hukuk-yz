@@ -138,6 +138,9 @@ class FakeKb:
             )
         ][:limit]
 
+    async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
+        return await self.search(ref, categories=["statute"], as_of=as_of)
+
 
 class FailingKb:
     """A knowledge base whose every search raises `error`."""
@@ -153,6 +156,9 @@ class FailingKb:
         as_of: date | None = None,
         limit: int = 10,
     ) -> list[KbHit]:
+        raise self.error
+
+    async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
         raise self.error
 
 

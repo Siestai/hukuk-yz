@@ -303,7 +303,7 @@ it.each(
             turns: reload ? [{ id: "u1", role: "user", text: "soru" }] : [],
         } as unknown as ConversationDetail;
         vi.mocked(sendMessage).mockImplementation(
-            finishing([error as ChatEvent, { type: "done", turn_id: null }]),
+            finishing([error as unknown as ChatEvent, { type: "done", turn_id: null }]),
         );
         const { result } = renderHook(() => useChatSession(initial, []));
         if (!reload) await act(async () => result.current.send({ text: "soru" }, "short"));
@@ -341,7 +341,7 @@ it.each([false, true])(
         vi.mocked(sendMessage)
             .mockImplementationOnce(
                 finishing([
-                    { type: "error", code: "internal_error", params: {} },
+                    { type: "error", code: "internal_error", params: {}, retryable: false },
                     // A missing done is an interrupted delivery, even after an error event.
                     ...(done ? [{ type: "done", turn_id: null } as ChatEvent] : []),
                 ]),
@@ -358,3 +358,26 @@ it.each([false, true])(
         expect(result.current.turns.map((turn) => turn.role)).toEqual(["user"]);
     },
 );
+
+it("offers retry with the same request id after a transient bridge error the server marked retryable", async () => {
+    const initial = {
+        id: "c1",
+        durable_delivery: true,
+        turns: [],
+    } as unknown as ConversationDetail;
+    vi.mocked(sendMessage)
+        .mockImplementationOnce(
+            finishing([
+                { type: "error", code: "chat_unavailable", params: {}, retryable: true },
+                { type: "done", turn_id: null } as ChatEvent,
+            ]),
+        )
+        .mockImplementationOnce(finishing([{ type: "done", turn_id: null }]));
+    const { result } = renderHook(() => useChatSession(initial, []));
+    await act(async () => result.current.send({ text: "soru" }, "short"));
+    const original = vi.mocked(sendMessage).mock.calls[0]?.[1];
+    expect(result.current.failure).toMatchObject({ code: "chat_unavailable", retryable: true });
+    await act(async () => result.current.retry());
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(sendMessage).mock.calls[1]?.[1]).toEqual(original);
+});

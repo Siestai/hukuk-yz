@@ -303,6 +303,8 @@ class ErrorEvent(ChatModel):
     type: Literal["error"] = "error"
     code: ErrorCode
     params: dict[str, str | int] = {}
+    # True: the delivery is still pending on the server, so the same request can be sent again.
+    retryable: bool = False
 
 
 class RunUsage(ChatModel):

@@ -10,18 +10,22 @@ has none and skips it. Run it with
 import os
 import uuid
 from collections.abc import AsyncIterator
+from datetime import date
 from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from agent.kb import HttpKbClient
 from app.auth import hash_password
 from app.db import make_engine
 from app.loaders import statutes as statute_loader
 from app.loaders.statutes_report import StatuteCounts
 from app.main import app
 from app.models.user import AppUser, UserRole
+from app.settings import Settings, get_settings
 from app.statutes import normalize_article_no
 from hukuk_ingest.statutes.golden import check_golden, load_golden
 from hukuk_models import Band
@@ -289,25 +293,69 @@ async def test_service_key_reads_full_published_article_without_session(
     statutes_published: dict[str, uuid.UUID],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from pydantic import SecretStr
-
-    from app.settings import Settings, get_settings
-
     original = get_settings()
     configured = Settings.model_validate(
-        {**original.model_dump(), "kb_service_key": SecretStr("test-kb-key-18")}
+        {**original.model_dump(), "kb_service_key": SecretStr("test-kb-key-for-task-18")}
     )
     app.dependency_overrides[get_settings] = lambda: configured
     try:
         path = "/statutes/4857/articles/18?as_of=2020-01-01"
         assert (await client.get(path)).status_code == 401
         assert (await client.get(path, headers={"X-Service-Key": "wrong"})).status_code == 401
-        response = await client.get(path, headers={"X-Service-Key": "test-kb-key-18"})
+        response = await client.get(path, headers={"X-Service-Key": "test-kb-key-for-task-18"})
         assert response.status_code == 200
         assert response.json()["version"]["text"] == "Madde 18 yeni metin."
         assert uuid.UUID(response.json()["version"]["id"])
         assert (
-            await client.get("/review/decisions", headers={"X-Service-Key": "test-kb-key-18"})
+            await client.get(
+                "/review/decisions", headers={"X-Service-Key": "test-kb-key-for-task-18"}
+            )
         ).status_code == 401
     finally:
         app.dependency_overrides.pop(get_settings, None)
+
+
+class _Recording(httpx.AsyncBaseTransport):
+    """The app over ASGI, remembering what the client asked and how the route answered."""
+
+    def __init__(self) -> None:
+        self.asgi = httpx.ASGITransport(app=app)
+        self.seen: list[tuple[str, int]] = []
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        response = await self.asgi.handle_async_request(request)
+        self.seen.append((request.url.raw_path.decode(), response.status_code))
+        return response
+
+
+@pytest.mark.parametrize(
+    ("article", "path", "found"),
+    [
+        ("Geçici 1", "/statutes/4857/articles/Ge%C3%A7ici%201", True),
+        ("18/A", "/statutes/4857/articles/18/A", False),
+        ("Geçici 79 (2)", "/statutes/4857/articles/Ge%C3%A7ici%2079%20%282%29", False),
+    ],
+)
+async def test_the_agent_client_reaches_the_route_with_any_article_number(
+    client: httpx.AsyncClient,
+    statutes_published: dict[str, uuid.UUID],
+    article: str,
+    path: str,
+    found: bool,
+) -> None:
+    configured = Settings.model_validate(
+        {**get_settings().model_dump(), "kb_service_key": SecretStr("test-kb-key-for-task-18")}
+    )
+    app.dependency_overrides[get_settings] = lambda: configured
+    transport = _Recording()
+    kb = HttpKbClient(
+        "https://test", SecretStr("test-kb-key-for-task-18"), 5.0, transport=transport
+    )
+    try:
+        hits = await kb.read_article(f"4857 m.{article}", date(2009, 12, 31))
+    finally:
+        await kb.aclose()
+        app.dependency_overrides.pop(get_settings, None)
+    # 200 even for an article that is not published: the route took the number, not a 404 miss
+    assert transport.seen == [(f"{path}?as_of=2009-12-31", 200)]
+    assert bool(hits) is found

@@ -109,6 +109,9 @@ async def test_ownership_admin_feedback_and_restart(stack: Any, users_factory: F
     ).status_code == 404
     other.role = UserRole.admin
     assert (await client.get(f"/chat/conversations/{id}")).status_code == 200
+    assert (
+        await client.post(f"/chat/conversations/{id}/messages", json={"text": "q"})
+    ).status_code == 404
     exported = (await client.get("/chat/feedback?since=2020-01-01T00:00:00Z")).json()
     assert exported[0]["id"] == feedback.json()["id"]
     await app.state.engine.dispose()
@@ -703,3 +706,33 @@ async def test_completed_terminal_error_readback_and_duplicate_replay(
         await client.post(f"/chat/conversations/{id}/messages", json={"text": "New"})
     ).status_code == 200
     assert len(calls) == 2
+
+
+async def test_request_id_is_an_idempotency_key_not_a_turn_id(
+    stack: Any, users_factory: Factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, user, other, settings, app = stack
+    settings.chat_daily_limit = 10
+    request_id = uuid.uuid4()
+    body = {"text": "Question", "request_id": str(request_id)}
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda **kwargs: real_client(
+            transport=httpx.MockTransport(lambda request: httpx.Response(503))
+        ),
+    )
+    mine = (await client.post("/chat/conversations")).json()["id"]
+    assert (await client.post(f"/chat/conversations/{mine}/messages", json=body)).status_code == 200
+    # Another user sending the same request id neither fails nor learns that it exists.
+    app.dependency_overrides[current_user] = lambda: other
+    theirs = (await client.post("/chat/conversations")).json()["id"]
+    collision = await client.post(f"/chat/conversations/{theirs}/messages", json=body)
+    assert collision.status_code == 200
+    assert '"type":"error"' in collision.text
+    async with users_factory() as db:
+        rows = (await db.scalars(select(ChatTurn).where(ChatTurn.role == "user"))).all()
+    assert len(rows) == 2
+    assert {r.request_id for r in rows} == {request_id}
+    assert request_id not in {r.id for r in rows}

@@ -52,3 +52,16 @@ def test_search_settings_default_to_the_public_safe_values(monkeypatch: pytest.M
     assert settings.embedding_model == "text-embedding-3-large"
     monkeypatch.setenv("KB_SEARCH_INCLUDE_UNREVIEWED", "true")
     assert Settings().kb_search_include_unreviewed is True
+
+
+@pytest.mark.parametrize("name", ["AGENT_SERVICE_KEY", "KB_SERVICE_KEY"])
+@pytest.mark.parametrize("value", ["short-key", "change-me-change-me-please"])
+def test_a_short_or_placeholder_service_key_is_refused(
+    monkeypatch: pytest.MonkeyPatch, name: str, value: str
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValidationError, match=name):
+        Settings()
+    monkeypatch.setenv(name, "a-real-secret-of-sufficient-length")
+    assert Settings().model_dump()[name.lower()].get_secret_value().startswith("a-real")

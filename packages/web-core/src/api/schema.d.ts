@@ -1065,6 +1065,11 @@ export interface components {
                 [key: string]: string | number;
             };
             /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
+            /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
@@ -2952,6 +2957,7 @@ export interface operations {
         parameters: {
             query?: {
                 since?: string | null;
+                limit?: number;
             };
             header?: never;
             path?: never;

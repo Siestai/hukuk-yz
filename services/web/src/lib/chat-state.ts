@@ -6,7 +6,7 @@ export type LiveTurn = {
     facts: CaseFacts | null;
     clarification: Clarification | null;
     answer: Answer | null;
-    error: { code: string; params: Record<string, string | number> } | null;
+    error: { code: string; params: Record<string, string | number>; retryable: boolean } | null;
     /** Set by the `done` event; null while the stream is open or when it ended in an error. */
     turnId: string | null;
     traceId: string | null;
@@ -37,7 +37,11 @@ export function applyEvent(live: LiveTurn, event: ChatEvent): LiveTurn {
         case "error":
             return {
                 ...live,
-                error: { code: event.code, params: event.params ?? {} },
+                error: {
+                    code: event.code,
+                    params: event.params ?? {},
+                    retryable: event.retryable ?? false,
+                },
                 label: null,
             };
         case "done":
