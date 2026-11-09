@@ -164,3 +164,11 @@
   Kullanıcı yeni soru sorabilir. `done` gelmeyen kesinti ve bekleyen teslim aynı
   istek kimliğiyle sürdürülür; fixture yeniden başlatma davranışı korunur.
   SB001 kaynak/başlık/desteklenmeyen sonuç bulguları açık kalır.
+
+### 2026-11-09 — Görev 18 kapsamı
+
+- **Görev 18 bağlantı işi olarak kabul edilir** (Orhan): chat'in agent'a,
+  kalıcılığa ve geri bildirime bağlanması, teslim ve hata politikası. Kabul
+  kanıtı, boş KB ile gerçek model üzerinden dürüst kaynak yetersizliği yolu ve
+  entegrasyon testleridir. Onaylı kaynaklarla esaslı SB-001 cevabı (onaylı
+  kaynak kümesi, atıf ve başlık desteği, semantik eval) Görev 19'a taşınır.
