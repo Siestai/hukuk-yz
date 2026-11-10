@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     file_detect_llm_base_url: str = "https://api.anthropic.com"
     file_detect_llm_timeout_seconds: float = 30.0
 
+    # The weekly journal scan (task 20): the least pause between two requests to the journal's site.
+    # 0 only in tests.
+    journal_scan_delay_seconds: float = 2.0
+
     # Search (task 14). The beta also searches records no reviewer has approved yet (they carry
     # the "analyzed" status in the results); set to false before the service opens to the public.
     kb_search_include_unreviewed: bool = False

@@ -12,6 +12,7 @@ from app.models.common import (
     Source,
 )
 from app.models.decision import Decision, DecisionVerification
+from app.models.journal import JournalScan
 from app.models.misc import (
     CaArticleVersion,
     CalcMethod,
@@ -43,6 +44,7 @@ __all__ = [
     "Extraction",
     "IngestFile",
     "IngestJob",
+    "JournalScan",
     "LoginAttempt",
     "Review",
     "Source",

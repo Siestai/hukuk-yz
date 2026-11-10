@@ -221,6 +221,8 @@ class BulkApproveResponse(BaseModel):
 
 ListStatus = Literal["pending", "approved", "rejected", "all"]
 ReviewDecisionName = Literal["approve", "edit", "reject", "reopen"]
+# Where a queued decision came from: the weekly journal scan, an upload, the first archive load.
+Origin = Literal["journal_scan", "upload", "archive"]
 
 
 class ReviewListItem(BaseModel):
@@ -247,6 +249,9 @@ class ReviewListItem(BaseModel):
     reviewer_name: str | None = None  # None too when the reviewer has no user row
     review_decision: ReviewDecisionName | None = None
     note: str | None = None
+    origin: Origin
+    origin_url: str | None = None  # the PDF address, for a journal scan
+    scanned_at: datetime | None = None  # when the scan downloaded it
 
 
 class ReviewListResponse(BaseModel):
@@ -303,6 +308,10 @@ class ReviewDetail(BaseModel):
     pdf: Literal["available", "missing", "not_previewable"]
     duplicates: list[DuplicateOut]
     reviews: list[ReviewOut]
+    origin: Origin
+    origin_url: str | None = None
+    scanned_at: datetime | None = None
+    journal: dict[str, Any] | None = None  # {issue_no, post_id, page_url, pdf_url} of a scan
 
 
 ArticleStatus = Literal["found", "gap", "not_in_force", "unknown_article"]

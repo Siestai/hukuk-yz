@@ -182,3 +182,34 @@
   yalnız `/wp-admin/`'i kapatıyor), nazik hız sınırıyla. Dergi başlığı ve özeti
   yalnız arama içindir, kaynak mahkeme kararı metnidir (İbrahim, 2026-10-03).
   Canlıda ilk koşu 14.11.2026.
+
+### 2026-11-10 — Görev 20a uygulama kararları (Orhan onayına tabi)
+
+- **Dosya düzeyinde onay:** taramadan gelen `ingest_file`, arşiv yükleyicisi gibi
+  `review_status = approved` (`approved_by` NULL, sistem) yazılır; insan kapısı karar inceleme
+  kuyruğudur (`source.status = analyzed`, extraction bekleyen). Böylece gözden geçirenden aynı
+  kararı iki kez (Dosyalar'da ve kuyrukta) onaylaması istenmez; dosya onayı yalnız tür ve
+  künyeyi söyler, kararın kaynak olarak kullanılmasına karar vermez. Karar, onay ve yayın
+  otomatik değildir; `verification` teyitsiz, `source_rank` editoryal.
+  Seçenek: `pending` yazmak (Dosyalar ekranında da onay beklesin). Reddedildi: çift kapı, 70
+  karar/ay için anlamsız yük.
+- **Toplu onay bandı taramadan gelen kayıtlara uygulanmaz:** `POST /review/decisions/bulk-approve`
+  ve yükleyicinin `--approve-band` yolu kuyruğu `origin != journal_scan` ile süzer. Tarama
+  kayıtları tek tek incelenir.
+- **Mükerrer adayı = yükleyicinin `duplicate_group`'u:** aynı mahkeme + daire + E/K arşivde varsa
+  yeni kayıt yine açılır, `fields.duplicate_group` ile işaretlenir (kuyruk ve detay bunu zaten
+  döner; güvenilirlik puanı düşer, dolayısıyla toplu onay dışıdır). Görev 13 `matches` yalnız
+  Dosyalar ekranındadır; üçüncü bir mekanizma eklenmedi. Mevcut kaydın hiçbir alanı değişmez
+  (onay, düzeltme, extraction): bu yüzden mevcut kaydın detayı yeni adayı **listelemez**
+  (arşiv satırında grup anahtarı yok); yalnız aday mevcut olanı gösterir.
+- **Sayaçlar `journal_scan`'de, `ingest_job.stats` boş:** aynı bilgi iki yerde tutulmaz.
+  `duplicates` = zaten elde olan karar sayfası / dosya (aynı yazı kimliği ya da aynı sha256);
+  "mükerrer adayı" (aynı E/K, kuyruğa alındı) raporda sayı bazında ayrı sayılır ve özetin
+  `duplicate_candidates` alanında gelir. Böylece indirilen + mükerrer + hata = sitedeki karar.
+- **"Yeni sayı" = arşivdeki en büyük `journal_issue`'dan büyük sayı.** Arşiv boşsa tarama
+  `failed` (`archive_empty`) olur: tüm sayıları indirmek istenmez; elle `--issue N` çalışır.
+  Yarıda kalan / başarısız son taramanın sayıları bir sonraki koşuda yeniden denenir
+  (`completed_with_errors` taramanın hataları kendiliğinden yeniden denenmez; `--issue N`).
+- **Aynı siteden olmayan PDF bağlantısı izlenmez** (karar sayfasıyla aynı ana makine); aksi
+  halde sayfa içeriği uygulama sunucusuna rastgele adres çektirebilirdi.
+
