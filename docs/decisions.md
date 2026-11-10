@@ -212,4 +212,3 @@
   (`completed_with_errors` taramanın hataları kendiliğinden yeniden denenmez; `--issue N`).
 - **Aynı siteden olmayan PDF bağlantısı izlenmez** (karar sayfasıyla aynı ana makine); aksi
   halde sayfa içeriği uygulama sunucusuna rastgele adres çektirebilirdi.
-

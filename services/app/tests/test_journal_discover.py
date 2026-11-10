@@ -73,6 +73,21 @@ async def test_every_page_of_the_posts_is_read() -> None:
     assert len(site.requests) == 3  # 2 + 2 + 1
 
 
+async def test_a_post_link_to_another_host_or_scheme_is_skipped() -> None:
+    class Foreign:
+        async def get(self, url: str, params: Params | None = None) -> Reply:
+            links = [
+                f"{BASE}/ok/",
+                "http://169.254.169.254/latest/",
+                "https://elsewhere.test/karar/",
+                "file:///etc/passwd",
+            ]
+            rows = [{"id": n, "link": link} for n, link in enumerate(links)]
+            return Reply(200, {}, json.dumps(rows).encode())
+
+    assert [p.link for p in await list_posts(Foreign(), Issue(91, [6091]))] == [f"{BASE}/ok/"]
+
+
 async def test_the_issues_list_follows_its_pages_too() -> None:
     site = Wp(categories=[1, 2, 3, 4, 5], per_page=2)
     assert sorted(await list_issues(site)) == [1, 2, 3, 4, 5]

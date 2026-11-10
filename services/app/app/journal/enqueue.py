@@ -171,6 +171,9 @@ async def enqueue(
     await asyncio.to_thread(store.put, io.BytesIO(content))
     read = await asyncio.to_thread(read_pdf, content, post)
     files = {sha256: {"size": len(content), "detected_type": "pdf"}}
+    # Twice: the first pass only yields the normalized fields to look the decision up with, the
+    # second scores it against `known`. A rollback after `store.put` leaves a content-addressed
+    # blob that a rerun reuses.
     (alone,), _ = prepare([read.record.to_dict()], files)
     known = await _same_decision(session, alone.fields)
     (prepared,), _ = prepare([read.record.to_dict()], files, known)

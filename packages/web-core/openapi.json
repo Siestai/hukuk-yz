@@ -2876,8 +2876,19 @@
         "type": "object"
       },
       "JournalReport": {
-        "description": "`failure` is set when the scan could not go on (the site's API did not answer); the\nissues done up to then are in `issues`.",
+        "description": "`failure` is set when the scan could not go on (the site's API did not answer); the\nissues done up to then are in `issues`. `archive_max` is the newest issue of the archive the\nrun compared the site with (not set for `--issue`); `warnings` name what looks wrong, e.g. an\n`archive_max` above every issue of the site.",
         "properties": {
+          "archive_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive Max"
+          },
           "failure": {
             "anyOf": [
               {
@@ -2895,6 +2906,14 @@
               "$ref": "#/components/schemas/JournalIssueReport"
             },
             "title": "Issues",
+            "type": "array"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
             "type": "array"
           }
         },

@@ -36,6 +36,8 @@ REPORT: dict[str, Any] = {
         }
     ],
     "failure": None,
+    "archive_max": 90,
+    "warnings": [],
 }
 
 

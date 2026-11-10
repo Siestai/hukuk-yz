@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.files.store import LocalFileStore, blob_key, text_key
 from app.journal import enqueue as enqueue_module
+from app.journal import scan as scan_module
 from app.journal.client import FetchError, Params, Reply
 from app.journal.enqueue import JournalPost, Read
 from app.journal.scan import LOCK_KEY, Outcome, _parser, describe, scan
@@ -481,6 +482,50 @@ async def test_a_second_scan_at_the_same_time_is_skipped(
     assert (await scan(kb_factory, store, site)).status == "completed"  # the lock was let go
 
 
+async def lock_is_free(factory: Factory) -> bool:
+    async with factory() as probe:
+        got = (await probe.execute(select(func.pg_try_advisory_lock(LOCK_KEY)))).scalar_one()
+        if got:
+            await probe.execute(select(func.pg_advisory_unlock(LOCK_KEY)))
+        return bool(got)
+
+
+class Boom(Exception):
+    pass
+
+
+class BoomSite:
+    async def get(self, url: str, params: Params | None = None) -> Reply:
+        raise Boom("site exploded")
+
+
+async def test_the_lock_is_released_when_the_scan_raises(
+    kb_factory: Factory, store: LocalFileStore
+) -> None:
+    await archive(kb_factory, issue=90)
+    with pytest.raises(Boom):
+        await scan(kb_factory, store, BoomSite())
+    assert await lock_is_free(kb_factory)
+
+
+async def test_a_failed_unlock_drops_the_connection_and_keeps_the_original_error(
+    kb_factory: Factory, store: LocalFileStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class BrokenUnlock:
+        def __getattr__(self, name: str) -> Any:
+            return getattr(func, name)
+
+        def pg_advisory_unlock(self, key: int) -> Any:
+            raise RuntimeError("unlock failed")
+
+    await archive(kb_factory, issue=90)
+    monkeypatch.setattr(scan_module, "func", BrokenUnlock())
+    with pytest.raises(Boom):  # not the RuntimeError of the unlock
+        await scan(kb_factory, store, BoomSite())
+    monkeypatch.undo()
+    assert await lock_is_free(kb_factory)  # the connection holding the lock is gone
+
+
 async def test_a_site_whose_api_is_down_fails_the_scan_with_the_reason(
     kb_factory: Factory, store: LocalFileStore
 ) -> None:
@@ -548,3 +593,66 @@ def test_outcome_text_names_the_failure() -> None:
     outcome = Outcome("failed")
     outcome.report.failure = "archive_empty"
     assert "failure: archive_empty" in describe(outcome)
+
+
+async def test_a_manual_run_after_a_failed_scheduled_one_keeps_its_issues_for_the_next(
+    kb_factory: Factory, store: LocalFileStore, texts: dict[bytes, str]
+) -> None:
+    await archive(kb_factory, issue=90)
+    posts = issue_posts(texts, 91, 3)
+    site = FakeSite({85: issue_posts(texts, 85, 1), 91: posts})
+    original = site.get
+
+    async def dying(url: str, params: Any = None) -> Reply:
+        if url == site.pdf_url(91, posts[1][0]):
+            raise Crash
+        return await original(url, params)
+
+    site.get = dying  # type: ignore[method-assign]
+    with pytest.raises(Crash):
+        await scan(kb_factory, store, site)
+    site.get = original  # type: ignore[method-assign]
+    manual = await scan(kb_factory, store, site, only_issue=85)
+    assert (manual.status, manual.new_issues) == ("completed", [85])
+
+    outcome = await scan(kb_factory, store, site)  # the scheduled run retries 91
+    assert (outcome.new_issues, outcome.status) == ([91], "completed")
+    assert await count(kb_factory, Extraction) == 1 + 1 + 3
+    again = await scan(kb_factory, store, site)  # a completed scheduled run ends the carry
+    assert again.new_issues == []
+
+
+async def test_the_report_names_the_archive_max_and_warns_when_the_site_is_behind_it(
+    kb_factory: Factory, store: LocalFileStore, texts: dict[bytes, str]
+) -> None:
+    await archive(kb_factory, issue=2026)  # a year read as the issue number
+    outcome = await scan(kb_factory, store, FakeSite({90: issue_posts(texts, 90, 1)}))
+    assert outcome.report.archive_max == 2026
+    assert outcome.report.warnings == ["archive_max_above_site:2026"]
+    assert "warning: archive_max_above_site:2026" in describe(outcome)
+    sane = await scan(kb_factory, store, FakeSite({2027: []}))
+    assert (sane.report.archive_max, sane.report.warnings) == (2026, [])
+
+
+async def test_a_pdf_that_redirects_off_the_site_is_an_error_and_nothing_is_stored(
+    kb_factory: Factory, store: LocalFileStore, texts: dict[bytes, str]
+) -> None:
+    await archive(kb_factory, issue=90)
+    posts = issue_posts(texts, 91, 2)
+    site = FakeSite({91: posts})
+    original = site.get
+
+    async def refusing(url: str, params: Any = None) -> Reply:
+        if url == site.pdf_url(91, posts[0][0]):
+            raise FetchError(url, "redirect_refused")  # what PoliteClient raises
+        return await original(url, params)
+
+    site.get = refusing  # type: ignore[method-assign]
+    outcome = await scan(kb_factory, store, site)
+    assert (outcome.status, outcome.totals.errors, outcome.totals.queued) == (
+        "completed_with_errors",
+        1,
+        1,
+    )
+    assert [e.reason for e in outcome.report.issues[0].errors] == ["redirect_refused"]
+    assert await count(kb_factory, Extraction) == 1 + 1

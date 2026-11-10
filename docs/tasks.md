@@ -42,4 +42,3 @@
 ## Dergi taraması (Görev 20, 2026-11-10)
 - [ ] Görev 20a: haftalık tarama, backend (PR Orhan'ın onayında; `docs/tasks/20-journal-scan.md`)
 - [ ] Görev 20b: Taramalar ekranı + kuyruk rozeti / filtresi
-

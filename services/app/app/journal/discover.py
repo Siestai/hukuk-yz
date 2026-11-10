@@ -82,7 +82,9 @@ async def list_issues(fetcher: Fetcher, base_url: str = BASE_URL) -> dict[int, I
 
 
 async def list_posts(fetcher: Fetcher, issue: Issue, base_url: str = BASE_URL) -> list[Post]:
-    """The decision pages of an issue, oldest first, each once."""
+    """The decision pages of an issue, oldest first, each once. A page whose address is not on
+    the site's own host (or not http/https) is left out: the scan fetches from the journal only."""
+    site = urlsplit(base_url)
     posts: dict[int, Post] = {}
     for category_id in issue.category_ids:
         items = await _json_pages(
@@ -92,9 +94,12 @@ async def list_posts(fetcher: Fetcher, issue: Issue, base_url: str = BASE_URL) -
         )
         for item in items:
             try:
-                posts[int(item["id"])] = Post(int(item["id"]), str(item["link"]))
+                post = Post(int(item["id"]), str(item["link"]))
             except (KeyError, TypeError, ValueError) as exc:
                 raise DiscoveryError(f"{base_url}: unexpected_post") from exc
+            link = urlsplit(post.link)
+            if link.scheme in ("http", "https") and link.netloc == site.netloc:
+                posts[post.id] = post
     return sorted(posts.values(), key=lambda p: p.id)
 
 

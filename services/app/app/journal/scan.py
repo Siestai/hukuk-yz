@@ -106,11 +106,16 @@ async def _close_interrupted(db: AsyncSession) -> None:
 
 
 async def _carried(db: AsyncSession) -> list[int]:
-    """The issues the latest run, when it failed, still had to do: the next run does them."""
-    latest = (
-        await db.execute(select(JournalScan).order_by(JournalScan.started_at.desc()).limit(1))
-    ).scalar_one_or_none()
-    return list(latest.new_issues) if latest is not None and latest.status == "failed" else []
+    """The issues that failed or interrupted runs still had to do since the last completed
+    scheduled run: the next run does them. A manual run does not reset this."""
+    runs = (await db.execute(select(JournalScan).order_by(JournalScan.started_at.desc()))).scalars()
+    carried: set[int] = set()
+    for run in runs:
+        if run.trigger == "schedule" and run.status in ("completed", "completed_with_errors"):
+            break
+        if run.status == "failed":
+            carried.update(run.new_issues)
+    return sorted(carried)
 
 
 @dataclass
@@ -218,6 +223,7 @@ async def _targets(
     db: AsyncSession,
     only_issue: int | None,
     carried: list[int],
+    report: JournalReport,
 ) -> list[Issue]:
     issues = await list_issues(fetcher, base_url)
     if only_issue is not None:
@@ -228,6 +234,10 @@ async def _targets(
     if archive_max is None:
         # An empty archive would make every issue "new"; the scan is for the weekly top-up.
         raise DiscoveryError("archive_empty")
+    report.archive_max = archive_max
+    if archive_max > max(issues, default=0):
+        # Probably a mis-parsed issue number in the archive: every real issue would look old.
+        report.warnings.append(f"archive_max_above_site:{archive_max}")
     wanted = set(new_issue_numbers(issues, archive_max)) | set(carried)
     return [issues[no] for no in sorted(wanted) if no in issues]
 
@@ -237,6 +247,17 @@ async def _acquire(db: AsyncSession) -> bool:
     return bool(
         (await connection.execute(select(func.pg_try_advisory_lock(LOCK_KEY)))).scalar_one()
     )
+
+
+async def _release(db: AsyncSession) -> None:
+    """Let go of the lock. When that fails the connection is dropped, not returned to the pool
+    with the lock held (a closed session does not release a pooled connection's lock); the error
+    of the scan itself is not masked."""
+    try:
+        await db.execute(select(func.pg_advisory_unlock(LOCK_KEY)))
+    except Exception:
+        logger.exception("journal scan lock not released: connection invalidated")
+        await (await db.connection()).invalidate()
 
 
 async def scan(
@@ -259,7 +280,7 @@ async def scan(
         try:
             return await _locked_scan(factory, store, fetcher, only_issue, base_url, max_bytes)
         finally:
-            await lock.execute(select(func.pg_advisory_unlock(LOCK_KEY)))
+            await _release(lock)
 
 
 async def _dry_run(
@@ -272,7 +293,7 @@ async def _dry_run(
     try:
         async with factory() as db:
             carried = [] if only_issue is not None else await _carried(db)
-            targets = await _targets(fetcher, base_url, db, only_issue, carried)
+            targets = await _targets(fetcher, base_url, db, only_issue, carried, outcome.report)
         outcome.new_issues = [issue.no for issue in targets]
         for issue in targets:
             await _scan_issue(run, issue)
@@ -320,7 +341,7 @@ async def _locked_scan(
     )
     try:
         async with factory() as db:
-            targets = await _targets(fetcher, base_url, db, only_issue, carried)
+            targets = await _targets(fetcher, base_url, db, only_issue, carried, outcome.report)
             outcome.new_issues = [issue.no for issue in targets]
             await db.execute(
                 update(JournalScan)
@@ -365,6 +386,7 @@ def describe(outcome: Outcome) -> str:
     lines = [f"status: {outcome.status}", f"issues: {outcome.new_issues}"]
     if outcome.report.failure:
         lines.append(f"failure: {outcome.report.failure}")
+    lines += [f"warning: {w}" for w in outcome.report.warnings]
     for issue in outcome.report.issues:
         lines.append(
             f"issue {issue.issue_no}: {issue.site_count} decisions on the site, "

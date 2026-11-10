@@ -1,9 +1,18 @@
 """The polite client of the journal scan (task 20): pauses, User-Agent, retries."""
 
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
+
 import httpx
 import pytest
 
-from app.journal.client import MAX_RETRIES, USER_AGENT, FetchError, PoliteClient
+from app.journal.client import (
+    MAX_RETRIES,
+    MAX_RETRY_AFTER_SECONDS,
+    USER_AGENT,
+    FetchError,
+    PoliteClient,
+)
 
 
 class Clock:
@@ -113,3 +122,73 @@ async def test_a_dropped_connection_is_tried_again_then_reported() -> None:
         with pytest.raises(FetchError) as caught:
             await c.get("https://x.test/a")
     assert caught.value.reason == "connect_error"
+
+
+async def test_a_503_retry_after_in_seconds_is_the_least_wait() -> None:
+    clock, answers = Clock(), [503, 200]
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(answers.pop(0), headers={"Retry-After": "45"})
+
+    async with client(clock, httpx.MockTransport(handle), delay=0) as c:
+        await c.get("https://x.test/a")
+    assert clock.sleeps == [45.0]
+
+
+async def test_a_retry_after_http_date_is_honoured() -> None:
+    clock, answers = Clock(), [429, 200]
+    when = format_datetime(datetime.now(UTC) + timedelta(seconds=120), usegmt=True)
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(answers.pop(0), headers={"Retry-After": when})
+
+    async with client(clock, httpx.MockTransport(handle), delay=0) as c:
+        await c.get("https://x.test/a")
+    [slept] = clock.sleeps
+    assert 100 < slept <= 120
+
+
+async def test_a_retry_after_beyond_the_cap_ends_the_request_without_sleeping() -> None:
+    clock, calls = Clock(), []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(503, headers={"Retry-After": str(int(MAX_RETRY_AFTER_SECONDS) + 1)})
+
+    async with client(clock, httpx.MockTransport(handle), delay=0) as c:
+        with pytest.raises(FetchError) as caught:
+            await c.get("https://x.test/a")
+    assert (caught.value.reason, len(calls), clock.sleeps) == ("retry_after_too_long", 1, [])
+
+
+async def test_a_redirect_to_another_host_is_refused() -> None:
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(302, headers={"Location": "http://169.254.169.254/latest/"})
+
+    async with client(Clock(), httpx.MockTransport(handle), delay=0) as c:
+        with pytest.raises(FetchError) as caught:
+            await c.get("https://x.test/a")
+    assert (caught.value.reason, seen) == ("redirect_refused", ["https://x.test/a"])
+
+
+async def test_a_redirect_within_the_host_is_followed() -> None:
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/a":
+            return httpx.Response(301, headers={"Location": "/b"})
+        return httpx.Response(200, content=b"b")
+
+    async with client(Clock(), httpx.MockTransport(handle), delay=0) as c:
+        assert (await c.get("https://x.test/a")).content == b"b"
+
+
+async def test_a_redirect_loop_ends() -> None:
+    def handle(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"Location": "/a"})
+
+    async with client(Clock(), httpx.MockTransport(handle), delay=0) as c:
+        with pytest.raises(FetchError) as caught:
+            await c.get("https://x.test/a")
+    assert caught.value.reason == "too_many_redirects"

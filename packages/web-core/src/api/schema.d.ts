@@ -1588,9 +1588,13 @@ export interface components {
         /**
          * JournalReport
          * @description `failure` is set when the scan could not go on (the site's API did not answer); the
-         *     issues done up to then are in `issues`.
+         *     issues done up to then are in `issues`. `archive_max` is the newest issue of the archive the
+         *     run compared the site with (not set for `--issue`); `warnings` name what looks wrong, e.g. an
+         *     `archive_max` above every issue of the site.
          */
         JournalReport: {
+            /** Archive Max */
+            archive_max?: number | null;
             /** Failure */
             failure?: string | null;
             /**
@@ -1598,6 +1602,11 @@ export interface components {
              * @default []
              */
             issues: components["schemas"]["JournalIssueReport"][];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
         };
         /** JournalScanDetail */
         JournalScanDetail: {

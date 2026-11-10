@@ -36,10 +36,14 @@ class JournalIssueReport(BaseModel):
 
 class JournalReport(BaseModel):
     """`failure` is set when the scan could not go on (the site's API did not answer); the
-    issues done up to then are in `issues`."""
+    issues done up to then are in `issues`. `archive_max` is the newest issue of the archive the
+    run compared the site with (not set for `--issue`); `warnings` name what looks wrong, e.g. an
+    `archive_max` above every issue of the site."""
 
     issues: list[JournalIssueReport] = []
     failure: str | None = None
+    archive_max: int | None = None
+    warnings: list[str] = []
 
 
 class JournalScanItem(BaseModel):

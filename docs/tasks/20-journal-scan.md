@@ -50,7 +50,7 @@ Kararlar (Orhan, 2026-11-10):
 6. **Çalıştırma:** CLI `python -m app.journal.scan [--dry-run] [--issue N]`. `--dry-run` hiçbir şey yazmaz, yalnız keşif raporu basar. `--issue N` tek sayıyı tarar (prova ve elle kurtarma için; "yeni sayı" kuralını yalnız o sayı için atlar, mükerrer kuralları geçerli).
 7. **Zamanlama:** Dokploy zamanlanmış işi, `app` servisinde, `0 11 * * 6`, `Europe/Istanbul`, komut `python -m app.journal.scan`. Kurulum adımı `docs/deploy.md`'ye yazılır (repo'ya sunucu kimliği girmez). Worker'a zamanlayıcı eklenmez.
 8. **API** (OpenAPI tipleri yeniden üretilir): `GET /journal-scans` (sayfalı, en yeni önce), `GET /journal-scans/{id}` (rapor dahil). Yetki `reviewer` ve `admin`. Kuyruk uç noktasına `origin` filtresi ve alanı.
-9. **WP bildirimi için özet:** `GET /journal-scans/latest/summary` yalnız sayıları döner, metin değil (`issues`, `queued`, `duplicates`, `errors`, `status`, `finished_at`); metni app üretmez. Mesajı Themis cumartesi 11:30'da bu uç noktadan okuyup gruba atar (aşağıda, repo dışı).
+9. **WP bildirimi için özet:** `GET /journal-scans/latest/summary` yalnız sayıları döner, metin değil (`issues`, `queued`, `duplicates`, `duplicate_candidates`, `errors`, `status`, `finished_at`); metni app üretmez. Mesajı Themis cumartesi 11:30'da bu uç noktadan okuyup gruba atar (aşağıda, repo dışı).
 
 ### 20b: dashboard
 
