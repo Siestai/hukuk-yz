@@ -172,3 +172,13 @@
   kanıtı, boş KB ile gerçek model üzerinden dürüst kaynak yetersizliği yolu ve
   entegrasyon testleridir. Onaylı kaynaklarla esaslı SB-001 cevabı (onaylı
   kaynak kümesi, atıf ve başlık desteği, semantik eval) Görev 19'a taşınır.
+- **Dergi taraması (Görev 20)** (Orhan, 2026-11-10): Çalışma ve Toplum'un yeni
+  sayıları her cumartesi 11:00 (TR) app tarafından taranır, kararlar bekleyen ve
+  teyitsiz olarak inceleme kuyruğuna girer. Kaynağın otomatik tarama olduğu
+  `ingest_job.kind = crawl` üzerinden tutulur ve kuyrukta rozet / filtre olarak
+  görünür. Her tarama dashboard'da "Taramalar" tablosunda listelenir; cumartesi
+  WP grubuna kısa bilgi mesajı gider. Kapsam yalnız yeni sayılar; eski sayılardaki
+  eksik kararlar ayrı iş. Siteden toplu çekmede şimdilik engel yok (robots.txt
+  yalnız `/wp-admin/`'i kapatıyor), nazik hız sınırıyla. Dergi başlığı ve özeti
+  yalnız arama içindir, kaynak mahkeme kararı metnidir (İbrahim, 2026-10-03).
+  Canlıda ilk koşu 14.11.2026.
