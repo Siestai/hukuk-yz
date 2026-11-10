@@ -44,7 +44,14 @@ export default defineConfig({
         // Read-only specs first, on the untouched demo data...
         {
             name: "chromium",
-            testMatch: ["login.spec.ts", "queue.spec.ts", "detail.spec.ts", "info-tips.spec.ts"],
+            testMatch: [
+                "login.spec.ts",
+                "queue.spec.ts",
+                "detail.spec.ts",
+                "info-tips.spec.ts",
+                "journal-scans.spec.ts",
+            ],
+            grepInvert: /@mobile/,
             use: browser,
         },
         // ...the responsive checks (also read-only), at phone and tablet sizes...
@@ -65,8 +72,16 @@ export default defineConfig({
                 "files-approve.spec.ts",
             ],
             grepInvert: /@mobile/,
-            dependencies: ["chromium", "chromium-mobile"],
+            dependencies: ["chromium", "chromium-mobile", "chromium-mobile-scans"],
             use: browser,
+        },
+        // ...the phone checks of the journal scans (read-only too)...
+        {
+            name: "chromium-mobile-scans",
+            testMatch: ["journal-scans.spec.ts"],
+            grep: /@mobile/,
+            dependencies: ["chromium"],
+            use: phone,
         },
         // ...and the phone checks of the files screen, on the files the mutating project uploaded.
         {

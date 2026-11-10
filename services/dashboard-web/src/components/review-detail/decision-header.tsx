@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "next-intl";
 
 import { queueHref, type QueueParams } from "@/lib/queue-params";
 import { useEnumLabels } from "@/lib/use-enum-labels";
+import { SourceLine, type SourceProps } from "./source-line";
 
 type Props = {
     title: string;
@@ -11,10 +12,11 @@ type Props = {
     score: number;
     sourceStatus: string;
     queue: QueueParams;
+    source: SourceProps;
 };
 
 /** The record's title, band and status. Why a record has no actions is told by `ReviewStatusStrip`. */
-export function DecisionHeader({ title, band, score, sourceStatus, queue }: Props) {
+export function DecisionHeader({ title, band, score, sourceStatus, queue, source }: Props) {
     const t = useTranslations("review.detail");
     const format = useFormatter();
     const labels = useEnumLabels();
@@ -36,6 +38,7 @@ export function DecisionHeader({ title, band, score, sourceStatus, queue }: Prop
                 </span>
                 <Badge variant="outline">{labels.sourceStatus(sourceStatus)}</Badge>
             </div>
+            <SourceLine {...source} />
         </header>
     );
 }

@@ -1,6 +1,7 @@
 # Görevler
 
 ## Themis
+
 - [ ] İsim adayı listesi (15-20 aday, anlam + gerekçe + domain kontrolü) → Orhan'a, sonra gruba
 - [ ] Kaynak site listesi ortaklardan gelince: her site için çekme/doğrulama yöntemi + otorite seviyesi eşlemesi
 - [ ] Eskalasyon tetikleme kriterleri taslağı (konu sınıfı, süre, belirsizlik) → architecture.md
@@ -22,17 +23,20 @@
 - [ ] 12c sonrası: tam Drive aktarımında 43 `Eskiler/` dosyası güncel dosyayla eşleşmedi; İbrahim'le elle bağlama ya da ad kuralı (decisions.md)
 
 ## Orhan
+
 - [ ] `.env`'e GH_TOKEN ve ANTHROPIC_API_KEY (Claude Code ile)
 - [ ] GitHub profil: Name "Themis"
 - [ ] Yargı kararları arşivi telif sorusu (Çalışma ve Toplum özetleri) gruba sorulacak mı?
 
 ## Ortaklar (Baran / İbrahim)
+
 - [ ] Kaynak site listesi (otorite seviyesiyle)
 - [ ] Eskalasyon modeli: fiyatlandırma, SLA, kapsam
 - [ ] AYM / İBK / HGK / Danıştay toplama kriterleri (konu, tarih aralığı, öncelik)
 - [ ] Gereksinim m.10 "kapalı ve sınırlı liste" yazım hatası mı?
 
 ## Chat v1 (kapalı beta, 2026-10-27)
+
 - [x] Görev 14: KB arama indeksi + `/kb/search` (`docs/tasks/14-kb-search.md`)
 - [x] Görev 15: cevap sözleşmesi + eval seti v0 (`docs/tasks/15-chat-contract-eval.md`)
 - [ ] Görev 16: chat web arayüzü (inceleme düzeltmeleri tamamlandı, DB'li entegrasyon doğrulaması bekliyor; PR Orhan'ın onayında; `docs/tasks/16-chat-web.md`)
@@ -40,5 +44,6 @@
 - [ ] Görev 18: uçtan uca bağlama (`docs/tasks/18-chat-wiring.md`)
 
 ## Dergi taraması (Görev 20, 2026-11-10)
+
 - [ ] Görev 20a: haftalık tarama, backend (PR Orhan'ın onayında; `docs/tasks/20-journal-scan.md`)
-- [ ] Görev 20b: Taramalar ekranı + kuyruk rozeti / filtresi
+- [x] Görev 20b: Taramalar ekranı + kuyruk rozeti / filtresi (PR Orhan'ın onayında)

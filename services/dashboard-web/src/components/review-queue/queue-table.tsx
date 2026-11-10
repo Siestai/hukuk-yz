@@ -14,6 +14,7 @@ import {
 import {
     ConfidenceChip,
     DuplicateIcon,
+    OriginBadge,
     ReasonChips,
     StatusBadge,
     stretchedLink,
@@ -80,9 +81,12 @@ export function QueueTable({ items, params }: { items: QueueItem[]; params: Queu
                                             .filter(Boolean)
                                             .join(format.separator)}
                                     </p>
-                                    {extras.length === 0 && showsReopened(item) ? (
-                                        <StatusBadge item={item} format={format} />
-                                    ) : null}
+                                    <span className="flex flex-wrap gap-1">
+                                        <OriginBadge item={item} format={format} />
+                                        {extras.length === 0 && showsReopened(item) ? (
+                                            <StatusBadge item={item} format={format} />
+                                        ) : null}
+                                    </span>
                                 </div>
                                 {item.duplicate_group ? (
                                     <DuplicateIcon label={format.duplicateLabel} />

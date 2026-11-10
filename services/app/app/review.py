@@ -122,6 +122,7 @@ async def list_decisions(
     q: str | None = None,
     status: ListStatus = "pending",
     origin: Origin | None = None,
+    job_id: uuid.UUID | None = None,
     sort: ListSort | None = None,
     limit: Limit = 50,
     offset: Offset = 0,
@@ -131,7 +132,7 @@ async def list_decisions(
     if sort is None:
         sort = "reviewed_desc" if status in ("approved", "rejected") else "score_asc"
     filters = ReviewFilters(court=court, reason=reason, journal_issue=journal_issue, q=q)
-    stmt = queue(band, filters, sort, status=status, origin=origin)
+    stmt = queue(band, filters, sort, status=status, origin=origin, job_id=job_id)
     total, rows = await page(db, stmt, limit, offset)
     return ReviewListResponse(total=total, items=[_list_item(r) for r in rows])
 

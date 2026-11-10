@@ -50,6 +50,7 @@ export function useQueueItemFormat() {
         empty,
         separator,
         duplicateLabel: t("duplicate"),
+        scanLabel: labels.origin("journal_scan"),
         unknownReasonLabel: t("unknownReason"),
         band: labels.band,
         court: labels.court,

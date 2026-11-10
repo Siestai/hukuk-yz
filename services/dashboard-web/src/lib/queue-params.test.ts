@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { schemaEnum } from "@/test/reason-codes";
 import {
     apiQuery,
+    ORIGINS,
     changeQueueParams,
     detailHref,
     activeFilterCount,
@@ -288,5 +290,34 @@ describe("the status tabs", () => {
         expect(detailHref("e1", { status: "rejected", sort: "reviewed_desc", page: 1 })).toBe(
             "/kararlar/e1?durum=reddedilen",
         );
+    });
+});
+
+describe("origin and scan filters", () => {
+    const job = "6f1c1b3e-2a4d-4c43-9d57-0a1b2c3d4e5f";
+
+    it("lists the origins of the API", () => {
+        expect([...ORIGINS].sort()).toEqual(schemaEnum("ReviewListItem", "origin").sort());
+    });
+
+    it("reads the origin and the scan, drops unknown values and malformed ids", () => {
+        expect(
+            parseQueueParams(new URLSearchParams(`origin=journal_scan&job=${job}`)),
+        ).toMatchObject({
+            origin: "journal_scan",
+            jobId: job,
+        });
+        expect(parseQueueParams(new URLSearchParams("origin=web&job=1%20OR%201"))).toMatchObject({
+            origin: undefined,
+            jobId: undefined,
+        });
+    });
+
+    it("keeps them in the URL, counts them as filters and sends them to the API", () => {
+        const params: QueueParams = { ...defaults, origin: "upload", jobId: job };
+        expect(serializeQueueParams(params).toString()).toBe(`origin=upload&job=${job}`);
+        expect(activeFilterCount(params)).toBe(2);
+        expect(apiQuery(params)).toMatchObject({ origin: "upload", job_id: job });
+        expect(apiQuery(defaults)).toMatchObject({ origin: undefined, job_id: undefined });
     });
 });

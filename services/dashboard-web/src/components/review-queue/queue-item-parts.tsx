@@ -74,6 +74,13 @@ export function StatusBadge({ item, format }: { item: QueueItem; format: QueueIt
     return <Badge variant={STATUS_VARIANT[itemStatus(item)]}>{format.status(item)}</Badge>;
 }
 
+/** "Otomatik tarama" on a record the weekly journal scan brought in; uploads and the archive carry no badge. */
+export function OriginBadge({ item, format }: { item: QueueItem; format: QueueItemFormat }) {
+    return item.origin === "journal_scan" ? (
+        <Badge variant="default">{format.scanLabel}</Badge>
+    ) : null;
+}
+
 /** The band badge with its score. */
 export function ConfidenceChip({ item, format }: { item: QueueItem; format: QueueItemFormat }) {
     return (

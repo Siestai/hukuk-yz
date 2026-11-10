@@ -62,6 +62,9 @@ export function AppNav({ user, pending, pendingFiles, onNavigate }: AppNavProps)
                         </Badge>
                     ) : null}
                 </NavLink>
+                <NavLink href="/taramalar" onNavigate={onNavigate}>
+                    {t("nav.scans")}
+                </NavLink>
                 {comingLater.map(({ key, help, label }) => (
                     <div key={key} className="flex items-center gap-2">
                         <span

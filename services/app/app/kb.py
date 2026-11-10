@@ -223,6 +223,7 @@ def newest_extractions(source_id: uuid.UUID | None = None) -> Subquery:
                 *((IngestJob.kind == kind, origin) for kind, origin in ORIGIN_OF_KIND.items())
             ).label("origin"),
             IngestFile.origin_url,
+            IngestFile.job_id,
             case((IngestJob.kind == IngestKind.crawl, IngestFile.uploaded_at)).label("scanned_at"),
         )
         .ext(distinct_on(Extraction.source_id))
@@ -265,6 +266,7 @@ def queue(
     exclude_reopened: bool = False,
     origin: Origin | None = None,
     exclude_origin: Origin | None = None,
+    job_id: uuid.UUID | None = None,
 ) -> Select[Any]:
     """The review queue: newest extraction of every decision source in `status` (`pending` =
     `analyzed`; the other tabs come with their last review), filtered and ordered (most
@@ -274,7 +276,7 @@ def queue(
     which is a `reopen` when a reviewer took it back; `exclude_reopened` leaves those out (bulk
     approval: a human undid it on purpose, so it is looked at one by one). `origin` keeps one
     origin (journal scan, upload, archive), `exclude_origin` leaves one out (bulk approval never
-    takes the journal scan's records)."""
+    takes the journal scan's records), `job_id` keeps the records of one ingest job (one scan)."""
     newest = newest_extractions()
     edited = edits_by_source()
     # What is shown, filtered and searched is the extraction's value with the edits laid over it,
@@ -300,6 +302,8 @@ def queue(
         conditions.append(newest.c.origin == origin)
     if exclude_origin is not None:
         conditions.append(newest.c.origin != exclude_origin)
+    if job_id is not None:
+        conditions.append(newest.c.job_id == job_id)
     if filters.court is not None:
         conditions.append(shown["court"] == filters.court)
     if filters.reason is not None:

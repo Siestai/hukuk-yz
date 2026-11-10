@@ -25,7 +25,8 @@
     "pending": "Onay bekleyen",
     "statutes": "Mevzuat",
     "files": "Dosyalar",
-    "pendingFiles": "onay bekleyen dosya"
+    "pendingFiles": "onay bekleyen dosya",
+    "scans": "Taramalar"
   },
   "review": {
     "queue": {
@@ -62,7 +63,11 @@
         "clear": "Filtreleri temizle",
         "toggle": "Filtreler",
         "toggleActive": "Filtreler ({count, number})",
-        "clearTopic": "Temizleme"
+        "clearTopic": "Temizleme",
+        "origin": "Kaynak",
+        "allOrigins": "Tümü",
+        "scanOnly": "Yalnız tek bir taramanın kararları gösteriliyor.",
+        "dropScan": "Tüm kararları göster"
       },
       "table": {
         "label": "Onay bekleyen kararlar",
@@ -342,6 +347,12 @@
         "rejected": "Reddedildi",
         "note": "Ret notu",
         "unavailable": "Bu kayıt artık kuyrukta değil; inceleme işlemleri kullanılamaz."
+      },
+      "source": {
+        "scan": "Otomatik tarama, {date}, {issue}. sayı",
+        "scanNoIssue": "Otomatik tarama, {date}",
+        "plain": "Kaynak: {origin}",
+        "journalPage": "Dergi sayfası"
       }
     },
     "actions": {
@@ -826,6 +837,21 @@
       "same_ref": "aynı resmî sayı",
       "same_title": "aynı başlık",
       "same_name": "aynı dosya adı"
+    },
+    "journalTrigger": {
+      "schedule": "Otomatik",
+      "manual": "Elle"
+    },
+    "journalStatus": {
+      "running": "Çalışıyor",
+      "completed": "Tamamlandı",
+      "completed_with_errors": "Hatalarla tamamlandı",
+      "failed": "Başarısız"
+    },
+    "origin": {
+      "journal_scan": "Otomatik tarama",
+      "upload": "Yükleme",
+      "archive": "Arşiv"
     }
   },
   "fields": {
@@ -1029,6 +1055,81 @@
         },
         "titleField": "Başlık"
       }
+    }
+  },
+  "journalScans": {
+    "issueName": "{no}. sayı",
+    "list": {
+      "title": "Taramalar",
+      "subtitle": "Dergi sitesinin haftalık taramaları: ne zaman koştu, kaç yeni karar buldu, kaçı inceleme kuyruğuna girdi.",
+      "table": {
+        "label": "Taramalar",
+        "time": "Tarih",
+        "trigger": "Tetikleyen",
+        "status": "Durum",
+        "newIssues": "Yeni sayılar",
+        "discovered": "Bulunan",
+        "queued": "Kuyruğa alınan",
+        "duplicates": "Mükerrer",
+        "errors": "Hata"
+      },
+      "empty": {
+        "none": "Henüz tarama yapılmadı.",
+        "pastEnd": "Bu sayfada tarama kalmadı.",
+        "first": "İlk sayfa"
+      },
+      "pagination": {
+        "label": "Sayfalar",
+        "previous": "Önceki",
+        "next": "Sonraki",
+        "pageOf": "Sayfa {page} / {count}"
+      }
+    },
+    "detail": {
+      "back": "← Taramalar",
+      "title": "Tarama, {date}",
+      "summary": {
+        "title": "Özet",
+        "startedAt": "Başladı",
+        "finishedAt": "Bitti",
+        "downloaded": "İndirilen",
+        "decisions": "Bu taramadan gelen kararlar"
+      },
+      "notes": {
+        "title": "Dikkat",
+        "failure": "Tarama yarıda kaldı: {reason}",
+        "archiveMax": "Karşılaştırılan arşivin en yeni sayısı: {no}."
+      },
+      "warnings": {
+        "archive_max_above_site": "Arşivdeki en yeni sayı ({max}) sitedeki her sayıdan büyük görünüyor; bu yüzden yeni sayı bulunmadı."
+      },
+      "issues": {
+        "title": "Sayılara göre rapor",
+        "none": "Bu taramada işlenen sayı yok.",
+        "site_count": "Sitedeki karar",
+        "pdf_links": "PDF bağlantısı",
+        "downloaded": "İndirilen",
+        "queued": "Kuyruğa alınan",
+        "duplicates": "Mükerrer",
+        "duplicate_candidates": "Mükerrer adayı",
+        "errors": "Alınamayan kararlar ({count, number})"
+      }
+    },
+    "reasons": {
+      "pdf_link_missing": "Karar sayfasında PDF bağlantısı bulunamadı",
+      "not_a_pdf": "Adres PDF yerine başka bir içerik döndürdü",
+      "too_large": "Dosya izin verilen boyutu aşıyor",
+      "timeout": "Site zamanında cevap vermedi",
+      "connect_error": "Siteye bağlanılamadı",
+      "http": "Site {status} hata kodu döndürdü",
+      "db_error": "Karar veritabanına yazılamadı",
+      "error": "Beklenmeyen bir hata oluştu",
+      "not_json": "Site beklenen biçimde cevap vermedi",
+      "unexpected_answer": "Site beklenen biçimde cevap vermedi",
+      "unexpected_category": "Sayı listesi beklenen biçimde değil",
+      "unexpected_post": "Karar listesi beklenen biçimde değil",
+      "interrupted": "Tarama kesintiye uğradı",
+      "archive_empty": "Arşivde hiç karar yok; tüm sayıları indirmemek için tarama durdu"
     }
   }
 }

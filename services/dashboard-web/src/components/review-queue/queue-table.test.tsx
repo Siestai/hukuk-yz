@@ -62,6 +62,15 @@ describe("QueueTable", () => {
         expect(within(row).queryByText(/B\. No/)).toBeNull();
     });
 
+    it("marks a record of the journal scan, and only that", () => {
+        const scanned = renderRow({ origin: "journal_scan" });
+        expect(within(scanned).getByText(messages.enums.origin.journal_scan)).toBeInTheDocument();
+        document.body.innerHTML = "";
+        expect(
+            within(renderRow({ origin: "upload" })).queryByText(messages.enums.origin.journal_scan),
+        ).toBeNull();
+    });
+
     it("renders the fields of a decision", () => {
         const row = renderRow();
         expect(within(row).getByText(messages.enums.band.medium)).toBeInTheDocument();

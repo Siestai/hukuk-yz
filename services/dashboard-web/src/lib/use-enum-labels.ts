@@ -57,6 +57,10 @@ export function useEnumLabels() {
         reviewStatus: (value: string) => label("reviewStatus", value),
         suggestionSource: (value: string) => label("suggestionSource", value),
         matchReason: (value: string) => label("matchReason", value),
+        // The journal scan (task 20): how a run was started, where it stands, where a decision came from.
+        journalTrigger: (value: string) => label("journalTrigger", value),
+        journalStatus: (value: string) => label("journalStatus", value),
+        origin: (value: string) => label("origin", value),
         reasonCodes: Object.keys(messages.enums.reason),
     };
 }

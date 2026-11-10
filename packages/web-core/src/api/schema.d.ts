@@ -5699,6 +5699,7 @@ export interface operations {
                 q?: string | null;
                 status?: "pending" | "approved" | "rejected" | "all";
                 origin?: ("journal_scan" | "upload" | "archive") | null;
+                job_id?: string | null;
                 sort?: ("score_asc" | "score_desc" | "reviewed_desc") | null;
                 limit?: number;
                 offset?: number;

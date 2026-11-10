@@ -36,6 +36,31 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("QueueFilters", () => {
+    it("writes the source to the URL and offers all of them", async () => {
+        const { user } = setup("page=3");
+        renderWithIntl(view());
+        const select = screen.getByLabelText(filters.origin);
+        expect(
+            screen.getAllByRole("option", { name: /Otomatik tarama|Yükleme|Arşiv/ }),
+        ).toHaveLength(3);
+        await user.selectOptions(select, "journal_scan");
+        expect(nav.push).toHaveBeenCalledWith("/?origin=journal_scan");
+        nav.push.mockClear();
+        await user.selectOptions(select, "");
+        expect(nav.push).toHaveBeenCalledWith("/");
+    });
+
+    it("says that only one scan's decisions are shown and drops that filter", () => {
+        const job = "6f1c1b3e-2a4d-4c43-9d57-0a1b2c3d4e5f";
+        setup(`job=${job}&durum=tumu`);
+        renderWithIntl(view());
+        expect(screen.getByText(filters.scanOnly)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: filters.dropScan })).toHaveAttribute(
+            "href",
+            "/?durum=tumu",
+        );
+    });
+
     it("writes the band to the URL and resets the page", async () => {
         const { user } = setup("page=4&sort=score_desc");
         renderWithIntl(view());

@@ -1,6 +1,6 @@
 # Görev 20: Dergi taraması (Çalışma ve Toplum, haftalık)
 
-Durum: 20a (backend) uygulandı, PR Orhan'ın onayında (2026-11-10); 20b bekliyor. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: 20a (backend) birleşti; 20b (dashboard: Taramalar ekranı, kuyruk rozeti ve kaynak filtresi, karar detayında kaynak satırı, kuyruk API'sine `job_id` filtresi) uygulandı, PR Orhan'ın onayında (2026-11-10). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: issue #84 (bu görev), #83 (91. sayı pilotu, kuralları buraya taşındı), `docs/tasks/04-decision-parser.md` (dergi düzenleri, `hukuk_ingest.decisions`), `docs/tasks/05-decision-load.md` (kararın inceleme kuyruğuna yazılması), `docs/tasks/12-file-management.md` (`FileStore`, `ingest_job` / `ingest_file`, worker), `docs/tasks/13-upload-detect-approve.md` (eşleşme, `matches`), `docs/decisions.md` (dergi özeti editoryal; karar metni kaynak).
 Skill'ler: `db-migration`, `frontend-ui` (bağlayıcı), `task-pr-hygiene`.
 
