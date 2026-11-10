@@ -2804,6 +2804,392 @@
         "title": "HoldingRow",
         "type": "object"
       },
+      "JournalError": {
+        "description": "One decision of the scan that was not queued: the address and why (`pdf_link_missing`,\n`not_a_pdf`, `too_large`, `http_<status>`, `timeout`, `connect_error`, `db_error`).",
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "reason"
+        ],
+        "title": "JournalError",
+        "type": "object"
+      },
+      "JournalIssueReport": {
+        "description": "What the scan did with one journal issue. `site_count` is the number of decision pages the\nsite lists, `duplicates` the ones it already had (same post or same file),\n`duplicate_candidates` the queued ones that share court, chamber and E/K with a record of the\narchive.",
+        "properties": {
+          "downloaded": {
+            "title": "Downloaded",
+            "type": "integer"
+          },
+          "duplicate_candidates": {
+            "title": "Duplicate Candidates",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/JournalError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "issue_no": {
+            "title": "Issue No",
+            "type": "integer"
+          },
+          "pdf_links": {
+            "title": "Pdf Links",
+            "type": "integer"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "site_count": {
+            "title": "Site Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "issue_no",
+          "site_count",
+          "pdf_links",
+          "downloaded",
+          "duplicates",
+          "queued",
+          "duplicate_candidates",
+          "errors"
+        ],
+        "title": "JournalIssueReport",
+        "type": "object"
+      },
+      "JournalReport": {
+        "description": "`failure` is set when the scan could not go on (the site's API did not answer); the\nissues done up to then are in `issues`. `archive_max` is the newest issue of the archive the\nrun compared the site with (not set for `--issue`); `warnings` name what looks wrong, e.g. an\n`archive_max` above every issue of the site.",
+        "properties": {
+          "archive_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive Max"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "issues": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/JournalIssueReport"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "title": "JournalReport",
+        "type": "object"
+      },
+      "JournalScanDetail": {
+        "properties": {
+          "discovered": {
+            "title": "Discovered",
+            "type": "integer"
+          },
+          "downloaded": {
+            "title": "Downloaded",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "new_issues": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "New Issues",
+            "type": "array"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "report": {
+            "$ref": "#/components/schemas/JournalReport"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "completed_with_errors",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trigger": {
+            "enum": [
+              "schedule",
+              "manual"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "trigger",
+          "started_at",
+          "finished_at",
+          "status",
+          "new_issues",
+          "discovered",
+          "downloaded",
+          "duplicates",
+          "queued",
+          "errors",
+          "report"
+        ],
+        "title": "JournalScanDetail",
+        "type": "object"
+      },
+      "JournalScanItem": {
+        "properties": {
+          "discovered": {
+            "title": "Discovered",
+            "type": "integer"
+          },
+          "downloaded": {
+            "title": "Downloaded",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "new_issues": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "New Issues",
+            "type": "array"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "completed_with_errors",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trigger": {
+            "enum": [
+              "schedule",
+              "manual"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "trigger",
+          "started_at",
+          "finished_at",
+          "status",
+          "new_issues",
+          "discovered",
+          "downloaded",
+          "duplicates",
+          "queued",
+          "errors"
+        ],
+        "title": "JournalScanItem",
+        "type": "object"
+      },
+      "JournalScanListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JournalScanItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "items"
+        ],
+        "title": "JournalScanListResponse",
+        "type": "object"
+      },
+      "JournalScanSummary": {
+        "description": "Numbers only (the message to the group is written outside the app).",
+        "properties": {
+          "duplicate_candidates": {
+            "title": "Duplicate Candidates",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "issues": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "completed_with_errors",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "finished_at",
+          "issues",
+          "queued",
+          "duplicates",
+          "duplicate_candidates",
+          "errors"
+        ],
+        "title": "JournalScanSummary",
+        "type": "object"
+      },
       "KbSearchMatch": {
         "description": "A chunk that matched, with its place in the record's text (`text[char_start:char_end]`).\nA chunk whose license is `internal_only` is never listed.",
         "properties": {
@@ -3413,6 +3799,38 @@
             "title": "Fields",
             "type": "object"
           },
+          "journal": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "origin": {
+            "enum": [
+              "journal_scan",
+              "upload",
+              "archive"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "origin_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Url"
+          },
           "pdf": {
             "enum": [
               "available",
@@ -3439,6 +3857,18 @@
             },
             "title": "Reviews",
             "type": "array"
+          },
+          "scanned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanned At"
           },
           "source_id": {
             "format": "uuid",
@@ -3483,7 +3913,8 @@
           "raw_text_ref",
           "pdf",
           "duplicates",
-          "reviews"
+          "reviews",
+          "origin"
         ],
         "title": "ReviewDetail",
         "type": "object"
@@ -3621,6 +4052,26 @@
             ],
             "title": "Note"
           },
+          "origin": {
+            "enum": [
+              "journal_scan",
+              "upload",
+              "archive"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "origin_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Url"
+          },
           "reasons": {
             "items": {
               "type": "string"
@@ -3668,6 +4119,18 @@
             ],
             "title": "Reviewer Name"
           },
+          "scanned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanned At"
+          },
           "score": {
             "title": "Score",
             "type": "integer"
@@ -3711,7 +4174,8 @@
           "band",
           "score",
           "reasons",
-          "duplicate_group"
+          "duplicate_group",
+          "origin"
         ],
         "title": "ReviewListItem",
         "type": "object"
@@ -8032,6 +8496,377 @@
         "summary": "Healthz"
       }
     },
+    "/journal-scans": {
+      "get": {
+        "operationId": "list_scans_journal_scans_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalScanListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List Scans",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/journal-scans/latest/summary": {
+      "get": {
+        "description": "Numbers of the latest finished scan, for the message to the group. 404 before the first.",
+        "operationId": "latest_summary_journal_scans_latest_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalScanSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Latest Summary",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/journal-scans/{scan_id}": {
+      "get": {
+        "operationId": "get_scan_journal_scans__scan_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalScanDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method Not Allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get Scan",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
     "/kb/search": {
       "get": {
         "operationId": "kb_search_kb_search_get",
@@ -8483,6 +9318,27 @@
               ],
               "title": "Status",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "journal_scan",
+                    "upload",
+                    "archive"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
             }
           },
           {

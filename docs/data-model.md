@@ -317,3 +317,19 @@ verileridir, yayımlanmış KB sürümleri değildir.
 `chat_turn.request_id` nullable UUID'dir: istemcinin teslim kimliği (idempotency anahtarı).
 Tur kimliği sunucuda üretilir; `(conversation_id, request_id)` kısmi benzersiz indekstir,
 böylece başka kullanıcının aynı `request_id` değeri çakışmaz ve varlığı sızmaz.
+
+## Dergi taraması (0019; Görev 20)
+
+`journal_scan`, haftalık taramanın her koşusudur: `id`, `job_id` (FK `ingest_job`, kind `crawl`),
+`trigger` (`schedule` / `manual`), `started_at`, `finished_at`, `status` (`running` /
+`completed` / `completed_with_errors` / `failed`; CHECK), `new_issues` int[], sayaçlar
+(`discovered`, `downloaded`, `duplicates`, `queued`, `errors`) ve `report` JSONB (sayı bazında
+sitedeki karar sayısı, PDF bağlantısı, indirilen, mükerrer, kuyruğa alınan, mükerrer adayı,
+hata listesi `{url, reason}`; sayı dışı hata için `failure`). **Sayaçlar yalnız burada tutulur;**
+tarama işinin `ingest_job.stats` alanı boş kalır (`status` / `finished_at` işin kendisinde).
+
+Taramadan gelen karar: `ingest_job.kind = crawl`, `created_by` NULL; `ingest_file.origin_url`
+PDF adresi, `uploaded_by` NULL, `uploaded_at` indirme zamanı,
+`scan_result.journal = {issue_no, post_id, page_url, pdf_url}`, dosya depoda
+(`storage_key`, metin `text/<sha256>.txt`). "Otomatik taramadan geldi" bilgisi ayrı bir bayrak
+değil, işin türünden türetilir (`origin`: `journal_scan` / `upload` / `archive`).

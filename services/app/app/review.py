@@ -23,6 +23,7 @@ from app.auth import Db
 from app.errors import ApiError
 from app.files.store import LocalFileStore, blob_key
 from app.kb import (
+    ORIGIN_OF_KIND,
     STATUS_GROUPS,
     StaleExtraction,
     approve_extraction,
@@ -38,6 +39,8 @@ from app.models.common import (
     Court,
     Extraction,
     IngestFile,
+    IngestJob,
+    IngestKind,
     RecordStatus,
     Review,
     ReviewDecision,
@@ -57,6 +60,7 @@ from hukuk_models import (
     DuplicateOut,
     ErrorCode,
     ListStatus,
+    Origin,
     ReasonCount,
     ReviewActionRequest,
     ReviewActionResponse,
@@ -102,6 +106,9 @@ def _list_item(row: Any) -> ReviewListItem:
         reviewer_name=getattr(row, "reviewer_name", None),
         review_decision=review_decision.value if review_decision else None,
         note=row.note if review_decision is ReviewDecision.reject else None,
+        origin=row.origin,
+        origin_url=row.origin_url,
+        scanned_at=row.scanned_at,
     )
 
 
@@ -114,6 +121,7 @@ async def list_decisions(
     journal_issue: int | None = None,
     q: str | None = None,
     status: ListStatus = "pending",
+    origin: Origin | None = None,
     sort: ListSort | None = None,
     limit: Limit = 50,
     offset: Offset = 0,
@@ -123,7 +131,7 @@ async def list_decisions(
     if sort is None:
         sort = "reviewed_desc" if status in ("approved", "rejected") else "score_asc"
     filters = ReviewFilters(court=court, reason=reason, journal_issue=journal_issue, q=q)
-    stmt = queue(band, filters, sort, status=status)
+    stmt = queue(band, filters, sort, status=status, origin=origin)
     total, rows = await page(db, stmt, limit, offset)
     return ReviewListResponse(total=total, items=[_list_item(r) for r in rows])
 
@@ -173,7 +181,12 @@ async def bulk_approve(body: BulkApproveRequest, user: Reviewer, db: Db) -> Bulk
         expected_count=body.expected_count,
         limit=body.limit,
         pending=lambda after: queue(
-            body.band, body.filters, "sha256", after, exclude_reopened=True
+            body.band,
+            body.filters,
+            "sha256",
+            after,
+            exclude_reopened=True,
+            exclude_origin="journal_scan",  # a scanned decision is read by a human, never in bulk
         ),
         cursor_of=lambda row: row.sha256,
         publish=lambda ids: publish_batch(db, ids, user.id, body.band),
@@ -221,6 +234,9 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
         ]
     ingest_file = await db.get(IngestFile, extraction.file_id)
     assert ingest_file is not None  # extraction.file_id is a foreign key
+    job = await db.get(IngestJob, ingest_file.job_id)
+    assert job is not None  # job_id is a foreign key
+    crawled = job.kind is IngestKind.crawl
     edits = await source_edits(db, source.id)
     reviews = (
         await db.execute(
@@ -259,6 +275,10 @@ async def get_decision(extraction_id: uuid.UUID, db: Db) -> ReviewDetail:
             )
             for r, name in reviews
         ],
+        origin=ORIGIN_OF_KIND[job.kind],
+        origin_url=ingest_file.origin_url,
+        scanned_at=ingest_file.uploaded_at if crawled else None,
+        journal=(ingest_file.scan_result or {}).get("journal") if crawled else None,
     )
 
 

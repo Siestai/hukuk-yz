@@ -64,6 +64,7 @@ const item = {
     score: 40,
     reasons: ["missing_karar_no"],
     duplicate_group: null,
+    origin: "archive",
 };
 
 async function renderPage(search: Record<string, string> = {}) {

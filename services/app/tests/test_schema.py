@@ -5,6 +5,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic.config import Config
@@ -656,3 +657,39 @@ async def test_chat_constraints_reject_invalid_rows(conn: AsyncConnection) -> No
                     {"id": conversation_id, "role": role, "mode": mode},
                 )
             await savepoint.rollback()
+
+
+def test_the_journal_scan_migration_rejects_bad_rows_and_downgrades_to_0018(
+    alembic_config: Config, database_url: str
+) -> None:
+    async def run(sql: str) -> list[Any]:
+        engine = make_engine(database_url)
+        try:
+            async with engine.begin() as conn:
+                return list((await conn.execute(text(sql))).all())
+        finally:
+            await engine.dispose()
+
+    insert = (
+        "INSERT INTO journal_scan (job_id, trigger, started_at, status) "
+        "SELECT id, '{trigger}', now(), '{status}' FROM ingest_job RETURNING 1"
+    )
+    command.upgrade(alembic_config, "head")
+    try:
+        asyncio.run(
+            run("INSERT INTO ingest_job (kind, status) VALUES ('crawl', 'running') RETURNING 1")
+        )
+        asyncio.run(run(insert.format(trigger="schedule", status="running")))
+        defaults = asyncio.run(
+            run("SELECT new_issues, discovered, errors, report FROM journal_scan")
+        )
+        assert [tuple(r) for r in defaults] == [([], 0, 0, {})]
+        for trigger, status in (("cron", "running"), ("schedule", "skipped")):
+            with pytest.raises(IntegrityError):
+                asyncio.run(run(insert.format(trigger=trigger, status=status)))
+        command.downgrade(alembic_config, "0018")
+        assert asyncio.run(run("SELECT to_regclass('journal_scan')")) == [(None,)]
+    finally:
+        command.upgrade(alembic_config, "head")
+        asyncio.run(run("DELETE FROM journal_scan RETURNING 1"))
+        asyncio.run(run("DELETE FROM ingest_job RETURNING 1"))

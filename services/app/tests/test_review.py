@@ -13,7 +13,7 @@ from typing import Any, Literal, get_args, get_origin
 
 import httpx
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -29,6 +29,9 @@ from app.models.common import (
     CourtLevel,
     Extraction,
     IngestFile,
+    IngestJob,
+    IngestKind,
+    IngestStatus,
     Jurisdiction,
     RecordStatus,
     Review,
@@ -286,6 +289,9 @@ async def test_the_list_pages_with_a_total_and_describes_each_item(
         "reviewer_name": None,
         "review_decision": None,
         "note": None,
+        "origin": "archive",
+        "origin_url": None,
+        "scanned_at": None,
     }
     assert "full_text" not in item
 
@@ -1055,6 +1061,99 @@ async def test_a_reopened_high_band_decision_stays_out_of_bulk_approval_and_show
     assert {i["extraction_id"]: i["review_decision"] for i in everything["items"]}[
         str(reopened)
     ] == "reopen"
+
+
+# --- origin: the journal scan, uploads, the archive ---------------------------------------------
+
+SCAN_URL = "https://yargi.calismatoplum.org/wp-content/uploads/2026/10/70.pdf"
+
+
+async def _scanned(factory: Factory, record: PreparedRecord) -> None:
+    """Make the record one of a journal scan (the file belongs to a `crawl` job)."""
+    async with factory() as session:
+        job = IngestJob(kind=IngestKind.crawl, status=IngestStatus.completed)
+        session.add(job)
+        await session.flush()
+        await session.execute(
+            update(IngestFile)
+            .where(IngestFile.sha256 == record.sha256)
+            .values(
+                job_id=job.id,
+                origin_url=SCAN_URL,
+                scan_result={"journal": {"issue_no": 91, "post_id": 7, "pdf_url": SCAN_URL}},
+            )
+        )
+        await session.commit()
+
+
+async def test_the_queue_tells_where_a_decision_came_from_and_filters_by_it(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {}, {})
+    await _scanned(kb_factory, prepared[2])
+    scanned = str(await _eid(kb_factory, prepared[2]))
+    everything = (await client.get(BASE, headers=me.headers)).json()
+    by_id = {i["extraction_id"]: i for i in everything["items"]}
+    assert by_id[scanned]["origin"] == "journal_scan"
+    assert (by_id[scanned]["origin_url"], by_id[scanned]["scanned_at"] is not None) == (
+        SCAN_URL,
+        True,
+    )
+    assert [i["origin"] for i in everything["items"]].count("archive") == 2
+    for origin, expected in (("journal_scan", {scanned}), ("archive", set(by_id) - {scanned})):
+        listed = (await client.get(BASE, params={"origin": origin}, headers=me.headers)).json()
+        assert {i["extraction_id"] for i in listed["items"]} == expected
+        assert listed["total"] == len(expected)
+    assert (await client.get(BASE, params={"origin": "upload"}, headers=me.headers)).json()[
+        "total"
+    ] == 0
+    assert (
+        await client.get(BASE, params={"origin": "other"}, headers=me.headers)
+    ).status_code == 422
+
+
+async def test_the_detail_names_the_scan_it_came_from(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {})
+    await _scanned(kb_factory, prepared[1])
+    scanned = await client.get(f"{BASE}/{await _eid(kb_factory, prepared[1])}", headers=me.headers)
+    body = scanned.json()
+    assert (body["origin"], body["origin_url"], body["journal"]["issue_no"]) == (
+        "journal_scan",
+        SCAN_URL,
+        91,
+    )
+    assert body["scanned_at"] is not None
+    archived = (
+        await client.get(f"{BASE}/{await _eid(kb_factory, prepared[0])}", headers=me.headers)
+    ).json()
+    assert (
+        archived["origin"],
+        archived["origin_url"],
+        archived["scanned_at"],
+        archived["journal"],
+    ) == (
+        "archive",
+        None,
+        None,
+        None,
+    )
+
+
+async def test_bulk_approval_never_takes_a_decision_of_the_journal_scan(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {}, {})
+    await _scanned(kb_factory, prepared[2])
+    scanned = await _eid(kb_factory, prepared[2])
+    # three high records in the queue, two for bulk approval
+    assert (await client.get(f"{BASE}/summary", headers=me.headers)).json()["by_band"]["high"] == 3
+    refused = await client.post(f"{BASE}/bulk-approve", json=_bulk(3), headers=me.headers)
+    assert refused.status_code == 409
+    response = await client.post(f"{BASE}/bulk-approve", json=_bulk(2), headers=me.headers)
+    assert response.json()["published"] == 2
+    assert await _status(kb_factory, scanned) is RecordStatus.analyzed
 
 
 # --- bulk approval ----------------------------------------------------------------------------

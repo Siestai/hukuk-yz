@@ -370,6 +370,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/journal-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Scans */
+        get: operations["list_scans_journal_scans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal-scans/latest/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latest Summary
+         * @description Numbers of the latest finished scan, for the message to the group. 404 before the first.
+         */
+        get: operations["latest_summary_journal_scans_latest_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal-scans/{scan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Scan */
+        get: operations["get_scan_journal_scans__scan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kb/search": {
         parameters: {
             query?: never;
@@ -1496,6 +1550,180 @@ export interface components {
             result: "met" | "not_met" | "not_applicable" | "unknown";
         };
         /**
+         * JournalError
+         * @description One decision of the scan that was not queued: the address and why (`pdf_link_missing`,
+         *     `not_a_pdf`, `too_large`, `http_<status>`, `timeout`, `connect_error`, `db_error`).
+         */
+        JournalError: {
+            /** Reason */
+            reason: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * JournalIssueReport
+         * @description What the scan did with one journal issue. `site_count` is the number of decision pages the
+         *     site lists, `duplicates` the ones it already had (same post or same file),
+         *     `duplicate_candidates` the queued ones that share court, chamber and E/K with a record of the
+         *     archive.
+         */
+        JournalIssueReport: {
+            /** Downloaded */
+            downloaded: number;
+            /** Duplicate Candidates */
+            duplicate_candidates: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Errors */
+            errors: components["schemas"]["JournalError"][];
+            /** Issue No */
+            issue_no: number;
+            /** Pdf Links */
+            pdf_links: number;
+            /** Queued */
+            queued: number;
+            /** Site Count */
+            site_count: number;
+        };
+        /**
+         * JournalReport
+         * @description `failure` is set when the scan could not go on (the site's API did not answer); the
+         *     issues done up to then are in `issues`. `archive_max` is the newest issue of the archive the
+         *     run compared the site with (not set for `--issue`); `warnings` name what looks wrong, e.g. an
+         *     `archive_max` above every issue of the site.
+         */
+        JournalReport: {
+            /** Archive Max */
+            archive_max?: number | null;
+            /** Failure */
+            failure?: string | null;
+            /**
+             * Issues
+             * @default []
+             */
+            issues: components["schemas"]["JournalIssueReport"][];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
+        /** JournalScanDetail */
+        JournalScanDetail: {
+            /** Discovered */
+            discovered: number;
+            /** Downloaded */
+            downloaded: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Errors */
+            errors: number;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** New Issues */
+            new_issues: number[];
+            /** Queued */
+            queued: number;
+            report: components["schemas"]["JournalReport"];
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "completed_with_errors" | "failed";
+            /**
+             * Trigger
+             * @enum {string}
+             */
+            trigger: "schedule" | "manual";
+        };
+        /** JournalScanItem */
+        JournalScanItem: {
+            /** Discovered */
+            discovered: number;
+            /** Downloaded */
+            downloaded: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Errors */
+            errors: number;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** New Issues */
+            new_issues: number[];
+            /** Queued */
+            queued: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "completed_with_errors" | "failed";
+            /**
+             * Trigger
+             * @enum {string}
+             */
+            trigger: "schedule" | "manual";
+        };
+        /** JournalScanListResponse */
+        JournalScanListResponse: {
+            /** Items */
+            items: components["schemas"]["JournalScanItem"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * JournalScanSummary
+         * @description Numbers only (the message to the group is written outside the app).
+         */
+        JournalScanSummary: {
+            /** Duplicate Candidates */
+            duplicate_candidates: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Errors */
+            errors: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Issues */
+            issues: number[];
+            /** Queued */
+            queued: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "completed_with_errors" | "failed";
+        };
+        /**
          * KbSearchMatch
          * @description A chunk that matched, with its place in the record's text (`text[char_start:char_end]`).
          *     A chunk whose license is `internal_only` is never listed.
@@ -1746,6 +1974,17 @@ export interface components {
             fields: {
                 [key: string]: unknown;
             };
+            /** Journal */
+            journal?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "journal_scan" | "upload" | "archive";
+            /** Origin Url */
+            origin_url?: string | null;
             /**
              * Pdf
              * @enum {string}
@@ -1755,6 +1994,8 @@ export interface components {
             raw_text_ref: string | null;
             /** Reviews */
             reviews: components["schemas"]["ReviewOut"][];
+            /** Scanned At */
+            scanned_at?: string | null;
             /**
              * Source Id
              * Format: uuid
@@ -1821,6 +2062,13 @@ export interface components {
             karar_no: string;
             /** Note */
             note?: string | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "journal_scan" | "upload" | "archive";
+            /** Origin Url */
+            origin_url?: string | null;
             /** Reasons */
             reasons: string[];
             /** Review Decision */
@@ -1829,6 +2077,8 @@ export interface components {
             reviewed_at?: string | null;
             /** Reviewer Name */
             reviewer_name?: string | null;
+            /** Scanned At */
+            scanned_at?: string | null;
             /** Score */
             score: number;
             /**
@@ -4921,6 +5171,314 @@ export interface operations {
             };
         };
     };
+    list_scans_journal_scans_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalScanListResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    latest_summary_journal_scans_latest_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalScanSummary"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_scan_journal_scans__scan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalScanDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     kb_search_kb_search_get: {
         parameters: {
             query: {
@@ -5140,6 +5698,7 @@ export interface operations {
                 journal_issue?: number | null;
                 q?: string | null;
                 status?: "pending" | "approved" | "rejected" | "all";
+                origin?: ("journal_scan" | "upload" | "archive") | null;
                 sort?: ("score_asc" | "score_desc" | "reviewed_desc") | null;
                 limit?: number;
                 offset?: number;

@@ -23,6 +23,7 @@ const item: QueueItem = {
     score: 75,
     reasons: ["karar_year_ne_date_year"],
     duplicate_group: null,
+    origin: "archive",
 };
 const queue: QueueParams = { sort: "score_asc", page: 1 };
 

@@ -119,19 +119,28 @@ def official_ref(f: dict[str, Any]) -> str | None:
     return ", ".join(p for p in (court, numbers, when) if p) or None
 
 
-def _group_key(f: dict[str, Any]) -> tuple[str, str, str, str, str] | None:
+def group_key(f: dict[str, Any]) -> tuple[str, str, str, str, str] | None:
     if not (f["esas_no"] and f["karar_no"]):
         return None
     return (f["court"], f["bam_region"], f["chamber"], f["esas_no"], f["karar_no"])
 
 
 def prepare(
-    rows: Sequence[dict[str, Any]], files: dict[str, dict[str, Any]]
+    rows: Sequence[dict[str, Any]],
+    files: dict[str, dict[str, Any]],
+    known: Sequence[dict[str, Any]] = (),
 ) -> tuple[list[PreparedRecord], int]:
     """Normalize, group duplicates and score. A sha256 seen twice is one record (the second
-    occurrence is only counted; returned as the second value)."""
+    occurrence is only counted; returned as the second value). `known` are the (normalized)
+    fields of records that are in the database already: they join the groups, so that a row with
+    the same court, chamber and E/K as one of them is a duplicate candidate, but they are not
+    returned and not changed."""
     seen: set[str] = set()
-    normalized: list[tuple[dict[str, Any], dict[str, Any], list[str]]] = []
+    # Known records first: of two equal texts the earlier is the one kept, so the new row is the
+    # one flagged `duplicate_of`.
+    normalized: list[tuple[dict[str, Any], dict[str, Any], list[str]]] = [
+        ({}, dict(fields_), []) for fields_ in known
+    ]
     for row in rows:
         if row["sha256"] in seen:
             continue
@@ -141,8 +150,8 @@ def prepare(
 
     groups: dict[tuple[str, ...], list[int]] = defaultdict(list)
     for i, (_, f, _) in enumerate(normalized):
-        if group_key := _group_key(f):
-            groups[group_key].append(i)
+        if member_key := group_key(f):
+            groups[member_key].append(i)
     for key, members in groups.items():
         if len(members) < 2:
             continue
@@ -164,7 +173,7 @@ def prepare(
                 normalized[i][2].append("duplicate_of")
 
     prepared = []
-    for row, f, warnings in normalized:
+    for row, f, warnings in normalized[len(known) :]:
         meta = files.get(row["sha256"], {})
         sha = row["sha256"]
         prepared.append(
@@ -219,7 +228,7 @@ async def _existing(
     return found
 
 
-async def _write(
+async def write_batch(
     session: AsyncSession,
     items: list[PreparedRecord],
     existing: dict[str, _Existing],
@@ -255,6 +264,7 @@ async def _write(
                     "detected_type": p.detected_type,
                     "size": p.size,
                     "review_status": ReviewStatus.approved,  # a system import: no human step
+                    **p.file_values,
                 }
             )
         extractions.append(
@@ -311,7 +321,7 @@ async def load(
         batch = pending[start : start + BATCH]
         try:
             async with factory() as session:
-                await _write(session, batch, existing, job.id)
+                await write_batch(session, batch, existing, job.id)
                 await session.commit()
             counts.new += len(batch)
         except DBAPIError as batch_exc:
@@ -320,7 +330,7 @@ async def load(
             for p in batch:
                 try:
                     async with factory() as session:
-                        await _write(session, [p], existing, job.id)
+                        await write_batch(session, [p], existing, job.id)
                         await session.commit()
                     counts.new += 1
                 except DBAPIError as exc:
@@ -363,7 +373,15 @@ async def approve_band(
     result = ApproveResult()
     async with factory() as session:
         queue_rows = (
-            await session.execute(queue(band, ReviewFilters(), "sha256", exclude_reopened=True))
+            await session.execute(
+                queue(
+                    band,
+                    ReviewFilters(),
+                    "sha256",
+                    exclude_reopened=True,
+                    exclude_origin="journal_scan",
+                )
+            )
         ).all()
         sha = {row.id: row.sha256[:12] for row in queue_rows}
         ids = list(sha)

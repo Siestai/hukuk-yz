@@ -36,6 +36,9 @@ class PreparedRecord:
     warnings: list[str]
     confidence: dict[str, Any]
     raw_text_ref: str
+    # Columns of the `ingest_file` row beyond the archive loader's (the journal scan names the
+    # stored file, its origin and its review status).
+    file_values: dict[str, Any] = field(default_factory=dict)
 
     @property
     def ref(self) -> str:

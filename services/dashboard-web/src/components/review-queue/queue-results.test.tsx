@@ -31,6 +31,7 @@ const item = {
     score: 40,
     reasons: ["missing_karar_no"],
     duplicate_group: null,
+    origin: "archive",
 } as const;
 const base = { sort: "score_asc", page: 1 } as const;
 

@@ -38,3 +38,7 @@
 - [ ] Görev 16: chat web arayüzü (inceleme düzeltmeleri tamamlandı, DB'li entegrasyon doğrulaması bekliyor; PR Orhan'ın onayında; `docs/tasks/16-chat-web.md`)
 - [ ] Görev 17: ajan v1, LangGraph (`docs/tasks/17-agent-v1.md`)
 - [ ] Görev 18: uçtan uca bağlama (`docs/tasks/18-chat-wiring.md`)
+
+## Dergi taraması (Görev 20, 2026-11-10)
+- [ ] Görev 20a: haftalık tarama, backend (PR Orhan'ın onayında; `docs/tasks/20-journal-scan.md`)
+- [ ] Görev 20b: Taramalar ekranı + kuyruk rozeti / filtresi

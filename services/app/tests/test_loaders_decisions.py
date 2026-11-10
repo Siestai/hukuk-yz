@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.loaders import decisions
@@ -26,6 +26,7 @@ from app.models.common import (
     Extraction,
     IngestFile,
     IngestJob,
+    IngestKind,
     IngestStatus,
     License,
     RecordStatus,
@@ -341,6 +342,25 @@ async def test_approve_band_publishes_the_band_as_unverified(
         RecordStatus.approved: high,
         RecordStatus.analyzed: len(prepared) - high,
     }
+
+
+async def test_approve_band_leaves_the_journal_scans_decisions_to_a_human(
+    kb_factory: async_sessionmaker[AsyncSession], reviewer: AppUser
+) -> None:
+    prepared, _ = _prepared()
+    await load(kb_factory, prepared, LoadCounts())
+    high = sum(p.confidence["band"] == "high" for p in prepared)
+    async with kb_factory() as session:
+        job = IngestJob(kind=IngestKind.crawl, status=IngestStatus.completed)
+        session.add(job)
+        await session.flush()
+        await session.execute(update(IngestFile).values(job_id=job.id))
+        await session.commit()
+    result = await approve_band(kb_factory, "high", reviewer.id)
+    assert (result.published, result.conflicts, result.publish_failed) == (0, [], [])
+    assert high > 0
+    async with kb_factory() as session:
+        assert (await session.execute(select(func.count()).select_from(Decision))).scalar_one() == 0
 
 
 async def test_approve_band_publishes_a_source_with_two_extractions_once(

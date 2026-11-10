@@ -1,6 +1,6 @@
 # Görev 20: Dergi taraması (Çalışma ve Toplum, haftalık)
 
-Durum: taslak, Orhan onayında (2026-11-10). Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
+Durum: 20a (backend) uygulandı, PR Orhan'ın onayında (2026-11-10); 20b bekliyor. Sahip: Themis (Claude Code çalıştırır). Onay: Orhan.
 Bağlam: issue #84 (bu görev), #83 (91. sayı pilotu, kuralları buraya taşındı), `docs/tasks/04-decision-parser.md` (dergi düzenleri, `hukuk_ingest.decisions`), `docs/tasks/05-decision-load.md` (kararın inceleme kuyruğuna yazılması), `docs/tasks/12-file-management.md` (`FileStore`, `ingest_job` / `ingest_file`, worker), `docs/tasks/13-upload-detect-approve.md` (eşleşme, `matches`), `docs/decisions.md` (dergi özeti editoryal; karar metni kaynak).
 Skill'ler: `db-migration`, `frontend-ui` (bağlayıcı), `task-pr-hygiene`.
 
@@ -50,7 +50,7 @@ Kararlar (Orhan, 2026-11-10):
 6. **Çalıştırma:** CLI `python -m app.journal.scan [--dry-run] [--issue N]`. `--dry-run` hiçbir şey yazmaz, yalnız keşif raporu basar. `--issue N` tek sayıyı tarar (prova ve elle kurtarma için; "yeni sayı" kuralını yalnız o sayı için atlar, mükerrer kuralları geçerli).
 7. **Zamanlama:** Dokploy zamanlanmış işi, `app` servisinde, `0 11 * * 6`, `Europe/Istanbul`, komut `python -m app.journal.scan`. Kurulum adımı `docs/deploy.md`'ye yazılır (repo'ya sunucu kimliği girmez). Worker'a zamanlayıcı eklenmez.
 8. **API** (OpenAPI tipleri yeniden üretilir): `GET /journal-scans` (sayfalı, en yeni önce), `GET /journal-scans/{id}` (rapor dahil). Yetki `reviewer` ve `admin`. Kuyruk uç noktasına `origin` filtresi ve alanı.
-9. **WP bildirimi için özet:** `GET /journal-scans/latest/summary` yalnız sayıları döner, metin değil (`issues`, `queued`, `duplicates`, `errors`, `status`, `finished_at`); metni app üretmez. Mesajı Themis cumartesi 11:30'da bu uç noktadan okuyup gruba atar (aşağıda, repo dışı).
+9. **WP bildirimi için özet:** `GET /journal-scans/latest/summary` yalnız sayıları döner, metin değil (`issues`, `queued`, `duplicates`, `duplicate_candidates`, `errors`, `status`, `finished_at`); metni app üretmez. Mesajı Themis cumartesi 11:30'da bu uç noktadan okuyup gruba atar (aşağıda, repo dışı).
 
 ### 20b: dashboard
 

@@ -32,6 +32,7 @@ LATER_TABLES = {
     "user_session",
     "login_attempt",
     "file_deletion",
+    "journal_scan",
 }
 
 
@@ -299,3 +300,14 @@ def test_chat_tables_columns_and_checks_match_migration() -> None:
         assert all(
             str(c.name) in source for c in table.constraints if isinstance(c, CheckConstraint)
         )
+
+
+def test_journal_scan_table_checks_and_indexes_match_migration() -> None:
+    migration = _load_migration(VERSIONS / "0019_journal_scan.py")
+    assert (migration.revision, migration.down_revision) == ("0019", "0018")
+    source = (VERSIONS / "0019_journal_scan.py").read_text()
+    table = Base.metadata.tables["journal_scan"]
+    assert '"journal_scan"' in source
+    assert all(f'"{c.name}"' in source for c in table.columns)
+    assert all(str(c.name) in source for c in table.constraints if isinstance(c, CheckConstraint))
+    assert all(str(i.name) in source for i in table.indexes)

@@ -56,6 +56,8 @@ services:
       CHAT_BACKEND: ${CHAT_BACKEND:-none}
       AGENT_BASE_URL: ${AGENT_BASE_URL:-http://agent:8000}
       CHAT_DAILY_LIMIT: ${CHAT_DAILY_LIMIT:-50}
+      # Journal scan (task 20; `python -m app.journal.scan`): seconds between requests to the site.
+      JOURNAL_SCAN_DELAY_SECONDS: ${JOURNAL_SCAN_DELAY_SECONDS:-2}
     volumes:
       - ${ARCHIVE_HOST_DIR:-../../data/drive}:/archive:ro
       - filestore:/filestore

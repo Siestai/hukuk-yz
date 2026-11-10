@@ -34,6 +34,8 @@ from app.models.common import (
     CourtLevel,
     Extraction,
     IngestFile,
+    IngestJob,
+    IngestKind,
     Jurisdiction,
     RecordStatus,
     Review,
@@ -48,7 +50,7 @@ from app.models.decision import LIVE_KEY_INDEX, Decision
 from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
 from app.models.user import AppUser
 from hukuk_ingest.statutes.timeline import FOUND, GAP, NOT_IN_FORCE, UNKNOWN_ARTICLE
-from hukuk_models import Band, ListStatus, ReviewFilters, StatuteArticleStatus
+from hukuk_models import Band, ListStatus, Origin, ReviewFilters, StatuteArticleStatus
 
 Sort = Literal["score_asc", "score_desc", "reviewed_desc", "sha256"]
 
@@ -60,6 +62,13 @@ STATUS_GROUPS: dict[str, tuple[RecordStatus, ...]] = {
     "rejected": (RecordStatus.rejected,),
 }
 STATUS_GROUPS["all"] = tuple(s for group in STATUS_GROUPS.values() for s in group)
+
+# Where a record came from, by the kind of its file's job (the journal scan is the `crawl`).
+ORIGIN_OF_KIND = {
+    IngestKind.crawl: "journal_scan",
+    IngestKind.upload: "upload",
+    IngestKind.bulk: "archive",
+}
 
 # The extraction columns the queue shows and searches; an edit of the same name replaces them.
 _OVERLAID = (
@@ -210,9 +219,15 @@ def newest_extractions(source_id: uuid.UUID | None = None) -> Subquery:
             Extraction.decision_date,
             Extraction.journal_issue,
             Extraction.duplicate_group,
+            case(
+                *((IngestJob.kind == kind, origin) for kind, origin in ORIGIN_OF_KIND.items())
+            ).label("origin"),
+            IngestFile.origin_url,
+            case((IngestJob.kind == IngestKind.crawl, IngestFile.uploaded_at)).label("scanned_at"),
         )
         .ext(distinct_on(Extraction.source_id))
         .join(IngestFile, IngestFile.id == Extraction.file_id)
+        .join(IngestJob, IngestJob.id == IngestFile.job_id)
         .join(Source, Source.id == Extraction.source_id)
         .where(Extraction.parser_name == PARSER_NAME, Source.category == SourceCategory.decision)
         .order_by(Extraction.source_id, Extraction.extracted_at.desc(), Extraction.id)
@@ -248,6 +263,8 @@ def queue(
     after: str | None = None,
     status: ListStatus = "pending",
     exclude_reopened: bool = False,
+    origin: Origin | None = None,
+    exclude_origin: Origin | None = None,
 ) -> Select[Any]:
     """The review queue: newest extraction of every decision source in `status` (`pending` =
     `analyzed`; the other tabs come with their last review), filtered and ordered (most
@@ -255,7 +272,9 @@ def queue(
     never-reviewed last; `sha256` is the stable order of bulk runs, of which `after` is the
     cursor: only records with a greater sha256). A pending record also comes with its last review,
     which is a `reopen` when a reviewer took it back; `exclude_reopened` leaves those out (bulk
-    approval: a human undid it on purpose, so it is looked at one by one)."""
+    approval: a human undid it on purpose, so it is looked at one by one). `origin` keeps one
+    origin (journal scan, upload, archive), `exclude_origin` leaves one out (bulk approval never
+    takes the journal scan's records)."""
     newest = newest_extractions()
     edited = edits_by_source()
     # What is shown, filtered and searched is the extraction's value with the edits laid over it,
@@ -277,6 +296,10 @@ def queue(
     conditions: list[ColumnElement[bool]] = [newest.c.status.in_(STATUS_GROUPS[status])]
     if band:
         conditions.append(newest.c.confidence["band"].as_string() == band)
+    if origin is not None:
+        conditions.append(newest.c.origin == origin)
+    if exclude_origin is not None:
+        conditions.append(newest.c.origin != exclude_origin)
     if filters.court is not None:
         conditions.append(shown["court"] == filters.court)
     if filters.reason is not None:

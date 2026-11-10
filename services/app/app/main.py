@@ -16,6 +16,7 @@ from app.db import make_engine
 from app.errors import ERROR_RESPONSES
 from app.errors import install as install_error_handlers
 from app.files.api import router as files_router
+from app.journal.api import router as journal_router
 from app.logging_setup import configure_logging, request_id_var
 from app.review import router as review_router
 from app.review_statutes import router as review_statutes_router
@@ -80,6 +81,7 @@ def create_app(*, chat_backend: str | None = None) -> FastAPI:
     for router in (
         auth_router,
         files_router,
+        journal_router,
         review_router,
         review_statutes_router,
         statutes_router,

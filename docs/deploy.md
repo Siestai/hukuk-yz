@@ -148,6 +148,18 @@ kayıtları için okunur, kaldırılması ayrı küçük iş).
 7. **Giriş denemesi temizliği** (cron): `login_attempt` tablosu büyür. Dokploy'da Schedules ile
    `app` konteynerinde günlük: `python -m app.users prune-login-attempts` (30 günden eskiyi siler).
 
+8. **Haftalık dergi taraması** (Görev 20; Orhan'ın onayından sonra açılır): Dokploy'da Schedules
+   ile `app` servisinde: zamanlama `0 11 * * 6`, saat dilimi `Europe/Istanbul` (cumartesi 11:00),
+   komut `python -m app.journal.scan`. `FILE_STORE_ROOT` app konteynerinde ayarlı olmalıdır
+   (PDF'ler dosya deposuna konur); worker'a zamanlayıcı eklenmez. Etkinleştirmeden önce
+   `python -m app.journal.scan --dry-run` (hiçbir şey yazmaz: yeni sayıları, karar sayfalarını ve
+   PDF bağlantılarını listeler) ve gerekirse `--issue N` ile tek sayı elle koşulur. İstekler
+   arası bekleme `JOURNAL_SCAN_DELAY_SECONDS` (varsayılan 2). İki tarama aynı anda koşmaz
+   (ikincisi `skipped` döner, kayıt açmaz); yarıda kalan tarama bir sonraki koşuda kaldığı
+   yerden devam eder. Sonuç dashboard'a gelmeden önce `GET /journal-scans` ve
+   `GET /journal-scans/latest/summary` ile okunur. Dokploy'daki iş kaydı (kimlikler repoya
+   yazılmaz) ve canlıdaki ilk `--dry-run` çıktısı PR'a / deploy notuna eklenir.
+
 ## Dosya deposu: yedek ve risk
 
 Yüklenen ve aktarılan tüm dosyalar `filestore` Docker volume'ündedir. **Tek kopya sunucu
