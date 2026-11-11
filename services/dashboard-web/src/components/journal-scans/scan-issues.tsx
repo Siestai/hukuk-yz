@@ -54,11 +54,11 @@ export function ScanIssues({ issues }: { issues: JournalIssueReport[] }) {
                                                 {t("errors", { count: issue.errors.length })}
                                             </h3>
                                             <ul className="grid gap-2">
-                                                {issue.errors.map((error) => {
+                                                {issue.errors.map((error, index) => {
                                                     const link = webLink(error.url);
                                                     return (
                                                         <li
-                                                            key={`${error.url}|${error.reason}`}
+                                                            key={`${error.url}|${error.reason}|${index}`}
                                                             className="grid gap-0.5 rounded-md bg-low-soft p-3 text-sm"
                                                         >
                                                             <span className="text-low">

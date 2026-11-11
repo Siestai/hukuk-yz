@@ -161,17 +161,7 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                 </div>
                 <SearchBox id={ids.q} />
             </div>
-            {params.jobId ? (
-                <p className="flex flex-wrap items-center gap-x-3 text-sm text-ink-2 md:w-full">
-                    {t("scanOnly")}
-                    <Link
-                        href={queueHref({ ...params, jobId: undefined, page: 1 })}
-                        className="inline-flex items-center py-2 font-medium text-primary underline pointer-coarse:min-h-11"
-                    >
-                        {t("dropScan")}
-                    </Link>
-                </p>
-            ) : null}
+            {params.jobId ? <p className="text-sm text-ink-2 md:w-full">{t("scanOnly")}</p> : null}
             {hasFilters(params) ? (
                 <div className="flex items-center gap-2">
                     <Link

@@ -66,8 +66,7 @@
         "clearTopic": "Temizleme",
         "origin": "Kaynak",
         "allOrigins": "Tümü",
-        "scanOnly": "Yalnız tek bir taramanın kararları gösteriliyor.",
-        "dropScan": "Tüm kararları göster"
+        "scanOnly": "Yalnız tek bir taramanın kararları gösteriliyor."
       },
       "table": {
         "label": "Onay bekleyen kararlar",

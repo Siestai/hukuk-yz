@@ -155,6 +155,7 @@
   Fixture modunun açık yeniden başlatma yolu korunur. Bu teslim düzeltmesi
   SB001 kaynak/başlık/desteklenmeyen sonuç bulgularını kapatmaz.
 
+
 ### 2026-10-31 — Görev 18 tamamlanmış hata politikası
 
 - **Canlı teslim ile hidrasyon eşitliği** (dar inceleme düzeltmesi; md. 25, 31):

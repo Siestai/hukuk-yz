@@ -5,9 +5,8 @@ export type JournalScanItem = components["schemas"]["JournalScanItem"];
 export type JournalScanDetail = components["schemas"]["JournalScanDetail"];
 export type JournalScanList = components["schemas"]["JournalScanListResponse"];
 export type JournalIssueReport = components["schemas"]["JournalIssueReport"];
-export type JournalError = components["schemas"]["JournalError"];
 export type ScanStatus = JournalScanItem["status"];
-export type ScanTrigger = JournalScanItem["trigger"];
+type ScanTrigger = JournalScanItem["trigger"];
 
 export const SCAN_STATUSES = [
     "running",
@@ -51,7 +50,7 @@ export const REASON_KEYS = [
     "archive_empty",
 ] as const;
 
-export type ReasonKey = (typeof REASON_KEYS)[number] | "http";
+type ReasonKey = (typeof REASON_KEYS)[number] | "http";
 
 /**
  * The code of a reason such as `not_a_pdf`, `http_503` or `db_error:IntegrityError`, with the

@@ -50,12 +50,12 @@ describe("QueueFilters", () => {
         expect(nav.push).toHaveBeenCalledWith("/");
     });
 
-    it("says that only one scan's decisions are shown and drops that filter", () => {
+    it("says that only one scan's decisions are shown; the clear link drops that filter", () => {
         const job = "6f1c1b3e-2a4d-4c43-9d57-0a1b2c3d4e5f";
         setup(`job=${job}&durum=tumu`);
         renderWithIntl(view());
         expect(screen.getByText(filters.scanOnly)).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: filters.dropScan })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: filters.clear })).toHaveAttribute(
             "href",
             "/?durum=tumu",
         );

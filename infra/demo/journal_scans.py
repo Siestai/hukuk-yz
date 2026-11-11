@@ -5,10 +5,13 @@ Run inside the `app` container after the decisions are loaded (`make demo-data` 
 error row per kind of reason, and a failed one), and turns two of the loaded demo decisions into
 records of the first scan: their file moves to its `crawl` job with an address and the journal
 block, exactly what `python -m app.journal.scan` writes. No network, no real journal data.
-Running it again does nothing."""
+The two rows have fixed ids, so running it again does nothing, and scans that are really there do
+not stop it. The loader's job keeps its load summary (a record of the load, which no screen
+counts); only the two files change jobs. Everything is one transaction."""
 
 import asyncio
 import sys
+import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import select, update
@@ -22,6 +25,8 @@ from app.settings import get_settings
 # the queue for the screens to show them) and that are not in the high band (bulk approval skips
 # a scan's records, which would break its count).
 SCANNED = ("Demo 09 ", "Demo 10 ")
+RAN_ID = uuid.UUID("5ca00000-0000-4000-8000-000000000091")
+FAILED_ID = uuid.UUID("5ca00000-0000-4000-8000-000000000090")
 SITE = "https://journal.example.test"
 RAN = datetime(2026, 11, 14, 8, 0, tzinfo=UTC)  # a Saturday 11:00 in Istanbul
 FAILED = datetime(2026, 11, 7, 8, 0, tzinfo=UTC)
@@ -53,17 +58,20 @@ async def main() -> int:
     factory = make_session_factory(engine)
     try:
         async with factory() as db:
-            if (await db.execute(select(JournalScan.id).limit(1))).first() is not None:
+            if await db.get(JournalScan, RAN_ID) is not None:
                 print("journal scans are already there")
                 return 0
             jobs = [
                 IngestJob(
                     kind=IngestKind.crawl,
-                    status=IngestStatus.completed,
+                    status=status,
                     started_at=started,
                     finished_at=started.replace(minute=12),
                 )
-                for started in (RAN, FAILED)
+                for started, status in (
+                    (RAN, IngestStatus.completed),
+                    (FAILED, IngestStatus.failed),
+                )
             ]
             db.add_all(jobs)
             await db.flush()
@@ -71,6 +79,7 @@ async def main() -> int:
             db.add_all(
                 [
                     JournalScan(
+                        id=RAN_ID,
                         job_id=ran.id,
                         trigger="schedule",
                         started_at=RAN,
@@ -85,6 +94,7 @@ async def main() -> int:
                         report=REPORT,
                     ),
                     JournalScan(
+                        id=FAILED_ID,
                         job_id=failed.id,
                         trigger="manual",
                         started_at=FAILED,
