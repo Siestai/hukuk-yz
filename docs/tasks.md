@@ -40,5 +40,5 @@
 - [ ] Görev 18: uçtan uca bağlama (`docs/tasks/18-chat-wiring.md`)
 
 ## Dergi taraması (Görev 20, 2026-11-10)
-- [ ] Görev 20a: haftalık tarama, backend (PR Orhan'ın onayında; `docs/tasks/20-journal-scan.md`)
+- [x] Görev 20a: haftalık tarama, backend (#90; `docs/tasks/20-journal-scan.md`)
 - [x] Görev 20b: Taramalar ekranı + kuyruk rozeti / filtresi (PR Orhan'ın onayında)
