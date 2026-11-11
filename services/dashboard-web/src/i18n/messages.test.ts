@@ -8,7 +8,21 @@ import { HELP_TOPICS, STATUTE_HELP_TOPICS } from "../lib/help-topics";
 import { FIELD_ERRORS } from "../lib/decision-edits";
 import { MATCH_REASONS, SUGGESTION_SOURCES } from "../lib/file-suggestions";
 import { DOC_TYPES, REVIEW_STATUSES, SCAN_STATUSES, SCAN_WARNINGS } from "../lib/files";
-import { BANDS, COURTS, FLASHES, SORTS, STATUSES, UNKNOWN_COURT } from "../lib/queue-params";
+import {
+    ISSUE_COUNTS,
+    REASON_KEYS,
+    SCAN_STATUSES as JOURNAL_STATUSES,
+    SCAN_TRIGGERS,
+} from "../lib/journal-scans";
+import {
+    BANDS,
+    COURTS,
+    FLASHES,
+    ORIGINS,
+    SORTS,
+    STATUSES,
+    UNKNOWN_COURT,
+} from "../lib/queue-params";
 import {
     readRepoFile,
     reasonCodes,
@@ -93,6 +107,11 @@ const DYNAMIC_GROUPS: Record<string, readonly string[]> = {
     "enums.bulkFailure": BULK_FAILURE_CODES,
     "enums.docType": DOC_TYPES,
     "enums.scanStatus": SCAN_STATUSES,
+    "enums.journalStatus": JOURNAL_STATUSES,
+    "enums.journalTrigger": SCAN_TRIGGERS,
+    "enums.origin": ORIGINS,
+    "journalScans.reasons": REASON_KEYS,
+    "journalScans.detail.issues": ISSUE_COUNTS,
     "enums.scanWarning": SCAN_WARNINGS,
     "enums.reviewStatus": REVIEW_STATUSES,
     "enums.suggestionSource": SUGGESTION_SOURCES,

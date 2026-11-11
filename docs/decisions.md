@@ -212,3 +212,14 @@
   (`completed_with_errors` taramanın hataları kendiliğinden yeniden denenmez; `--issue N`).
 - **Aynı siteden olmayan PDF bağlantısı izlenmez** (karar sayfasıyla aynı ana makine); aksi
   halde sayfa içeriği uygulama sunucusuna rastgele adres çektirebilirdi.
+
+### 2026-11-10 — Görev 20b uygulama kararları (Orhan onayına tabi)
+
+- **Taramadan kararlara bağlantı iş kimliğiyle:** kuyruk uç noktasına `job_id` süzgeci eklendi
+  (tarama kaydının `job_id`'si); "Bu taramadan gelen kararlar" bağlantısı kuyruğun "Tümü"
+  sekmesini açar, böylece sonradan onaylanan / reddedilenler de görünür. Kuyruk iş kimliğinden
+  taramaya geri bağlantı vermez (API'de eşleme yok).
+- **Kaynak satırı:** karar detayında yalnız `journal_scan` için zaman, sayı ve dergi sayfası
+  bağlantısı; yükleme ve arşiv yalnız adıyla ("Kaynak: Arşiv"), API'nin vermediği alan uydurulmaz.
+- **E2E verisi:** `infra/demo/journal_scans.py` iki tarama satırı yazar ve Demo 09 / 10'u ilk
+  taramanın kaydı yapar (ağ yok); `make demo-data` çalıştırır.

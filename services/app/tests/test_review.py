@@ -1068,8 +1068,8 @@ async def test_a_reopened_high_band_decision_stays_out_of_bulk_approval_and_show
 SCAN_URL = "https://yargi.calismatoplum.org/wp-content/uploads/2026/10/70.pdf"
 
 
-async def _scanned(factory: Factory, record: PreparedRecord) -> None:
-    """Make the record one of a journal scan (the file belongs to a `crawl` job)."""
+async def _scanned(factory: Factory, record: PreparedRecord) -> uuid.UUID:
+    """Make the record one of a journal scan (the file belongs to a `crawl` job); the job's id."""
     async with factory() as session:
         job = IngestJob(kind=IngestKind.crawl, status=IngestStatus.completed)
         session.add(job)
@@ -1084,6 +1084,7 @@ async def _scanned(factory: Factory, record: PreparedRecord) -> None:
             )
         )
         await session.commit()
+        return job.id
 
 
 async def test_the_queue_tells_where_a_decision_came_from_and_filters_by_it(
@@ -1110,6 +1111,20 @@ async def test_the_queue_tells_where_a_decision_came_from_and_filters_by_it(
     assert (
         await client.get(BASE, params={"origin": "other"}, headers=me.headers)
     ).status_code == 422
+
+
+async def test_the_queue_filters_by_the_ingest_job_of_a_scan(
+    client: httpx.AsyncClient, kb_factory: Factory, me: Login
+) -> None:
+    prepared = await _seed(kb_factory, {}, {}, {})
+    job_id = await _scanned(kb_factory, prepared[2])
+    scanned = str(await _eid(kb_factory, prepared[2]))
+    listed = (await client.get(BASE, params={"job_id": str(job_id)}, headers=me.headers)).json()
+    assert [i["extraction_id"] for i in listed["items"]] == [scanned]
+    assert listed["total"] == 1
+    other = await client.get(BASE, params={"job_id": str(uuid.uuid4())}, headers=me.headers)
+    assert other.json()["total"] == 0
+    assert (await client.get(BASE, params={"job_id": "x"}, headers=me.headers)).status_code == 422
 
 
 async def test_the_detail_names_the_scan_it_came_from(

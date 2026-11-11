@@ -20,6 +20,11 @@ telif ve KVKK nedeniyle repoda yok) ihtiyaç duymadan inceleme arayüzünü ve u
   ve Ek 2'de zaman çizelgesinde boşluk, 33 mülga, 20 ve Ek 2 iki sürümlü. Yükleyici
   (`python -m app.loaders.statutes`) onaysız yükler: yedisi de bekleyen kuyruğa düşer, yayına
   (`as_of`) hiçbiri girmez.
+- `journal_scans.py`: haftalık dergi taraması (Görev 20) ekranları için iki `journal_scan` satırı
+  (hata satırlı biten bir tarama ve başarısız biri) ve Demo 09 ile Demo 10'u ilk taramanın
+  kaydı yapar (kaynak "Otomatik tarama", dergi sayfası bağlantısı). Ağ yok; `make demo-data` karar
+  yükleyicisinden sonra çalıştırır, tekrar çalıştırmak bir şey yapmaz. Bu iki kayıt hiçbir
+  e2e senaryosunda onaylanmaz ve yüksek bantta değildir (toplu onay taramanın kayıtlarını atlar).
 - `generate.py`: hepsini baştan üretir (`python infra/demo/generate.py`; çıktı deterministiktir).
   `statutes.jsonl`, gerçek bir çıktıdan yeniden seçmek için `--statutes <statutes.jsonl>` ister;
   verilmezse dokunulmaz.

@@ -58,6 +58,14 @@ describe("QueueCards", () => {
         ).toBeInTheDocument();
     });
 
+    it("marks a record of the journal scan, and only that", () => {
+        const scanned = renderCard({ origin: "journal_scan" });
+        expect(within(scanned).getByText(messages.enums.origin.journal_scan)).toBeInTheDocument();
+        document.body.innerHTML = "";
+        const uploaded = renderCard({ origin: "upload" });
+        expect(within(uploaded).queryByText(messages.enums.origin.journal_scan)).toBeNull();
+    });
+
     it("marks a waiting record that a reviewer took back, on the pending tab too", () => {
         const plain = renderCard();
         expect(within(plain).queryByText(messages.review.queue.table.statuses.reopened)).toBeNull();

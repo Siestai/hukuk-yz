@@ -6,6 +6,7 @@ import { EXTRAS, useQueueItemFormat, type QueueItem } from "./queue-item-format"
 import {
     ConfidenceChip,
     DuplicateIcon,
+    OriginBadge,
     ReasonChips,
     StatusBadge,
     stretchedLink,
@@ -31,7 +32,8 @@ export function QueueCards({ items, params }: { items: QueueItem[]; params: Queu
                 >
                     <div className="flex items-center justify-between gap-2">
                         <ConfidenceChip item={item} format={format} />
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <OriginBadge item={item} format={format} />
                             {extras.includes("status") || showsReopened(item) ? (
                                 <StatusBadge item={item} format={format} />
                             ) : null}

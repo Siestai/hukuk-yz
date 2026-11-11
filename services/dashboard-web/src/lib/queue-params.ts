@@ -1,3 +1,5 @@
+import { isUuid } from "@/lib/uuid";
+
 export const PAGE_SIZE = 50;
 export const BANDS = ["high", "medium", "low"] as const;
 export const COURTS = [
@@ -13,6 +15,8 @@ export const COURTS = [
 ] as const;
 /** URL value for decisions whose court could not be read; the API filters it as `court=""`. */
 export const UNKNOWN_COURT = "unknown";
+/** Where a decision came from: the weekly journal scan, an upload or the first archive. */
+export const ORIGINS = ["journal_scan", "upload", "archive"] as const;
 export const SORTS = ["score_asc", "score_desc", "reviewed_desc"] as const;
 /** The tabs of the list, in order; `pending` is the queue itself. */
 export const STATUSES = ["pending", "approved", "rejected", "all"] as const;
@@ -20,6 +24,7 @@ export const STATUSES = ["pending", "approved", "rejected", "all"] as const;
 export const STATUS_SLUGS = { approved: "onaylanan", rejected: "reddedilen", all: "tumu" } as const;
 
 export type Band = (typeof BANDS)[number];
+export type Origin = (typeof ORIGINS)[number];
 export type Sort = (typeof SORTS)[number];
 export type QueueStatus = (typeof STATUSES)[number];
 
@@ -40,6 +45,9 @@ export type QueueParams = {
     court?: string;
     reason?: string;
     journalIssue?: number;
+    origin?: Origin;
+    /** The ingest job (one journal scan) whose decisions are listed. */
+    jobId?: string;
     q?: string;
     sort: Sort;
     page: number;
@@ -85,6 +93,7 @@ export function parseJournalIssue(value: string): number | undefined {
 export function parseQueueParams(raw: RawParams): QueueParams {
     const court = pick(raw, "court");
     const reason = pick(raw, "reason");
+    const job = pick(raw, "job");
     const slug = pick(raw, "durum");
     const status = (Object.keys(STATUS_SLUGS) as (keyof typeof STATUS_SLUGS)[]).find(
         (key) => STATUS_SLUGS[key] === slug,
@@ -95,6 +104,8 @@ export function parseQueueParams(raw: RawParams): QueueParams {
         court: court === UNKNOWN_COURT ? court : oneOf(COURTS, court),
         reason: reason && /^[a-z0-9_]{1,64}$/.test(reason) ? reason : undefined,
         journalIssue: parseJournalIssue(pick(raw, "journal_issue") ?? ""),
+        origin: oneOf(ORIGINS, pick(raw, "origin")),
+        jobId: job && isUuid(job) ? job.toLowerCase() : undefined,
         q: pick(raw, "q")?.trim().slice(0, MAX_QUERY_LENGTH) || undefined,
         sort:
             oneOf(sortsFor(status ?? "pending"), pick(raw, "sort")) ??
@@ -111,6 +122,8 @@ export function serializeQueueParams(params: QueueParams): URLSearchParams {
     if (params.court) query.set("court", params.court);
     if (params.reason) query.set("reason", params.reason);
     if (params.journalIssue) query.set("journal_issue", String(params.journalIssue));
+    if (params.origin) query.set("origin", params.origin);
+    if (params.jobId) query.set("job", params.jobId);
     if (params.q) query.set("q", params.q);
     if (params.sort !== defaultSort(statusOf(params))) query.set("sort", params.sort);
     if (params.page > 1) query.set("page", String(params.page));
@@ -178,10 +191,17 @@ export function changeQueueParams(params: QueueParams, change: QueueChange): Que
     return { ...params, ...change, page: change.page ?? 1 };
 }
 
-/** How many of the filters (band, court, reason, journal issue, search) are set. */
+/** How many of the filters (band, court, reason, journal issue, origin, scan, search) are set. */
 export function activeFilterCount(params: QueueParams): number {
-    return [params.band, params.court, params.reason, params.journalIssue, params.q].filter(Boolean)
-        .length;
+    return [
+        params.band,
+        params.court,
+        params.reason,
+        params.journalIssue,
+        params.origin,
+        params.jobId,
+        params.q,
+    ].filter(Boolean).length;
 }
 
 export function hasFilters(params: QueueParams): boolean {
@@ -196,6 +216,8 @@ export function apiQuery(params: QueueParams) {
         court: params.court === UNKNOWN_COURT ? "" : params.court,
         reason: params.reason,
         journal_issue: params.journalIssue,
+        origin: params.origin,
+        job_id: params.jobId,
         q: params.q,
         sort: params.sort,
         limit: PAGE_SIZE,

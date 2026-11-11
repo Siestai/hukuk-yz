@@ -11,10 +11,12 @@ import {
     activeFilterCount,
     hasFilters,
     MAX_JOURNAL_ISSUE,
+    ORIGINS,
     parseJournalIssue,
     queueHref,
     UNKNOWN_COURT,
     type Band,
+    type Origin,
 } from "@/lib/queue-params";
 import { HelpTip } from "@/components/help-tip";
 import { useEnumLabels } from "@/lib/use-enum-labels";
@@ -31,6 +33,7 @@ export function QueueFilters({ courts }: { courts: string[] }) {
         court: useId(),
         reason: useId(),
         issue: useId(),
+        origin: useId(),
         q: useId(),
     };
     const active = activeFilterCount(params);
@@ -134,6 +137,23 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                     }}
                 />
             </div>
+            <div className="grid gap-1.5 md:w-44">
+                <Label htmlFor={ids.origin}>{t("origin")}</Label>
+                <Select
+                    id={ids.origin}
+                    value={params.origin ?? ""}
+                    onChange={(event) =>
+                        navigate({ origin: (event.target.value || undefined) as Origin })
+                    }
+                >
+                    <option value="">{t("allOrigins")}</option>
+                    {ORIGINS.map((origin) => (
+                        <option key={origin} value={origin}>
+                            {labels.origin(origin)}
+                        </option>
+                    ))}
+                </Select>
+            </div>
             <div className="grid gap-1.5 md:min-w-56 md:flex-1">
                 <div className="flex items-center gap-1.5">
                     <Label htmlFor={ids.q}>{t("search")}</Label>
@@ -141,6 +161,7 @@ export function QueueFilters({ courts }: { courts: string[] }) {
                 </div>
                 <SearchBox id={ids.q} />
             </div>
+            {params.jobId ? <p className="text-sm text-ink-2 md:w-full">{t("scanOnly")}</p> : null}
             {hasFilters(params) ? (
                 <div className="flex items-center gap-2">
                     <Link

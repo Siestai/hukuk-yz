@@ -58,6 +58,11 @@ export default async function DecisionPage({
                     score={detail.confidence.score}
                     sourceStatus={detail.source_status}
                     queue={queue}
+                    source={{
+                        origin: detail.origin,
+                        scanned_at: detail.scanned_at,
+                        journal: detail.journal,
+                    }}
                 />
                 <ReviewStatusStrip sourceStatus={detail.source_status} reviews={detail.reviews} />
                 <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
