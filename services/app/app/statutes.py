@@ -79,7 +79,8 @@ async def unreviewed_article_as_of(
     `article_as_of` plus `review_status` and `band`; None unless that extraction waits for its
     review in one of `bands`. A version without a start date is not read: nobody can say it was
     in force on the day, nor that it was not, so a day that only such a version could cover is
-    None too. `version.id` is absent: there is no published row to cite."""
+    None too. `version.id` is absent: there is no published row, so `extraction_id` names the
+    record that was read."""
     newest = (
         await db.execute(
             select(Extraction)
@@ -107,7 +108,12 @@ async def unreviewed_article_as_of(
             "amending_ref": format_amending_ref(version["amending_ref"]),
             "evidence": version_evidence(version),
         }
-    return {**result, "review_status": "analyzed", "band": newest.confidence["band"]}
+    return {
+        **result,
+        "review_status": "analyzed",
+        "band": newest.confidence["band"],
+        "extraction_id": newest.id,
+    }
 
 
 @router.get("/{number}/articles/{article_no:path}", response_model_exclude_unset=True)

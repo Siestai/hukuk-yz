@@ -371,6 +371,9 @@ class ArticleAsOf(BaseModel):
     # Absent when no record was read (`unknown_article`); `band` is absent for `approved`.
     review_status: Literal["approved", "analyzed"] | None = None
     band: Band | None = None
+    # The extraction an `analyzed` article was read from: the record to cite and to open, since
+    # there is no published `version.id`. Absent for `approved`.
+    extraction_id: uuid.UUID | None = None
 
 
 # --- statute article review (task 11c-1) -------------------------------------------------------

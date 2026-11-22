@@ -252,6 +252,8 @@ async def test_an_unreviewed_article_is_read_only_in_a_listed_band(
     assert (body["status"], body["review_status"], body["band"]) == ("found", "analyzed", "medium")
     version = body["version"]
     assert version["text"] == "Madde 18 yeni metin." and "id" not in version
+    # no published row to name: the extraction that was read is the record to cite and open
+    assert body["extraction_id"] == str(statutes_loaded["18"])
     assert (version["valid_from"], version["valid_to"]) == ("2018-01-01", None)
     assert version["amending_ref"] == "7036 (12/10/2017)"
     assert version["evidence"]["amendments"][0]["law"] == "7036"
@@ -312,6 +314,7 @@ async def test_a_published_article_wins_over_a_newer_unreviewed_extraction(
     body = (await _get(client, headers, "18", "2020-01-01")).json()
     assert (body["review_status"], body["version"]["text"]) == ("approved", "Madde 18 yeni metin.")
     assert "band" not in body and uuid.UUID(body["version"]["id"])
+    assert "extraction_id" not in body
     # published in the low band: still read, as before
     assert (await _get(client, headers, "Ek 2", "2020-01-01")).json()["status"] == "found"
     # never approved: its newest extraction is the readable one
