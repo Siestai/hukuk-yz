@@ -140,5 +140,5 @@ def test_the_draft_is_told_to_cite_the_paragraph_and_to_state_the_rule_not_the_t
 
 def test_the_draft_prompt_forbids_joining_quote_pieces() -> None:
     # Round 4 SB-008: a quote stitched with "[...]" is in no source and dropped the only row.
-
     assert '"[...]"' in HOLDING_INSTRUCTIONS and "kesintisiz" in HOLDING_INSTRUCTIONS
+    assert "iki satır yaz" in HOLDING_INSTRUCTIONS
