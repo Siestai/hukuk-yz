@@ -1,9 +1,10 @@
-"""`hukuk-ingest statutes`: snapshots of 4857 and 5510 -> statutes.jsonl + report (task 11a)."""
+"""`hukuk-ingest statutes`: snapshots of the registered laws (`laws.LAWS`) -> statutes.jsonl +
+report (task 11a)."""
 
 import json
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -11,16 +12,16 @@ from typing import Any
 from hukuk_ingest.legacy_doc import read_doc
 from hukuk_ingest.statutes import confidence, report
 from hukuk_ingest.statutes.acts import Registry
-from hukuk_ingest.statutes.annotations import Annotation, parse_annotations
+from hukuk_ingest.statutes.annotations import Annotation, footnote_acts, parse_annotations
 from hukuk_ingest.statutes.diff import diff_snapshots
-from hukuk_ingest.statutes.split import split_statute
+from hukuk_ingest.statutes.laws import Law, law_by_number, law_for_file
+from hukuk_ingest.statutes.split import Snapshot, split_statute
 from hukuk_ingest.statutes.timeline import SnapshotInput, build_article, find_overlaps
 
 STATUTE_DIR = "Mevzuat/Kanunlar/"
 # Written into every statute record; the loader (task 11b) keys its idempotency on it.
 # Bump it when a change here alters the timelines.
 PARSER_VERSION = "1"
-_NUMBER_RE = re.compile(r"(?<!\d)(4857|5510)(?!\d)")
 _DATE_RE = re.compile(r"(?<!\d)(\d{1,2})\.(\d{1,2})\.((?:19|20)\d{2})(?!\d)")
 
 
@@ -50,7 +51,7 @@ def discover(scan_report: Path, text_cache: Path, raw_dir: Path) -> list[Snapsho
     rows = [json.loads(line) for line in scan_report.read_text(encoding="utf-8").splitlines()]
     for row in sorted(rows, key=lambda r: ("Eskiler" in r["path"], r["path"])):
         path = row["path"]
-        if not path.startswith(STATUTE_DIR) or not _NUMBER_RE.search(Path(path).name):
+        if not path.startswith(STATUTE_DIR) or law_for_file(Path(path).name) is None:
             continue
         if row["status"] == "ok" and row.get("text_ref"):
             text = (text_cache / row["text_ref"]).read_text(encoding="utf-8")
@@ -69,7 +70,11 @@ def _inputs_for(files: list[SnapshotFile]) -> dict[str, list[SnapshotInput]]:
     """Split and annotate every snapshot; grouped by the statute number of its header."""
     groups: dict[str, list[SnapshotInput]] = {}
     for f in files:
-        snap = split_statute(f.text)
+        law = law_for_file(Path(f.path).name)
+        new_rules = law is not None and not law.legacy_rules
+        snap = split_statute(f.text, drop_in_force_table=new_rules)
+        if law and law.only_articles:
+            _keep_only(snap, law)
         notes: dict[str, list[Annotation]] = {}
         unparsed: dict[str, list[str]] = {}
         for art in snap.articles:
@@ -77,6 +82,13 @@ def _inputs_for(files: list[SnapshotFile]) -> dict[str, list[SnapshotInput]]:
         when, inferred = f.date, False
         if when is None:
             all_dates = [n.date for ns in notes.values() for n in ns]
+            if new_rules:
+                all_dates += [
+                    when
+                    for art in snap.articles
+                    for fn in art.footnotes
+                    for when, _ in footnote_acts(fn.text)
+                ]
             if not all_dates:
                 continue
             when, inferred = max(all_dates), True
@@ -92,6 +104,18 @@ def _inputs_for(files: list[SnapshotFile]) -> dict[str, list[SnapshotInput]]:
     return groups
 
 
+def _keep_only(snap: Snapshot, law: Law) -> None:
+    """Keeps the articles of a repealed law that are still in force. The numbers around them are
+    printed as range stubs, so the numbering checks say nothing about the kept articles."""
+    snap.articles = [
+        replace(a, warnings=[w for w in a.warnings if confidence.code(w) != "number_skipped"])
+        for a in snap.articles
+        if a.article_no in law.only_articles
+    ]
+    snap.warnings = [w for w in snap.warnings if confidence.code(w) != "number_skipped"]
+    snap.warnings.append(f"only_articles:{','.join(law.only_articles)}")
+
+
 def _article_order(inputs: list[SnapshotInput]) -> list[str]:
     order: list[str] = []
     for inp in reversed(inputs):
@@ -105,10 +129,21 @@ def _statute_record(
     number: str, inputs: list[SnapshotInput], registry: Registry, duplicates: dict[str, list[str]]
 ) -> dict[str, Any]:
     latest = inputs[-1].snapshot
-    original = (number, inputs[0].snapshot.kabul_tarihi)
+    law = law_by_number(number)
+    original = (number, law.kabul_tarihi if law else inputs[0].snapshot.kabul_tarihi)
+    header = latest.header()
+    if law:
+        header["title"] = law.name
     articles = []
     for no in _article_order(inputs):
-        rec = build_article(no, inputs, number, original, registry)
+        rec = build_article(
+            no,
+            inputs,
+            number,
+            original,
+            registry,
+            footnotes_date=law is not None and not law.legacy_rules,
+        )
         for inp in inputs:
             art = next((a for a in inp.snapshot.articles if a.article_no == no), None)
             if art:
@@ -121,8 +156,8 @@ def _statute_record(
     return {
         "number": number,
         "parser_version": PARSER_VERSION,
-        "title": latest.title,
-        "header": latest.header(),
+        "title": header["title"],
+        "header": header,
         "latest_snapshot_date": inputs[-1].date.isoformat(),
         "snapshots": [
             {

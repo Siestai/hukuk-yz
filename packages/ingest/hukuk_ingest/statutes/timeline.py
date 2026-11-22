@@ -13,7 +13,7 @@ from typing import Any
 
 from hukuk_ingest.statutes import confidence
 from hukuk_ingest.statutes.acts import BASIS_ACT, BASIS_PARTIAL, Registry
-from hukuk_ingest.statutes.annotations import Annotation, footnote_laws
+from hukuk_ingest.statutes.annotations import Annotation, footnote_acts, footnote_laws
 from hukuk_ingest.statutes.diff import UNCHANGED, compare, marker_numbers, same_wording
 from hukuk_ingest.statutes.split import Article, Snapshot
 
@@ -194,9 +194,21 @@ def _first_snapshot(
     number: str,
     original: tuple[str, date | None],
     registry: Registry,
+    footnotes_date: bool,
 ) -> tuple[dict[str, Any], dict[str, Any] | None, list[str]]:
-    """Version in force at the earliest snapshot and the gap before it."""
+    """Version in force at the earliest snapshot and the gap before it.
+
+    `footnotes_date`: the acts named in the footnotes of the article changed its text too, so
+    the version starts no earlier than the latest of them; a footnote that names no readable act
+    leaves the start unknown."""
     real = [n for n in notes if n.kind != "kabul"]
+    acts = [(n.law, n.date) for n in real]
+    unread = False
+    if footnotes_date:
+        for f in art.footnotes:
+            named = footnote_acts(f.text)
+            unread = unread or not named
+            acts += sorted((law, when) for when, law in named if (law, when) not in acts)
     law_from: date | None = None
     law_dates: set[date] = set()
     if original[1] is not None:
@@ -207,11 +219,11 @@ def _first_snapshot(
         law_from = min(law_dates)
     warnings: list[str] = []
     kind = "repealed" if art.status == "repealed" else "amended"
-    if real:
+    if acts or unread:
         dates: set[date] = set()
         basis = "act"
-        for n in real:
-            found = registry.effective_dates(n.law, n.date, number, art.article_no)
+        for law, when in [] if unread else acts:
+            found = registry.effective_dates(law, when, number, art.article_no)
             if found is None:
                 dates = set()
                 break
@@ -223,7 +235,9 @@ def _first_snapshot(
             warnings.append("yururluk_unknown")
         else:
             valid_from = max(dates)
-            if valid_from > snap.date:
+            # An inferred snapshot date is only a lower bound (the newest kabul date in the
+            # text): an act of the text may enter into force after it.
+            if valid_from > snap.date and not snap.date_inferred:
                 valid_from, basis = snap.date, "fallback"
                 warnings.append("yururluk_outside_window")
             elif basis == "exception":
@@ -269,8 +283,11 @@ def build_article(
     number: str,
     original: tuple[str, date | None],
     registry: Registry,
+    *,
+    footnotes_date: bool = False,
 ) -> dict[str, Any]:
-    """Versions and gaps of one article over all snapshots (oldest first)."""
+    """Versions and gaps of one article over all snapshots (oldest first). `footnotes_date`:
+    see `_first_snapshot`."""
     versions: list[dict[str, Any]] = []
     gaps: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -290,7 +307,9 @@ def build_article(
                 current = None
             continue
         if current is None and not versions and i == 0:
-            first, first_gap, w = _first_snapshot(art, notes, snap, number, original, registry)
+            first, first_gap, w = _first_snapshot(
+                art, notes, snap, number, original, registry, footnotes_date
+            )
             current, base_art = first, art
             versions.append(first)
             if first_gap:

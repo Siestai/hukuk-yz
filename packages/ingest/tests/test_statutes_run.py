@@ -1,4 +1,5 @@
 import json
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,9 @@ from statute_texts import numbered_style, rule_style
 from word_doc import make_doc
 
 from hukuk_ingest.cli import main
-from hukuk_ingest.statutes.run import PARSER_VERSION, discover
+from hukuk_ingest.statutes.acts import DEFAULT_ACTS, load_acts, parse_acts
+from hukuk_ingest.statutes.laws import LAWS, law_for_file
+from hukuk_ingest.statutes.run import PARSER_VERSION, SnapshotFile, build_records, discover
 
 STATUTES = "Mevzuat/Kanunlar"
 ACTS = """
@@ -136,3 +139,82 @@ def test_cli_writes_jsonl_and_report(tmp_path: Path) -> None:
 def test_cli_rejects_a_missing_report(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         main(["statutes", "--scan-report", str(tmp_path / "nope.jsonl"), "--out", str(tmp_path)])
+
+
+def test_discover_follows_the_law_registry(tmp_path: Path) -> None:
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    (cache / "t.txt").write_text(rule_style(), encoding="utf-8")
+    names = [
+        "1475 sayılı (mülga) İş Kanunu’nun 14. maddesi.pdf",
+        "6356 sayılı SENDİKALAR VE TOPLU İŞ SÖZLEŞMESİ KANUNU.pdf",
+        "7036 Sayılı İş Mahkemeleri Kanunu.pdf",
+        "4447 sayılı İşsizlik Sigortası Kanunu.pdf",  # not in the registry
+        "16356 sayılı.pdf",  # 6356 inside another number
+    ]
+    rows = [
+        {"path": f"{STATUTES}/{n}", "sha256": f"{i:064x}", "status": "ok", "text_ref": "t.txt"}
+        for i, n in enumerate(names)
+    ]
+    report = tmp_path / "files.jsonl"
+    report.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    found = [f.path.rsplit("/", 1)[-1] for f in discover(report, cache, tmp_path)]
+    assert found == names[:3]
+    assert [law.number for law in LAWS] == ["1475", "4857", "5510", "6356", "7036"]
+    assert law_for_file(names[0]).only_articles == ("14",)  # type: ignore[union-attr]
+
+
+def test_every_registered_law_has_its_own_act_with_an_in_force_date() -> None:
+    registry = load_acts(DEFAULT_ACTS)
+    for law in LAWS:
+        act = registry.get(law.number, law.kabul_tarihi)
+        assert act is not None and act.yururluk is not None, law.number
+
+
+REPEALED_LAW = """İŞ KANUNU1
+Kanun Numarası : 1475
+Kabul Tarihi : 25/8/1971
+Yayımlandığı Resmî Gazete : Tarih: 1/9/1971 Sayı: 13943
+Madde 1-13/E- (Mülga: 22/5/2003/4857/120 md.)
+Kıdem tazminatı:
+Madde 14 – (Değişik birinci fıkra: 29/7/1983 - 2869/3 md.) Kıdem tazminatı ödenir.
+Fon tesisi ile ilgili hususlar kanunla düzenlenir.
+Madde 15-110- (Mülga: 22/5/2003/4857/120 md.)
+Ek Madde 1-4- (Mülga: 22/5/2003/4857/120 md.)
+Madde 111-112- (Mülga: 22/5/2003/4857/120 md.)
+1 22/5/2003 tarihli ve 4857 sayılı Kanunun 120 nci maddesiyle, bu Kanunun 14 üncü maddesi hariç
+diğer maddeleri yürürlükten kaldırılmıştır.
+"""
+REPEALED_ACTS = """
+[[act]]
+law = "1475"
+kabul_tarihi = 1971-08-25
+yururluk = 1971-09-01
+source_url = "https://example.test/1475"
+
+[[act]]
+law = "2869"
+kabul_tarihi = 1983-07-29
+yururluk = 1983-07-30
+source_url = "https://example.test/2869"
+"""
+
+
+def test_repealed_law_keeps_only_its_surviving_article() -> None:
+    name = "Mevzuat/Kanunlar/1475 sayılı (mülga) İş Kanunu’nun 14. maddesi.pdf"
+    files = [SnapshotFile(name, "a" * 64, None, REPEALED_LAW)]
+    records, _ = build_records(files, parse_acts(tomllib.loads(REPEALED_ACTS)))
+    record = records[0]
+    assert (record["number"], record["title"], record["header"]["title"]) == (
+        "1475",
+        "İŞ KANUNU",  # the registry name, not the parsed "İŞ KANUNU1" (glued footnote marker)
+        "İŞ KANUNU",
+    )
+    assert [a["article_no"] for a in record["articles"]] == ["14"]
+    article = record["articles"][0]
+    assert article["versions"][0]["text"].endswith("kanunla düzenlenir.")
+    # the stubs around m.14 are ranges: its numbering is no splitting doubt
+    assert not [w for w in article["warnings"] if w.startswith("number_skipped")]
+    assert article["confidence"] == "medium"  # known only since the 2869 wording
+    snap = record["snapshots"][0]
+    assert snap["articles"] == 1 and "only_articles:14" in snap["warnings"]

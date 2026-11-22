@@ -11,7 +11,8 @@ import pytest
 from hukuk_ingest.detect import detect_type
 from hukuk_ingest.extract import extract
 from hukuk_ingest.statutes.acts import DEFAULT_ACTS, Registry, load_acts, parse_acts
-from hukuk_ingest.statutes.golden import check_golden, load_golden
+from hukuk_ingest.statutes.golden import check_golden, load_golden, load_golden_laws
+from hukuk_ingest.statutes.laws import law_for_file
 from hukuk_ingest.statutes.run import SnapshotFile, _file_date, build_records
 from hukuk_ingest.statutes.timeline import as_of, find_overlaps, statute_as_of
 
@@ -324,6 +325,134 @@ def test_undated_snapshot_takes_the_latest_note_date() -> None:
     assert spans(art) == [("2003-06-10", "2019-06-01"), ("2019-06-01", None)]
 
 
+# --- laws with a single snapshot (registry laws without `legacy_rules`) --------------------------
+
+SINGLE_ACTS = """
+[[act]]
+law = "7036"
+kabul_tarihi = 2017-10-12
+yururluk = 2017-10-25
+source_url = "https://example.test/7036"
+
+[[act]]
+law = "7445"
+kabul_tarihi = 2023-03-28
+yururluk = 2023-09-01
+source_url = "https://example.test/7445"
+
+[[act]]
+law = "KHK-700"
+kabul_tarihi = 2018-07-02
+yururluk = 2018-07-09
+source_url = "https://example.test/700"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2020-12-30
+yururluk = 2021-03-03
+source_url = "https://example.test/aym"
+"""
+SINGLE_HEAD = (
+    "DENEME KANUNU\nKanun Numarası : 7036\nKabul Tarihi : 12/10/2017\n"
+    "Yayımlandığı Resmî Gazete: Tarih: 25/10/2017 Sayı: 30221\n"
+)
+
+
+def single(body: str, name: str = "7036 tarih 01.01.2026.pdf") -> dict[str, Any]:
+    """Record of law 7036 (a registry law under the new rules) built from one snapshot."""
+    files = [
+        SnapshotFile(f"Mevzuat/Kanunlar/{name}", "a" * 64, _file_date(name), SINGLE_HEAD + body)
+    ]
+    records, _ = build_records(files, parse_acts(tomllib.loads(SINGLE_ACTS)))
+    assert [r["number"] for r in records] == ["7036"]
+    return records[0]
+
+
+def by_no(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {a["article_no"]: a for a in record["articles"]}
+
+
+def test_single_snapshot_is_one_version_per_article() -> None:
+    arts = by_no(
+        single(
+            "MADDE 1- (1) Hiç değişmemiş madde.\n"
+            "MADDE 2- (1) (Ek cümle:28/3/2023-7445/41 md.) Değişmiş madde.\n"
+        )
+    )
+    assert spans(arts["1"]) == [("2017-10-25", None)]
+    assert (arts["1"]["gaps"], arts["1"]["confidence"]) == ([], "high")
+    # the text shows the 7445 wording: nothing is known between the law and that act
+    assert spans(arts["2"]) == [("2023-09-01", None)]
+    assert gaps(arts["2"]) == [("2017-10-25", "2023-09-01", "before_earliest_snapshot")]
+    assert arts["2"]["confidence"] == "medium"
+    assert as_of(arts["2"], "2020-01-01")["status"] == "gap"
+
+
+FOOTNOTED = "MADDE 1- (1) Cumhurbaşkanı karar verir.1\n(2) İkinci fıkra.\n1 {note}\n"
+
+
+def test_footnote_act_dates_the_start_of_a_single_snapshot_version() -> None:
+    note = (
+        "2/7/2018 tarihli ve 700 sayılı Kanun Hükmünde Kararnamenin 197 nci maddesiyle bu "
+        "fıkrada yer alan “Bakanlar Kurulu” ibaresi “Cumhurbaşkanı” şeklinde değiştirilmiştir."
+    )
+    art = by_no(single(FOOTNOTED.format(note=note)))["1"]
+    assert spans(art) == [("2018-07-09", None)]
+    assert gaps(art) == [("2017-10-25", "2018-07-09", "before_earliest_snapshot")]
+    assert art["confidence"] == "medium"
+    court = "Anayasa Mahkemesi’nin 30/12/2020 tarihli ve E.: 2020/57, K.: 2020/83 sayılı Kararı"
+    art = by_no(
+        single(FOOTNOTED.format(note=f"{court} ile bu fıkrada yer alan ibare iptal edilmiştir."))
+    )["1"]
+    assert spans(art) == [("2021-03-03", None)]
+
+
+@pytest.mark.parametrize(
+    "note",
+    [
+        # an act that is not in the registry
+        "1/2/2019 tarihli ve 7999 sayılı Kanunun 3 üncü maddesiyle bu fıkra değiştirilmiştir.",
+        # a footnote that names no act at all
+        "Bu fıkrada yer alan ibare sonradan değiştirilmiştir.",
+    ],
+)
+def test_unknown_start_stays_unknown_and_low(note: str) -> None:
+    art = by_no(single(FOOTNOTED.format(note=note)))["1"]
+    # only the snapshot date is evidence; before it there is a gap, never an invented start
+    assert spans(art) == [("2026-01-01", None)]
+    assert gaps(art) == [("2017-10-25", "2026-01-01", "before_earliest_snapshot")]
+    assert "yururluk_unknown" in art["warnings"] and art["confidence"] == "low"
+    assert art["versions"][0]["evidence"]["basis"] == "fallback"
+
+
+def test_undated_single_snapshot_is_dated_by_notes_and_footnotes() -> None:
+    body = (
+        "MADDE 1- (1) (Ek cümle:28/3/2023-7445/41 md.) Değişmiş madde.\n"
+        "MADDE 2- (1) İptal edilen cümle çıkarılmış fıkra.1\n"
+        "1 Anayasa Mahkemesi’nin 30/12/2020 tarihli ve E.: 2020/57, K.: 2020/83 sayılı Kararı ile "
+        "bu fıkrada yer alan cümle iptal edilmiştir.\n"
+    )
+    record = single(body, name="7036 Sayılı Deneme Kanunu.pdf")
+    snap = record["snapshots"][0]
+    assert (snap["date"], snap["date_inferred"]) == ("2023-03-28", True)
+    arts = by_no(record)
+    # 7445 enters into force after the inferred date (a lower bound): not "outside the window"
+    assert spans(arts["1"]) == [("2023-09-01", None)]
+    assert arts["1"]["confidence"] == "medium"
+    footnote_only = "MADDE 1- (1) Fıkra.1\n" + body.split("\n", 2)[2]
+    snap = single(footnote_only, name="7036 Sayılı Deneme Kanunu.pdf")["snapshots"][0]
+    assert snap["date"] == "2020-12-30"
+
+
+def test_reviewed_laws_keep_ignoring_footnotes_at_the_start() -> None:
+    """4857 / 5510 (`legacy_rules`) and unregistered numbers: the output of parser version 1."""
+    note = "2/7/2018 tarihli ve 700 sayılı KHK’nin 197 nci maddesiyle ibare değiştirilmiştir."
+    text = snapshot_text({"1": "Cumhurbaşkanı karar verir.1\n1 " + note})
+    files = [SnapshotFile("Mevzuat/Kanunlar/4857 sayılı 01.01.2020.pdf", "a" * 64, S2, text)]
+    records, _ = build_records(files, registry())
+    assert spans(records[0]["articles"][0]) == [("2003-06-10", None)]
+
+
 def test_periods_never_overlap_and_as_of_is_consistent() -> None:
     arts = build(
         (
@@ -416,7 +545,7 @@ GOLDEN = Path(__file__).parent / "fixtures" / "statutes" / "golden.toml"
 def _real_files(raw: Path) -> list[SnapshotFile]:
     by_sha: dict[str, SnapshotFile] = {}
     for path in sorted((raw / "Mevzuat" / "Kanunlar").rglob("*")):
-        if not path.is_file() or not any(n in path.name for n in ("4857", "5510")):
+        if not path.is_file() or law_for_file(path.name) is None:
             continue
         out = extract(path, detect_type(path))
         if out.status != "ok" or not out.text:
@@ -445,4 +574,8 @@ def test_golden_queries_against_the_real_snapshots() -> None:
         )
         if failure := check_golden(q, result):
             failures.append(failure)
+    for number, expected in load_golden_laws(GOLDEN).items():
+        found = [a["article_no"] for a in by_number[number]["articles"]]
+        if found != expected:
+            failures.append(f"{number}: articles {found}")
     assert not failures, json.dumps(failures, ensure_ascii=False, indent=2)

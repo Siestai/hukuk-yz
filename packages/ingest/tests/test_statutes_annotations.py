@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from hukuk_ingest.statutes.annotations import footnote_laws, parse_annotations
+from hukuk_ingest.statutes.annotations import footnote_acts, footnote_laws, parse_annotations
 
 
 def _one(text: str) -> tuple[str, str, date, str, str]:
@@ -124,3 +124,19 @@ def test_footnote_laws_name_laws_and_khks_but_not_quoted_ones() -> None:
         (date(2019, 6, 25), "7179"),
         (date(2017, 4, 17), "KHK-690"),
     }
+
+
+def test_footnote_acts_also_read_court_decisions_and_the_old_wording() -> None:
+    text = (
+        "Anayasa Mahkemesi’nin 22/10/2014 tarihli ve E.: 2013/1, K.: 2014/161 sayılı Kararı ile "
+        "bu fıkrada yer alan ibare iptal edilmiştir. "
+        "5/5/1981 tarih ve 2457 sayılı Kanunun 1 inci maddesiyle deyim değiştirilmiştir. "
+        "2/7/2018 tarihli ve 700 sayılı KHK’nin 60 ıncı maddesiyle ibare eklenmiştir."
+    )
+    assert footnote_acts(text) == {
+        (date(2014, 10, 22), "AYM"),
+        (date(1981, 5, 5), "2457"),
+        (date(2018, 7, 2), "KHK-700"),
+    }
+    assert footnote_laws(text) == {(date(2018, 7, 2), "KHK-700")}  # unchanged for 4857 / 5510
+    assert footnote_acts("Bu madde başlığı değiştirilmiştir.") == set()

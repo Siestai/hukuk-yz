@@ -133,5 +133,58 @@ def test_numbering_checks_flag_skips_and_repeats() -> None:
     assert "duplicate_article:2" in snap.articles[2].warnings
 
 
+def test_range_stub_ends_the_article_and_is_not_a_numbering_gap() -> None:
+    text = (
+        "Kanun Numarası : 1\n"
+        "MADDE 10- (1) Onuncu madde metni.\n"
+        "MADDE 11 ila 16 -(22/5/2003 tarihli ve 4857 sayılı İş Kanunu ile ilgili olup yerine\n"
+        "işlenmiştir.)\n"
+        "MADDE 17 ila 36- (Başka kanunlarla ilgili olup yerine işlenmiştir.)\n"
+        "Yürürlük\n"
+        "MADDE 37- (1) Bu Kanun yayımı tarihinde yürürlüğe girer.\n"
+        "MADDE 39- (1) Son madde.\n"
+    )
+    snap = split_statute(text)
+    arts = {a.article_no: a for a in snap.articles}
+    assert list(arts) == ["10", "37", "39"]
+    assert arts["10"].text == "(1) Onuncu madde metni."
+    assert arts["37"].heading == "Yürürlük"
+    assert [a.ordinal for a in snap.articles] == [1, 2, 3]
+    assert "range_stub:11-16" in snap.warnings and "range_stub:17-36" in snap.warnings
+    # 11-36 are printed as stubs; 38 is really missing
+    assert [w for w in snap.warnings if w.startswith("number_skipped")] == [
+        "number_skipped:main:0->10",
+        "number_skipped:main:37->39",
+    ]
+
+
+def test_in_force_table_is_cut_only_on_request() -> None:
+    text = (
+        "Kanun Numarası : 1\n"
+        "Madde 1 - Bu Kanun hükümlerini Bakanlar Kurulu yürütür.\n"
+        "1 SAYILI KANUNA EK VE DEĞİŞİKLİK GETİREN MEVZUATIN VEYA\n"
+        "ANAYASA MAHKEMESİ İPTAL KARARLARININ YÜRÜRLÜĞE\n"
+        "GİRİŞ TARİHLERİNİ GÖSTERİR LİSTE\n"
+        "7445 3 1/9/2023\n"
+    )
+    cut = split_statute(text, drop_in_force_table=True)
+    assert cut.articles[0].text == "Bu Kanun hükümlerini Bakanlar Kurulu yürütür."
+    assert [w.split(":")[0] for w in cut.warnings] == ["in_force_table_ignored"]
+    kept = split_statute(text)  # the reviewed 4857 output keeps the table in its last article
+    assert "7445 3 1/9/2023" in kept.articles[0].text and kept.warnings == []
+
+
+def test_repealed_first_paragraph_does_not_repeal_the_article() -> None:
+    text = (
+        "Kanun Numarası : 1\n"
+        "Madde 1 - (1) (Mülga: 10/9/2014-6552/144 md.)\n"
+        "(2) İkinci fıkra yürürlüktedir.\n"
+        "Madde 2 - (Ek: 1/1/2010-5000/1 md.) (Mülga: 10/9/2014-6552/144 md.)\n"
+    )
+    arts = {a.article_no: a for a in split_statute(text).articles}
+    assert (arts["1"].status, arts["1"].warnings) == ("in_force", [])
+    assert arts["2"].status == "repealed"
+
+
 def test_parse_header_without_data() -> None:
     assert parse_header("nothing here") == (None, "", None, None, None)
