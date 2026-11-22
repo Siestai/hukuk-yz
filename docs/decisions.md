@@ -305,3 +305,11 @@
   `unresolved`); aksi hâlde yalnız uzunluk + kısa özet (`quote_len`, `quote_sha8` = sha256 ilk 8).
   Ham alıntı yalnız eval koşucusunda (`Deps.keep_dropped_text`), sonuç JSON'unda
   (`rows_dropped_text`) tutulur, logda değil. SB-002 ve SB-014 düşüşleri bu izle tahmin yerine okunur.
+
+### 2026-11-22 — Görev 19 kapandı (Orhan)
+
+- **Kapanış:** r4 (20 vaka, 3,94 USD) tek eşikte düştü: SB-039 must_ask %0. Neden #101'de giderildi ve
+  LLM'siz testle doğrulandı. Ayrı ücretli teyit koşusu yapılmaz; teyit bir sonraki işin eval turunda
+  yapılır.
+- **Sonraki aday işler:** intake'in serbest metni seçenek değerine bağlaması; 5510 m.102'nin KB'de
+  okunur hâle gelmesi. Ayrıntı: `eval/results/2026-11-22-ozet.md` "Kapanış".
