@@ -70,3 +70,27 @@ def test_an_unreviewed_source_is_labelled_as_a_test_source_in_the_prompt() -> No
     assert "onaysız (test)" in unreviewed_block.splitlines()[0]
     assert ", onaylı, " in approved_block.splitlines()[0]
     assert "onaysız" not in approved_block
+
+
+def test_the_intake_prompt_tells_every_template_apart_and_lists_the_branches() -> None:
+    from agent.prompts import intake_prompt
+    from agent.topics import load_topics
+
+    topics = load_topics()
+    listing = json.loads(
+        intake_prompt("Soru", topics, None).split("Konular:\n", 1)[1].split("\n\nSoru:", 1)[0]
+    )
+    by_id = {t["topic"]: t for t in listing}
+
+    assert set(by_id) == set(topics)
+    for topic in topics.values():
+        assert by_id[topic.id]["baslik"] == topic.title
+        assert by_id[topic.id]["kapsam"] == topic.description
+    descriptions = [t.description for t in topics.values()]
+    assert len(set(descriptions)) == len(descriptions)
+    # The facts a condition reads are given with their options, so that the intake picks one.
+    assert by_id["kidem_ihbar"]["secenekler"]["fesih_nedeni"]["askerlik"] == (
+        "İşçi muvazzaf askerlik nedeniyle ayrıldı"
+    )
+    assert "hizmet_suresi" not in by_id["kidem_ihbar"]["secenekler"]
+    assert "secenekler" not in by_id["ise_iade"]

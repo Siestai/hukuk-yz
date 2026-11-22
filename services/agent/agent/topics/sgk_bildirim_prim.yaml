@@ -1,10 +1,10 @@
 # Konu kartı SB-024 (yeni işyerinde işe giriş bildirgesi için bir aylık süre, 5510 m.8/1-b) ve
 # SB-012 (eksik gün kodu 06 kısmi istihdam ile 07 puantaj ayrımı); eval/cases/SB-024.yaml,
 # eval/cases/SB-012.yaml.
-# Görev 19 B2 taslağı. Olgular kritik değildir: şablonda iki ayrı alt konu (işe giriş bildirgesi
-# süresi; aylık prim ve hizmet belgesinde eksik gün) bulunmaktadır ve şablonda koşullu sorma alanı
-# olmadığından kritik yapılırlarsa her soruda hepsi sorulur (idari_para_cezasi.yaml ile aynı
-# gerekçe). Kapı (B3) koşullu sormayı getirene ya da şablon ikiye bölünene kadar sorulmazlar.
+# Görev 19 B2 taslağı. Şablonda iki ayrı alt konu (işe giriş bildirgesi süresi; aylık prim ve
+# hizmet belgesinde eksik gün) bulunmaktadır: bildirim_konusu (sorulmaz, giriş adımı seçer) hangi
+# alt konunun olgularının sorulacağını belirler (asked_when); calisma_bicimi yalnız 06 veya 07
+# kodunda sorulur. Alt konu bilinmiyorsa işe giriş olguları ve eksik gün kodu sorulmaz.
 # "Neden soruyorum" metinleri yalnız KB'de okunabilen maddelere dayanır (5510 m.8 high,
 # 5510 m.86 high, 4857 m.13 medium). 5510 m.80'in güncel sürümü low bantta olduğundan (K1)
 # dayanak ve must_read olarak kullanılmamıştır. SSİY, 2013/11 ve 2020/20 Genelgeleri KB'de
@@ -18,8 +18,15 @@ description: >-
   (5510 m.86/4), kısmi süreli çalışma ile puantaj kaydına dayalı eksik gün bildirimi, prim ödeme
   gün sayısı.
 facts:
+  - key: bildirim_konusu
+    label: Sorulan bildirim
+    options:
+      - {value: ise_giris, label: Sigortalı işe giriş bildirgesinin süresi}
+      - {value: eksik_gun, label: Aylık prim ve hizmet belgesinde eksik gün}
   - key: tescil_ve_calistirma_tarihi
     label: İşyerinin ilk bildirimi ve ilk sigortalı çalıştırma tarihi
+    critical: true
+    asked_when: {bildirim_konusu: [ise_giris]}
     question:
       text: >-
         İşyeri Kuruma ilk defa mı bildirildi? İşyeri bildirgesinin verildiği tarih ile işyerinde
@@ -34,6 +41,8 @@ facts:
         - {ref: "5510 m.8/1-b", category: statute}
   - key: isyeri_kolu
     label: İşyerinin iş kolu
+    critical: true
+    asked_when: {bildirim_konusu: [ise_giris]}
     question:
       text: İşyeri inşaat, balıkçılık veya tarım işyeri midir?
       why: >-
@@ -49,6 +58,8 @@ facts:
         - {ref: "5510 m.8/1-b", category: statute}
   - key: eksik_gun_kodu
     label: Eksik gün nedeni (kodu)
+    critical: true
+    asked_when: {bildirim_konusu: [eksik_gun]}
     question:
       text: Sigortalı aylık prim ve hizmet belgesinde hangi eksik gün nedeniyle bildirildi?
       why: >-
@@ -65,6 +76,8 @@ facts:
         - {ref: "5510 m.86/4", category: statute}
   - key: calisma_bicimi
     label: Çalışmanın dayandığı sözleşme
+    critical: true
+    asked_when: {eksik_gun_kodu: ["06", "07"]}
     question:
       text: >-
         İşçi ile işveren arasında, iki tarafça imzalanmış ve çalışma süresini gösteren yazılı bir

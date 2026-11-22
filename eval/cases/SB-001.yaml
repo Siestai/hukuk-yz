@@ -13,6 +13,7 @@ question: "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerek�
 #   çıkarıldı: ikisi de dergi arşivinde var, ancak decision tablosunda yok ve E/K karararama'da
 #   teyit edilmedi. Teyit edilip yüklenince geri eklenebilir.
 expected:
+  topic: ise_iade
   status: conditional
   headline_contains:
     - işe iade

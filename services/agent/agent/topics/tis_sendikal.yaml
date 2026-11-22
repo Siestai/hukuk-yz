@@ -3,6 +3,8 @@
 # Dayanaklar KB'de okundu: 6356 m.33, m.35, m.36 (high), m.39 (medium), 7036 m.3 (medium).
 # 6772 sayılı Kanun (ilave tediye) KB'de ve Drive kopyasında yoktur (SB-039 missing_in_kb).
 # Karar tablosu boş olduğundan Yargıtay künyesi dayanak yapılmadı.
+# Görev 19 B2: dayanışma aidatı olguları yalnız sendika_uyeligi = dayanisma_aidati iken, ödenmeyen
+# alacak olguları (tis_maddesi, odenmeyen_donem) diğer hâllerde sorulur (asked_when).
 id: tis_sendikal
 title: Toplu iş sözleşmesi ve sendika üyeliği
 description: >-
@@ -13,6 +15,7 @@ facts:
   - key: tis_maddesi
     label: İlgili TİS hükmü
     critical: true
+    asked_when: {sendika_uyeligi: [unknown, imzada_uye, imzadan_sonra_uye, uye_degil]}
     question:
       text: Ödenmeyen ödeme toplu iş sözleşmesinin hangi maddesinde, hangi koşul ve ödeme zamanıyla düzenlenmiştir?
       why: >-
@@ -36,8 +39,8 @@ facts:
       options:
         - {value: imzada_uye, label: TİS imzalandığında üyeydi}
         - {value: imzadan_sonra_uye, label: TİS imzalandıktan sonra üye oldu}
-        - {value: dayanisma_aidati, label: "Üye değil, dayanışma aidatı ödüyor"}
-        - {value: uye_degil, label: "Üye değil, dayanışma aidatı da ödemiyor"}
+        - {value: dayanisma_aidati, label: "Üye değil, dayanışma aidatı ödemektedir"}
+        - {value: uye_degil, label: "Üye değil, dayanışma aidatı da ödememektedir"}
       basis:
         - {ref: "6356 m.39/1", category: statute}
         - {ref: "6356 m.39/2", category: statute}
@@ -58,6 +61,7 @@ facts:
   - key: odenmeyen_donem
     label: Ödenmeyen dönem
     critical: true
+    asked_when: {sendika_uyeligi: [unknown, imzada_uye, imzadan_sonra_uye, uye_degil]}
     question:
       text: Ödenmeyen ödemeler hangi döneme aittir?
       why: >-
@@ -70,6 +74,7 @@ facts:
   - key: dayanisma_talep_tarihi
     label: Dayanışma aidatıyla yararlanma talebinin tarihi
     critical: true
+    asked_when: {sendika_uyeligi: [dayanisma_aidati]}
     question:
       text: İşçi, dayanışma aidatı ödeyerek toplu iş sözleşmesinden yararlanma talebini hangi tarihte yaptı?
       why: >-
@@ -82,6 +87,7 @@ facts:
   - key: tis_yararlanma_hukmu
     label: TİS'teki yararlanma hükmü
     critical: true
+    asked_when: {sendika_uyeligi: [dayanisma_aidati]}
     question:
       text: Toplu iş sözleşmesinde dayanışma aidatı ödeyenlerin yararlanmasına veya ödemelerin koşullarına ilişkin bir hüküm var mı?
       why: >-
@@ -98,6 +104,7 @@ facts:
   - key: hak_edis_tarihi
     label: Ödemelerin hak ediş tarihi
     critical: true
+    asked_when: {sendika_uyeligi: [dayanisma_aidati]}
     question:
       text: Sorulan her ödemenin (ikramiye, ilave tediye, sosyal yardım) hak ediş tarihi ve ödeme dönemi nasıl belirlenmiştir?
       why: >-

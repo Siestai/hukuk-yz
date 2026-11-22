@@ -4,6 +4,7 @@ id: SB-039
 # Aralık 2025 ödemeleri. Şablon: tis_sendikal.
 question: "01.01.2025-31.12.2026 geçerlilik tarihli TİS 01.10.2025'te imzalandı. 10.12.2025'te sendikaya dayanışma aidatı ödemeye başlayan işçi TİS'ten nasıl ve hangi tarihten itibaren yararlanır? Aralık 2025'teki 13 günlük ilave tediye ve 20 günlük ikramiyeden yararlanır mı?"
 expected:
+  topic: tis_sendikal
   status: conditional
   headline_contains:
     - talep tarihi

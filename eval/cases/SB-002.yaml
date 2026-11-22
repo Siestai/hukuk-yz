@@ -6,6 +6,7 @@ facts:
   sigortalilik_hali: 4c
   talep_turu: olum_toptan_odemesi
 expected:
+  topic: olum_yaslilik_aylik
   status: conditional
   headline_contains:
     - toptan ödeme
@@ -29,12 +30,12 @@ expected:
     - Ana ve babada artan hisse şartı da vardır; 65 yaşın üstünde artan hisse aranmaz (5510 m.34/1-d).
     - 4/1-(c) sigortalısında m.36 yalnız bu Kanuna göre ilk defa 4/1-(c) kapsamında sigortalı olanlara uygulanır; 2008/Ekim öncesi kamu görevlisi için KB'de okunabilir hüküm yoktur (5510 Geçici m.4 düşük güven bandındadır), bu grup için kesin cümle kurulmaz.
     - Toptan ödeme ancak ölüm aylığı bağlanamadığında söz konusudur (m.32/2 gün ve süre şartları); bu ön şart cevapta belirtilir.
+  missing_in_kb:
+    # 5434 sayılı Kanun ve 5510 Geçici m.4: 2008/Ekim öncesi 4/1-(c) (Emekli Sandığı iştirakçisi) için
+    # geçiş hükmü. 5510 Geçici m.4 çıkarımı var ancak güven bandı low (K1 gereği okunamaz).
+    - 5510 m.Geçici 4
+    - 5434
+    # Notlarda "ilgili AYM kararları" anılmaktadır; yerel KB'nin decision tablosu boştur ve
+    # teyitli karar yoktur. Künye yazılmamıştır.
+    - AYM kararı (ana-baba gelir şartı, belirlenmedi)
 tags: [sgk, olum-sigortasi, toptan-odeme, hak-sahibi]
-missing_in_kb:
-  # 5434 sayılı Kanun ve 5510 Geçici m.4: 2008/Ekim öncesi 4/1-(c) (Emekli Sandığı iştirakçisi) için
-  # geçiş hükmü. 5510 Geçici m.4 çıkarımı var ancak güven bandı low (K1 gereği okunamaz).
-  - 5510 m.Geçici 4
-  - 5434
-  # Notlarda "ilgili AYM kararları" anılmaktadır; yerel KB'nin decision tablosu boştur ve
-  # teyitli karar yoktur. Künye yazılmamıştır.
-  - AYM kararı (ana-baba gelir şartı, belirlenmedi)

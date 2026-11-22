@@ -15,6 +15,7 @@ facts:
   - key: sigortalilik_hali
     label: Sigortalılık hali
     critical: true
+    asked_when: {talep_turu: [unknown, olum_ayligi, olum_toptan_odemesi, yaslilik_ayligi]}
     question:
       text: Sigortalı 5510 m.4/1'in hangi bendine göre sigortalıdır (en son tabi olunan hal)?
       why: >-
@@ -104,7 +105,7 @@ facts:
       why: >-
         Ölüm aylığı en az 1800 gün ya da 4/1-(a) sigortalılarında borçlanmalar hariç en az 5 yıl
         sigortalılık ve 900 gün prim bildirilmesine bağlıdır (5510 m.32/2); aylık
-        bağlanamıyorsa hak sahiplerine ölüm toptan ödemesi yapılmaktadır (5510 m.36/1).
+        bağlanamamakta ise hak sahiplerine ölüm toptan ödemesi yapılmaktadır (5510 m.36/1).
       kind: text
       basis:
         - {ref: "5510 m.32/2", category: statute}

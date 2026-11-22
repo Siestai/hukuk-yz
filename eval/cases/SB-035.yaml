@@ -12,6 +12,7 @@ question: "1 gün yıllık izin kullanan işçiye işveren ücretini vermezse fe
 # Arşivde yıllık izin ücretinin peşin ödenmemesi üzerine işçi feshini haklı sayan bir 9. HD
 # kararı vardır; decision tablosunda yok ve E/K teyitsiz olduğundan künye yazılmadı.
 expected:
+  topic: hakli_fesih_devamsizlik
   status: conditional
   headline_contains:
     - haklı
@@ -34,7 +35,7 @@ expected:
     - 4857 m.24/II-e metninde bekleme süresi bulunmaz; m.34'teki yirmi günlük süre iş görmekten kaçınma hakkına ilişkindir, fesih hakkıyla karıştırılmaz.
     - Fesih bildirimi yazılı yapılır (4857 m.109); 4857 m.19'daki sebebi açık ve kesin belirtme yükümlülüğü işverenin feshine ilişkindir, işçinin bildiriminde sebebin gösterilmesi ayrıca değerlendirilir.
     - Sonuç olarak kıdem tazminatı 1475 m.14 koşullarına (her geçen tam yıl) bağlıdır; işçinin haklı feshinde ihbar tazminatı işçi lehine doğmaz.
+  missing_in_kb:
+    - "Yıllık Ücretli İzin Yönetmeliği (izin ücretinin peşin ödenmesi ve iznin bölünmesi): KB'de yok"
+    - "Yargıtay 9. HD: yıllık izin ücretinin peşin ödenmemesi üzerine işçi feshinin haklılığı ve m.26 süresinin ücret alacağında işleyişi (arşivde aday karar var, decision tablosunda yok, E/K teyitsiz)"
 tags: [is-hukuku, hakli-fesih, yillik-izin]
-missing_in_kb:
-  - "Yıllık Ücretli İzin Yönetmeliği (izin ücretinin peşin ödenmesi ve iznin bölünmesi): KB'de yok"
-  - "Yargıtay 9. HD: yıllık izin ücretinin peşin ödenmemesi üzerine işçi feshinin haklılığı ve m.26 süresinin ücret alacağında işleyişi (arşivde aday karar var, decision tablosunda yok, E/K teyitsiz)"

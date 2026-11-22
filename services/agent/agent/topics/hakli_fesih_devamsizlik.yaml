@@ -1,9 +1,9 @@
 # Görev 19 B2. Eval vakaları eval/cases/SB-027.yaml (işverenin devamsızlık nedeniyle feshi,
 # 4857 m.25/II-g) ve eval/cases/SB-035.yaml (yıllık izin ücretinin ödenmemesi nedeniyle işçinin
 # haklı feshi, 4857 m.24/II-e). İki taraf aynı şablonda: hak düşürücü süre (m.26) ortaktır.
-# Şablonda koşullu sorma alanı yoktur; kritik olgunun tamamı sorulur. Bu yüzden yalnız bir tarafa
-# ait olgulara "söz konusu değil" seçeneği (assumed_never) eklendi; kapı (B3) koşullu sormayı
-# getirdiğinde bu olgular fesih sebebine bağlanabilir.
+# Yalnız bir tarafa ait olgular fesih_sebebi'ne bağlı sorulur (asked_when; fesih_sebebi sorulmaz,
+# giriş adımı seçer). Sebep bilinmiyorsa iki tarafın olguları da sorulur; bu yüzden onlarda
+# "söz konusu değil" seçeneği (assumed_never) bulunmaktadır.
 # Atıf notu: KB'deki 4857 ve 1475 metinlerinde "(1)" biçiminde fıkra numarası yoktur ve harfli
 # bentler (II-g, II-e) künyede taşınamaz (agent/sources.py checked_sub); basis madde düzeyindedir,
 # bent metinde ve "why" içinde adıyla anılır.
@@ -15,6 +15,12 @@ description: >-
   (4857 m.24/II-e, m.57), altı iş günü ve bir yıllık hak düşürücü süre (m.26), savunma alınması
   (m.19), fesih bildiriminin yazılı yapılması (m.109) ve işten ayrılış bildirgesi (5510 m.9).
 facts:
+  - key: fesih_sebebi
+    label: Feshin dayandığı sebep
+    options:
+      - {value: devamsizlik, label: İşverenin işçinin devamsızlığı nedeniyle feshi}
+      - {value: ucret_odenmemesi, label: İşçinin ücretin veya yıllık izin ücretinin ödenmemesi nedeniyle feshi}
+      - {value: diger, label: Başka bir haklı neden}
   - key: olay_tarihi
     label: Fesih sebebinin öğrenildiği tarih
     critical: true
@@ -30,6 +36,7 @@ facts:
   - key: devamsizlik_is_gunu
     label: Devamsızlık günleri
     critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
     question:
       text: >-
         İşçinin gelmediği günler, çalışması gereken iş günleri midir; ardı ardına mı yoksa
@@ -50,6 +57,7 @@ facts:
   - key: isciye_ulasma
     label: İşçiye ulaşılması
     critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
     question:
       text: İşçiye ulaşılıp işe gelmeme sebebi soruldu mu?
       why: >-
@@ -69,6 +77,7 @@ facts:
   - key: mazeret_bildirimi
     label: Mazeret veya izin
     critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
     question:
       text: İşçi gelmediği günler için izin almış mı veya rapor gibi bir mazeret bildirmiş mi?
       why: >-
@@ -87,6 +96,7 @@ facts:
   - key: ucret_odeme_durumu
     label: Ücretin ödenmesi
     critical: true
+    asked_when: {fesih_sebebi: [ucret_odenmemesi, unknown]}
     question:
       text: Ücret (yıllık izin ücreti dahil) hiç mi ödenmedi, geç mi ödendi, eksik mi ödendi?
       why: >-
@@ -105,6 +115,7 @@ facts:
   - key: hizmet_suresi
     label: Çalışma süresi
     critical: true
+    asked_when: {fesih_sebebi: [ucret_odenmemesi, diger, unknown]}
     question:
       text: İşçi aynı işverende toplam ne kadar süre çalıştı?
       why: >-

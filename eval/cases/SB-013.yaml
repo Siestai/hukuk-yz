@@ -1,6 +1,7 @@
 id: SB-013
 question: "ben sana en iyisi yatmadan bir soru daha sorayım. Çalışma saatlerini yarım saat öne almak ya da yarım saat ileri almak için çalışanın izni gereklimi?"
 expected:
+  topic: calisma_kosulu_degisikligi
   status: conditional
   headline_contains:
     - çalışma saat

@@ -30,15 +30,49 @@ def _fixture_answer(name: str) -> dict[str, Any]:
 
 def test_cases_are_well_formed() -> None:
     paths = sorted(CASES.glob("*.yaml"))
-    assert len(paths) == 10
+    assert len(paths) == 20
     for path in paths:
-        case = yaml.safe_load(path.read_text(encoding="utf-8"))
+        case = score_module.load_case(path)
         assert case["id"] == path.stem
         assert case["question"].strip()
         expected = case["expected"]
         assert expected["status"] in ("definite", "conditional")
+        assert expected["topic"]
         assert expected["headline_contains"] and expected["must_cite"]
         assert case["tags"]
+
+
+@pytest.mark.parametrize(
+    ("case", "error"),
+    [
+        ({"id": "SB-1", "question": "?", "expected": {"status": "definite"}}, "topic"),
+        (
+            {
+                "id": "SB-1",
+                "question": "?",
+                "expected": {"topic": "ise_iade", "status": "definite"},
+                "missing_in_kb": ["4857 m.18"],
+            },
+            "missing_in_kb",
+        ),
+        (
+            {
+                "id": "SB-1",
+                "question": "?",
+                "expected": {"topic": "ise_iade", "status": "definite", "missing_in_kb": "x"},
+            },
+            "missing_in_kb",
+        ),
+    ],
+)
+def test_a_case_without_its_topic_or_with_missing_in_kb_outside_expected_is_refused(
+    tmp_path: Path, case: dict[str, Any], error: str
+) -> None:
+    path = tmp_path / "SB-1.yaml"
+    path.write_text(yaml.safe_dump(case, allow_unicode=True), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=error):
+        score_module.load_case(path)
 
 
 @pytest.mark.parametrize("case_id", IDS)

@@ -17,6 +17,8 @@ from hukuk_models.chat import CitationCategory, InputKind
 
 TOPICS_DIR = Path(__file__).parent / "topics"
 GENERAL = "genel"
+# In a condition, the state of a fact nothing is known of (or whose value is no option).
+UNKNOWN = "unknown"
 
 
 class TopicModel(BaseModel):
@@ -68,12 +70,28 @@ class TopicFact(TopicModel):
     # An unknown critical fact is asked, and while it is unknown the answer is conditional.
     critical: bool = False
     question: Question | None = None
+    # The values the intake picks from for a fact that is never asked: the branch of the topic
+    # the question is about ("Ücretin düşürülmesi").
+    options: list[Option] = []
+    # The fact is critical only in a branch: when every fact named here is in one of the listed
+    # states, an option value or UNKNOWN. Pure code decides it; the model asks nothing else.
+    asked_when: dict[str, list[str]] = {}
 
     @model_validator(mode="after")
     def _critical_is_asked(self) -> Self:
         if self.critical and self.question is None:
             raise ValueError(f"critical fact {self.key} needs a question")
+        if self.options and self.question is not None:
+            raise ValueError(
+                f"{self.key}: the options of an asked fact are the options of its question"
+            )
+        if self.asked_when and not self.critical:
+            raise ValueError(f"{self.key}: asked_when is for a critical fact only")
         return self
+
+    @property
+    def choices(self) -> list[Option]:
+        return self.question.options if self.question is not None else self.options
 
 
 class CalculationNeed(TopicModel):
@@ -104,7 +122,31 @@ class Topic(TopicModel):
             fact = next((f for f in self.facts if f.key == self.event_date_fact), None)
             if fact is None or fact.question is None or fact.question.kind != "date":
                 raise ValueError("event_date_fact must be a fact asked as a date")
+        for fact in self.facts:
+            for key, states in fact.asked_when.items():
+                branch = self.fact(key)
+                if key == fact.key:
+                    raise ValueError(f"{fact.key}: a condition does not name the fact itself")
+                if branch is None:
+                    raise ValueError(f"{fact.key}: asked_when names no fact {key}")
+                values = {o.value for o in branch.choices}
+                if not values:
+                    raise ValueError(f"{fact.key}: asked_when fact {key} has no options")
+                if UNKNOWN in values:
+                    raise ValueError(
+                        f"{key}: {UNKNOWN} is no option value, it is the unknown state"
+                    )
+                if not states:
+                    raise ValueError(f"{fact.key}: asked_when {key} lists no value")
+                if wrong := sorted(set(states) - values - {UNKNOWN}):
+                    raise ValueError(f"{fact.key}: {wrong} not an option of {key}")
         return self
+
+    @property
+    def branch_facts(self) -> list[TopicFact]:
+        """The facts a condition reads, in the order of the template."""
+        named = {key for f in self.facts for key in f.asked_when}
+        return [f for f in self.facts if f.key in named]
 
     def fact(self, key: str) -> TopicFact | None:
         return next((f for f in self.facts if f.key == key), None)

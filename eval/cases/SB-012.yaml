@@ -26,6 +26,7 @@ question: "bie soru daha. 6 eksik gün koduyla bildirrilen bir işçi eksik gün
 # Hesap yoktur (md.29): beklenen cevap yöntemi ve sınırı kaynaklarıyla anlatır, gün sayısını
 # hesap motoruna bırakır.
 expected:
+  topic: sgk_bildirim_prim
   status: conditional
   headline_contains:
     - kısmi

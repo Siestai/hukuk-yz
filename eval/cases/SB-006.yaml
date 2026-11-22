@@ -1,6 +1,7 @@
 id: SB-006
 question: "Peki işçiler greve gitti. Ve işveren lokavt kararı aldı. Burada işçiler neler yapabilir, sendika neler yapabilir kısaca bahseder misin"
 expected:
+  topic: grev_lokavt
   status: conditional
   headline_contains:
     - kanuni

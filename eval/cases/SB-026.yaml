@@ -20,6 +20,7 @@ facts:
   hizmet_yillari: "2022"
   bildirim_durumu: hic_bildirim
 expected:
+  topic: hizmet_tespiti
   status: definite
   headline_contains:
     - geriye dönük hizmet

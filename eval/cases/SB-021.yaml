@@ -1,6 +1,7 @@
 id: SB-021
 question: "denetmen işverenden resmi tebligat ile istenilmeden bordro alıyor ve bordrolarda da bir sigortalının imzası eksik. Bu durumda denetmen geçersizlik cezası uygulayabilir mi"
 expected:
+  topic: idari_para_cezasi
   status: conditional
   headline_contains:
     - tutanak
@@ -10,8 +11,8 @@ expected:
     # eski biçim eval/score.py'de KB atıflarıyla eşleşmezdi. İçerik okundu, beklenen sonuç değişmedi.
     - 2020/8 m.2.8.1
     - 2020/8 m.2.8.3
-  # Görev 19 B2: üç anahtar idari_para_cezasi şablonuna eklendi; şablonda kritik değildir (koşullu
-  # sorma alanı yok), kapı bunu getirene kadar bu ölçüt karşılanamaz.
+  # Görev 19 B2: üç anahtar idari_para_cezasi şablonunda fiil = bordro_gecersiz iken sorulur
+  # (asked_when).
   must_ask:
     - tutanakla_teslim
     - odeme_sekli

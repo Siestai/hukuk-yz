@@ -9,6 +9,7 @@ facts:
   tespit_sekli: kurum_tespiti
   bildirim_belgesi: muhsgk
 expected:
+  topic: idari_para_cezasi
   status: definite
   headline_contains:
     - defter türü
@@ -19,8 +20,7 @@ expected:
     # Okundu: KB chunk ref "2020/8 m.2.6.2.5" (yalnız prime esas kazanç eksikliği, alt ve üst sınır,
     # aynı dönem için sonraki tespitte fark).
     - 2020/8 m.2.6.2.5
-  # Şablonda bu iki olgu henüz kritik değildir (şablon başındaki not); kapı koşullu sormayı
-  # getirene kadar bu ölçüt karşılanamaz.
+  # Şablonda bu iki olgu fiil = yalniz_kazanc_eksik iken sorulur (B2 asked_when).
   must_ask:
     - tespit_sekli
     - bildirim_belgesi

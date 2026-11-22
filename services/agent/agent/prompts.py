@@ -28,6 +28,9 @@ yapmaz, soru sormaz, cevap vermezsin.
 - topic: verilen konu kimliklerinden biri; hiçbiri uymuyorsa "genel".
 - facts: yalnız seçtiğin konunun olgu anahtarlarını kullan. Soruda açıkça yazılan olguyu value \
 ile (kullanıcının sözleriyle) ve status "known" ile yaz. Soruda yazılmayan olguyu listeye ekleme.
+- secenekler: seçtiğin konuda verilen bu olgular, sorunun hangi dala girdiğini belirler \
+(örneğin sorunun konusu, fesih nedeni). Soru bir seçeneğe açıkça uyuyorsa olguyu value olarak \
+o seçeneğin değeriyle ve status "known" ile yaz; açıkça uymuyorsa ekleme.
 - Bir olgunun uygulanmadığını kullanıcı açıkça söylediyse status "assumed_never"; söylemediyse \
 bunu asla varsayma.
 - event_date: yalnız soruda açıkça yazılı bir olay tarihi varsa (YYYY-MM-DD); bugünün tarihini \
@@ -123,14 +126,19 @@ def facts_block(facts: CaseFacts) -> str:
 
 
 def intake_prompt(question: str, topics: dict[str, Topic], previous: CaseFacts | None) -> str:
-    listing = [
-        {
+    listing = []
+    for t in topics.values():
+        entry: dict[str, object] = {
             "topic": t.id,
+            "baslik": t.title,
             "kapsam": t.description,
             "olgu_anahtarlari": {f.key: f.label for f in t.facts},
         }
-        for t in topics.values()
-    ]
+        if t.branch_facts:
+            entry["secenekler"] = {
+                f.key: {o.value: o.label for o in f.choices} for f in t.branch_facts
+            }
+        listing.append(entry)
     parts = [f"Konular:\n{_dump(listing)}", f"Soru:\n{question}"]
     if previous is not None:
         parts.append(f"Önceki mesajlardan bilinenler:\n{facts_block(previous)}")

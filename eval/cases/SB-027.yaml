@@ -9,6 +9,7 @@ question: "Ben ik uzmanıyım çalışan 5 gün üstüste mazaretsiz işe gelmed
 # Devamsızlıkta savunma ve makul süreye ilişkin Yargıtay 9. HD kararları dergi arşivinde vardır,
 # ancak decision tablosunda yok ve E/K teyitsiz: künye yazılmadı.
 expected:
+  topic: hakli_fesih_devamsizlik
   status: conditional
   headline_contains:
     - devamsızlık
@@ -33,7 +34,7 @@ expected:
     - Fesih yetkisi öğrenmeden itibaren altı iş günü ve fiilden itibaren bir yıl içinde kullanılır (4857 m.26); süren devamsızlıkta sürenin başlangıç günü kaynak okunmadan kesin söylenmez.
     - Fesih bildirimi yazılı ve sebebi açık ve kesin olmalıdır (4857 m.19); bildirim imzadan kaçınılırsa tutanakla tespit edilir (4857 m.109).
     - İşten ayrılış bildirgesi 5510 m.9 uyarınca en geç on gün içinde verilir; ayrılış nedeni kodu KB'de okunan kaynakta yoksa kod numarası yazılmaz.
+  missing_in_kb:
+    - "SGK işten ayrılış nedeni kod listesi (devamsızlık feshi için kod): KB'de okunabilir kaynak yok"
+    - "Yargıtay 9. HD: devamsızlıkta savunma, işçiye mazeretinin sorulması ve makul süre (arşivde aday kararlar var, decision tablosunda yok, E/K teyitsiz)"
 tags: [is-hukuku, hakli-fesih, devamsizlik]
-missing_in_kb:
-  - "SGK işten ayrılış nedeni kod listesi (devamsızlık feshi için kod): KB'de okunabilir kaynak yok"
-  - "Yargıtay 9. HD: devamsızlıkta savunma, işçiye mazeretinin sorulması ve makul süre (arşivde aday kararlar var, decision tablosunda yok, E/K teyitsiz)"

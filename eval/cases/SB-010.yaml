@@ -24,6 +24,7 @@ question: "İşçinin ücretinin günlük yada maktu olarak belirlenmesi iş akd
 #   arşivinde bulunmaktadır, ancak decision tablosunda kaydı ve karararama E/K teyidi yoktur;
 #   künyeleri yazılmamıştır.
 expected:
+  topic: ucret_turu
   status: definite
   headline_contains:
     - tazminat

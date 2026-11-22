@@ -9,6 +9,7 @@ question: "Giydirilmiş ücrete yemek, yol ve kupon (yemek kartı) yardımı ekl
 # "Yerleşik içtihat" için arşivde aday kararlar vardır (yemek ve yol yardımı, giydirilmiş ücret);
 # decision tablosunda yok ve E/K teyitsiz olduklarından künye yazılmadı.
 expected:
+  topic: kidem_ihbar
   status: conditional
   headline_contains:
     - giydirilmiş
@@ -26,6 +27,6 @@ expected:
     - Yardımın ayni veya nakdi verilmesi ile sürekli ve düzenli ya da arızi olması ayrı sorulardır; süreklilik ölçütü Yargıtay içtihadına dayanır, doğrulanmış karar okunmadan kesin cümleyle verilmez.
     - SGK prime esas kazanç istisnaları (5510 m.80) ile kıdem tazminatına esas ücret (1475 m.14) ayrı hükümlerdir; birinin kapsamı ötekinden çıkarılmaz.
     - Yerleşik içtihat istendiğinde teyitsiz karar künyesi verilmez; KB'de doğrulanmış karar yoksa bu durum kaynak eksikliği olarak belirtilir.
+  missing_in_kb:
+    - "Yargıtay 9. HD / HGK: düzenli ödenen yemek, yol ve yemek kartı yardımının giydirilmiş ücrete katılması, arızi ödeme ayrımı (arşivde aday kararlar var, decision tablosunda yok, E/K teyitsiz)"
 tags: [is-hukuku, kidem-tazminati, giydirilmis-ucret]
-missing_in_kb:
-  - "Yargıtay 9. HD / HGK: düzenli ödenen yemek, yol ve yemek kartı yardımının giydirilmiş ücrete katılması, arızi ödeme ayrımı (arşivde aday kararlar var, decision tablosunda yok, E/K teyitsiz)"

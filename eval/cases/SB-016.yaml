@@ -4,6 +4,7 @@ facts:
   ceza_turu: bildirge
   kendiliginden: kendiliginden
 expected:
+  topic: idari_para_cezasi
   status: definite
   headline_contains:
     - iki indirim

@@ -1,6 +1,7 @@
 id: SB-003
 question: "İşçinin ücretinin düşürülmesinin şartları nelerdir."
 expected:
+  topic: calisma_kosulu_degisikligi
   status: conditional
   headline_contains:
     - yazılı

@@ -161,8 +161,15 @@ def total(metrics: list[Metric]) -> float:
 
 
 def load_case(path: Path) -> dict[str, Any]:
+    """A case file: `expected.topic` names the template the case falls into, and the sources the
+    knowledge base lacks are listed in `expected.missing_in_kb` (task 19)."""
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict)
+    expected = loaded.get("expected")
+    if not isinstance(expected, dict) or not isinstance(expected.get("topic"), str):
+        raise ValueError(f"{path.name}: expected.topic names the template of the case")
+    if "missing_in_kb" in loaded or not isinstance(expected.get("missing_in_kb", []), list):
+        raise ValueError(f"{path.name}: missing_in_kb is a list under expected")
     return loaded
 
 

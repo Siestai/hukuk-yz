@@ -4,6 +4,8 @@
 # 4857 m.63 KB'de low bantta: K1 kuralına göre şu an okunamaz; inceleme onayı ya da yeniden
 # çıkarım gerekir (eval/cases/SB-013.yaml missing_in_kb).
 # Karar tablosu boş olduğundan Yargıtay künyesi dayanak yapılmadı.
+# Görev 19 B2: ücret ve çalışma saati olguları degisiklik_konusu'na bağlı sorulur (asked_when;
+# degisiklik_konusu sorulmaz, giriş adımı seçer); bilinmiyorsa iki dalın olguları da sorulur.
 id: calisma_kosulu_degisikligi
 title: Çalışma koşullarında değişiklik
 description: >-
@@ -11,6 +13,12 @@ description: >-
   veya sosyal yardımın düşürülmesi, çalışma saatlerinin, vardiyanın veya servisin değiştirilmesi,
   esaslı değişiklik, yazılı bildirim, altı işgünü içinde yazılı kabul, değişiklik feshi.
 facts:
+  - key: degisiklik_konusu
+    label: Değiştirilen çalışma koşulu
+    options:
+      - {value: ucret, label: "Ücret, prim, ikramiye veya sosyal yardım"}
+      - {value: calisma_saati, label: Çalışma saatleri veya ara dinlenmesi}
+      - {value: diger, label: Başka bir çalışma koşulu}
   - key: degisiklik_tarihi
     label: Değişikliğin tarihi
     question:
@@ -24,6 +32,7 @@ facts:
   - key: yazili_bildirim
     label: Yazılı bildirim
     critical: true
+    asked_when: {degisiklik_konusu: [ucret, diger, unknown]}
     question:
       text: İşveren değişikliği işçiye yazılı olarak bildirdi mi?
       why: >-
@@ -39,6 +48,7 @@ facts:
   - key: yazili_kabul
     label: İşçinin yazılı kabulü
     critical: true
+    asked_when: {degisiklik_konusu: [ucret, diger, unknown]}
     question:
       text: İşçi değişikliği altı işgünü içinde yazılı olarak kabul etti mi?
       why: >-
@@ -56,6 +66,7 @@ facts:
   - key: dusurulen_kalem
     label: Düşürülen ödeme ve kaynağı
     critical: true
+    asked_when: {degisiklik_konusu: [ucret, unknown]}
     question:
       text: Düşürülen ödeme hangisidir ve neye dayanmaktadır?
       why: >-
@@ -73,6 +84,7 @@ facts:
   - key: tis_var_mi
     label: Toplu iş sözleşmesi
     critical: true
+    asked_when: {degisiklik_konusu: [ucret, unknown]}
     question:
       text: İşyerinde işçinin yararlandığı bir toplu iş sözleşmesi var mı?
       why: >-
@@ -88,6 +100,7 @@ facts:
   - key: calisma_saati_kaynagi
     label: Mevcut çalışma saatlerinin kaynağı
     critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, unknown]}
     question:
       text: Mevcut başlama ve bitiş saatleri nerede belirlenmiştir?
       why: >-
@@ -106,6 +119,7 @@ facts:
   - key: kaymanin_kapsami
     label: Saat değişikliğinin kapsamı
     critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, unknown]}
     question:
       text: Saat değişikliği kalıcı mı, geçici mi; bütün işçilere mi, bir kısmına mı uygulanmaktadır?
       why: >-
@@ -123,6 +137,7 @@ facts:
   - key: somut_etki
     label: Değişikliğin işçiye etkisi
     critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, diger, unknown]}
     question:
       text: Değişiklik işçinin ulaşımını, servisini, ücretini veya günlük düzenini nasıl etkilemektedir?
       why: >-
@@ -135,6 +150,7 @@ facts:
   - key: sure_sinirlari
     label: Çalışma süresi ve dinlenme
     critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, unknown]}
     question:
       text: Yeni saatlerle günlük çalışma süresi veya ara dinlenmesi değişmekte midir?
       why: >-

@@ -1,6 +1,7 @@
 id: SB-005
 question: "Bağıtlanmış toplu iş sözleşmesinde ödenmeyen ikramiye, yakacak yardımına ilişkin, işçi açısından yapılması gerekenler nelerdir ?"
 expected:
+  topic: tis_sendikal
   status: conditional
   headline_contains:
     - toplu iş sözleşmesi

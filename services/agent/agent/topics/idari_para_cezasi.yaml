@@ -1,9 +1,10 @@
 # Konu kartı SB-016 (5510 m.102/2 ve m.102/5 indirimleri); eval vakaları eval/cases/SB-016.yaml,
 # SB-014.yaml (m.102/1-a tekrar hâli), SB-019.yaml (m.102/1-m-4-ç), SB-021.yaml (m.102/1-e-5).
-# Görev 19 B2: alt bent düzeyindeki olgular (fiil, onceki_tespit_tarihi, tespit_sekli,
-# bildirim_belgesi, muafiyet_siniri, tutanakla_teslim, odeme_sekli, defter_turu) kritik değildir:
-# şablonda koşullu sorma alanı bulunmadığından kritik yapılırlarsa her idari para cezası sorusunda
-# hepsi sorulur (SB-016 koşullu düşer). Kapı (B3) koşullu sormayı getirene kadar sorulmazlar.
+# Görev 19 B2: alt bent düzeyindeki olgular fiile bağlı olarak sorulur (asked_when): yalnız
+# kazanç eksikliğinde tespit_sekli ve bildirim_belgesi (SB-019), bordro geçersizliğinde
+# tutanakla_teslim, odeme_sekli ve defter_turu (SB-021; defter_turu ibraz etmemede de). fiil
+# bilinmiyorsa yalnız indirim olguları (ceza_turu, kendiliginden; SB-016) sorulur.
+# onceki_tespit_tarihi ve muafiyet_siniri vakaların must_ask'inde olmadığından kritik değildir.
 id: idari_para_cezasi
 title: SGK idari para cezası ve indirimler
 description: >-
@@ -20,6 +21,7 @@ facts:
   - key: ceza_turu
     label: Ceza türü
     critical: true
+    asked_when: {fiil: [unknown, diger]}
     question:
       text: Hangi cezadan söz edilmektedir?
       why: >-
@@ -36,6 +38,7 @@ facts:
   - key: kendiliginden
     label: Belgenin kendiliğinden verilmesi
     critical: true
+    asked_when: {fiil: [unknown, ise_giris_gec, diger]}
     question:
       text: Belge kendiliğinden mi verildi?
       why: >-
@@ -87,6 +90,8 @@ facts:
         - {ref: "2020/8 m.2.1.1", category: admin_act}
   - key: tespit_sekli
     label: Eksikliğin anlaşılma şekli
+    critical: true
+    asked_when: {fiil: [yalniz_kazanc_eksik]}
     question:
       text: Eksik bildirim nasıl anlaşıldı?
       why: >-
@@ -106,6 +111,8 @@ facts:
         - {ref: "2020/8 m.2.6.2.2", category: admin_act}
   - key: bildirim_belgesi
     label: Eksikliğin ait olduğu bildirim belgesi
+    critical: true
+    asked_when: {fiil: [yalniz_kazanc_eksik]}
     question:
       text: Eksiklik hangi belgeyle bildirilen bir döneme aittir?
       why: >-
@@ -141,6 +148,8 @@ facts:
         - {ref: "2020/8 m.3.3", category: admin_act}
   - key: tutanakla_teslim
     label: Kayıtların tutanakla teslim alınması
+    critical: true
+    asked_when: {fiil: [bordro_gecersiz]}
     question:
       text: Bordrolar denetim memurunca tutanakla teslim alındı mı?
       why: >-
@@ -156,6 +165,8 @@ facts:
         - {ref: "5510 m.102/1-e-5", category: statute}
   - key: odeme_sekli
     label: Ücretin ödenme şekli
+    critical: true
+    asked_when: {fiil: [bordro_gecersiz]}
     question:
       text: İmzası eksik sigortalının ücreti nasıl ödendi?
       why: >-
@@ -171,6 +182,8 @@ facts:
         - {ref: "2020/8 m.2.8.3", category: admin_act}
   - key: defter_turu
     label: Tutulması gereken defter türü
+    critical: true
+    asked_when: {fiil: [bordro_gecersiz, defter_ibraz]}
     question:
       text: İşveren hangi defteri tutmakla yükümlüdür?
       why: >-

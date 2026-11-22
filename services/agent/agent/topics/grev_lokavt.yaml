@@ -72,8 +72,8 @@ facts:
       kind: choice
       options:
         - {value: greve_katildi, label: Greve katıldı}
-        - {value: katilmadi_calisiyor, label: "Greve katılmadı, çalışmaya devam ediyor"}
-        - {value: katilmadi_calistirilmiyor, label: Greve katılmadı ama çalıştırılmıyor}
+        - {value: katilmadi_calisiyor, label: "Greve katılmadı, çalışmaya devam etmektedir"}
+        - {value: katilmadi_calistirilmiyor, label: Greve katılmadı ama çalıştırılmamaktadır}
         - {value: lokavta_maruz, label: Lokavta maruz kaldı}
       basis:
         - {ref: "6356 m.64/1", category: statute}

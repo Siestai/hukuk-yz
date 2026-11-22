@@ -9,7 +9,7 @@ import re
 from datetime import date
 
 from agent.llm_schemas import IntakeOutput
-from agent.topics import Option, Topic, TopicFact, parse_date
+from agent.topics import UNKNOWN, Option, Topic, TopicFact, parse_date
 from hukuk_models.chat import (
     CaseFacts,
     CitationRef,
@@ -27,10 +27,8 @@ def _norm(text: str) -> str:
 
 
 def _matching_option(fact: TopicFact, value: str) -> Option | None:
-    if fact.question is None:
-        return None
     return next(
-        (o for o in fact.question.options if _norm(value) in (_norm(o.value), _norm(o.label))),
+        (o for o in fact.choices if _norm(value) in (_norm(o.value), _norm(o.label))),
         None,
     )
 
@@ -136,10 +134,31 @@ def event_date_of(topic: Topic, facts: list[Fact]) -> date | None:
     return parse_date(fact.value) if fact and fact.value else None
 
 
+def _state(tf: TopicFact, fact: Fact | None) -> str:
+    """The option value of the fact; UNKNOWN when it is unknown or its value is no option."""
+    option = _matching_option(tf, fact.value) if fact and fact.value else None
+    return option.value if option else UNKNOWN
+
+
 def critical_unknown(topic: Topic, facts: CaseFacts) -> list[str]:
-    """The keys of the critical facts that are still unknown."""
-    unknown = {f.key for f in facts.facts if f.status == "unknown"}
-    return [tf.key for tf in topic.facts if tf.critical and tf.key in unknown]
+    """The keys of the critical facts that are still unknown, in the branch the facts are in."""
+    by_key = {f.key: f for f in facts.facts}
+
+    def in_branch(tf: TopicFact) -> bool:
+        return all(
+            _state(branch, by_key.get(key)) in states
+            for key, states in tf.asked_when.items()
+            if (branch := topic.fact(key)) is not None
+        )
+
+    return [
+        tf.key
+        for tf in topic.facts
+        if tf.critical
+        and (fact := by_key.get(tf.key)) is not None
+        and fact.status == "unknown"
+        and in_branch(tf)
+    ]
 
 
 def clarification_for(

@@ -8,9 +8,9 @@ question: "Mesela askere gidecek işçi ne kadar süre önce işten ayrılmalıd
 #   çıkarıldı: dergi arşivinde var, ancak decision tablosunda yok ve E/K karararama'da teyit
 #   edilmedi. "Makul süre" ölçütü bu kararlara dayandığından teyit edilip yüklenince geri eklenir.
 # - must_ask anahtarları (sevk_tarihi, sevk_tehiri, sonraki_calisma, ayrilis_gerekcesi)
-#   kidem_ihbar şablonuna kritik olmayan olgu olarak eklendi; koşullu sorma (B3) gelene kadar
-#   sorulmazlar, must_ask bu vakada o zamana kadar karşılanamaz.
+#   kidem_ihbar şablonunda fesih_nedeni = askerlik iken sorulan kritik olgulardır (B2 asked_when).
 expected:
+  topic: kidem_ihbar
   status: conditional
   headline_contains:
     - makul

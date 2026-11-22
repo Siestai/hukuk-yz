@@ -17,9 +17,10 @@ question: "yeni açılan işyerlerinde ile giriş Bildirgesi için verilen 1 ayl
 #   verilen tarihlerden takvimle belirlenir, kullanıcıya sorulacak olgu değildir; bildirgenin
 #   e-sigorta ya da kâğıt ortamında verilmesi okunan kaynaklarda bir aylık süreyi değiştirmez.
 #   İkisinin de KB'de okunabilir dayanağı yoktur (HMK, 2013/11 KB dışında).
-# - must_ask anahtarları sgk_bildirim_prim şablonunda kritik olmayan olgulardır (şablon notu);
-#   koşullu sorma (B3) gelene kadar sorulmazlar.
+# - must_ask anahtarları sgk_bildirim_prim şablonunda bildirim_konusu = ise_giris iken sorulan
+#   kritik olgulardır (B2 asked_when).
 expected:
+  topic: sgk_bildirim_prim
   status: conditional
   headline_contains:
     - bir aylık

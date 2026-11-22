@@ -1,23 +1,47 @@
 """The topic templates: the question set of each topic is the template's, with sources and
-without a progressive form."""
+without a progressive form; each eval case falls into its template and is asked what it wants."""
 
+import json
 from collections.abc import Iterator
+from datetime import date
+from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
+from pydantic import ValidationError
 
-from agent.topics import GENERAL, get_topic, load_topics, parse_date
+from agent.facts import build_facts, clarification_for
+from agent.llm_schemas import IntakeFact, IntakeOutput
+from agent.topics import GENERAL, TOPICS_DIR, Topic, get_topic, load_topics, parse_date
 from hukuk_models.chat import QuestionInput
 from hukuk_models.formal_turkish import progressive_forms
 
 EXPECTED = {
-    "ise_iade",
-    "idari_para_cezasi",
+    "calisma_kosulu_degisikligi",
+    "grev_lokavt",
+    "hakli_fesih_devamsizlik",
     "hizmet_tespiti",
+    "idari_para_cezasi",
+    "ise_iade",
     "kidem_ihbar",
+    "olum_yaslilik_aylik",
+    "sgk_bildirim_prim",
+    "tis_sendikal",
+    "ucret_turu",
     "yillik_izin",
     GENERAL,
 }
+EVAL = Path(__file__).parents[3] / "eval"
+CASES = {
+    case["id"]: case
+    for case in (
+        yaml.safe_load(p.read_text(encoding="utf-8"))
+        for p in sorted((EVAL / "cases").glob("*.yaml"))
+    )
+}
+# The raw intake output of the first real eval run, one file per case (task 19, B5).
+INTAKE_RECORDS = EVAL / "fixtures" / "intake"
 
 
 def test_the_templates_of_the_eval_topics_and_the_general_one_exist() -> None:
@@ -30,22 +54,26 @@ def test_a_topic_without_a_template_gets_the_general_one() -> None:
     assert get_topic("ise_iade").id == "ise_iade"
 
 
-def _strings(node: Any) -> Iterator[str]:
+# What a user reads (the question card, the facts panel) or the model takes as a rule; option
+# values, keys and search queries are identifiers and words of the sources.
+VISIBLE = {"title", "description", "label", "text", "why", "traps", "needs"}
+
+
+def _visible(node: Any, key: str = "") -> Iterator[str]:
     if isinstance(node, str):
-        yield node
+        if key in VISIBLE:
+            yield node
     elif isinstance(node, list):
         for item in node:
-            yield from _strings(item)
+            yield from _visible(item, key)
     elif isinstance(node, dict):
-        for value in node.values():
-            yield from _strings(value)
-    elif hasattr(node, "model_dump"):
-        yield from _strings(node.model_dump())
+        for name, value in node.items():
+            yield from _visible(value, name)
 
 
-@pytest.mark.parametrize("topic_id", sorted(EXPECTED))
-def test_a_template_uses_the_formal_register(topic_id: str) -> None:
-    assert progressive_forms(_strings(get_topic(topic_id))) == []
+@pytest.mark.parametrize("path", sorted(TOPICS_DIR.glob("*.yaml")), ids=lambda p: p.stem)
+def test_a_template_uses_the_formal_register(path: Path) -> None:
+    assert progressive_forms(_visible(yaml.safe_load(path.read_text(encoding="utf-8")))) == []
 
 
 @pytest.mark.parametrize("topic_id", sorted(EXPECTED))
@@ -71,27 +99,147 @@ def test_a_topic_names_what_to_read(topic_id: str) -> None:
     assert topic.traps
 
 
-def test_sb001_asks_what_the_eval_case_wants_asked() -> None:
-    asked = [f.key for f in get_topic("ise_iade").facts if f.critical]
-    assert asked == [
-        "isci_sayisi",
-        "sozlesme_turu",
-        "bildirim_tarihi",
-        "onceki_donem",
-        "yer_alti",
-        "kisaltma",
-    ]
-    assert get_topic("ise_iade").event_date_fact == "bildirim_tarihi"
+def _topic(*facts: dict[str, Any]) -> Topic:
+    return Topic.model_validate(
+        {"id": "t", "title": "T", "description": "T.", "facts": list(facts)}
+    )
 
 
-def test_sb016_and_sb026_ask_what_the_eval_cases_want_asked() -> None:
-    assert {f.key for f in get_topic("idari_para_cezasi").facts if f.critical} == {
-        "ceza_turu",
-        "kendiliginden",
+BRANCH = {
+    "key": "dal",
+    "label": "Dal",
+    "options": [{"value": "a", "label": "A"}, {"value": "b", "label": "B"}],
+}
+
+
+def _conditional(asked_when: dict[str, list[str]], *, critical: bool = True) -> dict[str, Any]:
+    return {
+        "key": "olgu",
+        "label": "Olgu",
+        "critical": critical,
+        "asked_when": asked_when,
+        "question": {"text": "Olgu?", "why": "Gerekir.", "kind": "text"},
     }
-    assert {"hizmet_yillari", "bildirim_durumu"} <= {
-        f.key for f in get_topic("hizmet_tespiti").facts if f.critical
-    }
+
+
+def test_a_condition_names_a_branch_fact_and_its_options() -> None:
+    topic = _topic(BRANCH, _conditional({"dal": ["a", "unknown"]}))
+    assert topic.facts[1].asked_when == {"dal": ["a", "unknown"]}
+
+
+@pytest.mark.parametrize(
+    ("facts", "error"),
+    [
+        ((BRANCH, _conditional({"yok": ["a"]})), "no fact yok"),
+        ((BRANCH, _conditional({"dal": ["c"]})), "not an option of dal"),
+        ((BRANCH, _conditional({"dal": []})), "no value"),
+        ((BRANCH, _conditional({"dal": ["a"]}, critical=False)), "for a critical fact only"),
+        (({"key": "dal", "label": "Dal"}, _conditional({"dal": ["a"]})), "dal has no options"),
+        ((_conditional({"olgu": ["a"]}),), "itself"),
+        (
+            (
+                {"key": "dal", "label": "Dal", "options": [{"value": "unknown", "label": "?"}]},
+                _conditional({"dal": ["unknown"]}),
+            ),
+            "the unknown state",
+        ),
+        (
+            (
+                {
+                    "key": "dal",
+                    "label": "Dal",
+                    "options": [{"value": "a", "label": "A"}],
+                    "question": {
+                        "text": "Dal?",
+                        "why": "Gerekir.",
+                        "kind": "choice",
+                        "options": [{"value": "a", "label": "A"}],
+                    },
+                },
+            ),
+            "options of its question",
+        ),
+    ],
+)
+def test_a_condition_on_no_such_fact_or_value_is_refused(
+    facts: tuple[dict[str, Any], ...], error: str
+) -> None:
+    with pytest.raises(ValidationError, match=error):
+        _topic(*facts)
+
+
+# What each eval question states of the facts that steer the template, as the intake is to read
+# it; the rest of the facts the question leaves unknown.
+STATED: dict[str, dict[str, str]] = {
+    "SB-001": {"kidem": "5 ay"},
+    "SB-002": {"sigortalilik_hali": "4c", "talep_turu": "olum_toptan_odemesi"},
+    "SB-003": {"degisiklik_konusu": "ucret"},
+    "SB-005": {},
+    "SB-006": {},
+    "SB-008": {"soru_konusu": "hak", "fesih_nedeni": "askerlik"},
+    "SB-010": {},
+    "SB-012": {"bildirim_konusu": "eksik_gun", "eksik_gun_kodu": "06"},
+    "SB-013": {"degisiklik_konusu": "calisma_saati"},
+    "SB-014": {"ceza_turu": "bildirge"},
+    "SB-016": {"belge_30_gun": "30 gün içinde verildi", "odeme_15_gun": "15 gün içinde ödenmedi"},
+    "SB-019": {"fiil": "yalniz_kazanc_eksik"},
+    "SB-021": {"fiil": "bordro_gecersiz"},
+    "SB-024": {"bildirim_konusu": "ise_giris"},
+    "SB-026": {"tespit_yolu": "ilam"},
+    "SB-027": {"fesih_sebebi": "devamsizlik", "mazeret_bildirimi": "hayir"},
+    "SB-032": {"soru_konusu": "esas_ucret"},
+    "SB-035": {"fesih_sebebi": "ucret_odenmemesi"},
+    "SB-039": {
+        "sendika_uyeligi": "dayanisma_aidati",
+        "tis_yururluk": "01.01.2025-31.12.2026, imza 01.10.2025",
+    },
+    "SB-042": {"talep_turu": "kidem_yazisi"},
+}
+# Asked beyond the case's must_ask, and why it is not out of place.
+ALSO_ASKED: dict[str, set[str]] = {
+    # The event date (md. 4) and the full year of service (1475 m.14) hold in the askerlik branch.
+    "SB-008": {"fesih_tarihi", "hizmet_suresi"},
+    # The question does not say whether the declaration was late or found by an inspection.
+    "SB-014": {"kendiliginden"},
+    # The six workdays of m.26 run from the day the employer learnt of the absence.
+    "SB-027": {"olay_tarihi"},
+}
+
+
+def test_every_case_has_what_its_template_steers_on() -> None:
+    assert set(STATED) == set(CASES)
+
+
+@pytest.mark.parametrize("case_id", sorted(CASES))
+def test_a_case_is_asked_its_must_ask_from_its_template_and_nothing_out_of_place(
+    case_id: str,
+) -> None:
+    case = CASES[case_id]
+    topic = get_topic(case["expected"]["topic"])
+    assert topic.id == case["expected"]["topic"]
+    extracted = IntakeOutput(
+        topic=topic.id,
+        title=case_id,
+        facts=[IntakeFact(key=k, value=v, status="known") for k, v in STATED[case_id].items()],
+    )
+    assert {f.key for f in extracted.facts} <= {f.key for f in topic.facts}
+    facts = build_facts(topic, extracted, None, question=case["question"], today=date(2026, 11, 22))
+    clarification = clarification_for(topic, facts, {})
+    asked = {q.fact_key for q in clarification.questions} if clarification else set()
+
+    assert asked == set(case["expected"]["must_ask"]) | ALSO_ASKED.get(case_id, set())
+
+
+@pytest.mark.parametrize("case_id", sorted(CASES))
+def test_a_case_falls_into_its_template_with_the_recorded_intake(case_id: str) -> None:
+    """The intake model's recorded output for the case (not a fake), read the way the intake
+    node reads it: `eval/fixtures/intake/SB-NNN.json` holds the raw `IntakeOutput` JSON."""
+    record = INTAKE_RECORDS / f"{case_id}.json"
+    if not record.exists():
+        pytest.skip(f"no recorded intake output yet: {record.name} (the first real eval run)")
+    out = IntakeOutput.model_validate(json.loads(record.read_text(encoding="utf-8")))
+
+    assert get_topic(out.topic).id == CASES[case_id]["expected"]["topic"]
 
 
 def test_parse_date_reads_iso_and_turkish_dates() -> None:
@@ -101,8 +249,6 @@ def test_parse_date_reads_iso_and_turkish_dates() -> None:
 
 
 def test_a_question_basis_names_a_section_of_a_genelge_not_the_whole_act() -> None:
-    from pydantic import ValidationError
-
     from agent.topics import Question
 
     def question(ref: str) -> Question:
