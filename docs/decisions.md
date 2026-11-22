@@ -293,3 +293,12 @@
 - **Puan etkisi yok:** yedi künye zaten `missing_in_kb`'deydi (must_cite paydasının dışında) ve
   ajan bunları okuyamıyordu. İçeriği taşıyan tuzak cümleleri künyesiz kalır, dayanak teyit
   bekliyor diye işaretlidir. Test, aday listesindeki teyitsiz numaranın vakalara dönmesini engeller.
+
+### 2026-11-22 — Düşen hüküm satırlarının izi (Görev 19 devri, açık konu 6)
+
+- **Satır satır iz:** `verify_rows` düşen her satır için neden kodunu (`dropped_by`'daki kod),
+  taslağın verdiği `source_id`'yi (çözülemese de) ve alıntının ilk 300 karakterini toplar.
+  `holding_map` düğümünün çıktısında `dropped_rows` olarak, eval sonuç JSON'unda `CaseResult.rows_dropped`
+  olarak yer alır; md tablosuna girmez.
+- **Gizlilik:** alıntı KB'deki mevzuat metnidir; soru ve olgular kayda girmez. SB-002 ve SB-014
+  düşüşleri bu izle tahmin yerine okunur.

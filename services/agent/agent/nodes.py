@@ -383,7 +383,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
         applied_on = Plan.model_validate(state["plan"]).as_of
         async with trace().node("holding_map", {"sources": len(read)}) as rec:
             _step("holding_map")
-            verified = Verified([], {}, 0)
+            verified = Verified([], {}, 0, [])
             feedback: list[str] = []
             if read:
 
@@ -407,6 +407,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "rows": len(verified.rows),
                 "dropped": dropped,
                 "dropped_by": verified.dropped_by,
+                "dropped_rows": [d.as_dict() for d in verified.dropped_rows],
                 "corrected": bool(feedback),
             }
             return {

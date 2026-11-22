@@ -4,6 +4,7 @@ word, in the paragraph the row cites (docs/architecture.md §5.1, item 6)."""
 
 import re
 from collections import Counter
+from dataclasses import asdict, dataclass
 from datetime import date
 from typing import NamedTuple
 
@@ -41,12 +42,31 @@ PROGRESSIVE = "progressive"
 UNKNOWN_KEY = "unknown_key"
 
 
+# The longest quote a dropped row keeps in the trace.
+TRACE_QUOTE_CHARS = 300
+
+
+@dataclass(frozen=True)
+class DroppedRow:
+    """A row the check dropped, for the trace: the code of why, the source as the draft gave it
+    (even if it names no source read) and the start of its quote. Statute text only."""
+
+    reason: str
+    source_id: str
+    condition_quote: str
+
+    def as_dict(self) -> dict[str, str]:
+        return asdict(self)
+
+
 class Verified(NamedTuple):
     rows: list[HoldingRow]
     # The rows dropped, by the code of why.
     dropped_by: dict[str, int]
     # The paragraphs of kept rows that the text read did not bear out: cited at article level.
     subs_dropped: int
+    # Each row dropped, in the order of the draft.
+    dropped_rows: list[DroppedRow]
 
 
 def invented_keys(draft: HoldingDraft, facts: CaseFacts) -> list[str]:
@@ -166,6 +186,7 @@ def verify_rows(
     sources = {s.source_id: s for s in read}
     rows = []
     dropped: Counter[str] = Counter()
+    dropped_rows: list[DroppedRow] = []
     subs_dropped = 0
     values = {f.key: f for f in facts.facts} if facts is not None else {}
     keys = set(values) if facts is not None else None
@@ -175,6 +196,13 @@ def verify_rows(
         problems = _problems(row, source, applied_on, keys)
         if source is None or problems:
             dropped[problems[0]] += 1
+            dropped_rows.append(
+                DroppedRow(
+                    problems[0],
+                    row.source_id,
+                    row.condition_quote.strip()[:TRACE_QUOTE_CHARS],
+                )
+            )
             continue
         quote = row.condition_quote.strip()
         fact_value = _formal_value(row)
@@ -193,4 +221,4 @@ def verify_rows(
                 result=result,
             )
         )
-    return Verified(rows, dict(dropped), subs_dropped)
+    return Verified(rows, dict(dropped), subs_dropped, dropped_rows)

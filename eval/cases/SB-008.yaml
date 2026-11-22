@@ -9,6 +9,9 @@ question: "Mesela askere gidecek işçi ne kadar süre önce işten ayrılmalıd
 #   edilmedi. "Makul süre" ölçütü bu kararlara dayandığından teyit edilip yüklenince geri eklenir.
 # - must_ask anahtarları (sevk_tarihi, sevk_tehiri, sonraki_calisma, ayrilis_gerekcesi)
 #   kidem_ihbar şablonunda fesih_nedeni = askerlik iken sorulan kritik olgulardır (B2 asked_when).
+# Görev 19 devri (madde 4): soru fiili açıkça söylemektedir (askere gidecek işçi); dal olgusu verilir.
+facts:
+  fesih_nedeni: askerlik
 expected:
   topic: kidem_ihbar
   status: conditional

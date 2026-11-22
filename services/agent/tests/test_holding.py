@@ -43,7 +43,7 @@ def verify(*rows: dict) -> Verified:  # type: ignore[type-arg]
 
 
 def test_a_row_with_a_verbatim_quote_of_a_read_source_stays() -> None:
-    rows, dropped, subs = verify(row("statute:4857:m18", M18_4, sub="4"))
+    rows, dropped, subs, _ = verify(row("statute:4857:m18", M18_4, sub="4"))
 
     assert (dropped, subs) == ({}, 0)
     assert rows[0].citation.ref == "4857 m.18/4"
@@ -52,7 +52,7 @@ def test_a_row_with_a_verbatim_quote_of_a_read_source_stays() -> None:
 
 
 def test_a_row_with_a_fabricated_quote_drops() -> None:
-    rows, dropped, _ = verify(row("statute:4857:m18", "Bu ifade kanunda hiç geçmemektedir"))
+    rows, dropped, _, _ = verify(row("statute:4857:m18", "Bu ifade kanunda hiç geçmemektedir"))
 
     assert (rows, dropped) == ([], {"quote_not_found": 1})
 
@@ -62,7 +62,7 @@ def test_a_row_on_a_source_that_was_not_read_drops() -> None:
 
 
 def test_a_row_naming_its_read_source_by_kunye_stands_on_that_source() -> None:
-    rows, dropped, _ = verify(row("4857 m.18", M18_4, sub="4"), row("4857 m.18/4", M18_4))
+    rows, dropped, _, _ = verify(row("4857 m.18", M18_4, sub="4"), row("4857 m.18/4", M18_4))
 
     assert dropped == {}
     assert [r.citation.source_id for r in rows] == ["statute:4857:m18"] * 2
@@ -78,7 +78,7 @@ def test_a_typographic_apostrophe_written_plain_is_the_same_quote() -> None:
     draft = HoldingDraft.model_validate(
         {"rows": [row("statute:4857:m18", "Kurumca re'sen düzenlenen")]}
     )
-    rows, dropped, _ = verify_rows(draft, [read], DAY)
+    rows, dropped, _, _ = verify_rows(draft, [read], DAY)
 
     assert dropped == {}
     assert rows[0].condition_quote == rows[0].citation.quote == "Kurumca re\u2019sen düzenlenen"
@@ -96,7 +96,7 @@ def test_a_quote_too_short_to_prove_anything_drops() -> None:
 
 
 def test_the_good_rows_stay_when_others_drop() -> None:
-    rows, dropped, _ = verify(
+    rows, dropped, _, _ = verify(
         row("statute:4857:m18", M18_4, "unknown"), row("statute:4857:m18", "uydurma bir alıntı yok")
     )
 
@@ -110,7 +110,7 @@ def test_the_good_rows_stay_when_others_drop() -> None:
 def test_a_quote_from_the_cited_paragraph_or_with_no_paragraph_claimed_stays(
     sub: str | None, ref: str
 ) -> None:
-    rows, dropped, subs = verify(row("statute:4857:m18", M18_4, sub=sub))
+    rows, dropped, subs, _ = verify(row("statute:4857:m18", M18_4, sub=sub))
 
     assert dropped == {}
     assert rows[0].citation.ref == ref
@@ -131,14 +131,14 @@ def test_a_quote_that_is_also_in_the_cited_paragraph_stays() -> None:
     assert twice is not None
     draft = HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_4, sub="4")]})
 
-    rows, dropped, _ = verify_rows(draft, [twice], DAY)
+    rows, dropped, _, _ = verify_rows(draft, [twice], DAY)
 
     assert dropped == {}
     assert rows[0].citation.ref == "4857 m.18/4"
 
 
 def test_an_empty_fact_value_is_no_unknown_fact() -> None:
-    rows, dropped, _ = verify({**row("statute:4857:m18", M18_4, "met"), "fact_value": ""})
+    rows, dropped, _, _ = verify({**row("statute:4857:m18", M18_4, "met"), "fact_value": ""})
 
     assert dropped == {}
     assert (rows[0].fact_value, rows[0].result) == (None, "met")
@@ -150,7 +150,7 @@ def test_a_cited_paragraph_is_kept_at_article_level_when_the_text_read_has_no_ma
     )
     draft = HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_4, sub="1")]})
 
-    rows, dropped, subs = verify_rows(draft, [plain], DAY)
+    rows, dropped, subs, _ = verify_rows(draft, [plain], DAY)
 
     assert (dropped, subs) == ({}, 1)
     assert rows[0].citation.ref == "4857 m.18"
@@ -179,7 +179,7 @@ def test_informal_holding_text_is_dropped_before_it_can_reach_the_fallback() -> 
 def test_an_unknown_fact_value_keeps_the_row_as_a_conditional_branch(
     value: str, formal: str, result: str
 ) -> None:
-    rows, dropped, _ = verify({**row("statute:4857:m18", M18_4, result), "fact_value": value})
+    rows, dropped, _, _ = verify({**row("statute:4857:m18", M18_4, result), "fact_value": value})
 
     assert dropped == {}
     assert rows[0].fact_value == formal
@@ -219,7 +219,7 @@ def test_declared_dependencies_preserve_unknown_without_erasing_known_results() 
             (["kidem", "onceki_donem"], "unknown" if result in ("met", "not_met") else result),
         ):
             candidate = {**row("statute:4857:m18", M18_1, result), "depends_on_facts": dependencies}
-            verified, dropped, _ = verify_rows(
+            verified, dropped, _, _ = verify_rows(
                 HoldingDraft.model_validate({"rows": [candidate]}), READ, DAY, facts=facts
             )
             assert dropped == {}
@@ -246,7 +246,7 @@ def test_a_dependency_key_the_template_does_not_have_is_found_and_its_row_drops(
 
     assert invented_keys(draft, facts) == ["fesih_bildirim_tarihi", "x"]
     assert invented_keys(HoldingDraft.model_validate({"rows": [good]}), facts) == []
-    rows, dropped, _ = verify_rows(draft, READ, DAY, facts=facts)
+    rows, dropped, _, _ = verify_rows(draft, READ, DAY, facts=facts)
     assert dropped == {"unknown_key": 1} and len(rows) == 1
 
 
@@ -276,7 +276,7 @@ def test_recorded_unknown_rows_require_formal_generated_values_without_losing_da
     original = HoldingDraft.model_validate(recording["holding"])
     assert len(original.rows) == 3
     # The recorded "bilinmiyor" is the unknown value of the fact, not a register error.
-    recorded, dropped, _ = verify_rows(original, [source], DAY)
+    recorded, dropped, _, _ = verify_rows(original, [source], DAY)
     assert dropped == {}
     assert [r.fact_value for r in recorded] == [
         (r.fact_value or "").replace("bilinmiyor", "bilinmemektedir") for r in original.rows
@@ -287,7 +287,7 @@ def test_recorded_unknown_rows_require_formal_generated_values_without_losing_da
         for candidate in formal.rows:
             assert candidate.fact_value is not None
             candidate.fact_value = candidate.fact_value.replace("bilinmiyor", value)
-        rows, dropped, _ = verify_rows(formal, [source], DAY)
+        rows, dropped, _, _ = verify_rows(formal, [source], DAY)
         assert dropped == {} and len(rows) == 3
         for before, after, verified in zip(original.rows, formal.rows, rows, strict=True):
             assert after.depends_on_facts == before.depends_on_facts
@@ -309,7 +309,7 @@ def test_recorded_unknown_rows_require_formal_generated_values_without_losing_da
 
 def test_a_row_is_dropped_under_the_first_reason_found() -> None:
     old = row("statute:old", "çalışıyor")
-    rows, dropped, _ = verify(
+    rows, dropped, _, _ = verify(
         old, row("statute:4857:m18", "işçinin"), row("statute:4857:m18", M18_4)
     )
 
@@ -350,3 +350,21 @@ def test_the_correction_names_every_row_a_model_can_mend_and_no_other() -> None:
     assert feedback[3].startswith("6. satır (statute:4857:m19,")
     assert "okunan kaynak listesinde yoktur" in feedback[3]
     assert holding_feedback(HoldingDraft.model_validate({"rows": [good]}), READ, DAY, facts) == []
+
+
+def test_a_dropped_row_is_traced_with_its_reason_source_and_truncated_quote() -> None:
+    long_quote = "kanunda hiç yazmayan bir ifade " * 20
+    verified = verify(
+        row("statute:4857:m18", M18_4),
+        row("statute:4857:m18", long_quote),
+        row("statute:nowhere", M18_4),
+    )
+
+    assert len(verified.rows) == 1
+    assert [(d.reason, d.source_id) for d in verified.dropped_rows] == [
+        ("quote_not_found", "statute:4857:m18"),
+        ("unread_source", "statute:nowhere"),
+    ]
+    assert verified.dropped_rows[0].condition_quote == long_quote.strip()[:300]
+    assert len(verified.dropped_rows[0].condition_quote) == 300
+    assert verified.dropped_rows[1].condition_quote == M18_4.strip()[:300]

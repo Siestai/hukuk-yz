@@ -20,8 +20,11 @@ from agent.eval import (
     run_case,
     run_eval,
 )
+from agent.facts import apply_answers, build_facts, clarification_for, follow_up
 from agent.kb import KbUnavailable
 from agent.llm import Models
+from agent.llm_schemas import IntakeOutput
+from agent.topics import get_topic
 from agent.trace import Tracing
 from hukuk_models.chat import Clarification, ClarificationQuestion, QuestionInput
 
@@ -112,6 +115,13 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     assert {"models", "output_tokens", "cost", "seconds"} <= set(result.nodes[0])
     # Why the holding map dropped its rows, from the trace.
     assert result.rows_dropped_by == {"quote_not_found": 1}
+    assert result.rows_dropped == [
+        {
+            "reason": "quote_not_found",
+            "source_id": "statute:5510:m102",
+            "condition_quote": "kanunda hiç yazmayan bir ifade",
+        }
+    ]
 
     # The CLI: the table on stdout, the result and the table under --results, the intake
     # output of every case under --record-intake.
@@ -127,6 +137,13 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     assert [r["case_id"] for r in saved["cases"]] == ["SB-016"]
     assert saved["cases"][0]["metrics"]["formal_mode"] == 1.0
     assert saved["cases"][0]["intake"] == INTAKE_SB016
+    assert saved["cases"][0]["rows_dropped"] == [
+        {
+            "reason": "quote_not_found",
+            "source_id": "statute:5510:m102",
+            "condition_quote": "kanunda hiç yazmayan bir ifade",
+        }
+    ]
     assert saved["cases"][0]["error"] is None and saved["cases"][0]["cost"] is None
     assert saved["cases"][0]["retrieved"]["read"] and saved["cases"][0]["nodes"]
     assert saved["not_run"] == [] and isinstance(saved["passed"], bool)
@@ -433,3 +450,24 @@ async def test_fixture_kb_uses_the_same_exclusive_valid_to_as_task14() -> None:
     )
     assert await kb.search("9999 m.1", as_of=date(2026, 10, 3)) == []
     assert len(await kb.search("9999 m.1", as_of=date(2026, 10, 2))) == 1
+
+
+def test_sb008_states_its_branch_fact_so_the_askerlik_follow_up_opens() -> None:
+    """The recorded intake of SB-008 wrote `fesih_nedeni` as free text (no option, so unknown);
+    the case's own facts answer it, and the branch asks exactly its must_ask keys."""
+    score = load_score_module(CASES)
+    case = score.load_case(CASES / "SB-008.yaml")
+    record = ROOT / "eval" / "fixtures" / "intake" / "SB-008.json"
+    out = IntakeOutput.model_validate(json.loads(record.read_text(encoding="utf-8")))
+    topic = get_topic(out.topic)
+    today = date(2026, 11, 22)
+
+    facts = build_facts(topic, out, None, question=case["question"], today=today)
+    first = clarification_for(topic, facts, {})
+    assert first is not None
+    answers = answers_for(first, case.get("facts", {}))
+    answered = apply_answers(topic, first, answers, facts, today=today)
+    more = follow_up(topic, first, answered, {})
+
+    assert more is not None
+    assert {q.fact_key for q in more.questions} == set(case["expected"]["must_ask"])

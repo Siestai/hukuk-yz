@@ -675,6 +675,14 @@ async def test_holding_rejection_logs_counts_and_keeps_private_text_out(
         "rows": 1,
         "dropped": 1,
         "dropped_by": {"progressive": 1},
+        # Statute text and the source only: the model's `condition` (the sentinel) stays out.
+        "dropped_rows": [
+            {
+                "reason": "progressive",
+                "source_id": "statute:4857:m18",
+                "condition_quote": M18_1[:300],
+            }
+        ],
         "corrected": True,
     }
     assert outputs["node draft"]["issue_counts"] == {}
