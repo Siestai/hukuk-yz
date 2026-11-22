@@ -1,9 +1,16 @@
 # Konu kartları SB-027 (izin süresi hesabı), SB-028 (izin ücreti ve haklı fesih).
+# Görev 19 B2 (değişiklikler):
+# - İzin ücretinin ödenmemesi nedeniyle işçinin haklı feshi (eval SB-035) hakli_fesih_devamsizlik
+#   şablonuna taşındı: soru 4857 m.24/II-e, m.26 ve 1475 m.14 eksenindedir; bu şablonun kritik
+#   olguları (izin süresi, m.53) o soruda gerekmez. Açıklama ve sorgu buna göre daraltıldı.
+# - must_read'deki "9. HD E.2022/6747 K.2022/8363" çıkarıldı: arşivdeki bu E/K'li karar ilave
+#   tediyeye (6772 sayılı Kanun) ilişkindir, yıllık izinle ilgisi yoktur.
 id: yillik_izin
 title: Yıllık ücretli izin
 description: >-
-  Yıllık ücretli izin süresi (4857 m.53), izin kullanma, izin ücreti (m.57, m.59) ve izin
-  ücretinin ödenmemesi hâlinde işçinin haklı feshi.
+  Yıllık ücretli izin süresi (4857 m.53), izne hak kazanmada çalışılmış gibi sayılan süreler (m.54), iznin bölünmesi (m.56), izin
+  ücreti (m.57) ve sözleşme sona erince kullanılmayan izin ücreti (m.59). İzin ücretinin
+  ödenmemesi nedeniyle fesih hakli_fesih_devamsizlik konusudur.
 facts:
   - key: ise_giris_tarihi
     label: İşe giriş tarihi
@@ -57,14 +64,14 @@ facts:
 must_read:
   - {ref: "4857 m.53", category: statute}
   - {ref: "4857 m.54", category: statute}
+  - {ref: "4857 m.56", category: statute}
   - {ref: "4857 m.57", category: statute}
   - {ref: "4857 m.59", category: statute}
   - {ref: "22. HD E.2017/26700 K.2020/105", category: decision}
-  - {ref: "9. HD E.2022/6747 K.2022/8363", category: decision}
   - {ref: "9. HD E.2025/2024 K.2025/2487", category: decision}
 queries:
   - yıllık ücretli izin süresi hizmet süresi
-  - yıllık izin ücreti ödenmesi haklı fesih
+  - yıllık izin ücretini izine başlamasından önce peşin olarak ödemek
 traps:
   - İzin süresi ve izin ücretine ilişkin süreler ve eşikler okunan kaynak metinden alınır; metinde yazmayan bir süre veya tutar cevaba yazılmaz.
   - İzin gününün ve izin ücretinin tutarı hesap motorunda hesaplanır; cevapta tutar bulunmaz.

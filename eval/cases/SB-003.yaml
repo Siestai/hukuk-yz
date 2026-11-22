@@ -10,6 +10,14 @@ expected:
     - 9. HD E.2021/4643 K.2021/8989
     - 9. HD E.2016/9412 K.2019/16512
     - 9. HD E.2012/6260 K.2014/11165
+  # Görev 19 B1 gözden geçirme (şablon: calisma_kosulu_degisikligi). 4857 m.22 KB'de high bantta
+  # okundu; iki numarasız paragraftan oluşur (m.22/1, m.22/2). Üç 9. HD kararı dergi arşivinde
+  # (sayı 71, 65, 45) bulunmaktadır, ancak KB decision tablosunda kaydı ve karararama E/K teyidi
+  # yoktur: teyit edilene kadar "kaynak eksik" sayılır, ajan bunlara atıf yapamaz (md.25).
+  missing_in_kb:
+    - 9. HD E.2021/4643 K.2021/8989
+    - 9. HD E.2016/9412 K.2019/16512
+    - 9. HD E.2012/6260 K.2014/11165
   must_ask:
     - yazili_bildirim
     - yazili_kabul

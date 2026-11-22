@@ -1,4 +1,8 @@
 # Konu kartı SB-001 (işe iade, altı aylık kıdem şartı); eval vakası eval/cases/SB-001.yaml.
+# Görev 19 B1 (değişiklikler): "neden soruyorum" metni yalnız okunabilen kaynağa dayanır.
+# - bildirim_tarihi: dayanak "9. HD E.2016/28920 K.2017/17860" yerine 4857 m.18 ve m.17 oldu;
+#   karar decision tablosunda yok ve E/K karararama'da teyit edilmedi (must_read'de kalır).
+# - kisaltma: künyesiz cümleydi; dayanak 4857 m.18 eklendi, metin m.18'in söylediğiyle sınırlandı.
 id: ise_iade
 title: İşe iade
 description: >-
@@ -40,11 +44,13 @@ facts:
     question:
       text: Fesih bildirimi hangi tarihte işçiye ulaştı?
       why: >-
-        Altı aylık kıdem, fesih bildiriminin işçiye ulaştığı tarihe göre belirlenmektedir
-        (9. HD E.2016/28920 K.2017/17860).
+        Altı aylık kıdem şartı 4857 m.18'de, fesih bildirimi ve bildirim süreleri 4857 m.17'de
+        düzenlenmektedir; kıdemin hangi tarihe göre hesaplanacağını değerlendirmek için
+        bildirimin işçiye ulaştığı tarih sorulmaktadır.
       kind: date
       basis:
-        - {ref: "9. HD E.2016/28920 K.2017/17860", category: decision}
+        - {ref: "4857 m.18", category: statute}
+        - {ref: "4857 m.17", category: statute}
   - key: onceki_donem
     label: Önceki çalışma
     critical: true
@@ -77,12 +83,14 @@ facts:
     question:
       text: Toplu veya bireysel iş sözleşmesinde altı aylık kıdem şartını kısaltan bir hüküm var mı?
       why: >-
-        Kıdem şartının değerlendirilmesi için toplu veya bireysel sözleşmede bu süreyi kısaltan
-        bir hüküm bulunup bulunmadığı bilinmelidir.
+        Altı aylık kıdem şartı 4857 m.18'de düzenlenmektedir; toplu veya bireysel sözleşmede bu
+        süreyi kısaltan bir hüküm bulunup bulunmadığı ayrıca sorulmaktadır.
       kind: choice
       options:
         - {value: evet, label: Evet}
         - {value: hayir, label: Hayır, assumed_never: true}
+      basis:
+        - {ref: "4857 m.18", category: statute}
 event_date_fact: bildirim_tarihi
 must_read:
   - {ref: "4857 m.15", category: statute}

@@ -11,6 +11,18 @@ expected:
     - Çalışma Süreleri Yönetmeliği m.8
     - 22. HD E.2017/20988 K.2019/6513
     - 9. HD E.2023/3247 K.2023/3581
+  # Görev 19 B1 gözden geçirme (şablon: calisma_kosulu_degisikligi).
+  # 4857 m.22 KB'de high bantta okundu. 4857 m.63 KB'de var, ancak güven bandı low ve ilk
+  # sürümün başlangıç tarihi hatalı (2015-04-23): K1 gereği okunamaz, yeniden çıkarım veya
+  # inceleme onayı gerekir. Çalışma Süreleri Yönetmeliği KB'ye yüklenmemiştir (yalnız Drive
+  # kopyasında) ve yönetmelik künyesinin kunye.py'de karşılığı yoktur. İki Yargıtay kararı dergi
+  # arşivinde (sayı 63, 78) bulunmaktadır, ancak KB decision tablosunda kaydı ve karararama E/K
+  # teyidi yoktur.
+  missing_in_kb:
+    - 4857 m.63/1
+    - Çalışma Süreleri Yönetmeliği m.8
+    - 22. HD E.2017/20988 K.2019/6513
+    - 9. HD E.2023/3247 K.2023/3581
   must_ask:
     - calisma_saati_kaynagi
     - kaymanin_kapsami
