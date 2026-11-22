@@ -12,6 +12,7 @@ from app.chunk_index import (
     EXTRACTION,
     STATUTE_ARTICLE,
     embed_pending,
+    sync_admin_act_section,
     sync_decision,
     sync_statute_article,
 )
@@ -25,9 +26,10 @@ from app.kb import (
 from app.loaders.decisions import load, prepare, read_rows
 from app.loaders.report import LoadCounts
 from app.models.chunk import Chunk
-from app.models.common import ChunkKind, Extraction, License, Source
+from app.models.common import ChunkKind, Extraction, License, Review, ReviewDecision, Source
 from app.models.user import AppUser
 from tests.conftest import FakeEmbedder
+from tests.test_loaders_admin_acts import LINE, load_acts
 
 FIXTURE = Path(__file__).parent / "fixtures" / "decisions_fixture.jsonl"
 Factory = async_sessionmaker[AsyncSession]
@@ -208,6 +210,54 @@ async def test_rejecting_an_article_removes_its_chunks(
         await session.commit()
         assert await session.scalar(select(func.count()).select_from(Chunk)) == 1
         await reject_statute_article(session, statutes_loaded["5"], reviewer.id, "wrong")
+        await session.commit()
+    assert await chunks(kb_factory) == []
+
+
+async def test_a_genelge_section_is_indexed_from_its_extraction(kb_factory: Factory) -> None:
+    await load_acts(kb_factory)
+    async with kb_factory() as session:
+        for section in ("1", "1.1", "1.2"):
+            await sync_admin_act_section(session, "2020/8", section)
+        await session.commit()
+        again = await sync_admin_act_section(session, "2020/8", "1")
+
+    stored = await chunks(kb_factory)
+    assert [(c.ref, str(c.valid_from), c.valid_to) for c in stored] == [
+        ("2020/8 m.1", "2020-04-01", None),
+        ("2020/8 m.1.2", "2021-09-17", None),  # from its amendment note on; 1.1 is repealed
+    ]
+    first = stored[0]
+    assert first.text == f"1- GENEL AÇIKLAMALAR\nİdari para cezaları açıklanmıştır.\n{LINE}"
+    assert first.header == "SGK Genelgesi 2020/8 · m.1 · GENEL AÇIKLAMALAR · yürürlük 2020-04-01"
+    assert first.title == (
+        "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi m.1 · GENEL AÇIKLAMALAR"
+    )
+    assert {c.parent_kind for c in stored} == {EXTRACTION}  # unreviewed: "analyzed" in search
+    assert {c.category.value for c in stored} == {"admin_act"}
+    assert {c.license for c in stored} == {License.public}
+    assert not again.written
+
+
+async def test_a_rejected_genelge_section_has_no_chunk(
+    kb_factory: Factory, reviewer: AppUser
+) -> None:
+    await load_acts(kb_factory)
+    async with kb_factory() as session:
+        await sync_admin_act_section(session, "2020/8", "2")
+        await session.commit()
+        assert await session.scalar(select(func.count()).select_from(Chunk)) == 1
+        extraction_id = (
+            await session.execute(
+                select(Extraction.id).where(Extraction.fields["section_no"].as_string() == "2")
+            )
+        ).scalar_one()
+        session.add(
+            Review(
+                extraction_id=extraction_id, reviewer_id=reviewer.id, decision=ReviewDecision.reject
+            )
+        )
+        await sync_admin_act_section(session, "2020/8", "2")
         await session.commit()
     assert await chunks(kb_factory) == []
 

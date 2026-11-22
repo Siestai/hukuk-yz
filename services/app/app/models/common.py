@@ -426,9 +426,10 @@ class FileDeletion(UuidPkMixin, Base):
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
 
 
-# The `extraction.parser_name` of the decision and the statute pipelines.
+# The `extraction.parser_name` of the decision, the statute and the genelge pipelines.
 PARSER_NAME = "decisions"
 STATUTE_PARSER_NAME = "statutes"
+ADMIN_ACT_PARSER_NAME = "admin_acts"
 
 
 class Extraction(UuidPkMixin, Base):
