@@ -656,7 +656,10 @@ async def test_inapplicable_holdings_skip_strong_model_and_use_existing_fallback
     import logging
 
     caplog.set_level(logging.INFO)
-    script = Script(holding={"rows": [row("statute:4857:m18", M18_4, r) for r in results]})
+    script = Script(
+        holding={"rows": [row("statute:4857:m18", M18_4, r) for r in results]},
+        drafts=[draft(headline_rows=tuple(range(1, len(results) + 1)))],
+    )
     graph = make_graph(script)
     thread = unique_thread()
     await turn(graph, ask(thread))
@@ -843,11 +846,11 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
         assert answer.headline == "Belirsizlik bulunmaktadır."
         assert not state["gate"]["fallback"]
     else:
-        # Missing coverage exhausts the existing two typed retries. The real graph
-        # reports its existing honest provider/validation error, never an answer.
-        assert only(events, ErrorEvent).code == ErrorCode.internal_error
-        assert not any(isinstance(e, AnswerEvent) for e in events)
-        assert "attempts" not in state["gate"]
+        # Missing coverage exhausts the two typed retries: the honest fallback, never the draft.
+        answer = only(events, AnswerEvent).answer
+        assert not any(isinstance(e, ErrorEvent) for e in events)
+        assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
+        assert state["gate"]["fallback"] and state["gate"]["attempts"] == 1
         schema = requests[2]["tools"][0]["function"]["parameters"]
         missing = schema["$defs"]["RequestMissingDraft"]["properties"]["fact_key"]
         assert any("bildirim_tarihi" in branch.get("enum", []) for branch in missing["anyOf"])
@@ -878,10 +881,13 @@ async def test_rewrite_mutation_exhausts_validation_without_publishing(change: s
     thread = unique_thread()
     await turn(graph, ask(thread))
     events = await turn(graph, answer_all(thread))
-    assert only(events, ErrorEvent).code == ErrorCode.internal_error
-    assert not any(isinstance(e, AnswerEvent) for e in events)
+    # Typed retries exhausted: the honest fallback, never the changed draft nor an error.
+    assert only(events, AnswerEvent).answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
     assert len(script.of("draft")) == 1
     assert len(script.of("rewrite")) == 3
+    gate = (await graph.aget_state({"configurable": {"thread_id": thread}})).values["gate"]
+    assert gate["fallback"] and gate["attempts"] == 1
+    assert gate["issues"] == ["taslak istenen şemaya uymamıştır"]
 
 
 def _trace_outputs(caplog: pytest.LogCaptureFixture) -> dict[str, dict]:  # type: ignore[type-arg]
@@ -1060,9 +1066,15 @@ async def test_a_holding_map_with_template_keys_only_is_made_once() -> None:
     assert len(script.of("holding")) == 1
 
 
-async def test_a_second_register_failure_drops_only_the_informal_sentences() -> None:
+async def test_a_second_register_failure_drops_only_the_informal_entries() -> None:
     bad = draft()
-    bad["points"][0]["text"] = "Altı aylık kıdem şartı aranmaktadır. Bu şart aranıyor."
+    bad["points"].append(
+        {
+            "text": "İşçi hak kazanır. Ancak bu şart aranıyor.",
+            "citations": bad["points"][0]["citations"],
+        }
+    )
+    bad["reasoning_summary"] = "Kıdem şartı m. 18 uyarınca aranmaktadır. Şart sağlanıyor."
     script = Script(drafts=[bad], rewrite=bad)
     graph = make_graph(script)
     thread = unique_thread()
@@ -1073,12 +1085,17 @@ async def test_a_second_register_failure_drops_only_the_informal_sentences() -> 
     assert [p.text for p in answer.points] == ["Altı aylık kıdem şartı aranmaktadır."]
     assert answer.headline == "İşe iade davası açılamamaktadır."
     rewrite = script.of("rewrite")[0]
-    assert "Hatalı cümleler" in rewrite and "- Bu şart aranıyor." in rewrite
-    assert "Altı aylık kıdem şartı aranmaktadır.\n" not in rewrite.split("{", 1)[0]
-    assert "«Bu şart aranıyor.»" in script.of("draft")[1]
+    assert "Hatalı cümleler" in rewrite and "- Ancak bu şart aranıyor." in rewrite
+    assert "- İşçi hak kazanır." not in rewrite
+    assert "«Ancak bu şart aranıyor.»" in script.of("draft")[1]
+    assert answer.holding_map.reasoning_summary == "Kıdem şartı m. 18 uyarınca aranmaktadır."
     gate = (await graph.aget_state({"configurable": {"thread_id": thread}})).values["gate"]
     assert gate["attempts"] == 2 and not gate["fallback"]
-    assert (gate["sentences_dropped"], gate["branches_dropped"]) == (1, 0)
+    assert (gate["sentences_dropped"], gate["points_dropped"], gate["branches_dropped"]) == (
+        1,
+        1,
+        0,
+    )
 
 
 async def test_the_draft_sees_the_row_numbers_its_headline_names() -> None:
@@ -1091,3 +1108,25 @@ async def test_the_draft_sees_the_row_numbers_its_headline_names() -> None:
 
     holding = script.of("draft")[0].split("Hüküm haritası:\n", 1)[1].split("\n\n", 1)[0]
     assert [r["row"] for r in json.loads(holding)] == [1]
+
+
+@pytest.mark.parametrize("corrected", [True, False])
+async def test_a_branch_key_outside_the_template_is_corrected_once_then_its_branch_drops(
+    corrected: bool,
+) -> None:
+    invented = draft()
+    invented["missing_info"].append(
+        {"fact_key": "fesih_bildirim_tarihi", "condition": "Ek koşul", "result": "Belirsizdir."}
+    )
+    script = Script(drafts=[invented, draft() if corrected else invented])
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    answer = only(await turn(graph, answer_all(thread)), AnswerEvent).answer
+
+    assert "fesih_bildirim_tarihi" in script.of("draft")[1].split("Önceki taslak", 1)[1]
+    assert "fesih_bildirim_tarihi" not in [m.fact_key for m in answer.missing_info]
+    gate = (await graph.aget_state({"configurable": {"thread_id": thread}})).values["gate"]
+    assert gate["attempts"] == 2 and not gate["fallback"]
+    assert gate["branches_dropped"] == (0 if corrected else 1)

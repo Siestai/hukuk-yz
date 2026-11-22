@@ -40,8 +40,10 @@ def key_feedback(invented: list[str], facts: CaseFacts) -> str:
 def _other_paragraph(source: ReadSource, row: RowDraft, quote: str) -> bool:
     """The row cites a paragraph, and its quote stands in another one of the text read."""
     cited = _SUB_PARAGRAPH.match(row.sub or "")
-    found = quote_paragraph(source, quote)
-    return cited is not None and found is not None and found != cited[1]
+    if cited is None:
+        return False
+    found = quote_paragraph(source, quote, cited[1])
+    return found is not None and found != cited[1]
 
 
 def verify_rows(
@@ -70,7 +72,7 @@ def verify_rows(
             or (facts is not None and any(k not in values for k in row.depends_on_facts))
         ):
             continue
-        unresolved = fact_value != row.fact_value or any(
+        unresolved = fact_value != (row.fact_value or None) or any(
             key not in values or values[key].status == "unknown" for key in row.depends_on_facts
         )
         result = "unknown" if unresolved and row.result in ("met", "not_met") else row.result

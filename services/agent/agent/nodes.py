@@ -10,10 +10,12 @@ from typing import Any, Protocol, TypedDict
 from langgraph.config import get_stream_writer
 from langgraph.types import interrupt
 from pydantic import BaseModel
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 
 from agent import prompts
 from agent.facts import apply_answers, build_facts, clarification_for, critical_unknown
 from agent.gate import (
+    SCHEMA_FAILED,
     GateCited,
     GateDrops,
     check_draft,
@@ -365,32 +367,37 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 issue_counts = {code: 1}
             for attempt in range(1, 1 if blocked else DRAFT_ATTEMPTS + 1):
                 attempts = attempt
-                output = await deps.llm.run(
-                    "strong",
-                    output_type,
-                    prompts.DRAFT_INSTRUCTIONS,
-                    prompts.draft_prompt(
-                        topic,
-                        facts,
-                        rows,
-                        read,
-                        state["unread"],
-                        issues,
-                        question=state["question"],
-                    ),
-                )
-                if forms := progressive_in(output):
+                try:
                     output = await deps.llm.run(
                         "strong",
-                        draft_output_type(topic, facts, original=output),
-                        prompts.REWRITE_INSTRUCTIONS,
-                        prompts.rewrite_prompt(
-                            output.model_dump_json(),
-                            forms,
-                            progressive_sentences(draft_texts(output)),
+                        output_type,
+                        prompts.DRAFT_INSTRUCTIONS,
+                        prompts.draft_prompt(
+                            topic,
+                            facts,
+                            rows,
+                            read,
+                            state["unread"],
+                            issues,
                             question=state["question"],
                         ),
                     )
+                    if forms := progressive_in(output):
+                        output = await deps.llm.run(
+                            "strong",
+                            draft_output_type(topic, facts, original=output),
+                            prompts.REWRITE_INSTRUCTIONS,
+                            prompts.rewrite_prompt(
+                                output.model_dump_json(),
+                                forms,
+                                progressive_sentences(draft_texts(output)),
+                                question=state["question"],
+                            ),
+                        )
+                except UnexpectedModelBehavior:
+                    # The typed retries are spent: the honest fallback, not an error turn.
+                    issues, issue_counts = [SCHEMA_FAILED], {"draft_schema": 1}
+                    break
                 result = check_draft(
                     output,
                     topic=topic,

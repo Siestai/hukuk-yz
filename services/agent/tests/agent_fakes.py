@@ -220,21 +220,24 @@ def draft(
     missing: bool = True,
     topic_id: str = "ise_iade",
     headline: str = "İşe iade davası açılamamaktadır.",
+    headline_rows: tuple[int, ...] = (1,),
 ) -> dict[str, Any]:
     cited = [{"source_id": "statute:4857:m18", "sub": "1", "quote": M18_1}]
     return {
         "status": status,
         "headline": headline,
-        "headline_rows": [1],
+        "headline_rows": list(headline_rows),
         "points": points
         if points is not None
         else [{"text": "Altı aylık kıdem şartı aranmaktadır.", "citations": cited}],
         "missing_info": [
-            {
-                "fact_key": "isci_sayisi",
-                "condition": "İşyerinde otuz veya daha fazla işçi çalışmaktaysa",
-                "result": "İş güvencesi hükümleri uygulanmaktadır.",
-            },
+            *[
+                {
+                    "fact_key": "isci_sayisi",
+                    "condition": "İşyerinde otuz veya daha fazla işçi çalışmaktaysa",
+                    "result": "İş güvencesi hükümleri uygulanmaktadır.",
+                }
+            ][: int(get_topic(topic_id).fact("isci_sayisi") is not None)],
             *[
                 {
                     "fact_key": key,

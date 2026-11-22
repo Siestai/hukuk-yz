@@ -149,13 +149,19 @@ def _quote_pattern(quote: str) -> re.Pattern[str] | None:
     return re.compile(r"(?<!\w)" + r"\s+".join(re.escape(w) for w in words) + r"(?!\w)")
 
 
-def quote_paragraph(source: ReadSource, quote: str) -> str | None:
-    """The number of the paragraph of the text read that `quote` stands in. None: the quote is
-    not there, or the passage it is in has no paragraph marker before it (a passage cut out of
-    the middle of a paragraph does not say which one it is)."""
+def quote_paragraph(source: ReadSource, quote: str, cited: str | None = None) -> str | None:
+    """The number of the paragraph of the text read that `quote` stands in: `cited` when it is
+    there, else the first one it is in. None: the quote is not there, or the passage it is in
+    has no paragraph marker before it (a passage cut out of the middle of a paragraph does not
+    say which one it is)."""
     pattern = _quote_pattern(quote)
     if pattern is None:
         return None
+    paragraph = (
+        source.model_copy(update={"passages": _paragraphs(source, cited)}) if cited else None
+    )
+    if paragraph is not None and locate(paragraph, quote) is not None:
+        return cited
     for passage in source.passages:
         found = pattern.search(passage.text)
         if found is None:

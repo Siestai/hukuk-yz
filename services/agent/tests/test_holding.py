@@ -96,6 +96,26 @@ def test_a_quote_from_another_paragraph_than_the_cited_one_drops(sub: str) -> No
     assert verify(row("statute:4857:m18", M18_4, sub=sub)) == ([], 1)
 
 
+def test_a_quote_that_is_also_in_the_cited_paragraph_stays() -> None:
+    twice = as_read_source(
+        hit("statute:4857:m18", "4857 m.18", "4857 m.18", f"(1) {M18_4}", f"(4) {M18_4}")
+    )
+    assert twice is not None
+    draft = HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_4, sub="4")]})
+
+    rows, dropped = verify_rows(draft, [twice], DAY)
+
+    assert dropped == 0
+    assert rows[0].citation.ref == "4857 m.18/4"
+
+
+def test_an_empty_fact_value_is_no_unknown_fact() -> None:
+    rows, dropped = verify({**row("statute:4857:m18", M18_4, "met"), "fact_value": ""})
+
+    assert dropped == 0
+    assert (rows[0].fact_value, rows[0].result) == (None, "met")
+
+
 def test_a_cited_paragraph_is_kept_at_article_level_when_the_text_read_has_no_markers() -> None:
     plain = READ[0].model_copy(
         update={"passages": [p.model_copy(update={"text": p.text[4:]}) for p in READ[0].passages]}

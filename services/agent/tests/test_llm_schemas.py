@@ -47,9 +47,9 @@ def test_request_keys_coverage_and_isolation() -> None:
     all_unknown = case(**{f.key: "unknown" for f in topic.facts})
     full = draft_output_type(topic, all_unknown)
     assert full.model_validate(payload(*(f.key for f in topic.facts if f.critical)))
+    # An additional entry's key outside the template is the gate's to refuse, not the parser's.
     independent = draft_output_type(get_topic("genel"), case())
-    with pytest.raises(ValidationError):
-        independent.model_validate(payload("bildirim_tarihi"))
+    assert independent.model_validate(payload("bildirim_tarihi"))
     assert contract.model_validate(payload("bildirim_tarihi", "kisaltma"))
     # Static public draft remains compatible, including arbitrary strings.
     assert DraftOutput.model_validate(payload("arbitrary"))
@@ -60,8 +60,9 @@ def test_empty_topic_is_null_only_and_general_uses_its_own_keys() -> None:
     contract = draft_output_type(empty, case())
     assert contract.model_validate(payload(None))
     assert contract.model_validate(payload())
-    with pytest.raises(ValidationError):
-        contract.model_validate(payload("olay_tarihi"))
+    assert contract.model_validate(payload("olay_tarihi"))
+    fact_key = contract.model_json_schema()["$defs"]["RequestMissingDraft"]["properties"]
+    assert fact_key["fact_key"]["type"] == "null" and "anyOf" not in fact_key["fact_key"]
     general = draft_output_type(get_topic("genel"), case(olay_tarihi="unknown", statu="unknown"))
     assert general.model_validate(payload("olay_tarihi", "statu"))
     with pytest.raises(ValidationError):
@@ -97,7 +98,7 @@ def test_rewrite_preserves_identifiers_citations_and_structure(change: str) -> N
     assert contract.model_validate(allowed)
 
 
-def test_invented_fact_key_is_rejected_by_actual_parser() -> None:
+def test_invented_additional_fact_key_is_parsed_for_the_gate() -> None:
     from agent_fakes import draft
 
     output_type = draft_output_type(get_topic("ise_iade"), CaseFacts(title="Olay", facts=[]))
@@ -109,8 +110,8 @@ def test_invented_fact_key_is_rejected_by_actual_parser() -> None:
             "result": "Belirlenememektedir.",
         }
     ]
-    with pytest.raises(ValidationError):
-        output_type.model_validate(payload)
+    parsed = output_type.model_validate(payload)
+    assert parsed.missing_info[0].fact_key == "fesih_olayinin_varligi_ve_bildirim_tarihi"
 
 
 def test_single_fact_topic_also_exposes_an_enum() -> None:
@@ -122,8 +123,7 @@ def test_single_fact_topic_also_exposes_an_enum() -> None:
     variants = schema["$defs"]["RequestMissingDraft"]["properties"]["fact_key"]["anyOf"]
     assert any(branch.get("enum") == ["key"] for branch in variants)
     assert contract.model_validate(payload("key", None))
-    with pytest.raises(ValidationError):
-        contract.model_validate(payload("invented"))
+    assert contract.model_validate(payload("invented"))
 
 
 def test_critical_coverage_is_required_in_generation_schema() -> None:
@@ -229,7 +229,7 @@ def test_additional_entries_cannot_replace_required_critical_properties() -> Non
         with pytest.raises(ValidationError):
             contract.model_validate(data)
     data["missing_info"] = {
-        "critical": {"kisaltma": entry},
+        "critical": {"kisaltma": {**entry, "fact_key": "invented"}},
         "additional": payload("invented")["missing_info"],
     }
     with pytest.raises(ValidationError):
