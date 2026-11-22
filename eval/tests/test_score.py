@@ -206,6 +206,14 @@ def test_a_headline_item_is_met_by_any_of_its_alternatives() -> None:
     assert headline("Bu hâlde istisna uygulanmaz") == 0.0
 
 
+def test_the_sb027_headline_is_met_by_the_softened_stem() -> None:
+    # Round 4 wrote "devamsızlığın" (k -> ğ before a vowel); "devamsız" alone would be looser.
+    case = score_module.load_case(CASES / "SB-027.yaml")
+    r4 = "Devamsızlığın işveren tarafından öğrenildiği tarih bilinmediğinden kesin cevap verilemez."
+    metrics = {m.name: m for m in score_module.score({"headline": r4}, case)}
+    assert metrics["headline"].value == 1.0
+
+
 def test_the_source_gap_answer_earns_no_status_or_headline() -> None:
     case = {"expected": {"status": "conditional", "headline_contains": ["verilemedi"]}}
     gap = {"topic": "T", "missing_sources": [], "given_facts": [], "next_step": "-"}

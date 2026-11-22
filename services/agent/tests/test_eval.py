@@ -466,12 +466,14 @@ async def test_fixture_kb_uses_the_same_exclusive_valid_to_as_task14() -> None:
     assert len(await kb.search("9999 m.1", as_of=date(2026, 10, 2))) == 1
 
 
-def test_sb008_states_its_branch_fact_so_the_askerlik_follow_up_opens() -> None:
-    """The recorded intake of SB-008 wrote `fesih_nedeni` as free text (no option, so unknown);
-    the case's own facts answer it, and the branch asks exactly its must_ask keys."""
+@pytest.mark.parametrize("case_id", ["SB-008", "SB-039"])
+def test_a_case_states_its_branch_fact_so_the_branch_follow_up_opens(case_id: str) -> None:
+    """The recorded intake wrote the branch fact (SB-008 `fesih_nedeni`, SB-039
+    `sendika_uyeligi`) as free text (no option, so unknown); the case's own facts answer it, and
+    the branch asks exactly its must_ask keys."""
     score = load_score_module(CASES)
-    case = score.load_case(CASES / "SB-008.yaml")
-    record = ROOT / "eval" / "fixtures" / "intake" / "SB-008.json"
+    case = score.load_case(CASES / f"{case_id}.yaml")
+    record = ROOT / "eval" / "fixtures" / "intake" / f"{case_id}.json"
     out = IntakeOutput.model_validate(json.loads(record.read_text(encoding="utf-8")))
     topic = get_topic(out.topic)
     today = date(2026, 11, 22)

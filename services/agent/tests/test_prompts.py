@@ -8,7 +8,7 @@ from test_holding import READ
 
 from agent.holding import verify_rows
 from agent.llm_schemas import HoldingDraft
-from agent.prompts import draft_prompt
+from agent.prompts import HOLDING_INSTRUCTIONS, draft_prompt
 from agent.topics import get_topic
 from hukuk_models.chat import CaseFacts
 
@@ -136,3 +136,9 @@ def test_the_draft_is_told_to_cite_the_paragraph_and_to_state_the_rule_not_the_t
     assert "sub alanına o fıkranın numarasını yaz" in DRAFT_INSTRUCTIONS
     assert "tuzak notlarını ve ayrımları cevaba yazma" in " ".join(DRAFT_INSTRUCTIONS.split())
     assert "olumlu kuralı yaz" in DRAFT_INSTRUCTIONS
+
+
+def test_the_draft_prompt_forbids_joining_quote_pieces() -> None:
+    # Round 4 SB-008: a quote stitched with "[...]" is in no source and dropped the only row.
+    assert '"[...]"' in HOLDING_INSTRUCTIONS and "kesintisiz" in HOLDING_INSTRUCTIONS
+    assert "iki satır yaz" in HOLDING_INSTRUCTIONS

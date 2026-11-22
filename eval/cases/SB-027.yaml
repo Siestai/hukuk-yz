@@ -12,7 +12,8 @@ expected:
   topic: hakli_fesih_devamsizlik
   status: conditional
   headline_contains:
-    - devamsızlık
+    # Ünsüz yumuşaması: "devamsızlığın" da aynı kelimedir (k -> ğ); kök aynı, beklenti gevşemez.
+    - devamsızlık|devamsızlığ
   must_cite:
     - 4857 m.25
     - 4857 m.26
