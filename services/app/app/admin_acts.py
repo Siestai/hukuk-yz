@@ -6,17 +6,18 @@
 `ref` is the genelge number with a dash for the slash ("2020-8" for 2020/8), `section_no` the
 numbered heading ("2.6.2.5", "K2-B3-2.1.1", "giris"). The sections come from the review queue
 (`app.loaders.admin_acts`): they have no approval path yet, so every one is unreviewed and which
-of them may be read is decided by `unreviewed_bands` alone. A section outside those bands, a
-`low` one and a rejected one are never returned. The list names the readable sections of a
-genelge, for a künye without a section ("2020/8").
+of them may be read is decided by `unreviewed_bands` alone (the `KB_TEST_SOURCE_BANDS` setting).
+A section outside those bands, a `low` one and a rejected one are never returned. The list names
+the readable sections of a genelge, for a künye without a section ("2020/8").
 """
 
 import re
+from collections.abc import Collection
 from datetime import date
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import exists, select
+from sqlalchemy import Select, exists, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +30,7 @@ from app.models.common import (
     ReviewDecision,
     Source,
 )
+from app.settings import Settings, get_settings
 from app.statutes import parse_date
 from hukuk_ingest.admin_acts.citation import citation
 from hukuk_ingest.admin_acts.split import INTRO
@@ -46,11 +48,13 @@ _PART_RE = re.compile(r"^(k\d+)(?:-(b\d+))?(?:-(.+))?$", re.IGNORECASE)
 _INTRO_ALIASES = {"giris", "giriş"}
 
 
-def unreviewed_bands() -> frozenset[Band]:
-    """The confidence bands in which an unreviewed genelge section may be read (K1 of the
-    handoff). Empty: approved sources only, so nothing is readable yet. This is the one place
-    to connect to the `KB_TEST_SOURCE_BANDS` setting; `low` is refused whatever it returns."""
-    return frozenset()
+def unreviewed_bands(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> frozenset[Band]:
+    """The confidence bands in which an unreviewed genelge section may be read: those of
+    `KB_TEST_SOURCE_BANDS` (decision K1). Empty: approved sources only, so nothing is readable
+    yet. `low` is refused whatever this returns."""
+    return frozenset(settings.kb_test_source_bands)
 
 
 UnreviewedBands = Annotated[frozenset[Band], Depends(unreviewed_bands)]
@@ -158,33 +162,39 @@ async def section_as_of(
     return {"status": NOT_IN_FORCE, **base}
 
 
-async def readable_sections(
-    db: AsyncSession, ref: str, bands: frozenset[Band]
-) -> dict[str, Any] | None:
-    """The sections of a genelge that `section_as_of` would return (newest extraction of each,
-    in a readable band, not rejected), in document order; None when there is none."""
+def readable_section_ids(bands: Collection[str], ref: str | None = None) -> Select[Any]:
+    """Ids of the extractions a genelge section is read from (of one genelge if `ref` is given):
+    the newest extraction of each section, when its band is in `bands` (never `low`) and no
+    reviewer rejected it. An older extraction of a reloaded section is not one of them."""
+    act_ref = Extraction.fields["act_ref"].as_string()
     section_no = Extraction.fields["section_no"].as_string()
     newest = (
         select(Extraction.id)
-        .ext(distinct_on(section_no))
-        .where(
-            Extraction.parser_name == ADMIN_ACT_PARSER_NAME,
-            Extraction.fields["act_ref"].as_string() == ref,
-        )
-        .order_by(section_no, Extraction.extracted_at.desc(), Extraction.id)
+        .ext(distinct_on(act_ref, section_no))
+        .where(Extraction.parser_name == ADMIN_ACT_PARSER_NAME)
+        .order_by(act_ref, section_no, Extraction.extracted_at.desc(), Extraction.id)
     )
+    if ref is not None:
+        newest = newest.where(act_ref == ref)
+    return select(Extraction.id).where(
+        Extraction.id.in_(newest),
+        Extraction.confidence["band"].as_string().in_(sorted(set(bands) - NEVER_READABLE)),
+        ~exists().where(
+            Review.extraction_id == Extraction.id, Review.decision == ReviewDecision.reject
+        ),
+    )
+
+
+async def readable_sections(
+    db: AsyncSession, ref: str, bands: frozenset[Band]
+) -> dict[str, Any] | None:
+    """The sections of a genelge that `section_as_of` would return, in document order; None when
+    there is none."""
     rows = (
         await db.execute(
             select(Extraction, Source.title)
             .join(Source, Source.id == Extraction.source_id)
-            .where(
-                Extraction.id.in_(newest),
-                Extraction.confidence["band"].as_string().in_(_allowed(bands)),
-                ~exists().where(
-                    Review.extraction_id == Extraction.id,
-                    Review.decision == ReviewDecision.reject,
-                ),
-            )
+            .where(Extraction.id.in_(readable_section_ids(bands, ref)))
             .order_by(Extraction.fields["ordinal"].as_integer())
         )
     ).all()

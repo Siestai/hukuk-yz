@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -87,10 +87,12 @@ async def client(database_url: str, kb_factory: Factory) -> AsyncIterator[httpx.
 
 @pytest.fixture
 def allow() -> Allow:
-    """`allow("high", "medium")`: the bands `unreviewed_bands` lets through (default: none)."""
+    """`allow("high", "medium")`: sets `KB_TEST_SOURCE_BANDS` (default: empty, nothing readable)."""
 
     def set_bands(*bands: str) -> None:
-        app.dependency_overrides[unreviewed_bands] = lambda: frozenset(bands)
+        app.dependency_overrides[get_settings] = lambda: Settings(
+            kb_service_key=SecretStr(KEY), kb_test_source_bands=bands
+        )
 
     return set_bands
 
@@ -101,7 +103,7 @@ async def _get(
     return await client.get(f"/admin-acts/{ref}/sections/{section}", params={"as_of": as_of})
 
 
-async def test_nothing_is_readable_until_the_gate_names_a_band(
+async def test_nothing_is_readable_while_the_setting_is_empty(
     client: httpx.AsyncClient, kb_factory: Factory
 ) -> None:
     await load_acts(kb_factory)
@@ -218,12 +220,16 @@ async def test_a_band_outside_the_gate_and_low_are_never_returned(
     assert (await _get(client, "1.2", "2024-01-01")).json() == unknown  # medium
     assert (await _get(client, "1.4", "2024-01-01")).json() == unknown  # low
 
-    allow("high", "medium", "low")
+    allow("high", "medium")
     assert (await _get(client, "1.2", "2024-01-01")).json()["status"] == "found"
     assert (await _get(client, "1.4", "2024-01-01")).json() == unknown
 
-    allow("low")  # nothing of the genelge is readable
+    # the setting refuses `low`; even a gate that named it would not open the band
+    with pytest.raises(ValidationError):
+        Settings(kb_test_source_bands=("low",))
+    app.dependency_overrides[unreviewed_bands] = lambda: frozenset({"low"})
     assert (await _get(client, "1.4", "2024-01-01")).status_code == 404
+    assert (await client.get("/admin-acts/2020-8/sections")).status_code == 404
 
 
 async def test_a_rejected_section_is_never_returned(
@@ -269,7 +275,7 @@ async def test_the_list_names_the_readable_sections_in_document_order(
         )
         await session.commit()
 
-    allow("high", "medium", "low")
+    allow("high", "medium")
     body = (await client.get("/admin-acts/2020-08/sections")).json()
     allow("high")
     high_only = (await client.get("/admin-acts/2020-8/sections")).json()
