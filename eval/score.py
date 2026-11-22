@@ -279,6 +279,7 @@ TABLE_HEADER = (
     "token (gir/çık)",
     "maliyet $",
     "süre s",
+    "netleştirme turu",
 )
 
 
@@ -309,6 +310,7 @@ def render_table(rows: list[dict[str, Any]], passed: bool, reasons: list[str]) -
                     f"{r['input_tokens']}/{r['output_tokens']}",
                     "-" if r["cost"] is None else f"{r['cost']:.4f}",
                     f"{r['seconds']:.1f}",
+                    str(r["rounds"]),
                 ]
             )
         )
@@ -332,6 +334,7 @@ def render_table(rows: list[dict[str, Any]], passed: bool, reasons: list[str]) -
                 f"{sum(r['input_tokens'] for r in rows)}/{sum(r['output_tokens'] for r in rows)}",
                 f"${cost:.2f}",
                 f"{sum(r['seconds'] for r in rows):.1f}",
+                str(sum(r["rounds"] for r in rows)),
             ]
         )
     )

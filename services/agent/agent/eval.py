@@ -51,6 +51,9 @@ from hukuk_models.chat import (
 )
 
 DEFAULT_FIXTURES = Path(__file__).parents[3] / "eval" / "fixtures"
+# The turns of a case at most: the question, the clarification, one follow-up clarification
+# (an answer that opens a branch asks its facts once, task 19 B2), the answer.
+MAX_TURNS = 3
 # The tokens (input, output) of one case by model tier, for an estimate before any real run:
 # intake and holding map on the fast model, the draft (and a rewrite) on the strong one.
 ASSUMED_TOKENS: dict[Tier, tuple[int, int]] = {"fast": (30_000, 4_000), "strong": (30_000, 6_000)}
@@ -282,7 +285,9 @@ class CaseResult:
     topic: str | None
     # The intake output: the fields the model set, after the schema check of Pydantic AI.
     intake: dict[str, Any] | None
+    # The fact keys asked in all clarification rounds, and the number of the rounds.
     asked: list[str]
+    rounds: int
     answer: dict[str, Any] | None
     metrics: dict[str, float | None]
     score: float
@@ -345,17 +350,19 @@ def _issue_counts(trace: Trace) -> dict[str, int]:
 
 async def _play(
     graph: Graph, trace: Trace, thread_id: str, case: dict[str, Any]
-) -> tuple[Clarification | None, Answer | None, str | None]:
-    """The turns of a case: the question, then the answers to its clarification."""
-    clarification: Clarification | None = None
+) -> tuple[list[Clarification], Answer | None, str | None]:
+    """The turns of a case: the question, then the answers to each clarification round. The
+    rounds' questions are returned together."""
+    rounds: list[Clarification] = []
     answer: Answer | None = None
     error = None
     request = RunRequest(thread_id=thread_id, text=case["question"])
-    for _ in range(2):
+    for _ in range(MAX_TURNS):
         pending: Clarification | None = None
         async for event in turn_events(graph, request, trace):
             if isinstance(event, ClarificationEvent):
-                pending = clarification = event.clarification
+                pending = event.clarification
+                rounds.append(pending)
             elif isinstance(event, AnswerEvent):
                 answer = event.answer
             elif isinstance(event, ErrorEvent):
@@ -366,7 +373,7 @@ async def _play(
             thread_id=thread_id,
             clarification_answers=answers_for(pending, case.get("facts") or {}),
         )
-    return clarification, answer, error
+    return rounds, answer, error
 
 
 def _failed(case: dict[str, Any], trace: Trace, llm: EvalLlm, error: str) -> CaseResult:
@@ -379,6 +386,7 @@ def _failed(case: dict[str, Any], trace: Trace, llm: EvalLlm, error: str) -> Cas
         topic=None,
         intake=llm.intake,
         asked=[],
+        rounds=0,
         answer=None,
         metrics={},
         score=0.0,
@@ -410,11 +418,11 @@ async def run_case(
     llm.intake = None
     with tracing.run(thread_id) as trace:
         try:
-            clarification, answer, error = await _play(graph, trace, thread_id, case)
+            rounds, answer, error = await _play(graph, trace, thread_id, case)
             if llm.budget is not None and llm.budget.exceeded:
                 error = "budget_exceeded"
             state = (await graph.aget_state({"configurable": {"thread_id": thread_id}})).values
-            return _scored(case, trace, llm, score, state, clarification, answer, error)
+            return _scored(case, trace, llm, score, state, rounds, answer, error)
         except Exception as exc:
             if llm.budget is not None and llm.budget.exceeded:
                 return _failed(case, trace, llm, "budget_exceeded")
@@ -427,15 +435,15 @@ def _scored(
     llm: EvalLlm,
     score: ModuleType,
     state: dict[str, Any],
-    clarification: Clarification | None,
+    rounds: list[Clarification],
     answer: Answer | None,
     error: str | None,
 ) -> CaseResult:
     # A case that stopped before the draft (an error, an unanswered clarification) has no gate.
     gate = state.get("gate") or {}
     raw = answer.model_dump(mode="json") if answer else None
-    # What the run asked: nothing when there was no clarification.
-    asked = clarification.model_dump(mode="json") if clarification else {"questions": []}
+    # What the run asked in all rounds: nothing when there was no clarification.
+    asked = {"questions": [q.model_dump(mode="json") for c in rounds for q in c.questions]}
     scored = score.score(raw, case, asked) if raw is not None else []
     metrics: dict[str, float | None] = {m.name: m.value for m in scored}
     expected = case["expected"]
@@ -447,6 +455,7 @@ def _scored(
         topic=state.get("topic"),
         intake=llm.intake,
         asked=[q["fact_key"] for q in asked["questions"]],
+        rounds=len(rounds),
         answer=raw,
         metrics=metrics,
         score=score.total(scored),

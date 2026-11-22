@@ -211,6 +211,7 @@ def run_row(case_id: str = "SB-001", **changes: Any) -> dict[str, Any]:
         "unread": [],
         "drops": {"rows": 0, "points": 0, "branches": 0, "sentences": 0, "citations": 0},
         "issue_counts": {},
+        "rounds": 1,
         "fallback": False,
         "substantive": True,
         "input_tokens": 1000,
@@ -289,6 +290,7 @@ def test_the_table_has_a_row_per_case_a_total_and_the_verdict() -> None:
             mode=["ediyor"],
             drops={"rows": 1, "points": 2, "branches": 0, "sentences": 3, "citations": 0},
             issue_counts={"progressive": 2},
+            rounds=2,
             fallback=True,
             substantive=False,
             cost=None,
@@ -303,7 +305,7 @@ def test_the_table_has_a_row_per_case_a_total_and_the_verdict() -> None:
     sb003 = next(line for line in lines if line.startswith("| SB-003"))
     assert "genel (beklenen calisma_kosulu_degisikligi)" in sb003
     assert "| 1/2/0/3/0 |" in sb003 and "progressive×2" in sb003
-    assert "kaynak yetersiz" in sb003
+    assert "kaynak yetersiz" in sb003 and sb003.endswith("| 2 |")
     assert "hata: kb_unavailable" in next(line for line in lines if line.startswith("| SB-005"))
     total = next(line for line in lines if line.startswith("| toplam"))
     assert "2/3" in total  # templates matched

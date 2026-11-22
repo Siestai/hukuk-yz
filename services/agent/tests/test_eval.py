@@ -16,6 +16,8 @@ from agent.eval import (
     answers_for,
     build_eval_graph,
     estimate,
+    load_score_module,
+    run_case,
     run_eval,
 )
 from agent.kb import KbUnavailable
@@ -132,6 +134,31 @@ async def test_a_case_that_stops_before_the_gate_is_reported_not_fatal() -> None
     assert result.answer is None and result.error == "kb_unavailable"
     assert not result.fallback and not result.substantive
     assert result.must_cite == 0.0
+
+
+async def test_the_questions_of_a_follow_up_round_count_with_the_first_ones() -> None:
+    model = scripted(Script(**vars(SB016_SCRIPT) | {"calls": []}))
+    llm = EvalLlm(Models(model, model))
+    graph = build_eval_graph(llm, FixtureKb())
+    # The answer "bordro_gecersiz" to `fiil` opens the branch of its own facts: a second round.
+    case = {
+        "id": "SB-900",
+        "question": "Bordro geçersiz sayıldı, idari para cezası indirimi uygulanır mı?",
+        "facts": {"fiil": "bordro_gecersiz"},
+        "expected": {
+            "topic": "idari_para_cezasi",
+            "status": "definite",
+            "must_ask": ["fiil", "tutanakla_teslim", "defter_turu"],
+            "must_cite": ["5510 m.102"],
+        },
+    }
+
+    result = await run_case(graph, llm, Tracing(), load_score_module(CASES), case)
+
+    assert result.rounds == 2
+    assert {"fiil", "tutanakla_teslim", "defter_turu"} <= set(result.asked)
+    assert result.must_ask == 1.0
+    assert result.answer is not None and result.metrics["must_ask"] == 1.0
 
 
 def flat_cost(monkeypatch: pytest.MonkeyPatch, usd: float) -> None:
