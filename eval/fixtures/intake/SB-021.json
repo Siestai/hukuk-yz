@@ -1,21 +1,26 @@
 {
  "topic": "idari_para_cezasi",
- "title": "Bordro geçersizliği ve idari para cezası",
+ "title": "Bordro geçersizliği - imza eksikliği",
  "event_date": null,
  "facts": [
   {
+   "key": "ceza_turu",
+   "value": "Ek belge, defter ibrazı veya bordro",
+   "status": "known"
+  },
+  {
    "key": "fiil",
-   "value": "Bordrolarda bir sigortalının imzası eksik",
+   "value": "Ücret tediye bordrosunda bir unsur (ör. imza) eksik",
+   "status": "known"
+  },
+  {
+   "key": "tespit_sekli",
+   "value": "Denetim tespiti, mahkeme kararı veya kamu idaresinden gelen bilgi ve belgeyle",
    "status": "known"
   },
   {
    "key": "tutanakla_teslim",
-   "value": "Denetmen resmi tebligat olmaksızın işverenden bordro alıyor",
-   "status": "known"
-  },
-  {
-   "key": "ceza_turu",
-   "value": "Bordro geçersizliği",
+   "value": "Tutanakla teslim alındı",
    "status": "known"
   }
  ]

@@ -1,6 +1,6 @@
 {
  "topic": "ise_iade",
- "title": "İşe iade davası açabilme koşulu: 5 ay kıdem",
+ "title": "İşe iade davası açabilme kapasitesi, 5 ay kıdem",
  "event_date": null,
  "facts": [
   {
@@ -14,6 +14,10 @@
   },
   {
    "key": "sozlesme_turu",
+   "status": "unknown"
+  },
+  {
+   "key": "bildirim_tarihi",
    "status": "unknown"
   }
  ]

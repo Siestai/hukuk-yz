@@ -1,31 +1,26 @@
 {
  "topic": "grev_lokavt",
- "title": "Grev ve lokavt",
+ "title": "Grev ve lokavt karşısında işçi ve sendika hakları",
  "event_date": null,
  "facts": [
   {
    "key": "grev_tarihi",
-   "value": null,
    "status": "unknown"
   },
   {
    "key": "kanuni_mi",
-   "value": null,
    "status": "unknown"
   },
   {
    "key": "yasakli_isyeri",
-   "value": null,
    "status": "unknown"
   },
   {
    "key": "uyelik_ve_katilim",
-   "value": null,
-   "status": "unknown"
+   "status": "assumed_never"
   },
   {
    "key": "grev_disi_isci_ilani",
-   "value": null,
    "status": "unknown"
   }
  ]

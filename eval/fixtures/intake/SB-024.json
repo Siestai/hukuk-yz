@@ -1,6 +1,6 @@
 {
  "topic": "sgk_bildirim_prim",
- "title": "SGK bildirimleri - işyeri bildirgesinden sonra işe giriş bildirgesinin verilme süresi",
+ "title": "Yeni işyerinde işe giriş bildirgesinin 1 aylık süresi",
  "event_date": null,
  "facts": [
   {
@@ -12,11 +12,6 @@
    "key": "isyeri_kolu",
    "value": "Kuruma ilk defa işyeri bildirgesi verilen işyeri",
    "status": "known"
-  },
-  {
-   "key": "tescil_ve_calistirma_tarihi",
-   "value": null,
-   "status": "unknown"
   }
  ]
 }

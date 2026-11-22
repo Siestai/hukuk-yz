@@ -1,15 +1,16 @@
 {
  "topic": "kidem_ihbar",
- "title": "Askerlik nedeniyle işten ayrılış ve bildirim süresi",
+ "title": "Askerlik nedeniyle işten ayrılış ve ihbar süresi",
+ "event_date": null,
  "facts": [
   {
    "key": "fesih_nedeni",
-   "value": "Muvazzaf askerlik nedeniyle ayrılış",
+   "value": "İşçi muvazzaf askerlik nedeniyle ayrılacaktır",
    "status": "known"
   },
   {
    "key": "soru_konusu",
-   "value": "İşten ayrılış için gerekli bildirim süresi",
+   "value": "Bildirimsiz fesih bildirimi süresi (ihbar tazminatı)",
    "status": "known"
   }
  ]

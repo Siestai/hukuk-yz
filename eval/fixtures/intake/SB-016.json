@@ -1,26 +1,28 @@
 {
  "topic": "idari_para_cezasi",
- "title": "SGK idari para cezasında ödeme süresi ve peşin ödeme indirimi",
+ "title": "SGK idari para cezası ve peşin ödeme indirimi",
  "event_date": null,
  "facts": [
   {
+   "key": "ceza_turu",
+   "status": "unknown"
+  },
+  {
    "key": "belge_30_gun",
-   "value": "30 gün içinde belge verildi",
+   "value": "30 gün içinde verildi",
    "status": "known"
   },
   {
    "key": "odeme_15_gun",
-   "value": "15 gün içinde ödeme yapılmadı",
+   "value": "15 gün içinde ödenmedi",
    "status": "known"
   },
   {
-   "key": "ceza_turu",
-   "value": null,
+   "key": "kendiliginden",
    "status": "unknown"
   },
   {
    "key": "fiil",
-   "value": null,
    "status": "unknown"
   }
  ]
