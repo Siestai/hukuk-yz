@@ -1,0 +1,41 @@
+id: SB-035
+question: "1 gün yıllık izin kullanan işçiye işveren ücretini vermezse fesih hakkı doğar mı? Doğar ise bu hakkı ne kadar süre içinde kullanmalıdır işçi? Ve usül nedir"
+# Görev 19 B1. Şablon: hakli_fesih_devamsizlik (yillik_izin değil). Gerekçe: sorunun ekseni
+# işçinin haklı feshidir (4857 m.24/II-e), hak düşürücü süre (m.26) ve sonuç (1475 m.14);
+# yıllık izin yalnız ödenmeyen ücretin türüdür (m.57). yillik_izin şablonunun kritik olguları
+# (izin süresi, m.53) bu soruda gerekmez.
+# must_cite madde düzeyindedir: bent 4857 m.24/II-e'dir, ancak harfli bentler künyede
+# taşınamaz ve KB metninde fıkra numarası yoktur (SB-001 notu).
+# must_ask: notlardaki "ödenmeyen tutar" alınmadı; 4857 m.24/II-e metni tutar eşiği koymaz,
+# tutar hesabı md.29 gereği hesap motorundadır. "Ücretini vermezse" varsayımsal olduğundan
+# ucret_odeme_durumu ölçülür (hiç ödenmedi / geç / eksik).
+# Arşivde yıllık izin ücretinin peşin ödenmemesi üzerine işçi feshini haklı sayan bir 9. HD
+# kararı vardır; decision tablosunda yok ve E/K teyitsiz olduğundan künye yazılmadı.
+expected:
+  topic: hakli_fesih_devamsizlik
+  status: conditional
+  headline_contains:
+    - haklı
+  must_cite:
+    - 4857 m.24
+    - 4857 m.57
+    - 4857 m.26
+    - 1475 m.14
+  must_ask:
+    - ucret_odeme_durumu
+    - hizmet_suresi
+    - yazili_belge
+    - olay_tarihi
+  must_not:
+    - ihbar tazminatına da hak kazan
+  traps:
+    - Fesih bendi 4857 m.24/II-e'dir (ücretin kanun hükümlerine veya sözleşme şartlarına uygun hesap edilmemesi veya ödenmemesi); 4857 m.57 yıllık izin ücretinin izine başlamadan önce peşin ödenmesini veya avans verilmesini öngörür.
+    - 4857 m.57 metni iznin süresine göre ayrım yapmaz; iznin bölümler hâlinde kullanılmasına ilişkin koşul (bir bölüm on günden az olamaz) 4857 m.56'dadır ve ayrıca değerlendirilir.
+    - 4857 m.26'daki altı iş günü ve bir yıllık sürenin ödenmeyen ücret alacağında hangi günden işlediği kaynaktan okunmadan kesin söylenmez.
+    - 4857 m.24/II-e metninde bekleme süresi bulunmaz; m.34'teki yirmi günlük süre iş görmekten kaçınma hakkına ilişkindir, fesih hakkıyla karıştırılmaz.
+    - Fesih bildirimi yazılı yapılır (4857 m.109); 4857 m.19'daki sebebi açık ve kesin belirtme yükümlülüğü işverenin feshine ilişkindir, işçinin bildiriminde sebebin gösterilmesi ayrıca değerlendirilir.
+    - Sonuç olarak kıdem tazminatı 1475 m.14 koşullarına (her geçen tam yıl) bağlıdır; işçinin haklı feshinde ihbar tazminatı işçi lehine doğmaz.
+  missing_in_kb:
+    - "Yıllık Ücretli İzin Yönetmeliği (izin ücretinin peşin ödenmesi ve iznin bölünmesi): KB'de yok"
+    - "Yargıtay 9. HD: yıllık izin ücretinin peşin ödenmemesi üzerine işçi feshinin haklılığı ve m.26 süresinin ücret alacağında işleyişi (arşivde aday karar var, decision tablosunda yok, E/K teyitsiz)"
+tags: [is-hukuku, hakli-fesih, yillik-izin]

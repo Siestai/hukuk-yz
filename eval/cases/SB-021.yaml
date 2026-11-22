@@ -1,13 +1,31 @@
 id: SB-021
 question: "denetmen işverenden resmi tebligat ile istenilmeden bordro alıyor ve bordrolarda da bir sigortalının imzası eksik. Bu durumda denetmen geçersizlik cezası uygulayabilir mi"
+# Görev 19 B6 tur 1 (G): soru fiili açıkça söylemektedir (imzası eksik bordro, geçersizlik
+# cezası); fiil olgusu verilir.
+facts:
+  fiil: bordro_gecersiz
 expected:
+  topic: idari_para_cezasi
   status: conditional
   headline_contains:
     - tutanak
   must_cite:
-    - 5510 m.102/1-e-5
-    - 2020/8 Genelge 2.8.1
-    - 2020/8 Genelge 2.8.3
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1). "5510 m.102" chunk'ları
+    # yerel KB'de bulunmaktadır (2018-05-25'ten itibaren geçerli sürüm), ancak güven bandı low
+    # olduğundan ajan bunları okuyamaz; missing_in_kb'de de listelenir.
+    # Görev 19 B6 tur 1 (F1): KB metninde "(1)" biçiminde fıkra numarası yoktur; künye madde
+    # düzeyine indirildi (SB-001 notu), bent ayrımı traps'ta kalır.
+    # İçerik KB chunk metninden okundu: birinci fıkra (e) bendi (5) alt bendi.
+    - 5510 m.102
+    # Görev 19 B1: künyeler KB biçimine çevrildi ("2020/8 Genelge 2.8.1" -> "2020/8 m.2.8.1", 2.8.3 aynı);
+    # eski biçim eval/score.py'de KB atıflarıyla eşleşmezdi. İçerik okundu, beklenen sonuç değişmedi.
+    - 2020/8 m.2.8.1
+    - 2020/8 m.2.8.3
+  missing_in_kb:
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1).
+    - 5510 m.102
+  # Görev 19 B2: üç anahtar idari_para_cezasi şablonunda fiil = bordro_gecersiz iken sorulur
+  # (asked_when).
   must_ask:
     - tutanakla_teslim
     - odeme_sekli
@@ -20,4 +38,6 @@ expected:
     - Ceza bordro başınadır; bir bordroda birden çok sigortalının imzası eksikse tek ceza verilir.
     - Ücret makbuz mukabilinde veya banka kanalıyla ödenmişse imza şartı aranmaz.
     - e-4 ve e-5 cezaları, tutmakla yükümlü olunan defter türüne göre ibraz etmeme cezasını aşamaz.
+    # Görev 19 B1: eklendi; dayanak 5510 m.102/1-e-5 son cümlesi ve 2020/8 m.2.8.1.
+    - Defter ve belgeler ibraz süresi geçtikten sonra sunulmuşsa geçersizlik için ayrıca ceza uygulanmaz, yalnız defter türüne göre ibraz etmeme cezası uygulanır.
 tags: [sgk, idari-para-cezasi, bordro]

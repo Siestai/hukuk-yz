@@ -1,13 +1,35 @@
-# Konu kartları SB-010 (ücret türü, tazminat), SB-029 (kıdem tazminatı koşulları), SB-001 (1475 m.14/1).
+# Konu kartları SB-029 (kıdem tazminatı koşulları), SB-001 (1475 m.14/1); eval SB-008, SB-032.
+# Görev 19 B2 (değişiklikler):
+# - yardim_niteligi (kritik) eklendi: eval SB-032 (giydirilmiş ücrete yemek, yol, yemek kartı).
+#   Dayanak 1475 m.14 (KB metninde on birinci fıkra: "ücrete ilaveten işçiye sağlanmış olan para
+#   ve para ile ölçülmesi mümkün akdi ve kanundan doğan menfaatler") ve 4857 m.17 son fıkra.
+# - fesih_nedeni seçeneklerine muvazzaf askerlik eklendi (1475 m.14, birinci fıkra 3. bent);
+#   haklı feshe ihbar notunun dayanağına 4857 m.24 eklendi.
+# - Koşullu sorma (asked_when): askerlik olguları (eval SB-008) yalnız fesih_nedeni = askerlik
+#   iken sorulur. soru_konusu (sorulmaz, giriş adımı seçer) hak doğumu ile tazminata esas ücret
+#   sorularını ayırır (SB-032 yalnız yardim_niteligi); bilinmiyorsa iki dalın olguları da sorulur.
+# Görev 19 B6 tur 1 (C2): description'a giydirilmiş ücret eklendi; tur 1'de SB-032 (yemek, yol,
+# yemek kartı) bu şablona değil genel şablona düşüyordu.
+# Görev 19 B6 tur 2: description'a muvazzaf askerlik nedeniyle işten ayrılma eklendi; tur 2'de
+# SB-008 ("askere gidecek işçi ne kadar süre önce işten ayrılmalıdır") genel şablona düşüyordu.
 id: kidem_ihbar
 title: Kıdem ve ihbar tazminatı
 description: >-
   Kıdem tazminatının hak doğumu (1475 m.14: her geçen tam yıl, fesih halleri) ve ihbar tazminatı
-  (4857 m.17: bildirim süreleri), tazminata esas ücret.
+  (4857 m.17: bildirim süreleri), muvazzaf askerlik nedeniyle işten ayrılma ve kıdem tazminatı
+  (1475 m.14: ayrılış ile askere sevk arasındaki süre, sevk tehiri), tazminata esas ücret ve
+  giydirilmiş ücret: yemek, yol, yemek kartı gibi para ve para ile ölçülebilen menfaatlerin
+  tazminata esas ücrete katılması.
 facts:
+  - key: soru_konusu
+    label: Sorunun konusu
+    options:
+      - {value: hak, label: Tazminat hakkının doğumu veya bildirim süresi}
+      - {value: esas_ucret, label: Tazminata esas ücret}
   - key: fesih_tarihi
     label: Fesih tarihi
     critical: true
+    asked_when: {soru_konusu: [hak, unknown]}
     question:
       text: İş sözleşmesi hangi tarihte sona erdi?
       why: >-
@@ -19,6 +41,7 @@ facts:
   - key: fesih_nedeni
     label: Fesih nedeni
     critical: true
+    asked_when: {soru_konusu: [hak, unknown]}
     question:
       text: İş sözleşmesi nasıl sona erdi?
       why: >-
@@ -31,13 +54,16 @@ facts:
         - {value: isci_hakli, label: İşçi haklı nedenle feshetti}
         - {value: isci_emeklilik, label: İşçi emeklilik şartlarını tamamlayarak ayrıldı}
         - {value: isci_istifa, label: İşçi nedensiz istifa etti}
+        - {value: askerlik, label: İşçi muvazzaf askerlik nedeniyle ayrıldı}
         - {value: diger, label: Diğer}
       basis:
         - {ref: "1475 m.14/1", category: statute}
         - {ref: "4857 m.17/4", category: statute}
+        - {ref: "4857 m.24", category: statute}
   - key: hizmet_suresi
     label: Çalışma süresi
     critical: true
+    asked_when: {soru_konusu: [hak, unknown]}
     question:
       text: İşçi aynı işverende toplam ne kadar süre çalıştı?
       why: >-
@@ -49,20 +75,113 @@ facts:
         - {ref: "4857 m.17/2", category: statute}
   - key: ucret
     label: Ücret
+  - key: yardim_niteligi
+    label: Ücret dışı yardımlar
+    critical: true
+    asked_when: {soru_konusu: [esas_ucret, unknown]}
+    question:
+      text: >-
+        İşçiye ücret dışında yemek, yol, yemek kartı gibi bir yardım sağlanmakta mıdır; sağlanmaktaysa
+        her ay düzenli olarak mı, yoksa bir defaya mahsus mu verilmektedir?
+      why: >-
+        Kıdem tazminatına esas ücretin hesabında ücrete ilaveten işçiye sağlanmış olan para ve
+        para ile ölçülmesi mümkün akdi ve kanundan doğan menfaatler de göz önünde tutulmaktadır
+        (1475 m.14); ihbar tazminatı için aynı ölçü 4857 m.17'de yer almaktadır.
+      kind: choice
+      options:
+        - {value: duzenli_nakdi, label: Düzenli olarak nakit veya karta yükleme biçiminde}
+        - {value: duzenli_ayni, label: "Düzenli olarak ayni (yemekhane, servis) biçiminde"}
+        - {value: tek_sefer, label: Bir defaya mahsus veya arızi olarak}
+        - {value: yok, label: Ücret dışı yardım yok, assumed_never: true}
+      basis:
+        - {ref: "1475 m.14", category: statute}
+        - {ref: "4857 m.17", category: statute}
+  - key: sevk_tarihi
+    label: Askerlik sevk tarihi
+    critical: true
+    asked_when: {fesih_nedeni: [askerlik]}
+    question:
+      text: İşçinin askerlik sevk tarihi nedir?
+      why: >-
+        1475 m.14, hizmet sözleşmesinin muvazzaf askerlik hizmeti dolayısıyla feshedilmesi
+        hâlinde kıdem tazminatı öngörmektedir; feshin askerlik sebebine dayanıp dayanmadığını
+        değerlendirmek için sevk tarihi sorulmaktadır.
+      kind: date
+      basis:
+        - {ref: "1475 m.14", category: statute}
+  - key: sevk_tehiri
+    label: Sevk tehiri
+    critical: true
+    asked_when: {fesih_nedeni: [askerlik]}
+    question:
+      text: İşçi sevk tehiri (erteleme) aldı mı veya almayı düşünmekte midir?
+      why: >-
+        1475 m.14 kıdem tazminatını muvazzaf askerlik hizmeti dolayısıyla fesihte öngörmektedir;
+        sevkin ertelenmesi feshin bu sebebe dayanıp dayanmadığının değerlendirilmesini
+        etkilediğinden sorulmaktadır.
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır}
+      basis:
+        - {ref: "1475 m.14", category: statute}
+  - key: sonraki_calisma
+    label: Ayrıldıktan sonra çalışma
+    critical: true
+    asked_when: {fesih_nedeni: [askerlik]}
+    question:
+      text: İşçi işten ayrıldıktan sonra askere gidene kadar başka bir işte çalıştı mı?
+      why: >-
+        1475 m.14 kıdem tazminatını muvazzaf askerlik hizmeti dolayısıyla fesihte öngörmektedir;
+        ayrılış ile sevk arasındaki çalışma, feshin bu sebebe dayanıp dayanmadığının
+        değerlendirilmesi için sorulmaktadır.
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır}
+      basis:
+        - {ref: "1475 m.14", category: statute}
+  - key: ayrilis_gerekcesi
+    label: Ayrılış bildirimindeki gerekçe
+    critical: true
+    asked_when: {fesih_nedeni: [askerlik]}
+    question:
+      text: İşçi işten ayrılırken askerlik sebebini işverene yazılı olarak bildirdi mi?
+      why: >-
+        1475 m.14 kıdem tazminatını muvazzaf askerlik hizmeti dolayısıyla fesihte öngörmektedir;
+        Kanunda öngörülen bildirimler yazılı olarak ve imza karşılığında yapılmaktadır
+        (4857 m.109).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır}
+      basis:
+        - {ref: "1475 m.14", category: statute}
+        - {ref: "4857 m.109", category: statute}
 event_date_fact: fesih_tarihi
 must_read:
   - {ref: "1475 m.14", category: statute}
   - {ref: "4857 m.17", category: statute}
   - {ref: "4857 m.24", category: statute}
+  - {ref: "4857 m.31", category: statute}
+  - {ref: "4857 m.32", category: statute}
+  - {ref: "4857 m.50", category: statute}
+  - {ref: "4857 m.57", category: statute}
 queries:
   - kıdem tazminatı her geçen tam yıl için otuz günlük ücret
   - bildirim süresine ilişkin ücret tutarında tazminat bildirim şartına uymayan taraf
   - emeklilik için yaş dışındaki şartları tamamlayan işçinin kıdem tazminatı
+  - ücrete ilaveten işçiye sağlanmış olan para ve para ile ölçülmesi mümkün akdi ve kanundan doğan menfaatler
+  - muvazzaf askerlik hizmeti dolayısıyla hizmet akdinin feshi kıdem tazminatı
 traps:
   - Kıdem tazminatı ücret şeklinden bağımsız olarak son ücret üzerinden hesaplanır; ücretin günlük veya aylık belirlenmesi hak doğumunu değiştirmez.
   - Kıdem hesabında çıplak ücrete ek para ve para ile ölçülebilir menfaatler de girer; ihbar tazminatında da giydirilmiş ücret esastır (4857 m.17 son).
   - İhbar tazminatı işçinin kendi haklı feshinde doğmaz.
   - Emeklilik için yaş dışındaki şartlarla ayrılmada kıdem tazminatı 1475 m.14/1-5 ve 506 m.60/A'dan 5510 m.104/1 ile 5510 m.28'e uzanan zincire bağlıdır; 2016 girişliye eski sigortalılık süresi şartı uygulanmaz.
+  - Giydirilmiş ücret kıdem (1475 m.14) ve ihbar (4857 m.17) tazminatının tabanıdır; yıllık izin ücretinde 4857 m.57 m.50'ye yollama yapar ve m.50 sosyal yardımları hesaba katmaz, giydirilmiş ücret izin ücretine taşınmaz.
+  - SGK prime esas kazanç istisnaları (5510 m.80) ile kıdem tazminatına esas ücret (1475 m.14) ayrı hükümlerdir; birinin kapsamı ötekinden çıkarılmaz.
+  - Yardımın sürekli ve düzenli olup olmadığı ile arızi ödeme ayrımı Yargıtay içtihadına dayanır; doğrulanmış karar okunmadan ölçüt kesin cümleyle verilmez.
+  - Muvazzaf askerlik (1475 m.14) ile manevra ve diğer silah altına alınma (4857 m.31) ayrı hükümlerdir.
 calculations:
   - title: Kıdem tazminatı
     needs:

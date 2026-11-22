@@ -28,7 +28,9 @@ from hukuk_models.chat import (
     ClarificationQuestion,
     DoneEvent,
     ErrorEvent,
+    MissingSource,
     QuestionInput,
+    SourceGap,
     Turn,
 )
 
@@ -510,7 +512,8 @@ async def test_real_auth_small_pool_parallel_kb_and_tcp_disconnect(
                     for id in ids
                 )
             )
-            assert all('"code":"answer_not_verified"' in r.text for r in answers)
+            # Nothing in the knowledge base: the honest "kaynak yetersiz" answer, not an error.
+            assert all('"type":"answer"' in r.text and '"source_gap":{' in r.text for r in answers)
             assert all(
                 '"code":"chat_unavailable"' not in r.text
                 and '"code":"internal_error"' not in r.text
@@ -583,14 +586,14 @@ async def test_real_auth_small_pool_parallel_kb_and_tcp_disconnect(
                         if row.delivery["status"] == "completed":
                             break
                     await asyncio.sleep(0.02)
-            # A terminal gate error is a completed request and replays its honest error,
-            # never another graph execution. Its identity also survives reload.
+            # A completed request replays its honest "kaynak yetersiz" answer, never another
+            # graph execution. Its identity also survives reload.
             detail = (await client.get(f"/chat/conversations/{id}")).json()
             assert detail["pending_request"] is None
-            assert detail["terminal_error"]["code"] == "answer_not_verified"
+            assert detail["turns"][-1]["answer"]["source_gap"] is not None
             retry_body = row.delivery["body"]
             replay = await client.post(f"/chat/conversations/{id}/messages", json=retry_body)
-            assert '"code":"answer_not_verified"' in replay.text
+            assert '"type":"answer"' in replay.text and '"source_gap":{' in replay.text
             async with target.state.engine.connect() as conn:
                 async with asyncio.timeout(10):
                     while True:
@@ -663,7 +666,7 @@ async def test_stream_admission_is_bounded_and_slots_return(
     ).status_code == 200
 
 
-async def test_completed_terminal_error_readback_and_duplicate_replay(
+async def test_a_terminal_error_is_a_turn_that_takes_feedback_and_replays(
     stack: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import json
@@ -674,7 +677,14 @@ async def test_completed_terminal_error_readback_and_duplicate_replay(
     id = (await client.post("/chat/conversations")).json()["id"]
     body = {"text": "Question", "request_id": str(uuid.uuid4())}
     error = ErrorEvent(
-        code=ErrorCode.answer_not_verified, params={"reason": "no_verified_rows", "count": 0}
+        code=ErrorCode.answer_not_verified,
+        params={"reason": "no_verified_rows", "count": 0},
+        source_gap=SourceGap(
+            topic="İşe iade",
+            missing_sources=[MissingSource(ref="4857 m.18", reason="not_found")],
+            given_facts=[],
+            next_step="Bu soru, şu kaynaklar eklendiğinde cevaplanabilir: 4857 m.18.",
+        ),
     )
     calls = []
     real_client = httpx.AsyncClient
@@ -689,8 +699,26 @@ async def test_completed_terminal_error_readback_and_duplicate_replay(
     first = await client.post(f"/chat/conversations/{id}/messages", json=body)
     detail = (await client.get(f"/chat/conversations/{id}")).json()
     assert detail["pending_request"] is None
-    assert detail["terminal_error"] == error.model_dump(mode="json")
-    assert [t["role"] for t in detail["turns"]] == ["user"]
+    # The error is the assistant turn, with what was missing; not a separate terminal error.
+    assert detail["terminal_error"] is None
+    assert [t["role"] for t in detail["turns"]] == ["user", "assistant"]
+    failed = detail["turns"][-1]
+    assert failed["error"] == error.model_dump(mode="json")
+    assert f'"turn_id":"{failed["id"]}"' in first.text
+    feedback = await client.post(
+        f"/chat/turns/{failed['id']}/feedback", json={"rating": "down", "kind": "missing"}
+    )
+    assert feedback.status_code == 201
+    assert (
+        await client.post(
+            f"/chat/turns/{failed['id']}/feedback", json={"rating": "down", "point_index": 0}
+        )
+    ).status_code == 422
+    app.dependency_overrides[current_user] = lambda: other
+    assert (
+        await client.post(f"/chat/turns/{failed['id']}/feedback", json={"rating": "up"})
+    ).status_code == 404
+    app.dependency_overrides[current_user] = lambda: user
     settings.chat_daily_limit = 1
     replay = await client.post(f"/chat/conversations/{id}/messages", json=body)
     assert [
@@ -706,6 +734,67 @@ async def test_completed_terminal_error_readback_and_duplicate_replay(
         await client.post(f"/chat/conversations/{id}/messages", json={"text": "New"})
     ).status_code == 200
     assert len(calls) == 2
+
+
+async def test_an_error_after_an_answer_ends_the_turn_in_that_error(
+    stack: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+    from pathlib import Path
+
+    from hukuk_models import ErrorCode
+    from hukuk_models.chat import Answer, AnswerEvent
+
+    client, user, other, settings, app = stack
+    id = (await client.post("/chat/conversations")).json()["id"]
+    fixture = Path(__file__).parents[3] / "eval" / "fixtures" / "SB-001.answer.json"
+    answer = Answer.model_validate(json.loads(fixture.read_text(encoding="utf-8")))
+    error = ErrorEvent(code=ErrorCode.internal_error)
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda **kwargs: real_client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    content=_sse(AnswerEvent(answer=answer)) + _sse(error) + _sse(DoneEvent()),
+                )
+            )
+        ),
+    )
+
+    response = await client.post(f"/chat/conversations/{id}/messages", json={"text": "Question"})
+
+    # The error is the agent's last word: the answer it retracted is not stored with it.
+    assert '"code":"chat_unavailable"' not in response.text
+    failed = (await client.get(f"/chat/conversations/{id}")).json()["turns"][-1]
+    assert failed["error"]["code"] == "internal_error"
+    assert failed["answer"] is None
+    assert f'"turn_id":"{failed["id"]}"' in response.text
+
+
+async def test_a_delivery_stored_before_error_turns_still_reads_back_its_error(
+    stack: Any, users_factory: Factory
+) -> None:
+    from app.models.chat import ChatConversation
+
+    client, user, other, settings, app = stack
+    id = (await client.post("/chat/conversations")).json()["id"]
+    error = {"type": "error", "code": "answer_not_verified", "params": {}, "retryable": False}
+    async with users_factory() as db:
+        row = await db.get(ChatConversation, uuid.UUID(id))
+        assert row is not None
+        row.delivery = {
+            "body": {"text": "Question"},
+            "status": "completed",
+            "events": [error, {"type": "done", "turn_id": None}],
+        }
+        await db.commit()
+
+    detail = (await client.get(f"/chat/conversations/{id}")).json()
+
+    assert detail["terminal_error"]["code"] == "answer_not_verified"
 
 
 async def test_request_id_is_an_idempotency_key_not_a_turn_id(

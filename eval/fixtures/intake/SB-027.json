@@ -1,0 +1,42 @@
+{
+ "topic": "hakli_fesih_devamsizlik",
+ "title": "Devamsızlık nedeniyle haklı fesih prosedürü",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "fesih_sebebi",
+   "value": "İşverenin işçinin devamsızlığı nedeniyle feshi",
+   "status": "known"
+  },
+  {
+   "key": "devamsizlik_is_gunu",
+   "value": "Ardı ardına beş iş günü mazaretsiz devamsızlık",
+   "status": "known"
+  },
+  {
+   "key": "isciye_ulasma",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "mazeret_bildirimi",
+   "value": "Mazaret veya izin bildirilmemiştir",
+   "status": "known"
+  },
+  {
+   "key": "ucret_odeme_durumu",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "hizmet_suresi",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "yazili_belge",
+   "value": null,
+   "status": "unknown"
+  }
+ ]
+}

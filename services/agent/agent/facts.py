@@ -6,10 +6,11 @@ its question completes.
 """
 
 import re
+from collections.abc import Mapping, Sequence
 from datetime import date
 
 from agent.llm_schemas import IntakeOutput
-from agent.topics import Option, Topic, TopicFact, parse_date
+from agent.topics import UNKNOWN, Option, Topic, TopicFact, parse_date
 from hukuk_models.chat import (
     CaseFacts,
     CitationRef,
@@ -27,10 +28,8 @@ def _norm(text: str) -> str:
 
 
 def _matching_option(fact: TopicFact, value: str) -> Option | None:
-    if fact.question is None:
-        return None
     return next(
-        (o for o in fact.question.options if _norm(value) in (_norm(o.value), _norm(o.label))),
+        (o for o in fact.choices if _norm(value) in (_norm(o.value), _norm(o.label))),
         None,
     )
 
@@ -108,6 +107,10 @@ def build_facts(
                 fact = earlier.get(tf.key)
         else:
             fact = fact or earlier.get(tf.key)
+            # A fact with options is known only as one of them: anything else tells no option
+            # (and no branch), and the fact is then asked where it is critical.
+            if fact and tf.choices and _matching_option(tf, fact.value or "") is None:
+                fact = None
         facts.append(fact or Fact(key=tf.key, label=tf.label, status="unknown"))
     # With a template date, the fact is the single source of truth, including unknown.
     event_date = (
@@ -136,10 +139,34 @@ def event_date_of(topic: Topic, facts: list[Fact]) -> date | None:
     return parse_date(fact.value) if fact and fact.value else None
 
 
+def _state(tf: TopicFact, fact: Fact | None) -> str:
+    """The option value of the fact; UNKNOWN when it is unknown or its value is no option."""
+    option = _matching_option(tf, fact.value) if fact and fact.value else None
+    return option.value if option else UNKNOWN
+
+
+def holds(topic: Topic, facts: CaseFacts, condition: Mapping[str, Sequence[str]]) -> bool:
+    """Every fact `condition` names is in one of its listed states (an option value or UNKNOWN):
+    the facts are in the branch of an `asked_when` or a must-read `when`."""
+    by_key = {f.key: f for f in facts.facts}
+    return all(
+        _state(branch, by_key.get(key)) in states
+        for key, states in condition.items()
+        if (branch := topic.fact(key)) is not None
+    )
+
+
 def critical_unknown(topic: Topic, facts: CaseFacts) -> list[str]:
-    """The keys of the critical facts that are still unknown."""
-    unknown = {f.key for f in facts.facts if f.status == "unknown"}
-    return [tf.key for tf in topic.facts if tf.critical and tf.key in unknown]
+    """The keys of the critical facts that are still unknown, in the branch the facts are in."""
+    by_key = {f.key: f for f in facts.facts}
+    return [
+        tf.key
+        for tf in topic.facts
+        if tf.critical
+        and (fact := by_key.get(tf.key)) is not None
+        and fact.status == "unknown"
+        and holds(topic, facts, tf.asked_when)
+    ]
 
 
 def clarification_for(
@@ -148,8 +175,24 @@ def clarification_for(
     """One question per unknown critical fact, from the template; None when nothing is missing.
     `sources` maps the künye of a basis to the citation the knowledge base resolved; a basis it
     could not resolve is left out, never made up."""
+    return _questions(topic, critical_unknown(topic, facts), sources)
+
+
+def follow_up(
+    topic: Topic, asked: Clarification, facts: CaseFacts, sources: dict[str, CitationRef]
+) -> Clarification | None:
+    """The questions of the critical facts the answers to `asked` brought into the branch: still
+    unknown and not asked before. None when the answers opened no branch."""
+    before = {q.fact_key for q in asked.questions}
+    keys = [k for k in critical_unknown(topic, facts) if k not in before]
+    return _questions(topic, keys, sources)
+
+
+def _questions(
+    topic: Topic, keys: list[str], sources: dict[str, CitationRef]
+) -> Clarification | None:
     questions: list[ClarificationQuestion] = []
-    for key in critical_unknown(topic, facts):
+    for key in keys:
         tf = topic.fact(key)
         assert tf is not None and tf.question is not None
         q = tf.question

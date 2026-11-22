@@ -24,6 +24,25 @@ from hukuk_models.chat import (
 # "4857 m.18/1" -> ("4857 m.18", "/1"); a künye without a statute article is its own base.
 _STATUTE_REF = re.compile(r"^(?P<base>\d+ m\.\d+(?:\s?[A-Za-z])?)(?P<sub>/.+)?$")
 _WORD = re.compile(r"\S+")
+# The number of a paragraph, at the start of its line: "(1) Otuz veya daha fazla işçi ...".
+_PARAGRAPH = re.compile(r"(?m)^[ \t]*\(([1-9]\d*)\)")
+# The glyphs of one mark, read as one in a quote: the genelges are typeset ("re’sen", “...”, "–"),
+# a model writes the plain mark. One character for one, so the offsets stay those of the text.
+_MARKS = str.maketrans(
+    {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u02bc": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u201e": '"',
+        "\u00ab": '"',
+        "\u00bb": '"',
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2011": "-",
+    }
+)
 
 
 class Passage(BaseModel):
@@ -48,6 +67,9 @@ class ReadSource(BaseModel):
 
 # What the models are shown of one source, at most; the rest counts as not read.
 MAX_SOURCE_CHARS = 6000
+# Of a statute article or genelge section the template names by its künye: a long genelge
+# section (2020/8 m.2.8.1 is 17k characters) holds its rule past the common limit.
+MAX_NAMED_SOURCE_CHARS = 20000
 
 
 def split_ref(ref: str) -> tuple[str, str]:
@@ -60,6 +82,24 @@ def split_ref(ref: str) -> tuple[str, str]:
 
 def _key(ref: str) -> str:
     return " ".join(ref.replace("İ", "i").replace("I", "ı").lower().split())
+
+
+def named_source(sources: dict[str, ReadSource], written: str) -> ReadSource | None:
+    """The source read that a model names in a `source_id`: by its id, or by its künye ("5510
+    m.36", also with a paragraph: "5510 m.36/1") when exactly one source read has that künye.
+    None: it names no source read."""
+    if (source := sources.get(written.strip())) is not None:
+        return source
+    wanted = split_ref(_key(written))[0]
+    found = [s for s in sources.values() if _key(s.ref) == wanted]
+    return found[0] if len(found) == 1 else None
+
+
+def kunye_sub(written: str) -> str | None:
+    """The paragraph of a künye written as a `source_id` ("4": "4857 m.18/4"); None without one.
+    It is a claim like a written `sub`: `checked_sub` decides whether it is cited."""
+    found = re.fullmatch(r"/([1-9]\d*)", split_ref(_key(written))[1])
+    return found[1] if found else None
 
 
 def covers(hit_ref: str, wanted: str) -> bool:
@@ -108,10 +148,10 @@ def merge(read: Iterable[ReadSource], new: Iterable[ReadSource]) -> list[ReadSou
     return list(merged.values())
 
 
-def shown(source: ReadSource) -> ReadSource:
-    """`source` cut to what a model is shown of it (`MAX_SOURCE_CHARS`), so that the sources
+def shown(source: ReadSource, limit: int = MAX_SOURCE_CHARS) -> ReadSource:
+    """`source` cut to what a model is shown of it (`limit` characters), so that the sources
     "read" are the texts that were put before the model and no more."""
-    left = MAX_SOURCE_CHARS
+    left = limit
     passages = []
     for passage in source.passages:
         if left <= 0:
@@ -123,28 +163,70 @@ def shown(source: ReadSource) -> ReadSource:
     )
 
 
+def _found(source: ReadSource, quote: str) -> tuple[Passage, re.Match[str]] | None:
+    pattern = _quote_pattern(quote)
+    if pattern is None:
+        return None
+    for passage in source.passages:
+        if (found := pattern.search(passage.text.translate(_MARKS))) is not None:
+            return passage, found
+    return None
+
+
 def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | None:
     """Where `quote` stands in the text read of `source`, matching it word for word (the white
-    space may differ). None: it is not there. The offsets are into the source's full text and
-    are None when the passage had no offset."""
-    words = _WORD.findall(quote)
+    space and the glyph of a quotation mark, apostrophe or dash may differ). None: it is not
+    there. The offsets are into the source's full text and are None when the passage had no
+    offset."""
+    if (where := _found(source, quote)) is None:
+        return None
+    passage, found = where
+    if passage.char_start is None:
+        return None, None
+    return passage.char_start + found.start(), passage.char_start + found.end()
+
+
+def source_quote(source: ReadSource, quote: str) -> str | None:
+    """`quote` in the words of the text read (`locate`), its white space made single."""
+    if (where := _found(source, quote)) is None:
+        return None
+    passage, found = where
+    return " ".join(passage.text[found.start() : found.end()].split())
+
+
+def _quote_pattern(quote: str) -> re.Pattern[str] | None:
+    words = _WORD.findall(quote.translate(_MARKS))
     if not words:
         return None
-    pattern = re.compile(r"(?<!\w)" + r"\s+".join(re.escape(w) for w in words) + r"(?!\w)")
+    return re.compile(r"(?<!\w)" + r"\s+".join(re.escape(w) for w in words) + r"(?!\w)")
+
+
+def quote_paragraph(source: ReadSource, quote: str, cited: str | None = None) -> str | None:
+    """The number of the paragraph of the text read that `quote` stands in: `cited` when it is
+    there, else the first one it is in. None: the quote is not there, or the passage it is in
+    has no paragraph marker before it (a passage cut out of the middle of a paragraph does not
+    say which one it is)."""
+    pattern = _quote_pattern(quote)
+    if pattern is None:
+        return None
+    paragraph = (
+        source.model_copy(update={"passages": _paragraphs(source, cited)}) if cited else None
+    )
+    if paragraph is not None and locate(paragraph, quote) is not None:
+        return cited
     for passage in source.passages:
-        found = pattern.search(passage.text)
+        found = pattern.search(passage.text.translate(_MARKS))
         if found is None:
             continue
-        if passage.char_start is None:
-            return None, None
-        return passage.char_start + found.start(), passage.char_start + found.end()
+        before = [m[1] for m in _PARAGRAPH.finditer(passage.text) if m.start() <= found.start()]
+        return before[-1] if before else None
     return None
 
 
 def _paragraphs(source: ReadSource, sub: str) -> list[Passage]:
     passages = []
     for passage in source.passages:
-        markers = list(re.finditer(r"(?m)^[ \t]*\(([1-9]\d*)\)", passage.text))
+        markers = list(_PARAGRAPH.finditer(passage.text))
         for index, marker in enumerate(markers):
             if marker[1] != sub:
                 continue
@@ -187,8 +269,8 @@ def citation(
     quote: str | None = None,
     used_for: str | None = None,
 ) -> CitationRef:
-    """A citation of `source`, with `sub` ("1": the paragraph) and `quote` if given. The caller
-    has checked the quote with `locate`."""
+    """A citation of `source`, with `sub` ("1": the paragraph) and `quote` if given, in the words
+    of the source. The caller has checked the quote with `locate`."""
     sub = checked_sub(source, sub, quote)
     suffix = f"/{sub}" if sub else ""
     start = end = None
@@ -197,6 +279,8 @@ def citation(
     )
     if quote is not None and (where := locate(quote_source, quote)) is not None:
         start, end = where
+    if quote is not None:
+        quote = source_quote(quote_source, quote) or quote
     return CitationRef(
         source_id=source.source_id,
         category=source.category,

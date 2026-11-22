@@ -1,0 +1,133 @@
+# Konu kartları SB-005 (ödenmeyen TİS alacağı) ve SB-039 (dayanışma aidatıyla TİS'ten yararlanma);
+# eval vakaları eval/cases/SB-005.yaml, eval/cases/SB-039.yaml.
+# Dayanaklar KB'de okundu: 6356 m.33, m.35, m.36 (high), m.39 (medium), 7036 m.3 (medium).
+# 6772 sayılı Kanun (ilave tediye) KB'de ve Drive kopyasında yoktur (SB-039 missing_in_kb).
+# Karar tablosu boş olduğundan Yargıtay künyesi dayanak yapılmadı.
+# Görev 19 B2: dayanışma aidatı olguları yalnız sendika_uyeligi = dayanisma_aidati iken, ödenmeyen
+# alacak olguları (tis_maddesi, odenmeyen_donem) diğer hâllerde sorulur (asked_when).
+id: tis_sendikal
+title: Toplu iş sözleşmesi ve sendika üyeliği
+description: >-
+  Toplu iş sözleşmesinden doğan alacaklar ve yararlanma (6356 m.33-39): TİS ikramiyesi, sosyal
+  yardımlar (yakacak, giyim), ilave tediye, sendika üyeliği, dayanışma aidatı, TİS'in yürürlüğü
+  ve sona ermesi, TİS alacağı için arabuluculuk ve dava.
+facts:
+  # Görev 19 B6 tur 1 (C2): label soru metniyle aynı kapsama getirildi (madde metni ve ödeme
+  # koşulu).
+  - key: tis_maddesi
+    label: TİS maddesinin metni ve ödeme koşulu
+    critical: true
+    asked_when: {sendika_uyeligi: [unknown, imzada_uye, imzadan_sonra_uye, uye_degil]}
+    question:
+      text: Ödenmeyen ödeme toplu iş sözleşmesinin hangi maddesinde, hangi koşul ve ödeme zamanıyla düzenlenmiştir?
+      why: >-
+        Toplu iş sözleşmesi, iş sözleşmesinin yapılması, içeriği ve sona ermesine ilişkin
+        hükümleri içermektedir (6356 m.33/1); alacağın varlığı ve koşulları TİS'in ilgili
+        hükmüne göre belirlenmektedir.
+      kind: text
+      basis:
+        - {ref: "6356 m.33/1", category: statute}
+  - key: sendika_uyeligi
+    label: Sendika üyeliği
+    critical: true
+    question:
+      text: İşçi, toplu iş sözleşmesinin tarafı olan sendikanın üyesi mi?
+      why: >-
+        Toplu iş sözleşmesinden taraf işçi sendikasının üyeleri yararlanmaktadır (6356 m.39/1).
+        İmza tarihinde üye olanlar yürürlük tarihinden, imzadan sonra üye olanlar üyeliklerinin
+        işverene bildirildiği tarihten itibaren yararlanmaktadır (6356 m.39/2). Üye olmayanların
+        yararlanması dayanışma aidatı ödemelerine bağlıdır (6356 m.39/4).
+      kind: choice
+      options:
+        - {value: imzada_uye, label: TİS imzalandığında üyeydi}
+        - {value: imzadan_sonra_uye, label: TİS imzalandıktan sonra üye oldu}
+        - {value: dayanisma_aidati, label: "Üye değil, dayanışma aidatı ödemektedir"}
+        - {value: uye_degil, label: "Üye değil, dayanışma aidatı da ödememektedir"}
+      basis:
+        - {ref: "6356 m.39/1", category: statute}
+        - {ref: "6356 m.39/2", category: statute}
+        - {ref: "6356 m.39/4", category: statute}
+  - key: tis_yururluk
+    label: TİS'in yürürlük ve imza tarihleri
+    critical: true
+    question:
+      text: Toplu iş sözleşmesinin yürürlük başlangıcı, bitişi ve imza tarihi nedir?
+      why: >-
+        Yararlanmanın başlangıcı imza ve yürürlük tarihlerine göre belirlenmektedir (6356 m.39/2).
+        Sona eren toplu iş sözleşmesinin iş sözleşmesine ilişkin hükümleri yenisi yürürlüğe
+        girinceye kadar iş sözleşmesi hükmü olarak devam etmektedir (6356 m.36/2).
+      kind: text
+      basis:
+        - {ref: "6356 m.39/2", category: statute}
+        - {ref: "6356 m.36/2", category: statute}
+  - key: odenmeyen_donem
+    label: Ödenmeyen dönem
+    critical: true
+    asked_when: {sendika_uyeligi: [unknown, imzada_uye, imzadan_sonra_uye, uye_degil]}
+    question:
+      text: Ödenmeyen ödemeler hangi döneme aittir?
+      why: >-
+        Dönemin TİS süresi içinde mi, TİS sona erdikten sonra mı olduğu bilinmelidir: sona eren
+        TİS'in iş sözleşmesine ilişkin hükümleri yenisi yürürlüğe girinceye kadar iş sözleşmesi
+        hükmü olarak devam etmektedir (6356 m.36/2).
+      kind: text
+      basis:
+        - {ref: "6356 m.36/2", category: statute}
+  - key: dayanisma_talep_tarihi
+    label: Dayanışma aidatıyla yararlanma talebinin tarihi
+    critical: true
+    asked_when: {sendika_uyeligi: [dayanisma_aidati]}
+    question:
+      text: İşçi, dayanışma aidatı ödeyerek toplu iş sözleşmesinden yararlanma talebini hangi tarihte yaptı?
+      why: >-
+        Dayanışma aidatı ödemek suretiyle toplu iş sözleşmesinden yararlanma, talep tarihinden
+        geçerlidir; bunun için işçi sendikasının onayı aranmamaktadır (6356 m.39/4). Talep tarihi
+        aidat ödemesinin başladığı tarihten farklı olabilir.
+      kind: date
+      basis:
+        - {ref: "6356 m.39/4", category: statute}
+  - key: tis_yararlanma_hukmu
+    label: TİS'teki yararlanma hükmü
+    critical: true
+    asked_when: {sendika_uyeligi: [dayanisma_aidati]}
+    question:
+      text: Toplu iş sözleşmesinde dayanışma aidatı ödeyenlerin yararlanmasına veya ödemelerin koşullarına ilişkin bir hüküm var mı?
+      why: >-
+        Kanun dayanışma aidatıyla yararlanmayı talep tarihinden geçerli saymaktadır (6356 m.39/4);
+        toplu iş sözleşmeleri kanunların emredici hükümlerine aykırı düzenleme içerememektedir
+        (6356 m.33/5). TİS'teki hüküm bu iki kural birlikte okunarak değerlendirilmektedir.
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır}
+      basis:
+        - {ref: "6356 m.39/4", category: statute}
+        - {ref: "6356 m.33/5", category: statute}
+  - key: hak_edis_tarihi
+    label: Ödemelerin hak ediş tarihi
+    critical: true
+    asked_when: {sendika_uyeligi: [dayanisma_aidati]}
+    question:
+      text: Sorulan her ödemenin (ikramiye, ilave tediye, sosyal yardım) hak ediş tarihi ve ödeme dönemi nasıl belirlenmiştir?
+      why: >-
+        Dayanışma aidatıyla yararlanma talep tarihinden geçerli olduğundan (6356 m.39/4), her
+        ödemenin hangi tarihte doğduğu bu tarihle karşılaştırılmaktadır.
+      kind: text
+      basis:
+        - {ref: "6356 m.39/4", category: statute}
+must_read:
+  - {ref: "6356 m.33", category: statute}
+  - {ref: "6356 m.35", category: statute}
+  - {ref: "6356 m.36", category: statute}
+  - {ref: "6356 m.39", category: statute}
+  - {ref: "7036 m.3", category: statute}
+  - {ref: "4857 m.24", category: statute}
+queries:
+  - toplu iş sözleşmesinden yararlanma taraf sendika üyeliği dayanışma aidatı talep tarihi
+  - sona eren toplu iş sözleşmesinin hükümleri iş sözleşmesi hükmü olarak devam eder
+  - toplu iş sözleşmesine dayanan işçi alacağı arabulucuya başvuru dava şartı
+traps:
+  - Cevap TİS'in kendi metnine bağlıdır; TİS metni olmadan kesin tutar, ödeme günü ve hak ediş söylenmez.
+  - Üye olarak yararlanma (6356 m.39/2) ile dayanışma aidatıyla yararlanma (6356 m.39/4, talep tarihinden) ayrıdır.
+  - 6356 m.39/4'ün dördüncü cümlesi Anayasa Mahkemesince iptal edilmiştir; iptal edilen cümleye dayanılmaz.
+  - TİS'e dayanan alacak davasında arabulucuya başvuru dava şartıdır (7036 m.3/1).

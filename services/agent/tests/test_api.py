@@ -165,7 +165,7 @@ async def test_a_failure_ends_the_stream_with_an_error_event_and_done(
     assert last == "done" and len(done["trace_id"]) == 32
 
 
-async def test_a_turn_with_no_verified_row_ends_with_its_own_error_code(
+async def test_a_turn_with_no_verified_row_ends_with_the_source_gap_answer(
     database_url: str,
 ) -> None:
     script = Script(holding={"rows": [row("statute:4857:m18", "Kanunda hiç yazmayan ifade")]})
@@ -175,8 +175,10 @@ async def test_a_turn_with_no_verified_row_ends_with_its_own_error_code(
         response = await client.post("/run", headers=KEY, json={"thread_id": thread, "skip": True})
 
     names = [name for name, _ in events(response)]
-    assert names[-2:] == ["error", "done"] and "answer" not in names
-    assert events(response)[-2][1]["code"] == ErrorCode.answer_not_verified
+    assert names[-2:] == ["answer", "done"] and "error" not in names
+    answer = events(response)[-2][1]["answer"]
+    assert answer["holding_map"]["rows"] == []
+    assert answer["source_gap"]["topic"] == "İşe iade"
 
 
 async def test_a_request_must_carry_one_of_text_answers_or_skip(
@@ -236,6 +238,36 @@ async def test_provider_exception_payload_is_not_logged(
             "/run", headers=KEY, json={"thread_id": unique_thread(), "text": private}
         )
     assert events(response)[-2][1]["code"] == ErrorCode.internal_error
+    assert private not in "\n".join(JsonFormatter().format(r) for r in caplog.records)
+
+
+async def test_a_rejected_request_logs_the_provider_message_only(
+    database_url: str,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import logging
+
+    from pydantic_ai.exceptions import ModelHTTPError, ModelRequestRejectedError
+
+    from agent.logging_setup import JsonFormatter
+
+    monkeypatch.setattr("agent.api.configure_logging", lambda level: None)
+    caplog.set_level(logging.INFO)
+    private = "PRIVATE_QUESTION_SENTINEL"
+    message = "output_config.format.schema: Schema is too complex"
+    body = {"type": "error", "error": {"type": "invalid_request_error", "message": message}}
+    rejected = ModelHTTPError.for_category(
+        ModelRequestRejectedError, status_code=400, model_name="model", body=body
+    )
+    async with serve(database_url, kb=FailingKb(rejected)) as client:
+        response = await client.post(
+            "/run", headers=KEY, json={"thread_id": unique_thread(), "text": private}
+        )
+    assert events(response)[-2][1]["code"] == ErrorCode.internal_error
+    (failed,) = [r for r in caplog.records if r.getMessage().startswith("run failed")]
+    assert failed.fields["provider_error"] == message  # type: ignore[attr-defined]
+    assert failed.fields["provider_status"] == 400  # type: ignore[attr-defined]
     assert private not in "\n".join(JsonFormatter().format(r) for r in caplog.records)
 
 

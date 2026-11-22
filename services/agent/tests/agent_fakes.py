@@ -14,7 +14,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, User
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from agent.api import Graph, RunRequest, turn_events
-from agent.kb import KbHit, KbMatch, Unreadable
+from agent.kb import KbHit, KbMatch, Unreadable, UnreadableReason
 from agent.sources import covers
 from agent.topics import get_topic
 from agent.trace import Tracing
@@ -112,7 +112,7 @@ class FakeKb:
     def __init__(
         self,
         hits: Sequence[KbHit] | None = None,
-        unreadable: dict[str, str] | None = None,
+        unreadable: dict[str, UnreadableReason] | None = None,
         expired: Iterable[str] = (),
     ) -> None:
         self.hits = list(labour_law_hits() if hits is None else hits)
@@ -220,20 +220,24 @@ def draft(
     missing: bool = True,
     topic_id: str = "ise_iade",
     headline: str = "İşe iade davası açılamamaktadır.",
+    headline_rows: tuple[int, ...] = (1,),
 ) -> dict[str, Any]:
     cited = [{"source_id": "statute:4857:m18", "sub": "1", "quote": M18_1}]
     return {
         "status": status,
         "headline": headline,
+        "headline_rows": list(headline_rows),
         "points": points
         if points is not None
         else [{"text": "Altı aylık kıdem şartı aranmaktadır.", "citations": cited}],
         "missing_info": [
-            {
-                "fact_key": "isci_sayisi",
-                "condition": "İşyerinde otuz veya daha fazla işçi çalışmaktaysa",
-                "result": "İş güvencesi hükümleri uygulanmaktadır.",
-            },
+            *[
+                {
+                    "fact_key": "isci_sayisi",
+                    "condition": "İşyerinde otuz veya daha fazla işçi çalışmaktaysa",
+                    "result": "İş güvencesi hükümleri uygulanmaktadır.",
+                }
+            ][: int(get_topic(topic_id).fact("isci_sayisi") is not None)],
             *[
                 {
                     "fact_key": key,
@@ -263,6 +267,8 @@ class Script:
     holding: dict[str, Any] = field(
         default_factory=lambda: {"rows": [row("statute:4857:m18", M18_1, sub="1")]}
     )
+    # The holding map made again after the gate asked for a correction; None: `holding` again.
+    holding_retry: dict[str, Any] | None = None
     drafts: list[dict[str, Any]] = field(default_factory=lambda: [draft()])
     rewrite: dict[str, Any] | None = None
     calls: list[tuple[str, str]] = field(default_factory=list)
@@ -288,7 +294,8 @@ def scripted(script: Script) -> FunctionModel:
         if "topic" in properties:
             kind, out = "intake", script.intake
         elif "rows" in properties:
-            kind, out = "holding", script.holding
+            retry = script.holding_retry if script.of("holding") else None
+            kind, out = "holding", retry or script.holding
         elif "Yasak biçimler" in prompt:
             kind, out = "rewrite", script.rewrite or script.drafts[-1]
         else:

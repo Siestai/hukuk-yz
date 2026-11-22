@@ -1,0 +1,49 @@
+id: SB-019
+# Daraltma: asıl soru önceki bir cevaba atıf yapmaktadır ("tekrar eder misin"); tek başına
+# anlaşılır hâle getirildi.
+question: "İşveren sigortalıyı ve gün sayısını tam bildirmiş, yalnız prime esas kazancı eksik bildirmiş. İdari para cezası defter türüne göre değişir mi, nasıl hesaplanır?"
+# Olgular: m.102/1-m-4-ç'nin uygulanması eksikliğin denetim, mahkeme kararı veya kamu idaresi
+# belgesiyle anlaşılmasına ve dönemin muhtasar ve prim hizmet beyannamesiyle bildirilmesine
+# bağlıdır; vaka bu dalı ölçtüğü için iki olgu verilmiştir. Verilmezse ajan bunları sormalıdır.
+facts:
+  tespit_sekli: kurum_tespiti
+  bildirim_belgesi: muhsgk
+expected:
+  topic: idari_para_cezasi
+  status: definite
+  headline_contains:
+    - defter türü
+  must_cite:
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1). "5510 m.102" chunk'ları
+    # yerel KB'de bulunmaktadır (2018-05-25'ten itibaren geçerli sürüm), ancak güven bandı low
+    # olduğundan ajan bunları okuyamaz; missing_in_kb'de de listelenir.
+    # Görev 19 B6 tur 1 (F1): KB metninde "(1)" biçiminde fıkra numarası yoktur; künye madde
+    # düzeyine indirildi (SB-001 notu), bent ayrımı traps'ta kalır.
+    # İçerik KB chunk metninden okundu: birinci fıkra (m) bendi (4) alt bendi; (a), (b), (c) ve
+    # (ç) alt bentlerinin tamamı.
+    - 5510 m.102
+    # Okundu: KB chunk ref "2020/8 m.2.6.2.5" (yalnız prime esas kazanç eksikliği, alt ve üst sınır,
+    # aynı dönem için sonraki tespitte fark).
+    - 2020/8 m.2.6.2.5
+  missing_in_kb:
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1).
+    - 5510 m.102
+  # Şablonda bu iki olgu fiil = yalniz_kazanc_eksik iken sorulur (B2 asked_when).
+  must_ask:
+    - tespit_sekli
+    - bildirim_belgesi
+  must_not:
+    - 5510 m.102/1-m-4-a
+    - 5510 m.102/1-m-4-b
+    - 5510 m.102/1-m-4-c
+    - asgari ücretin üç katını geçmemek
+  traps:
+    - Atıftan önce m.102/1-m-4'ün (a), (b), (c) ve (ç) alt bentlerinin tamamı vakayla eşlenir; (a)-(c) hizmet ve kazancın bildirilmediği ya da yalnız hizmetin eksik bildirildiği hâller içindir, yalnız kazanç eksikliği (ç) alt bendine girer.
+    - (ç) alt bendinde defter türü ile beyannamenin asıl veya ek olması cezayı değiştirmez; defter türü sorulmaz, defter türüne göre oran verilmez.
+    - Ceza her işyeri ve her beyanname dönemi için tespit edilen eksik prime esas kazanç tutarındadır; aylık asgari ücretin onda birinden az, iki katından fazla olamaz.
+    - Aynı dönem için sonraki tespitte, önceki ceza iki kat sınırına ulaşmamışsa yalnız sınıra kadar fark uygulanır; aynı sigortalı için aynı alt bentten ikinci ceza uygulanmaz (2020/8 m.2.6.2.5).
+    - (ç) cezası ile (a)-(c) cezaları ayrı ayrı uygulanır ve üst sınırları ayrı belirlenir (2020/8 m.2.6.2.6.1).
+    - Eksiklik fiil tarihindeki brüt asgari ücretin üçte birini ve o ay bildirilen toplam kazancın %1'ini aşmadığı takdirde önce on beş günlük ihtar verilir; ceza ancak süre sonunda düzeltilmezse uygulanır (5510 m.102/2; 2020/8 m.3.3).
+    - Dönem aylık prim ve hizmet belgesiyle bildirilmişse (m) bendi değil (c) bendi uygulanır (2020/8 m.2.6.1.3); işveren eksikliği kendiliğinden ek beyanname ile gidermişse ek beyanname cezası (m.102/1-m-2) gündeme gelir (2020/8 m.2.6.2.2).
+    - Hesap tutarı verilmez; yalnız hesaplama kuralı kaynağıyla yazılır.
+tags: [sgk, idari-para-cezasi, prime-esas-kazanc, alt-bent]

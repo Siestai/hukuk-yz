@@ -1,0 +1,1933 @@
+{
+ "tag": "r3",
+ "date": "2026-11-22",
+ "models": {
+  "fast": "anthropic:claude-haiku-4-5-20251001",
+  "strong": "anthropic:claude-sonnet-5-5"
+ },
+ "kb": "http",
+ "estimate": {
+  "per_case_usd": 0.19367261111111111,
+  "source": "önceki koşular: 18 vaka, 5 sonuç dosyası"
+ },
+ "budget_usd": 0.7,
+ "spent_usd": 0.512196,
+ "earlier_spent_usd": 4.725858000000001,
+ "passed": false,
+ "reasons": [
+  "koşulmayan vaka (bütçe tavanı): SB-014, SB-032",
+  "must_ask ortalaması %50 < %80",
+  "must_ask < %50: SB-008"
+ ],
+ "not_run": [
+  "SB-014",
+  "SB-032"
+ ],
+ "cases": [
+  {
+   "case_id": "SB-002",
+   "trace_id": "322245e1df774514aec0f49964c7c6af",
+   "expected_topic": "olum_yaslilik_aylik",
+   "topic": "olum_yaslilik_aylik",
+   "intake": {
+    "topic": "olum_yaslilik_aylik",
+    "title": "4/c sigortalının ölümü sonrası ölüm toptan ödemesi ve gelir tespiti",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "sigortalilik_hali",
+      "value": "Kamu idaresinde çalışan (4/1-c)",
+      "status": "known"
+     },
+     {
+      "key": "talep_turu",
+      "value": "Ölüm toptan ödemesi",
+      "status": "known"
+     },
+     {
+      "key": "hak_sahibi",
+      "status": "unknown"
+     }
+    ]
+   },
+   "asked": [
+    "ilk_sigortalilik_tarihi"
+   ],
+   "rounds": 1,
+   "answer": {
+    "status": "conditional",
+    "status_note": "Eksik bilgiler nedeniyle koşullu cevaptır. Olay tarihi bilinmediğinden bugünün tarihindeki metin esas alınmıştır. Cevabın dayandığı kaynakların tamamı onaysızdır (test); uzman incelemesinden geçmemiştir.",
+    "headline": "Ölüm toptan ödemesinde ölüm aylığındaki hak sahipliği şartları aranmakta olup asgari ücretin net tutarından az gelir şartı ve gelir tespiti kaynaklarda ana ve baba için yer almaktadır; hak sahibinin kimliği ve ilk sigortalılık tarihi bilinmediğinden kesin sonuç belirlenememektedir.",
+    "fact_chips": [
+     {
+      "fact_key": "sigortalilik_hali",
+      "label": "Sigortalılık hali",
+      "status": "known"
+     },
+     {
+      "fact_key": "ilk_sigortalilik_tarihi",
+      "label": "İlk sigortalılık tarihi",
+      "status": "unknown"
+     },
+     {
+      "fact_key": "talep_turu",
+      "label": "İstenen hak",
+      "status": "known"
+     }
+    ],
+    "points": [
+     {
+      "text": "Ölüm toptan ödemesi, ölüm aylığı bağlanamaması durumunda 34 üncü madde hükümleri dikkate alınarak hak sahiplerine verilmektedir; yani ölüm aylığındaki hak sahipliği şartları esas alınmaktadır.",
+      "citations": [
+       {
+        "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+        "category": "statute",
+        "label": "5510 m.36",
+        "ref": "5510 m.36",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+        "char_start": 396,
+        "char_end": 482,
+        "used_for": "Toptan ödemede m.34 hak sahipliği hükümlerinin dikkate alınması"
+       }
+      ],
+      "unreviewed": true
+     },
+     {
+      "text": "Ölüm toptan ödemesi yapılabilmesi için eş, çocuk, ana ve babaya ölüm aylığı bağlanmasında aranan şartların yerine getirilmiş olması gerekmektedir; bu şartları taşımayan hak sahibi toptan ödemeden yararlanamamaktadır.",
+      "citations": [
+       {
+        "source_id": "7fad2bd7-845f-45b2-9302-a08c2ac2bdec",
+        "category": "admin_act",
+        "label": "2018/38 m.K4-B6-1.2",
+        "ref": "2018/38 m.K4-B6-1.2",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2018-11-06",
+        "valid_to": null,
+        "quote": "bağlanmasında aranan şartların mutlaka yerine getirilmiş olması gerekmekte olup, bu şartları",
+        "char_start": 618,
+        "char_end": 710,
+        "used_for": "Ölüm aylığı şartlarının toptan ödemede de aranması"
+       }
+      ],
+      "unreviewed": true
+     },
+     {
+      "text": "Her türlü kazanç ve irattan elde edilen gelirin asgari ücretin net tutarından daha az olması şartı ve buna ilişkin gelir tespiti, ana ve baba için öngörülmüştür; hak sahibi ana veya baba ise bu şart toptan ödemede de aranmaktadır.",
+      "citations": [
+       {
+        "source_id": "3f209530-0f43-42eb-b34e-bf2bb1c469d9",
+        "category": "statute",
+        "label": "5510 m.34",
+        "ref": "5510 m.34",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2018-03-27",
+        "valid_to": null,
+        "quote": "Hak sahibi eş ve çocuklardan artan hisse bulunması halinde her türlü kazanç ve irattan elde etmiş olduğu gelirinin asgari ücretin net tutarından daha az olması",
+        "char_start": 1433,
+        "char_end": 1592,
+        "used_for": "Gelir şartının m.34 d bendinde ana ve baba için düzenlenmesi"
+       },
+       {
+        "source_id": "05f54b5d-5748-4971-a725-854badb9dd4e",
+        "category": "admin_act",
+        "label": "2018/38 m.K2-B4-2.2.3",
+        "ref": "2018/38 m.K2-B4-2.2.3",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2018-11-06",
+        "valid_to": null,
+        "quote": "Her türlü kazanç ve irattan elde etmiş olduğu gelirinin asgari ücretin net tutarından daha az olması",
+        "char_start": 337,
+        "char_end": 437,
+        "used_for": "Ana ve baba için aranan gelir şartı"
+       }
+      ],
+      "unreviewed": true
+     },
+     {
+      "text": "Hak sahibi eş veya çocuk ise m.34 uyarınca aranan şartlar, bu Kanun kapsamında veya yabancı ülke mevzuatı kapsamında çalışmama ya da kendi sigortalılığı nedeniyle gelir veya aylık bağlanmamış olma ile yaş, öğrenim ve malûllük gibi nitelik şartlarıdır.",
+      "citations": [
+       {
+        "source_id": "3f209530-0f43-42eb-b34e-bf2bb1c469d9",
+        "category": "statute",
+        "label": "5510 m.34",
+        "ref": "5510 m.34",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2018-03-27",
+        "valid_to": null,
+        "quote": "bu Kanun kapsamında veya yabancı bir ülke mevzuatı kapsamında çalışmayan veya kendi sigortalılığı nedeniyle gelir veya aylık bağlanmamış çocuklardan",
+        "char_start": 531,
+        "char_end": 679,
+        "used_for": "Çocuklar için m.34 b bendindeki şartlar"
+       }
+      ],
+      "unreviewed": true
+     },
+     {
+      "text": "M.36 hükmü, 4/1-(c) kapsamında bu Kanuna göre ilk defa sigortalı olanlardan ölen sigortalıların hak sahiplerine ölüm aylığı bağlanamaması durumunu düzenlemektedir; ilk sigortalılık tarihi bilinmediğinden bu kapsamda olunup olunmadığı belirlenememektedir.",
+      "citations": [
+       {
+        "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+        "category": "statute",
+        "label": "5510 m.36",
+        "ref": "5510 m.36",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "bu Kanuna göre ilk defa aynı maddenin birinci fıkrasının (c) bendi kapsamında sigortalı olanlardan ölen sigortalıların hak sahiplerine ölüm aylığı bağlanamaması durumunda",
+        "char_start": 132,
+        "char_end": 302,
+        "used_for": "M.36 toptan ödemenin 4/1-(c) bakımından kapsamı"
+       }
+      ],
+      "unreviewed": true
+     }
+    ],
+    "short_point_count": 3,
+    "missing_info": [
+     {
+      "fact_key": "ilk_sigortalilik_tarihi",
+      "condition": "Sigortalı bu Kanuna göre ilk defa 4/1-(c) kapsamında sigortalı olmuş ise (sigortalılık süresinin başlangıcı ilk defa kapsama girdiği tarihtir)",
+      "result": "M.36 kapsamında ölüm aylığı bağlanamaması durumunda hak sahiplerine toptan ödeme verilmektedir; sigortalı daha önce başka kapsamda sigortalı olmuş ise bu durum için mevcut kaynaklarla sonuç belirlenememektedir.",
+      "citations": [
+       {
+        "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+        "category": "statute",
+        "label": "5510 m.36",
+        "ref": "5510 m.36",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "bu Kanuna göre ilk defa aynı maddenin birinci fıkrasının (c) bendi kapsamında sigortalı olanlardan ölen sigortalıların hak sahiplerine ölüm aylığı bağlanamaması durumunda",
+        "char_start": 132,
+        "char_end": 302,
+        "used_for": "Toptan ödemenin ilk defa 4/1-(c) kapsamına girenlerle sınırlı olması"
+       },
+       {
+        "source_id": "5e38b1b0-473e-4359-8b4c-22c1711cc41e",
+        "category": "statute",
+        "label": "5510 m.38",
+        "ref": "5510 m.38",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "ilk defa kapsama girdiği tarih olarak kabul edilir",
+        "char_start": 956,
+        "char_end": 1006,
+        "used_for": "Sigortalılık süresi başlangıcının ilk kapsama giriş tarihi olması"
+       }
+      ]
+     },
+     {
+      "fact_key": "hak_sahibi",
+      "condition": "Hak sahibi ana veya baba ise",
+      "result": "Gelirinin asgari ücretin net tutarından daha az olması şartı ve gelir tespiti aranmaktadır; hak sahibi eş veya çocuk ise m.34'teki çalışmama ve gelir veya aylık bağlanmamış olma gibi şartlar aranmaktadır.",
+      "citations": [
+       {
+        "source_id": "3f209530-0f43-42eb-b34e-bf2bb1c469d9",
+        "category": "statute",
+        "label": "5510 m.34",
+        "ref": "5510 m.34",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2018-03-27",
+        "valid_to": null,
+        "quote": "Hak sahibi eş ve çocuklardan artan hisse bulunması halinde her türlü kazanç ve irattan elde etmiş olduğu gelirinin asgari ücretin net tutarından daha az olması",
+        "char_start": 1433,
+        "char_end": 1592,
+        "used_for": "Ana ve baba için gelir şartı"
+       },
+       {
+        "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+        "category": "statute",
+        "label": "5510 m.36",
+        "ref": "5510 m.36",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+        "char_start": 396,
+        "char_end": 482,
+        "used_for": "Toptan ödemede m.34 hükümlerinin dikkate alınması"
+       }
+      ]
+     },
+     {
+      "fact_key": "prim_gun_sayisi",
+      "condition": "Prim ödeme gün sayısı ve sigortalılık süresi ölüm aylığı için aranan şartı karşılamamakta ise",
+      "result": "Ölüm aylığı bağlanamayacağından m.36 kapsamında toptan ödeme gündeme gelmektedir; bu bilgi bilinmediğinden aylık veya toptan ödeme ayrımı belirlenememektedir.",
+      "citations": [
+       {
+        "source_id": "49bacddf-0449-43dc-9ee5-3ec3112da990",
+        "category": "statute",
+        "label": "5510 m.32",
+        "ref": "5510 m.32",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "En az 1800 gün malûllük, yaşlılık ve ölüm sigortaları primi bildirilmiş",
+        "char_start": 266,
+        "char_end": 337,
+        "used_for": "Ölüm aylığı için aranan prim gün şartı"
+       },
+       {
+        "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+        "category": "statute",
+        "label": "5510 m.36",
+        "ref": "5510 m.36",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "hak sahiplerine ölüm aylığı bağlanamaması durumunda",
+        "char_start": 251,
+        "char_end": 302,
+        "used_for": "Toptan ödemenin ölüm aylığı bağlanamaması durumunda verilmesi"
+       }
+      ]
+     }
+    ],
+    "holding_map": {
+     "rows": [
+      {
+       "condition": "4/1-(c) sigortalısından ölen sigortalının hak sahiplerine ölüm aylığı bağlanamaması durumunda, ölüm tarihi esas alınmak kaydıyla toptan ödemenin verilmesi",
+       "condition_quote": "bu Kanuna göre ilk defa aynı maddenin birinci fıkrasının (c) bendi kapsamında sigortalı olanlardan ölen sigortalıların hak sahiplerine ölüm aylığı bağlanamaması durumunda, ölüm tarihi esas alınmak kaydıyla 31 inci maddenin birinci fıkrasına göre hesaplanan tutar, 34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+       "citation": {
+        "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+        "category": "statute",
+        "label": "5510 m.36",
+        "ref": "5510 m.36",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "bu Kanuna göre ilk defa aynı maddenin birinci fıkrasının (c) bendi kapsamında sigortalı olanlardan ölen sigortalıların hak sahiplerine ölüm aylığı bağlanamaması durumunda, ölüm tarihi esas alınmak kaydıyla 31 inci maddenin birinci fıkrasına göre hesaplanan tutar, 34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+        "char_start": 132,
+        "char_end": 482,
+        "used_for": null
+       },
+       "fact_value": "İstenen hak ölüm toptan ödemesidir",
+       "result": "met"
+      },
+      {
+       "condition": "Hak sahiplerinin ölüm toptan ödemesini alabilmesi için ölüm aylığı bağlanmasında aranan hak sahipliği şartlarını taşıması",
+       "condition_quote": "34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+       "citation": {
+        "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+        "category": "statute",
+        "label": "5510 m.36",
+        "ref": "5510 m.36",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+        "char_start": 396,
+        "char_end": 482,
+        "used_for": null
+       },
+       "fact_value": "Hak sahibinin kimlik ve niteliği bilinmemektedir",
+       "result": "unknown"
+      },
+      {
+       "condition": "Ölüm aylığı bağlanması için en az 1800 gün malûllük, yaşlılık ve ölüm sigortaları primi bildirilmiş veya 4/1-(a) kapsamında sigortalı sayılanlar için her türlü borçlanma süreleri hariç en az 5 yıldan beri sigortalı bulunup, toplam 900 gün malûllük, yaşlılık ve ölüm sigortaları primi bildirilmiş olması",
+       "condition_quote": "En az 1800 gün malûllük, yaşlılık ve ölüm sigortaları primi bildirilmiş veya 4 üncü maddesinin birinci fıkrasının (a) bendi kapsamında sigortalı sayılanlar için, her türlü borçlanma süreleri hariç en az 5 yıldan beri sigortalı bulunup, toplam 900 gün malûllük, yaşlılık ve ölüm sigortaları primi bildirilmiş",
+       "citation": {
+        "source_id": "49bacddf-0449-43dc-9ee5-3ec3112da990",
+        "category": "statute",
+        "label": "5510 m.32",
+        "ref": "5510 m.32",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2008-05-08",
+        "valid_to": null,
+        "quote": "En az 1800 gün malûllük, yaşlılık ve ölüm sigortaları primi bildirilmiş veya 4 üncü maddesinin birinci fıkrasının (a) bendi kapsamında sigortalı sayılanlar için, her türlü borçlanma süreleri hariç en az 5 yıldan beri sigortalı bulunup, toplam 900 gün malûllük, yaşlılık ve ölüm sigortaları primi bildirilmiş",
+        "char_start": 266,
+        "char_end": 573,
+        "used_for": null
+       },
+       "fact_value": "Prim ödeme gün sayısı ve sigortalılık süresi bilinmemektedir",
+       "result": "unknown"
+      },
+      {
+       "condition": "Ana ve babaya ölüm aylığı bağlanması için her türlü kazanç ve irattan elde etmiş olduğu gelirinin asgari ücretin net tutarından daha az olması şartı",
+       "condition_quote": "Her türlü kazanç ve irattan elde etmiş olduğu gelirinin asgari ücretin net tutarından daha az olması",
+       "citation": {
+        "source_id": "05f54b5d-5748-4971-a725-854badb9dd4e",
+        "category": "admin_act",
+        "label": "2018/38 m.K2-B4-2.2.3",
+        "ref": "2018/38 m.K2-B4-2.2.3",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2018-11-06",
+        "valid_to": null,
+        "quote": "Her türlü kazanç ve irattan elde etmiş olduğu gelirinin asgari ücretin net tutarından daha az olması",
+        "char_start": 337,
+        "char_end": 437,
+        "used_for": null
+       },
+       "fact_value": "Hak sahibinin ana veya baba olduğu bilinmemektedir",
+       "result": "not_applicable"
+      },
+      {
+       "condition": "Ana ve babaya ölüm aylığı bağlanması için eş ve çocuklardan artan hisse bulunması şartı",
+       "condition_quote": "Eş ve çocuklardan artan hissenin bulunması",
+       "citation": {
+        "source_id": "05f54b5d-5748-4971-a725-854badb9dd4e",
+        "category": "admin_act",
+        "label": "2018/38 m.K2-B4-2.2.3",
+        "ref": "2018/38 m.K2-B4-2.2.3",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2018-11-06",
+        "valid_to": null,
+        "quote": "Eş ve çocuklardan artan hissenin bulunması",
+        "char_start": 119,
+        "char_end": 161,
+        "used_for": null
+       },
+       "fact_value": "Hak sahibinin ana veya baba olduğu bilinmemektedir",
+       "result": "not_applicable"
+      }
+     ],
+     "reasoning_summary": "Hüküm haritasına göre m.36 toptan ödemeyi m.34 hak sahipliği hükümleri dikkate alınarak vermekte, Genelge de ölüm aylığı şartlarının toptan ödemede de aranmasını öngörmektedir. Asgari ücretin net tutarından az gelir şartı ve gelir tespiti ana ve babaya özgüdür. Hak sahibinin kimliği, prim gün sayısı ve ilk sigortalılık tarihi bilinmediğinden sonuç koşullu olarak bildirilmiştir.",
+     "citations": []
+    },
+    "calculations": [],
+    "read_sources": {
+     "statute_articles": 8,
+     "decisions": 0,
+     "admin_acts": 21,
+     "items": [
+      {
+       "source_id": "49bacddf-0449-43dc-9ee5-3ec3112da990",
+       "category": "statute",
+       "label": "5510 m.32",
+       "ref": "5510 m.32",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2008-05-08",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "3f209530-0f43-42eb-b34e-bf2bb1c469d9",
+       "category": "statute",
+       "label": "5510 m.34",
+       "ref": "5510 m.34",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-03-27",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "f2fb54ad-7bef-4bfa-8366-e07698716cff",
+       "category": "statute",
+       "label": "5510 m.36",
+       "ref": "5510 m.36",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2008-05-08",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "5e38b1b0-473e-4359-8b4c-22c1711cc41e",
+       "category": "statute",
+       "label": "5510 m.38",
+       "ref": "5510 m.38",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2008-05-08",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "7fb297c0-07c4-485e-a565-530891f3f6b2",
+       "category": "statute",
+       "label": "5510 m.104",
+       "ref": "5510 m.104",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2008-05-08",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "e96ea831-f719-4ccf-bd77-7e8eb5e32a12",
+       "category": "statute",
+       "label": "5510 m.Geçici 6",
+       "ref": "5510 m.Geçici 6",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2025-01-15",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+       "category": "statute",
+       "label": "1475 m.14",
+       "ref": "1475 m.14",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-07-09",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "7fad2bd7-845f-45b2-9302-a08c2ac2bdec",
+       "category": "admin_act",
+       "label": "2018/38 m.K4-B6-1.2",
+       "ref": "2018/38 m.K4-B6-1.2",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "05f54b5d-5748-4971-a725-854badb9dd4e",
+       "category": "admin_act",
+       "label": "2018/38 m.K2-B4-2.2.3",
+       "ref": "2018/38 m.K2-B4-2.2.3",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "69164f49-fbc4-4561-995f-5015f99cce13",
+       "category": "admin_act",
+       "label": "2018/38 m.K2-B4-2.2.4",
+       "ref": "2018/38 m.K2-B4-2.2.4",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "53cf5129-7f98-4fc5-9c16-bf708c778428",
+       "category": "admin_act",
+       "label": "2018/38 m.K2-B3-2.1.2.1",
+       "ref": "2018/38 m.K2-B3-2.1.2.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "41e106de-16f0-49f7-a60f-9a55523d815e",
+       "category": "admin_act",
+       "label": "2018/38 m.K2-B3-2.1.3",
+       "ref": "2018/38 m.K2-B3-2.1.3",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "3a7649d3-d164-4ffa-aee9-1f654e385c82",
+       "category": "admin_act",
+       "label": "2018/38 m.K2-B3-7",
+       "ref": "2018/38 m.K2-B3-7",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "17824131-5c87-4047-9538-3c6161239f85",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B1-2.1 · Ölüm Gelirinin Hesaplanması",
+       "ref": "2018/38 m.K2-B1-2.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "560b2dca-5426-42b5-a7e9-75c4b855f1cb",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B10-3.9 · İKMH sonucunda hak sahiplerine ölüm geliri bağlanan ve gelirin % 100’ünün",
+       "ref": "2018/38 m.K4-B10-3.9",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "b46ee314-5e8b-481c-b0d7-602ee29204b2",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B14-5.6 · Ölüm Dosyalarında Hak Sahipleri Arasında Muvafakat ve Yersiz Ödemeler",
+       "ref": "2018/38 m.K4-B14-5.6",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "f9956b92-e813-47ed-8249-365ced981164",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B4-3.3.1.1 · Ölen Sigortalılara İlişkin Koşullar",
+       "ref": "2018/38 m.K2-B4-3.3.1.1",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2022-12-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "3fd23ea6-38bb-44d6-a9b6-f184daaa734f",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B4-3.3.2.3 · Ölüm Geliri ve Aylığının Başlangıcı",
+       "ref": "2018/38 m.K2-B4-3.3.2.3",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2022-12-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "85b5269a-d969-433e-b6f8-0ca943572ccf",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B5-1.4.2 · Ölüm Aylığı Durdurulan, Kesilen veya İptal Edilenler",
+       "ref": "2018/38 m.K2-B5-1.4.2",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "72ed6877-b8e6-43d9-af38-8104c443a13d",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B3-1.2.2 · Ana ve babadan ayrı ayrı gelire hak kazananlara, yüksek olan gelirin tamamı, az",
+       "ref": "2018/38 m.K4-B3-1.2.2",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "185f27da-d125-4f06-a28c-2702074353aa",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B4-9.1.5 · Ana ve Babanın Aylıkları",
+       "ref": "2018/38 m.K2-B4-9.1.5",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "39745da2-08ef-42d9-a76e-48f31c34fa37",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K3-2.4 · 2926 Sayılı Kanuna Tabi Sigortalılar",
+       "ref": "2018/38 m.K3-2.4",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "a39e084b-3d8c-4072-91b1-be3229f3ee63",
+       "category": "statute",
+       "label": "SOSYAL SİGORTALAR VE GENEL SAĞLIK SİGORTASI KANUNU Geçici 10",
+       "ref": "5510 Geçici 10",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2025-01-15",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "0972f5f2-b212-485e-a402-deec777669d8",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B16-1.5.1 · 8/9/1999 (Dahil) Tarihinden Önce Sigortalı Olanlar",
+       "ref": "2018/38 m.K4-B16-1.5.1",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2023-03-13",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "eebff9f9-dcd6-4507-a334-d8da7ebae1d3",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B3-2.1.1.2.2.2 · 3/3/2023 (Dahil) Tarihinden Sonra Talepte Bulunanlar (Ek, 13/3/2023",
+       "ref": "2018/38 m.K2-B3-2.1.1.2.2.2",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2023-03-13",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "9bc14740-e868-42f9-8fbd-b187e2e5ef5b",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K1-4.1 · 506/Ek 5 ve Kanunun 40 ıncı Maddesine Tabi Hizmetlerin Değerlendirilmesi",
+       "ref": "2018/38 m.K1-4.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "2a80e2e7-c858-4d2f-8d49-ccb1acaa8545",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B4-2.1 · Sigortalıya İlişkin Koşullar",
+       "ref": "2018/38 m.K2-B4-2.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "06c121b4-2e8a-4e8a-8714-3c876a94a37e",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K1-4.3 · 5434 sayılı Kanunun mülga 32 nci ve Kanunun 40 ıncı Maddesi",
+       "ref": "2018/38 m.K1-4.3",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "aeffce33-2146-4ad3-b860-302c91d58191",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K1-2.1 · Prim Ödeme Gün Sayısı Koşulları ve Prim Ödeme Gün Sayılarını Oluşturan",
+       "ref": "2018/38 m.K1-2.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      }
+     ]
+    },
+    "applied_law_date": "2026-11-22",
+    "applied_law_text": "22.11.2026 tarihinde yürürlükte olan metin",
+    "disclaimer": "Hukuki görüş değildir.",
+    "source_gap": null
+   },
+   "metrics": {
+    "schema": 1.0,
+    "status": 1.0,
+    "headline": 1.0,
+    "must_cite": 1.0,
+    "citation_validity": 1.0,
+    "must_ask": 1.0,
+    "must_not": 1.0,
+    "formal_mode": 1.0,
+    "disclaimer": 1.0
+   },
+   "score": 1.0,
+   "must_ask": 1.0,
+   "must_cite": 1.0,
+   "missing_in_kb": [
+    "5510 m.Geçici 4",
+    "5434",
+    "AYM kararı (ana-baba gelir şartı, belirlenmedi)"
+   ],
+   "must_not": [],
+   "headline": 1.0,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 1,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": true,
+   "input_tokens": 153866,
+   "output_tokens": 10219,
+   "cost": 0.292636,
+   "seconds": 82.05792966700392,
+   "retrieved": {
+    "read": [
+     "5510 m.32",
+     "5510 m.34",
+     "5510 m.36",
+     "5510 m.38",
+     "5510 m.104",
+     "5510 m.Geçici 6",
+     "1475 m.14",
+     "2018/38 m.K4-B6-1.2",
+     "2018/38 m.K2-B4-2.2.3",
+     "2018/38 m.K2-B4-2.2.4",
+     "2018/38 m.K2-B3-2.1.2.1",
+     "2018/38 m.K2-B3-2.1.3",
+     "2018/38 m.K2-B3-7",
+     "2018/38 m.K2-B1-2.1",
+     "2018/38 m.K4-B10-3.9",
+     "2018/38 m.K4-B14-5.6",
+     "2018/38 m.K2-B4-3.3.1.1",
+     "2018/38 m.K2-B4-3.3.2.3",
+     "2018/38 m.K2-B5-1.4.2",
+     "2018/38 m.K4-B3-1.2.2",
+     "2018/38 m.K2-B4-9.1.5",
+     "2018/38 m.K3-2.4",
+     "5510 Geçici 10",
+     "2018/38 m.K4-B16-1.5.1",
+     "2018/38 m.K2-B3-2.1.1.2.2.2",
+     "2018/38 m.K1-4.1",
+     "2018/38 m.K2-B4-2.1",
+     "2018/38 m.K1-4.3",
+     "2018/38 m.K1-2.1"
+    ],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10794,
+     "output_tokens": 251,
+     "cost": 0.012049,
+     "seconds": 3.8782999999821186
+    },
+    {
+     "node": "clarify",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 6.487499922513962e-05
+    },
+    {
+     "node": "clarify",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 0.00012066698400303721
+    },
+    {
+     "node": "plan",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 7.000000914558768e-05
+    },
+    {
+     "node": "retrieve",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 3.245373958023265
+    },
+    {
+     "node": "holding_map",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 88452,
+     "output_tokens": 3357,
+     "cost": 0.105237,
+     "seconds": 31.52794374997029
+    },
+    {
+     "node": "draft",
+     "models": [
+      "anthropic:claude-sonnet-5-5"
+     ],
+     "input_tokens": 54620,
+     "output_tokens": 6611,
+     "cost": 0.17535,
+     "seconds": 43.40605641703587
+    }
+   ],
+   "rows_dropped_by": {
+    "quote_not_found": 1
+   },
+   "error": null
+  },
+  {
+   "case_id": "SB-008",
+   "trace_id": "30d75f5f1984463aa00c2eea5dbeca3a",
+   "expected_topic": "kidem_ihbar",
+   "topic": "kidem_ihbar",
+   "intake": {
+    "topic": "kidem_ihbar",
+    "title": "Askerlik nedeniyle işten ayrılış ve bildirim süresi",
+    "facts": [
+     {
+      "key": "fesih_nedeni",
+      "value": "Muvazzaf askerlik nedeniyle ayrılış",
+      "status": "known"
+     },
+     {
+      "key": "soru_konusu",
+      "value": "İşten ayrılış için gerekli bildirim süresi",
+      "status": "known"
+     }
+    ]
+   },
+   "asked": [
+    "fesih_tarihi",
+    "fesih_nedeni",
+    "hizmet_suresi",
+    "yardim_niteligi"
+   ],
+   "rounds": 1,
+   "answer": {
+    "status": "conditional",
+    "status_note": "Eksik bilgiler nedeniyle koşullu cevaptır. Olay tarihi bilinmediğinden bugünün tarihindeki metin esas alınmıştır. Cevabın dayandığı kaynakların tamamı onaysızdır (test); uzman incelemesinden geçmemiştir.",
+    "headline": "Okunan kaynaklarda muvazzaf askerliğe gidecek işçinin işten ne kadar süre önce ayrılması gerektiğine ilişkin belirli bir süre yer almamaktadır; yalnızca fesih nedeni ve çalışma süresine bağlı olarak 4857 m.17 bildirim süreleri ile 1475 m.14 kıdem tazminatı hükmü değerlendirilebilmektedir.",
+    "fact_chips": [
+     {
+      "fact_key": "fesih_tarihi",
+      "label": "Fesih tarihi",
+      "status": "unknown"
+     },
+     {
+      "fact_key": "fesih_nedeni",
+      "label": "Fesih nedeni",
+      "status": "unknown"
+     },
+     {
+      "fact_key": "hizmet_suresi",
+      "label": "Çalışma süresi",
+      "status": "unknown"
+     },
+     {
+      "fact_key": "yardim_niteligi",
+      "label": "Ücret dışı yardımlar",
+      "status": "unknown"
+     }
+    ],
+    "points": [
+     {
+      "text": "Muvazzaf askerlik hizmeti dolayısıyla iş sözleşmesinin feshedilmesi, 1475 m.14 kapsamında kıdem tazminatı doğuran haller arasında sayılmıştır; hükümde işçinin askere gitmeden ne kadar önce ayrılacağına dair bir süre belirtilmemiştir.",
+      "citations": [
+       {
+        "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+        "category": "statute",
+        "label": "1475 m.14",
+        "ref": "1475 m.14",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2018-07-09",
+        "valid_to": null,
+        "quote": "Muvazzaf askerlik hizmeti dolayısıyle",
+        "char_start": 252,
+        "char_end": 289,
+        "used_for": "Muvazzaf askerlik hizmeti dolayısıyla fesih hali"
+       },
+       {
+        "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+        "category": "statute",
+        "label": "1475 m.14",
+        "ref": "1475 m.14",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2018-07-09",
+        "valid_to": null,
+        "quote": "her geçen tam yıl için işverence işçiye 30 günlük ücreti tutarında kıdem tazminatı ödenir",
+        "char_start": 1072,
+        "char_end": 1161,
+        "used_for": "Bu halde kıdem tazminatı ödenmesi"
+       }
+      ],
+      "unreviewed": true
+     },
+     {
+      "text": "Belirsiz süreli iş sözleşmelerinin feshinden önce durumun diğer tarafa bildirilmesi gerekir; bildirim süreleri işçinin çalışma süresine göre iki, dört, altı veya sekiz hafta olup asgaridir ve sözleşmeler ile artırılabilir. Bu sürelerin muvazzaf askerliğe gidecek işçi bakımından nasıl uygulanacağı okunan kaynaklardan belirlenememektedir.",
+      "citations": [
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "Belirsiz süreli iş sözleşmelerinin feshinden önce durumun diğer tarafa bildirilmesi gerekir",
+        "char_start": 0,
+        "char_end": 91,
+        "used_for": "Bildirim şartı"
+       },
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "Bu süreler asgari olup sözleşmeler ile artırılabilir.",
+        "char_start": 590,
+        "char_end": 643,
+        "used_for": "Sürelerin asgari niteliği"
+       }
+      ],
+      "unreviewed": true
+     },
+     {
+      "text": "4857 m.31'deki işinden ayrıldığı günden başlayarak iki ay sonra feshedilmiş sayılma kuralı, muvazzaf askerlik ödevi dışında manevra veya herhangi bir sebeple silah altına alınan işçiye ilişkindir.",
+      "citations": [
+       {
+        "source_id": "3b84352f-e4f0-4dd3-998e-7e84f00df215",
+        "category": "statute",
+        "label": "4857 m.31",
+        "ref": "4857 m.31",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "Muvazzaf askerlik ödevi dışında manevra veya herhangi bir sebeple silah altına alınan",
+        "char_start": 0,
+        "char_end": 85,
+        "used_for": "4857 m.31'in kapsamı"
+       },
+       {
+        "source_id": "3b84352f-e4f0-4dd3-998e-7e84f00df215",
+        "category": "statute",
+        "label": "4857 m.31",
+        "ref": "4857 m.31",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "iş sözleşmesi işinden ayrıldığı günden başlayarak iki ay sonra işverence feshedilmiş sayılır",
+        "char_start": 169,
+        "char_end": 261,
+        "used_for": "İki ay sonra feshedilmiş sayılma kuralı"
+       }
+      ],
+      "unreviewed": true
+     }
+    ],
+    "short_point_count": 3,
+    "missing_info": [
+     {
+      "fact_key": "fesih_tarihi",
+      "condition": "Fesih veya ayrılış bildiriminin yapıldığı tarih ile askerlik sevk tarihi arasındaki ilişki bilinmemektedir; bildirimli fesih yapılacak ise",
+      "result": "İş sözleşmesi, bildirimin diğer tarafa yapılmasından başlayarak çalışma süresine göre belirlenen hafta sonra feshedilmiş sayılmaktadır; bu nedenle bildirimin ilgili süre kadar önce yapılması gerekmektedir.",
+      "citations": [
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "bildirimin diğer tarafa yapılmasından başlayarak dört hafta sonra,",
+        "char_start": 281,
+        "char_end": 347,
+        "used_for": "Bildirim tarihinden itibaren sürenin başlaması"
+       }
+      ]
+     },
+     {
+      "fact_key": "fesih_nedeni",
+      "condition": "Fesih muvazzaf askerlik hizmeti dolayısıyla yapılmakta ise 1475 m.14 kıdem tazminatı hükmü; muvazzaf askerlik dışında manevra veya herhangi bir sebeple silah altına alınma söz konusu ise 4857 m.31 hükmü değerlendirilir",
+      "result": "Fesih nedeni belirlenmeden hangi hükmün uygulanacağı ve buna bağlı sonuç kesinleştirilememektedir.",
+      "citations": [
+       {
+        "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+        "category": "statute",
+        "label": "1475 m.14",
+        "ref": "1475 m.14",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2018-07-09",
+        "valid_to": null,
+        "quote": "Muvazzaf askerlik hizmeti dolayısıyle",
+        "char_start": 252,
+        "char_end": 289,
+        "used_for": "Muvazzaf askerlik halinde 1475 m.14"
+       },
+       {
+        "source_id": "3b84352f-e4f0-4dd3-998e-7e84f00df215",
+        "category": "statute",
+        "label": "4857 m.31",
+        "ref": "4857 m.31",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "Muvazzaf askerlik ödevi dışında manevra veya herhangi bir sebeple silah altına alınan",
+        "char_start": 0,
+        "char_end": 85,
+        "used_for": "Muvazzaf dışı silah altına alınma halinde 4857 m.31"
+       }
+      ]
+     },
+     {
+      "fact_key": "hizmet_suresi",
+      "condition": "İşçinin çalışma süresi altı aydan az ise iki hafta; altı aydan birbuçuk yıla kadar ise dört hafta; birbuçuk yıldan üç yıla kadar ise altı hafta; üç yıldan fazla ise sekiz hafta",
+      "result": "Bildirim süresi çalışma süresine göre değişmektedir; çalışma süresi bilinmediğinden süre belirlenememektedir.",
+      "citations": [
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "İşi altı aydan az sürmüş olan işçi için, bildirimin diğer tarafa yapılmasından başlayarak iki hafta sonra,",
+        "char_start": 113,
+        "char_end": 219,
+        "used_for": "Altı aydan az çalışma"
+       },
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "İşi altı aydan birbuçuk yıla kadar sürmüş olan işçi için, bildirimin diğer tarafa yapılmasından başlayarak dört hafta sonra,",
+        "char_start": 223,
+        "char_end": 347,
+        "used_for": "Altı ay ile birbuçuk yıl arası"
+       },
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "İşi birbuçuk yıldan üç yıla kadar sürmüş olan işçi için, bildirimin diğer tarafa yapılmasından başlayarak altı hafta sonra,",
+        "char_start": 351,
+        "char_end": 474,
+        "used_for": "Birbuçuk yıl ile üç yıl arası"
+       },
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "İşi üç yıldan fazla sürmüş işçi için, bildirim yapılmasından başlayarak sekiz hafta sonra,",
+        "char_start": 478,
+        "char_end": 568,
+        "used_for": "Üç yıldan fazla çalışma"
+       }
+      ]
+     },
+     {
+      "fact_key": "yardim_niteligi",
+      "condition": "İşçiye ücret dışında para veya para ile ölçülmesi mümkün sözleşme ve kanundan doğan menfaatler sağlanmış ise",
+      "result": "Bu menfaatler kıdem tazminatı ile bildirim süresine ilişkin tazminatın hesabında ücrete ilave olarak göz önünde tutulmaktadır; ancak bu husus işten ayrılma süresini değiştirmemektedir.",
+      "citations": [
+       {
+        "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+        "category": "statute",
+        "label": "1475 m.14",
+        "ref": "1475 m.14",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2018-07-09",
+        "valid_to": null,
+        "quote": "26 ncı maddenin birinci fıkrasında yazılı ücrete ilaveten işçiye sağlanmış olan para ve para ile ölçülmesi mümkün akdi ve kanundan doğan menfaatler de gözönünde tutulur",
+        "char_start": 4397,
+        "char_end": 4565,
+        "used_for": "Kıdem tazminatı hesabında menfaatler"
+       },
+       {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "32 nci maddenin birinci fıkrasında yazılan ücrete ek olarak işçiye sağlanmış para veya para ile ölçülmesi mümkün sözleşme ve Kanundan doğan menfaatler de göz önünde tutulur",
+        "char_start": 1498,
+        "char_end": 1670,
+        "used_for": "Bildirim süresine ilişkin tazminat hesabında menfaatler"
+       }
+      ]
+     }
+    ],
+    "holding_map": {
+     "rows": [
+      {
+       "condition": "İşçinin muvazzaf askerlik hizmeti dolayısıyla iş sözleşmesinin sona ermesi",
+       "condition_quote": "Muvazzaf askerlik hizmeti dolayısıyle",
+       "citation": {
+        "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+        "category": "statute",
+        "label": "1475 m.14",
+        "ref": "1475 m.14",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2018-07-09",
+        "valid_to": null,
+        "quote": "Muvazzaf askerlik hizmeti dolayısıyle",
+        "char_start": 252,
+        "char_end": 289,
+        "used_for": null
+       },
+       "fact_value": "Askere gidecek işçi muvazzaf askerlik hizmetine tabi olmaktadır",
+       "result": "unknown"
+      },
+      {
+       "condition": "Muvazzaf askerlik ödevi dışında manevra veya herhangi bir sebeple silah altına alınan işçinin işinden ayrılması; bu koşulda iş sözleşmesi işinden ayrıldığı günden başlayarak iki ay sonra işverence feshedilmiş sayılır",
+       "condition_quote": "Muvazzaf askerlik ödevi dışında manevra veya herhangi bir sebeple silah altına alınan",
+       "citation": {
+        "source_id": "3b84352f-e4f0-4dd3-998e-7e84f00df215",
+        "category": "statute",
+        "label": "4857 m.31",
+        "ref": "4857 m.31",
+        "review_status": "analyzed",
+        "band": "high",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "Muvazzaf askerlik ödevi dışında manevra veya herhangi bir sebeple silah altına alınan",
+        "char_start": 0,
+        "char_end": 85,
+        "used_for": null
+       },
+       "fact_value": "Askere gidecek işçi sevk edilmektedir; ancak bu hüküm muvazzaf askerlik ödevi dışında kalan silah altına alınmaları kapsamına girmektedir",
+       "result": "not_applicable"
+      },
+      {
+       "condition": "İş sözleşmesinin feshinden önce durumun diğer tarafa bildirilmesi; belirsiz süreli iş sözleşmesi işçi için çalışma süresi altı aydan birbuçuk yıla kadar ise dört haftalık bildirim süresi öngörülmektedir",
+       "condition_quote": "Belirsiz süreli iş sözleşmelerinin feshinden önce durumun diğer tarafa bildirilmesi gerekir",
+       "citation": {
+        "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+        "category": "statute",
+        "label": "4857 m.17",
+        "ref": "4857 m.17",
+        "review_status": "analyzed",
+        "band": "medium",
+        "verification": "not_applicable",
+        "valid_from": "2003-06-10",
+        "valid_to": null,
+        "quote": "Belirsiz süreli iş sözleşmelerinin feshinden önce durumun diğer tarafa bildirilmesi gerekir",
+        "char_start": 0,
+        "char_end": 91,
+        "used_for": null
+       },
+       "fact_value": "Askere gidecek işçinin işten ayrılması için bildirim ve bildirim sürelerine uyulması gerekip gerekmediği belirsizdir",
+       "result": "unknown"
+      }
+     ],
+     "reasoning_summary": "Hüküm haritasında 1475 m.14 ve 4857 m.17 satırlarının sonucu belirsizdir; 4857 m.31 muvazzaf askerlik dışındaki silah altına alınmaları kapsamaktadır. Muvazzaf askerliğe gidecek işçinin ne kadar önce ayrılması gerektiğine dair belirli bir süre kaynaklarda bulunmamakta, bildirim süresi ise fesih tarihi, fesih nedeni ve çalışma süresine göre değişmektedir; bu olgular bilinmediğinden sonuç koşulludur.",
+     "citations": []
+    },
+    "calculations": [
+     {
+      "title": "Kıdem tazminatı",
+      "needs": [
+       "Çalışma süresi (işe giriş ve çıkış tarihi)",
+       "Son brüt ücret",
+       "Ücret dışı düzenli ödemeler (giydirilmiş ücret)"
+      ]
+     },
+     {
+      "title": "İhbar tazminatı",
+      "needs": [
+       "Kıdeme göre bildirim süresi",
+       "Giydirilmiş brüt ücret"
+      ]
+     }
+    ],
+    "read_sources": {
+     "statute_articles": 12,
+     "decisions": 0,
+     "admin_acts": 12,
+     "items": [
+      {
+       "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+       "category": "statute",
+       "label": "1475 m.14",
+       "ref": "1475 m.14",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-07-09",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+       "category": "statute",
+       "label": "4857 m.17",
+       "ref": "4857 m.17",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "44f29325-0592-4692-8c82-06bd4674da3d",
+       "category": "statute",
+       "label": "4857 m.24",
+       "ref": "4857 m.24",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "3b84352f-e4f0-4dd3-998e-7e84f00df215",
+       "category": "statute",
+       "label": "4857 m.31",
+       "ref": "4857 m.31",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "ed1e02d1-3b64-41b0-a8d0-148c97ca7646",
+       "category": "statute",
+       "label": "4857 m.32",
+       "ref": "4857 m.32",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2008-05-08",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "3329f6c3-2043-49ed-a106-803b55145b14",
+       "category": "statute",
+       "label": "4857 m.50",
+       "ref": "4857 m.50",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "5476ae93-4f65-4cb8-96ed-8395a9c60e49",
+       "category": "statute",
+       "label": "4857 m.57",
+       "ref": "4857 m.57",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "423a98f5-fb39-47f9-9c91-6e36abfbecc9",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B3-6.7.2 · Borçlanılacak süresi olmayanlar ile borçlanılacak süreleriyle aylığa hak",
+       "ref": "2018/38 m.K2-B3-6.7.2",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2021-09-14",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "fd4d3045-1b32-4746-bdfc-6bd12012d4f3",
+       "category": "statute",
+       "label": "İŞ KANUNU m.27 · Yeni iş arama izni",
+       "ref": "4857 m.27",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "5f09799f-4966-4b2d-986e-621d278a4b50",
+       "category": "statute",
+       "label": "İŞ KANUNU m.29 · Toplu işçi çıkarma",
+       "ref": "4857 m.29",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "f8688316-06fa-4c49-a7c6-1e76a6404899",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B3-2.1.1.2.2.1 · 3/3/2023 (Hariç) Tarihinden Önce Talepte Bulunanlar (Ek, 13/3/2023",
+       "ref": "2018/38 m.K2-B3-2.1.1.2.2.1",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2023-03-13",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "0972f5f2-b212-485e-a402-deec777669d8",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B16-1.5.1 · 8/9/1999 (Dahil) Tarihinden Önce Sigortalı Olanlar",
+       "ref": "2018/38 m.K4-B16-1.5.1",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2023-03-13",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "3a7649d3-d164-4ffa-aee9-1f654e385c82",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B3-7 · 4/1-(a) Sigortalıları İçin Kıdem Tazminatı",
+       "ref": "2018/38 m.K2-B3-7",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "f8947c6f-8097-4104-a1c2-432150715c62",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi m.2.6.1.2 · Eksik günlere ilişkin bilgi ve belgelerin kuruma verilmemesi veya söz",
+       "ref": "2020/8 m.2.6.1.2",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2020-04-01",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "baf7058c-e5b6-4d9a-870e-ee972c12d4fa",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi m.3.3 · Yasal Süresi Dışında Bildirimi Yapılan Prime Esas Kazanç Tutarlarında",
+       "ref": "2020/8 m.3.3",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2020-04-01",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "aff2e413-50ac-4a2f-9d65-509a1a0cafd4",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B14-2.1.1 · Kapsam",
+       "ref": "2018/38 m.K4-B14-2.1.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "696904b2-51ca-40f9-a94c-490931c00e55",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi m.2.17 · Çalışılmadığına Dair Bildirim Girişinin Yasal Süresi İçerinde Yapılmaması",
+       "ref": "2020/8 m.2.17",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2020-04-01",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "8b7974d7-88d3-4abb-b6cf-3ee6c077765e",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi m.2.13 · Ticaret Sicil Memurluklarının, Şirket Kuruluşu Aşamasında Sigortalı",
+       "ref": "2020/8 m.2.13",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2020-04-01",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "9bc14740-e868-42f9-8fbd-b187e2e5ef5b",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K1-4.1 · 506/Ek 5 ve Kanunun 40 ıncı Maddesine Tabi Hizmetlerin Değerlendirilmesi",
+       "ref": "2018/38 m.K1-4.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "4910fc02-e698-44da-b4d2-e112b3e0dd66",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K1-3.1 · Sigortalı Emeklilik İşlemlerinde Yaş Kavramı ve Uygulaması",
+       "ref": "2018/38 m.K1-3.1",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "1541d394-060a-4971-8655-a8cba1a216d3",
+       "category": "admin_act",
+       "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K2-B3-2.1.1.1.3 · 506 Sayılı Kanunun Geçici 81/C Bendine Göre Aylığa Hak Kazanma",
+       "ref": "2018/38 m.K2-B3-2.1.1.1.3",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-11-06",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "f418592c-8851-4f6f-87df-4d573a15f872",
+       "category": "statute",
+       "label": "İŞ KANUNU m.102 · Ücret ile ilgili hükümlere aykırılık",
+       "ref": "4857 m.102",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2008-05-08",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "b8492a23-4273-4bc8-b2e2-ca1f201a39ea",
+       "category": "statute",
+       "label": "İŞ KANUNU Geçici 11",
+       "ref": "4857 Geçici 11",
+       "review_status": "analyzed",
+       "band": "high",
+       "verification": "not_applicable",
+       "valid_from": "2020-07-28",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      },
+      {
+       "source_id": "2cf45b8d-2242-4511-b4c8-30a751e6ba2d",
+       "category": "statute",
+       "label": "İŞ KANUNU Geçici 6",
+       "ref": "4857 Geçici 6",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2016-05-13",
+       "valid_to": null,
+       "quote": null,
+       "char_start": null,
+       "char_end": null,
+       "used_for": null
+      }
+     ]
+    },
+    "applied_law_date": "2026-11-22",
+    "applied_law_text": "22.11.2026 tarihinde yürürlükte olan metin",
+    "disclaimer": "Hukuki görüş değildir.",
+    "source_gap": null
+   },
+   "metrics": {
+    "schema": 1.0,
+    "status": 1.0,
+    "headline": 0.0,
+    "must_cite": 1.0,
+    "citation_validity": 1.0,
+    "must_ask": 0.0,
+    "must_not": 1.0,
+    "formal_mode": 1.0,
+    "disclaimer": 1.0
+   },
+   "score": 0.7777777777777778,
+   "must_ask": 0.0,
+   "must_cite": 1.0,
+   "missing_in_kb": [],
+   "must_not": [],
+   "headline": 0.0,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": true,
+   "input_tokens": 119775,
+   "output_tokens": 7138,
+   "cost": 0.21955999999999998,
+   "seconds": 58.78026775101898,
+   "retrieved": {
+    "read": [
+     "1475 m.14",
+     "4857 m.17",
+     "4857 m.24",
+     "4857 m.31",
+     "4857 m.32",
+     "4857 m.50",
+     "4857 m.57",
+     "2018/38 m.K2-B3-6.7.2",
+     "4857 m.27",
+     "4857 m.29",
+     "2018/38 m.K2-B3-2.1.1.2.2.1",
+     "2018/38 m.K4-B16-1.5.1",
+     "2018/38 m.K2-B3-7",
+     "2020/8 m.2.6.1.2",
+     "2020/8 m.3.3",
+     "2018/38 m.K4-B14-2.1.1",
+     "2020/8 m.2.17",
+     "2020/8 m.2.13",
+     "2018/38 m.K1-4.1",
+     "2018/38 m.K1-3.1",
+     "2018/38 m.K2-B3-2.1.1.1.3",
+     "4857 m.102",
+     "4857 Geçici 11",
+     "4857 Geçici 6"
+    ],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 21849,
+     "output_tokens": 387,
+     "cost": 0.023784,
+     "seconds": 4.615261916944291
+    },
+    {
+     "node": "clarify",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 0.00012224999954923987
+    },
+    {
+     "node": "clarify",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 0.000364875013474375
+    },
+    {
+     "node": "plan",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 7.537502096965909e-05
+    },
+    {
+     "node": "retrieve",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 3.08416979201138
+    },
+    {
+     "node": "holding_map",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 60206,
+     "output_tokens": 1476,
+     "cost": 0.067586,
+     "seconds": 15.450305000005756
+    },
+    {
+     "node": "draft",
+     "models": [
+      "anthropic:claude-sonnet-5-5"
+     ],
+     "input_tokens": 37720,
+     "output_tokens": 5275,
+     "cost": 0.12819,
+     "seconds": 35.62996854202356
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": null
+  }
+ ]
+}

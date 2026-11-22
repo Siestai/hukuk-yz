@@ -1,0 +1,51 @@
+id: SB-042
+# Daraltma: özgün soru ayrıca tablo ve yazı istemektedir; tablo ve yazı üretimi kapsam dışıdır.
+# Eval yalnız iki giriş tarihi arasında şart farkı olup olmadığını ve dayanağını ölçer.
+question: "08 koduyla (emeklilik için yaş dışındaki şartları tamamlayarak) işten ayrılıp kıdem tazminatı almak isteyen işçide, 2008 Ocak'ta işe giren ile 2008 Aralık'ta işe giren arasında şart bakımından fark var mı?"
+# Soru işçiden söz etmektedir (4/1-a). "İşe giriş" ilk sigortalılık tarihi olmayabilir: 5510 m.38/1'e
+# göre belirleyici olan ilk defa kapsama giriş tarihidir; bu nedenle ilk sigortalılık tarihi sorulur.
+facts:
+  sigortalilik_hali: 4a
+  talep_turu: kidem_yazisi
+expected:
+  topic: olum_yaslilik_aylik
+  status: conditional
+  headline_contains:
+    - fark
+    - sigortalılık
+  must_cite:
+    # Görev 19 B6 tur 1 (F1): 1475 m.14/1 -> 1475 m.14, 5510 m.38/1 -> 5510 m.38. KB'deki iki
+    # metinde "(1)" biçiminde fıkra numarası yoktur; ajan fıkrayı künyede taşıyamaz (SB-001 notu).
+    - 1475 m.14
+    - 2018/38 m.K2-B3-7
+    - 2018/38 m.K2-B3-2.1.2.1
+    - 2018/38 m.K2-B3-2.1.3
+    - 5510 m.Geçici 6
+    - 5510 m.38
+  must_ask:
+    - ilk_sigortalilik_tarihi
+  must_not:
+    - fark yoktur
+    - fark bulunmamaktadır
+    - aynı şartlara tabidir
+  traps:
+    - Belirleyici tarih bu işyerine giriş değil, ilk sigortalılık başlangıcıdır (5510 m.38/1); daha önce başka bir sigortalılığı olan işçide rejim o tarihe göre belirlenir.
+    - Yaşlılık şartları bakımından ayrım tarihi 30/4/2008'dir (2018/38 K2-B3-2.1, K2-B3-2.1.3); 5510'un 2008/Ekim yürürlük tarihi ayrım tarihi olarak yazılmaz. Ocak 2008 ile Aralık 2008 ilk sigortalılığı bu tarihin farklı taraflarına düşer.
+    - 8/9/1999 ile 30/4/2008 arasında ilk defa sigortalı olan 4/1-(a) sigortalısında yaş dışındaki şartlar 7000 gün ya da 25 yıl sigortalılık ve 4500 gündür (2018/38 K2-B3-2.1.2.1); kıdem yazısı 506 m.60/A'daki yaş dışı şartlara göre verilir (2018/38 K2-B3-7).
+    - 30/4/2008 sonrasında ilk defa sigortalı olan 4/1-(a) sigortalısında aylık şartları 5510 m.28/2 (7200 gün) ve m.28/3 (5400 gün, 1/5/2008-31/12/2008 başlangıçlılar için Geçici m.6/7-b ile 4600 gün) ile belirlenir (2018/38 K2-B3-2.1.3); bu gruba 25 yıl sigortalılık süresi şartı yazılmaz.
+    - 30/4/2008 sonrası girişli için kıdem yazısının 5510 m.28'e göre verileceği 2018/38 K2-B3-7'de açıkça yazılı değildir; dayanak 5510 m.104/1 atfıdır. Bu bağlantı kesin hüküm gibi sunulmaz, dayanağı gösterilir.
+    - 506 sayılı Kanunun geçici 81 inci maddesi 8/9/1999 öncesi sigortalılara ilişkindir; iki 2008 girişli için uygulanmaz.
+    - İşten ayrılış kodunun anlamı KB'deki kaynaklarda yer almaz; "08" kodundan şart çıkarılmaz, şart 1475 m.14/1-5 ve 2018/38 K2-B3-7'den kurulur.
+    - Kıdem tazminatına esas yazı için başvuru tarihinde işten ayrılmış olma şartı aranmaz (2018/38 K2-B3-7).
+    - Gün sayıları kaynaktaki haliyle verilir; hesap ya da tarih tahmini yapılmaz (md.29).
+  missing_in_kb:
+    # 5510 m.28 çıkarımı var ancak güven bandı low (K1 gereği okunamaz); içeriği 2018/38 K2-B3-2.1.3'ten okunur.
+    - 5510 m.28
+    # 30/4/2008 ayrım tarihinin kanuni dayanağı (2018/38 K2-B3-2.1.3 atıf yapmaktadır); bant low.
+    - 5510 m.Geçici 7
+    # 8/9/1999-30/4/2008 arası sigortalılar için 506 m.60 hükmünün korunması (2018/38 K2-B3-2.1.2.1); bant low.
+    - 5510 m.Geçici 9
+    # 506 sayılı Kanun KB'de yüklü değildir.
+    - 506 m.60
+    - 506 m.Geçici 81
+tags: [sgk, yaslilik-sigortasi, kidem, gecis-hukumleri]

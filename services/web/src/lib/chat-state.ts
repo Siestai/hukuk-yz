@@ -1,4 +1,12 @@
-import type { Answer, CaseFacts, ChatEvent, Clarification, Turn } from "./chat-types";
+import type {
+    Answer,
+    CaseFacts,
+    ChatEvent,
+    Clarification,
+    ErrorEvent,
+    SourceGap,
+    Turn,
+} from "./chat-types";
 
 /** The assistant turn while its stream is open. */
 export type LiveTurn = {
@@ -6,8 +14,13 @@ export type LiveTurn = {
     facts: CaseFacts | null;
     clarification: Clarification | null;
     answer: Answer | null;
-    error: { code: string; params: Record<string, string | number>; retryable: boolean } | null;
-    /** Set by the `done` event; null while the stream is open or when it ended in an error. */
+    error: {
+        code: ErrorEvent["code"];
+        params: Record<string, string | number>;
+        retryable: boolean;
+        source_gap: SourceGap | null;
+    } | null;
+    /** Set by the `done` event; null while the stream is open or when no turn was saved. */
     turnId: string | null;
     traceId: string | null;
     finished: boolean;
@@ -41,6 +54,7 @@ export function applyEvent(live: LiveTurn, event: ChatEvent): LiveTurn {
                     code: event.code,
                     params: event.params ?? {},
                     retryable: event.retryable ?? false,
+                    source_gap: event.source_gap ?? null,
                 },
                 label: null,
             };
@@ -55,10 +69,14 @@ export function applyEvent(live: LiveTurn, event: ChatEvent): LiveTurn {
     }
 }
 
-/** The stored form of a finished stream; null when it ended in an error or carries nothing. */
+/**
+ * The stored form of a finished stream; null when no turn was saved or it carries nothing. An
+ * error the server saved as a turn is kept, so that it can get feedback.
+ */
 export function toTurn(live: LiveTurn, createdAt: string): Turn | null {
-    if (!live.finished || live.error || !live.turnId) return null;
-    if (!live.facts && !live.clarification && !live.answer) return null;
+    if (!live.finished || !live.turnId) return null;
+    if (!live.facts && !live.clarification && !live.answer && !live.error) return null;
+    const error = live.error ? { type: "error" as const, ...live.error } : null;
     return {
         id: live.turnId,
         role: "assistant",
@@ -67,6 +85,7 @@ export function toTurn(live: LiveTurn, createdAt: string): Turn | null {
         facts: live.facts,
         clarification: live.clarification,
         answer: live.answer,
+        error,
         trace_id: live.traceId,
     };
 }

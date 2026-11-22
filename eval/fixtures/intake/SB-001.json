@@ -1,0 +1,20 @@
+{
+ "topic": "ise_iade",
+ "title": "İşe iade davası açabilme koşulu: 5 ay kıdem",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "kidem",
+   "value": "5 ay",
+   "status": "known"
+  },
+  {
+   "key": "isci_sayisi",
+   "status": "unknown"
+  },
+  {
+   "key": "sozlesme_turu",
+   "status": "unknown"
+  }
+ ]
+}

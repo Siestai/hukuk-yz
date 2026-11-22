@@ -40,6 +40,9 @@ InputKind = Literal["choice", "date", "number", "text"]
 AnswerStatus = Literal["definite", "conditional"]
 HoldingResult = Literal["met", "not_met", "not_applicable", "unknown"]
 FeedbackKind = Literal["wrong_source", "wrong_conclusion", "missing", "unclear", "other"]
+# Why a source the topic must read was not read: `unmapped` (the künye names no record),
+# `not_found`, `gap` (no text on file for the date), `not_in_force`, `truncated` (not shown whole).
+MissingReason = Literal["unmapped", "not_found", "gap", "not_in_force", "truncated"]
 
 
 class ChatModel(BaseModel):
@@ -207,7 +210,8 @@ class HoldingRow(ChatModel):
 
 
 class HoldingMap(ChatModel):
-    rows: Annotated[list[HoldingRow], Field(min_length=1)]
+    # Empty only on the "kaynak yetersiz" answer (`Answer.source_gap`): no row was verified.
+    rows: list[HoldingRow]
     reasoning_summary: str
     citations: list[CitationRef] = []
 
@@ -243,6 +247,29 @@ class ReadSources(ChatModel):
         return self
 
 
+class MissingSource(ChatModel):
+    ref: str  # the künye of the topic's must-read list, as written there
+    reason: MissingReason
+
+
+class SourceGap(ChatModel):
+    """ "Kaynak yetersiz" (md. 25): why no source-backed answer could be given. Written by the
+    harness from its trace, never by the model: the topic, the must-read sources that could not
+    be read, what the user told, and what would make the question answerable."""
+
+    topic: str
+    missing_sources: list[MissingSource]
+    # What the user said: known facts and those said not to apply, never the unknown ones.
+    given_facts: list[Fact]
+    next_step: str
+
+    @model_validator(mode="after")
+    def _only_given(self) -> Self:
+        if any(f.status == "unknown" for f in self.given_facts):
+            raise ValueError("given_facts holds what the user said, not unknown facts")
+        return self
+
+
 class Answer(ChatModel):
     status: AnswerStatus
     # "Verdiğiniz bilgilere göre."
@@ -259,11 +286,15 @@ class Answer(ChatModel):
     applied_law_date: date
     applied_law_text: str  # "03.10.2026 tarihinde yürürlükte olan metin"
     disclaimer: Literal["Hukuki görüş değildir."] = "Hukuki görüş değildir."
+    # Set on the fallback answer that could not pass the gate.
+    source_gap: SourceGap | None = None
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         if self.short_point_count > len(self.points):
             raise ValueError("short_point_count must not exceed the number of points")
+        if not self.holding_map.rows and self.source_gap is None:
+            raise ValueError("an answer rests on a holding map row, unless it says the source gap")
         if self.status == "conditional" and not self.missing_info:
             raise ValueError("a conditional answer says what it depends on (missing_info)")
         if self.status == "definite":
@@ -317,6 +348,8 @@ class ErrorEvent(ChatModel):
     params: dict[str, str | int] = {}
     # True: the delivery is still pending on the server, so the same request can be sent again.
     retryable: bool = False
+    # With `answer_not_verified`: what was missing.
+    source_gap: SourceGap | None = None
 
 
 class RunUsage(ChatModel):
@@ -388,26 +421,30 @@ class Turn(ChatModel):
     text: str | None = None
     clarification_answers: list[ClarificationAnswer] | None = None
     skipped: bool = False
-    # Assistant turns carry facts and either a clarification or an answer.
+    # Assistant turns carry facts and either a clarification, an answer or the error the turn
+    # ended in (stored so that it can get feedback).
     facts: CaseFacts | None = None
     clarification: Clarification | None = None
     answer: Answer | None = None
+    error: ErrorEvent | None = None
     trace_id: str | None = None
 
     @model_validator(mode="after")
     def _role_fields(self) -> Self:
         sent = [self.text is not None, self.clarification_answers is not None, self.skipped]
-        replied = [self.facts, self.clarification, self.answer]
+        replied = [self.facts, self.clarification, self.answer, self.error]
         if self.role == "user":
             if sum(sent) != 1 or any(r is not None for r in replied):
                 raise ValueError("a user turn is a text, answers or a skip")
         else:
             if any(sent):
                 raise ValueError("an assistant turn has no user input")
-            if self.clarification is not None and self.answer is not None:
-                raise ValueError("a turn asks or answers, not both")
+            if sum(r is not None for r in (self.clarification, self.answer, self.error)) > 1:
+                raise ValueError("a turn asks, answers or fails, only one of them")
             if all(r is None for r in replied):
-                raise ValueError("an assistant turn has facts, a clarification or an answer")
+                raise ValueError(
+                    "an assistant turn has facts, a clarification, an answer or an error"
+                )
         return self
 
 
@@ -423,7 +460,8 @@ class Conversation(ChatModel):
 class ConversationDetail(Conversation):
     turns: list[Turn]
     pending_request: MessageRequest | None = None
-    # Completed delivery failure; not an assistant turn or a request awaiting resume.
+    # Completed delivery failure that is not an assistant turn (those stored before failed turns
+    # were kept, task 19) and not a request awaiting resume.
     terminal_error: ErrorEvent | None = None
 
 

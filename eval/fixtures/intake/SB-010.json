@@ -1,0 +1,12 @@
+{
+ "topic": "ucret_turu",
+ "title": "Ücretin şekli ve tazminatlar",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "ucret_sekli",
+   "value": "Günlük veya maktu (aylık) ücret belirlenmesi",
+   "status": "known"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "topic": "tis_sendikal",
+ "title": "Toplu iş sözleşmesinden kaynaklanan ödenmeyen ikramiye ve yakacak yardımı",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "tis_maddesi",
+   "value": "İkramiye ve yakacak yardımı",
+   "status": "known"
+  },
+  {
+   "key": "sendika_uyeligi",
+   "status": "unknown"
+  },
+  {
+   "key": "tis_yururluk",
+   "status": "unknown"
+  },
+  {
+   "key": "odenmeyen_donem",
+   "status": "unknown"
+  },
+  {
+   "key": "tis_yararlanma_hukmu",
+   "status": "unknown"
+  },
+  {
+   "key": "hak_edis_tarihi",
+   "status": "unknown"
+  }
+ ]
+}

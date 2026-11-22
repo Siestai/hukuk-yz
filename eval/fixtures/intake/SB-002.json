@@ -1,0 +1,21 @@
+{
+ "topic": "olum_yaslilik_aylik",
+ "title": "4/c sigortalının ölümü sonrası ölüm toptan ödemesi ve gelir tespiti",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "sigortalilik_hali",
+   "value": "Kamu idaresinde çalışan (4/1-c)",
+   "status": "known"
+  },
+  {
+   "key": "talep_turu",
+   "value": "Ölüm toptan ödemesi",
+   "status": "known"
+  },
+  {
+   "key": "hak_sahibi",
+   "status": "unknown"
+  }
+ ]
+}

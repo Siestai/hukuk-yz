@@ -1,0 +1,65 @@
+# Konu kartı SB-010 (ücretin günlük veya aylık belirlenmesinin tazminatlara, tatil ücretlerine ve
+# SGK bildirimine etkisi); eval/cases/SB-010.yaml.
+# Görev 19 B2 taslağı. Soru hem 1475 / 4857 ücret hükümlerine hem SGK bildirimine uzandığından
+# kidem_ihbar ve sgk_bildirim_prim şablonlarına ayrı ayrı sığmamaktadır; ayrı şablon olarak
+# yazılmıştır. Ücret şekli kritik değildir: soru çoğunlukla iki şekli karşılaştırmaktadır ve
+# karşılaştırma ücret şekli bilinmeden de yapılabilmektedir.
+# "Neden soruyorum" metni yalnız KB'de okunabilen maddelere dayanır (4857 m.46, 47, 49 high;
+# 1475 m.14, 4857 m.17 medium). 5510 m.80'in güncel sürümü low bantta, SSİY KB'de yoktur;
+# SGK tarafı vaka dosyasında missing_in_kb altında listelenmiştir.
+# Görev 19 B6 tur 1 (C2): description ücret şeklinin etkisiyle sınırlandı; "tazminata esas
+# ücret" geniş yazıldığından tur 1'de SB-032 (giydirilmiş ücret) bu şablona düşüyordu.
+id: ucret_turu
+title: Ücretin şekli (günlük, aylık, saatlik) ve sonuçları
+description: >-
+  Ücret şeklinin (günlük, aylık veya maktu) tazminata ve SGK bildirimine etkisi: hafta tatili,
+  ulusal bayram ve genel tatil ücreti (4857 m.46, 47, 49), kıdem ve ihbar tazminatı (1475 m.14,
+  4857 m.17), prim ödeme gün sayısı ve prime esas kazanç. Tazminata hangi yardımların katıldığı
+  (giydirilmiş ücret) bu konunun dışındadır; işverene hangi ücret şeklinin avantajlı olduğu
+  yönünde tavsiye de bu konunun dışındadır.
+facts:
+  - key: ucret_sekli
+    label: Ücretin şekli
+    question:
+      text: İşçinin ücreti hangi şekilde belirlenmiştir?
+      why: >-
+        Tatil günü ücreti ücret şekline göre farklı hesaplanmaktadır: saat ücretiyle çalışanın
+        tatil günü ücreti saat ücretinin yedi buçuk katıdır (4857 m.49/3); parça başı, akort,
+        götürü veya yüzde usulünde ödeme döneminde kazanılan ücretin çalışılan günlere
+        bölünmesiyle bulunmaktadır (4857 m.49/2); hasta, izinli veya mazeretli olduğu hâllerde
+        dahi aylığı tam ödenen aylık ücretli işçilere 46, 47 ve 48 inci maddenin birinci fıkrası
+        uygulanmamakta, ulusal bayram ve genel tatilde çalışanlarına ayrıca çalıştığı her gün için
+        bir günlük ücret ödenmektedir (4857 m.49/4).
+      kind: choice
+      options:
+        - {value: aylik, label: Aylık (maktu) ücret}
+        - {value: gunluk, label: Günlük ücret (yevmiye)}
+        - {value: saatlik, label: Saat ücreti}
+        - {value: parca_basi, label: "Parça başı, akort, götürü veya yüzde usulü"}
+      basis:
+        - {ref: "4857 m.49/2", category: statute}
+        - {ref: "4857 m.49/3", category: statute}
+        - {ref: "4857 m.49/4", category: statute}
+must_read:
+  - {ref: "4857 m.46", category: statute}
+  - {ref: "4857 m.47", category: statute}
+  - {ref: "4857 m.49", category: statute}
+  - {ref: "1475 m.14", category: statute}
+  - {ref: "4857 m.17", category: statute}
+queries:
+  - aylığı tam olarak ödenen aylık ücretli işçilere 46 47 ve 48 inci maddenin birinci fıkrası hükümleri uygulanmaz
+  - çalışılmayan hafta tatili günü için bir iş karşılığı olmaksızın o günün ücreti tam olarak ödenir
+  - kıdem tazminatının hesaplanması son ücret üzerinden yapılır
+  - bildirim süresine ilişkin ücret tutarında tazminat
+traps:
+  - Kıdem tazminatı her geçen tam yıl için 30 günlük ücret tutarındadır ve son ücret üzerinden hesaplanır (1475 m.14); ücretin günlük ya da aylık belirlenmesi hak doğumunu değiştirmez, yalnız esas ücretin nasıl bulunacağını etkiler.
+  - Hasta, izinli veya mazeretli olduğu hâllerde dahi aylığı tam ödenen aylık ücretliye 4857 m.46, m.47 ve m.48'in birinci fıkrası hükümleri uygulanmaz; ulusal bayram ve genel tatilde çalışırsa ayrıca her gün için bir günlük ücret ödenir (4857 m.49/4). Günlük ücretlide çalışılmayan hafta tatili günü (4857 m.46/2) ile ulusal bayram ve genel tatil günü (4857 m.47) için o günün ücreti ödenir.
+  - Saat ücretinin aylık ücretten hangi bölenle bulunacağı kanunda yazılı değildir, Yargıtay içtihadıdır; teyitli karar KB'de yokken bölen kesin dille ve künyeyle verilmez.
+  - SGK'ya tam çalışan sigortalının prim ödeme gün sayısı ayın kaç gün çektiğine bakılmaksızın 30 gün olarak bildirilir kuralı yönetmelikte (SSİY m.100/2) yer alır; bu kaynak KB'de yoksa "okunamayan kaynak" olarak belirtilir.
+  - İşveren için hangi ücret şeklinin avantajlı olduğu sorusu tavsiye niteliğindedir; cevap hukuki farkları kaynaklarıyla gösterir, ücret şekli seçimi için tavsiye kurmaz.
+  - Tutar hesabı yapılmaz; hesap motorunun işidir (md.29).
+calculations:
+  - title: Tazminata esas günlük ücret
+    needs:
+      - Ücret şekli ve tutarı
+      - Ücrete ek düzenli ödemeler (giydirilmiş ücret)

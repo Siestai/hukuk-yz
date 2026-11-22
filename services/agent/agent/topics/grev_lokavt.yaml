@@ -1,0 +1,126 @@
+# Konu kartı SB-006 (grev ve lokavt sırasında işçinin ve sendikanın hakları);
+# eval vakası eval/cases/SB-006.yaml.
+# Dayanaklar KB'de okundu: 6356 m.58, m.59, m.61, m.64-m.72, m.78 (high), m.60, m.62, m.63 (medium).
+# 2822 dönemine ait kararlar 6356 metniyle karşılaştırılmadan kullanılmaz; karar tablosu boş
+# olduğundan Yargıtay künyesi dayanak yapılmadı.
+id: grev_lokavt
+title: Grev ve lokavt
+description: >-
+  Grev ve lokavt (6356 m.58 vd.): kanuni ve kanun dışı grev ve lokavt, grev ve lokavt kararının
+  alınması ve uygulanması, yasaklar ve erteleme, iş sözleşmelerinin askıya alınması, grev
+  sırasında çalışacak işçiler, fesih yasağı, sendikanın ve işçilerin hakları.
+facts:
+  - key: grev_tarihi
+    label: Grevin başladığı tarih
+    question:
+      text: Grev hangi tarihte uygulanmaya başladı?
+      why: >-
+        Uygulanacak metin, olayın gerçekleştiği tarihte yürürlükte olan metindir; grev kararının
+        alınması ve uygulanması 6356 m.60/1'deki sürelere bağlıdır.
+      kind: date
+      basis:
+        - {ref: "6356 m.60/1", category: statute}
+  - key: kanuni_mi
+    label: Grev ve lokavtın kanuniliği
+    critical: true
+    question:
+      text: Grev ve lokavt, toplu iş sözleşmesi uyuşmazlığında 6356'daki süre, bildirim ve ilan kurallarına uyularak mı alındı ve uygulandı?
+      why: >-
+        Toplu iş sözleşmesinin yapılması sırasındaki uyuşmazlıkta Kanuna uygun yapılan grev ve
+        lokavt kanunidir; şartlar gerçekleşmeden yapılanlar kanun dışıdır (6356 m.58/2-3,
+        m.59/2-3). Grev kararı uyuşmazlık tutanağının tebliğinden, lokavt kararı grev kararının
+        tebliğinden itibaren altmış gün içinde alınabilmekte ve altı iş günü önceden karşı
+        tarafa bildirilecek tarihte uygulanabilmektedir (6356 m.60/1-2).
+      kind: choice
+      options:
+        - {value: kanuni, label: "Evet, usulüne uygun alındı ve uygulandı"}
+        - {value: kanun_disi, label: "Hayır, usule uyulmadı veya TİS uyuşmazlığı dışında yapıldı"}
+        - {value: tespit_davasi, label: Kanuna aykırılığı mahkemede tartışılmaktadır}
+      basis:
+        - {ref: "6356 m.58", category: statute}
+        - {ref: "6356 m.59", category: statute}
+        - {ref: "6356 m.60/1", category: statute}
+        - {ref: "6356 m.60/2", category: statute}
+  - key: yasakli_isyeri
+    label: Grev yasağı
+    critical: true
+    question:
+      text: İşyeri grev ve lokavt yasağı bulunan işlerden biri mi, ya da grev ertelendi mi?
+      why: >-
+        Can ve mal kurtarma, cenaze, şehir şebeke suyu, elektrik, doğal gaz, petrol, kamu
+        kuruluşlarınca yürütülen itfaiye ve hastaneler gibi işlerde grev ve lokavt
+        yapılamamaktadır (6356 m.62/1). Cumhurbaşkanı belirli hâllerde grev ve lokavtı altmış gün
+        süreyle erteleyebilmektedir (6356 m.63/1).
+      kind: choice
+      options:
+        - {value: yasak_yok, label: "Yasak kapsamında değil, erteleme de yok", assumed_never: true}
+        - {value: yasakli_is, label: Yasaklı işlerden biri}
+        - {value: ertelendi, label: Grev ertelendi}
+      basis:
+        - {ref: "6356 m.62/1", category: statute}
+        - {ref: "6356 m.63/1", category: statute}
+  - key: uyelik_ve_katilim
+    label: İşçinin durumu
+    critical: true
+    question:
+      text: İşçi greve katıldı mı, katılmadı mı, yoksa lokavta mı maruz kaldı?
+      why: >-
+        İşçiler greve katılıp katılmamakta serbesttir; greve katılan ve lokavta maruz kalan
+        işçiler işyerinden ayrılmak zorundadır (6356 m.64/1). Kanuni greve katılan, katılmayıp
+        grev nedeniyle çalıştırılamayan ve kanuni lokavta maruz kalan işçilerin iş sözleşmeleri
+        askıda kalmaktadır (6356 m.67/1).
+      kind: choice
+      options:
+        - {value: greve_katildi, label: Greve katıldı}
+        - {value: katilmadi_calisiyor, label: "Greve katılmadı, çalışmaya devam etmektedir"}
+        - {value: katilmadi_calistirilmiyor, label: Greve katılmadı ama çalıştırılmamaktadır}
+        - {value: lokavta_maruz, label: Lokavta maruz kaldı}
+      basis:
+        - {ref: "6356 m.64/1", category: statute}
+        - {ref: "6356 m.67/1", category: statute}
+  - key: grev_disi_isci_ilani
+    label: Grev ve lokavt sırasında çalışacak işçiler
+    critical: true
+    question:
+      text: İşveren grev ve lokavt sırasında çalışacak işçileri ilan etti mi, işçi bu listede mi?
+      why: >-
+        Teknik zorunluluk bulunan işlerde yeterli sayıda işçi kanuni grev ve lokavt sırasında
+        çalışmak, işveren de bunları çalıştırmak zorundadır (6356 m.65/1). Bu işçiler toplu
+        görüşmenin başlamasından itibaren altı iş günü içinde işyerinde yazıyla ilan edilmektedir
+        (6356 m.65/2).
+      kind: choice
+      options:
+        - {value: listede, label: "İlan edildi, işçi listede"}
+        - {value: listede_degil, label: "İlan edildi, işçi listede değil"}
+        - {value: ilan_yok, label: İlan yapılmadı}
+      basis:
+        - {ref: "6356 m.65/1", category: statute}
+        - {ref: "6356 m.65/2", category: statute}
+event_date_fact: grev_tarihi
+must_read:
+  - {ref: "6356 m.58", category: statute}
+  - {ref: "6356 m.59", category: statute}
+  - {ref: "6356 m.60", category: statute}
+  - {ref: "6356 m.61", category: statute}
+  - {ref: "6356 m.62", category: statute}
+  - {ref: "6356 m.63", category: statute}
+  - {ref: "6356 m.64", category: statute}
+  - {ref: "6356 m.65", category: statute}
+  - {ref: "6356 m.66", category: statute}
+  - {ref: "6356 m.67", category: statute}
+  - {ref: "6356 m.68", category: statute}
+  - {ref: "6356 m.69", category: statute}
+  - {ref: "6356 m.70", category: statute}
+  - {ref: "6356 m.71", category: statute}
+  - {ref: "6356 m.72", category: statute}
+  - {ref: "6356 m.78", category: statute}
+queries:
+  - kanuni grev kanuni lokavt iş sözleşmelerinin askıya alınması
+  - kanun dışı grev haklı nedenle fesih tazminat sorumluluğu
+  - grev ve lokavtın kanun dışı olup olmadığının tespiti mahkeme
+traps:
+  - Kanuni grev (askı, fesih yasağı) ile kanun dışı grev (haklı fesih, tazminat, idari para cezası) ayrımı cevabın merkezindedir (6356 m.67, m.66/2, m.70, m.78/1).
+  - Askıdaki işçiye grev ve lokavt süresince ücret ve sosyal yardım ödenemez, bu süre kıdem tazminatı hesabında dikkate alınmaz; aksi TİS ile kararlaştırılamaz (6356 m.67/3).
+  - Fesih yasağı kanuni grev kararına katılma, teşvik ve greve katılma nedeniyle fesih içindir (6356 m.66/2); başka nedenle fesih bu fıkranın kapsamında değildir.
+  - Lokavt kararı grev kararının tebliğinden itibaren altmış gün içinde alınabilir ve altı iş günü önceden bildirilecek tarihte uygulanır (6356 m.60/2).
+  - 2822 dönemine ait Yargıtay kararları 6356 maddeleriyle karşılaştırılmadan kullanılmaz.

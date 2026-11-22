@@ -1,9 +1,19 @@
-# Konu kartı SB-016 (5510 m.102/2 ve m.102/5 indirimleri); eval vakası eval/cases/SB-016.yaml.
+# Konu kartı SB-016 (5510 m.102/2 ve m.102/5 indirimleri); eval vakaları eval/cases/SB-016.yaml,
+# SB-014.yaml (m.102/1-a tekrar hâli), SB-019.yaml (m.102/1-m-4-ç), SB-021.yaml (m.102/1-e-5).
+# Görev 19 B2: alt bent düzeyindeki olgular fiile bağlı olarak sorulur (asked_when): yalnız
+# kazanç eksikliğinde tespit_sekli ve bildirim_belgesi (SB-019), bordro geçersizliğinde
+# tutanakla_teslim, odeme_sekli ve defter_turu (SB-021; defter_turu ibraz etmemede de). fiil
+# kritiktir: bilinmiyorsa kendisi ve indirim olguları (ceza_turu, kendiliginden; SB-016) sorulur,
+# cevabı bir alt bende girerse o bendin olguları ek netleştirmede sorulur.
+# onceki_tespit_tarihi ve muafiyet_siniri vakaların must_ask'inde olmadığından kritik değildir.
 id: idari_para_cezasi
 title: SGK idari para cezası ve indirimler
 description: >-
   5510 m.102 kapsamındaki idari para cezaları: belgenin kendiliğinden verilmesi indirimi (m.102/2),
-  peşin ödeme indirimi (m.102/5), tebliğ ve ödeme süreleri, ceza türüne göre kapsam.
+  peşin ödeme indirimi (m.102/5), tebliğ ve ödeme süreleri, ceza türüne göre kapsam; alt bent
+  düzeyinde işe giriş bildirgesi ve bir yıl içinde tekrar hâli (m.102/1-a), defter ve bordro
+  ibrazı ile bordro geçersizliği (m.102/1-e), muhtasar ve prim hizmet beyannamesinde eksik
+  bildirim ve yalnız prime esas kazanç eksikliği (m.102/1-m-4-ç).
 facts:
   - key: belge_30_gun
     label: Belgenin verilmesi
@@ -12,6 +22,7 @@ facts:
   - key: ceza_turu
     label: Ceza türü
     critical: true
+    asked_when: {fiil: [unknown, diger]}
     question:
       text: Hangi cezadan söz edilmektedir?
       why: >-
@@ -28,6 +39,7 @@ facts:
   - key: kendiliginden
     label: Belgenin kendiliğinden verilmesi
     critical: true
+    asked_when: {fiil: [unknown, ise_giris_gec, diger]}
     question:
       text: Belge kendiliğinden mi verildi?
       why: >-
@@ -39,12 +51,176 @@ facts:
         - {value: tespit, label: Denetim tespiti veya yazı üzerine verildi}
       basis:
         - {ref: "5510 m.102/2", category: statute}
+  - key: fiil
+    label: Cezaya konu fiil (alt bent)
+    critical: true
+    question:
+      text: Cezaya konu fiil hangisidir?
+      why: >-
+        5510 m.102/1 her fiile ayrı bent ve alt bentte ayrı ceza öngörmektedir: işe giriş
+        bildirgesinin süresinde verilmemesi (m.102/1-a-1), verilmediğinin mahkeme kararı, denetim
+        tespiti veya kamu idaresi belgesinden anlaşılması (m.102/1-a-2), defter ve belgelerin
+        ihtara rağmen on beş gün içinde ibraz edilmemesi (m.102/1-e-1, e-2, e-3), ücret tediye
+        bordrosunun zorunlu unsurlardan birini içermemesi (m.102/1-e-5), muhtasar ve prim hizmet
+        beyannamesinde yalnız prime esas kazancın eksik bildirilmesi (m.102/1-m-4-ç).
+      kind: choice
+      options:
+        - {value: ise_giris_gec, label: "İşe giriş bildirgesi süresinden sonra verildi"}
+        - {value: ise_giris_tespit, label: "İşe giriş bildirgesinin verilmediği denetim, mahkeme kararı veya kamu idaresi belgesiyle anlaşıldı"}
+        - {value: defter_ibraz, label: "Defter ve belgeler istenen sürede ibraz edilmedi"}
+        - {value: bordro_gecersiz, label: "Ücret tediye bordrosunda bir unsur (ör. imza) eksik"}
+        - {value: yalniz_kazanc_eksik, label: "Sigortalı ve gün tam, yalnız prime esas kazanç eksik bildirildi"}
+        - {value: diger, label: Diğer}
+      basis:
+        - {ref: "5510 m.102/1-a", category: statute}
+        - {ref: "5510 m.102/1-e", category: statute}
+        - {ref: "5510 m.102/1-m-4", category: statute}
+  - key: onceki_tespit_tarihi
+    label: Aynı işyerinde önceki tespitin tarihi
+    question:
+      text: >-
+        Aynı işyerinde işe giriş bildirgesinin verilmediği daha önce hangi tarihte anlaşıldı
+        (mahkeme karar tarihi, denetim memurunun tespit tarihi, denetim raporu tarihi veya kamu
+        idaresi belgesinin Kuruma intikal tarihi)?
+      why: >-
+        Asgari ücretin beş katı tutarındaki ceza, işyeri esas alınarak bu tarihlerden itibaren bir
+        yıl içinde bildirgenin verilmediğinin m.102/1-a-2'de sayılan durumlardan biriyle tekrar
+        anlaşılması hâlinde uygulanmaktadır (5510 m.102/1-a-3; 2020/8 m.2.1.1).
+      kind: date
+      basis:
+        - {ref: "5510 m.102/1-a-3", category: statute}
+        - {ref: "2020/8 m.2.1.1", category: admin_act}
+  - key: tespit_sekli
+    label: Eksikliğin anlaşılma şekli
+    critical: true
+    asked_when: {fiil: [yalniz_kazanc_eksik]}
+    question:
+      text: Eksik bildirim nasıl anlaşıldı?
+      why: >-
+        m.102/1-m-4 cezası beyannamenin mahkeme kararı, Kurum denetim memurlarının tespiti, diğer
+        kamu idarelerinin denetimi veya kamu idareleri, bankalar ve kanunla kurulan kuruluşlardan
+        alınan bilgi ve belgeler sonucunda düzenlendiği hâlde uygulanmaktadır (5510 m.102/1-m-4;
+        2020/8 m.2.6.2.5). İşverenin asıl beyannameden sonra prime esas kazancı artıran beyannamesi
+        ek nitelikte beyannamedir ve m.102/1-m-2 cezasına konu olmaktadır (2020/8 m.2.6.2.2).
+      kind: choice
+      options:
+        - {value: kurum_tespiti, label: "Denetim tespiti, mahkeme kararı veya kamu idaresinden gelen bilgi ve belgeyle"}
+        - {value: isveren, label: "İşveren kendiliğinden ek beyanname verdi"}
+      basis:
+        - {ref: "5510 m.102/1-m-4", category: statute}
+        - {ref: "5510 m.102/1-m-2", category: statute}
+        - {ref: "2020/8 m.2.6.2.5", category: admin_act}
+        - {ref: "2020/8 m.2.6.2.2", category: admin_act}
+  - key: bildirim_belgesi
+    label: Eksikliğin ait olduğu bildirim belgesi
+    critical: true
+    asked_when: {fiil: [yalniz_kazanc_eksik]}
+    question:
+      text: Eksiklik hangi belgeyle bildirilen bir döneme aittir?
+      why: >-
+        Aylık prim ve hizmet belgesiyle bildirilen dönemlerde m.102/1-c, muhtasar ve prim hizmet
+        beyannamesiyle bildirilen dönemlerde m.102/1-m cezası uygulanmaktadır (2020/8 m.2.6.1.3;
+        2020/8 m.2.6.2). Denetim tespitine dayanan aylık prim ve hizmet belgesinde ceza aylık
+        asgari ücretin iki katı tutarındadır (5510 m.102/1-c-4).
+      kind: choice
+      options:
+        - {value: aphb, label: Aylık prim ve hizmet belgesi}
+        - {value: muhsgk, label: Muhtasar ve prim hizmet beyannamesi}
+      basis:
+        - {ref: "5510 m.102/1-c-4", category: statute}
+        - {ref: "5510 m.102/1-m-4", category: statute}
+        - {ref: "2020/8 m.2.6.1.3", category: admin_act}
+        - {ref: "2020/8 m.2.6.2", category: admin_act}
+  - key: muafiyet_siniri
+    label: Eksik kazancın muafiyet sınırları içinde kalması
+    question:
+      text: >-
+        Eksik bildirilen prime esas kazanç, fiil tarihindeki brüt asgari ücretin üçte birini ve o
+        ay bildirilen toplam prime esas kazancın %1'ini aşmakta mıdır?
+      why: >-
+        Sigortalılar ve gün sayıları eksiksiz bildirilmiş, eksiklik bu iki sınırın hiçbirini
+        aşmadığı takdirde önce on beş gün içinde düzeltilmesi için yazılı ihtar verilmekte, eksiklik bu
+        süre sonunda bildirilmezse idari para cezası verilmektedir (5510 m.102/2; 2020/8 m.3.3).
+      kind: choice
+      options:
+        - {value: icinde, label: İki sınırın da altında}
+        - {value: sinir_ustu, label: Sınırlardan en az birini aşmaktadır}
+      basis:
+        - {ref: "5510 m.102/2", category: statute}
+        - {ref: "2020/8 m.3.3", category: admin_act}
+  - key: tutanakla_teslim
+    label: Kayıtların tutanakla teslim alınması
+    critical: true
+    asked_when: {fiil: [bordro_gecersiz]}
+    question:
+      text: Bordrolar denetim memurunca tutanakla teslim alındı mı?
+      why: >-
+        İşyeri kayıt ve belgeleri tutanakla teslim alınmadığı sürece m.102/1-e'nin 4 ve 5 numaralı
+        alt bentlerine göre idari para cezası verilmemektedir; tebligat veya tutanakla talep şartı
+        1, 2 ve 3 numaralı alt bentler (ibraz etmeme) içindir (2020/8 m.2.8.1).
+      kind: choice
+      options:
+        - {value: evet, label: Tutanakla teslim alındı}
+        - {value: hayir, label: Tutanak düzenlenmedi}
+      basis:
+        - {ref: "2020/8 m.2.8.1", category: admin_act}
+        - {ref: "5510 m.102/1-e-5", category: statute}
+  - key: odeme_sekli
+    label: Ücretin ödenme şekli
+    critical: true
+    asked_when: {fiil: [bordro_gecersiz]}
+    question:
+      text: İmzası eksik sigortalının ücreti nasıl ödendi?
+      why: >-
+        Bordroda sigortalının imzası zorunludur; ancak makbuz mukabilinde veya banka kanalıyla
+        yapılan ödemelerde imza şartı aranmamaktadır (5510 m.102/1-e-5; 2020/8 m.2.8.3).
+      kind: choice
+      options:
+        - {value: banka, label: Banka kanalıyla}
+        - {value: makbuz, label: Makbuz karşılığında}
+        - {value: elden, label: "Elden, makbuz olmadan"}
+      basis:
+        - {ref: "5510 m.102/1-e-5", category: statute}
+        - {ref: "2020/8 m.2.8.3", category: admin_act}
+  - key: defter_turu
+    label: Tutulması gereken defter türü
+    critical: true
+    asked_when: {fiil: [bordro_gecersiz, defter_ibraz]}
+    question:
+      text: İşveren hangi defteri tutmakla yükümlüdür?
+      why: >-
+        Defter ve belgelerin ibraz edilmemesi cezası defter türüne göre aylık asgari ücretin on
+        iki, altı veya üç katıdır (5510 m.102/1-e-1, e-2, e-3); geçersiz bordro cezası bu tutarı
+        aşamamaktadır (2020/8 m.2.8.1; 2020/8 m.2.8.3).
+      kind: choice
+      options:
+        - {value: bilanco, label: Bilanço esasına göre defter}
+        - {value: diger, label: Diğer defterler (ör. işletme hesabı)}
+        - {value: yok, label: Defter tutmakla yükümlü değil}
+      basis:
+        - {ref: "5510 m.102/1-e", category: statute}
+        - {ref: "2020/8 m.2.8.1", category: admin_act}
+        - {ref: "2020/8 m.2.8.3", category: admin_act}
+# Görev 19 B6: 2020/8 bütün genelge olarak değil, dala göre adıyla okunur; indirimler (m.3.1,
+# m.3.2) her zaman, alt bent bölümleri yalnız fiil o alt bende girdiğinde (when, asked_when ile
+# aynı anlam). Adıyla okunan bölüm uzun olsa da tam gösterilir (2.8.1 yaklaşık 17 bin karakter).
 must_read:
   - {ref: "5510 m.102", category: statute}
-  - {ref: "2020/8", category: admin_act}
+  - {ref: "2020/8 m.3.1", category: admin_act}
+  - {ref: "2020/8 m.3.2", category: admin_act}
+  - {ref: "2020/8 m.2.1.1", category: admin_act, when: {fiil: [ise_giris_gec, ise_giris_tespit]}}
+  - {ref: "2020/8 m.2.8.1", category: admin_act, when: {fiil: [bordro_gecersiz]}}
+  - {ref: "2020/8 m.2.8.3", category: admin_act, when: {fiil: [bordro_gecersiz]}}
+  - {ref: "2020/8 m.2.6.2.5", category: admin_act, when: {fiil: [yalniz_kazanc_eksik]}}
+  # Defter ibrazı ve diğer fiiller için şablonda adı geçen bölüm yok: aramanın bulduğu en fazla
+  # 6 bölüm okunur.
+  - {ref: "2020/8", category: admin_act, when: {fiil: [defter_ibraz, diger]}}
 queries:
   - idari para cezası kendiliğinden verme otuz gün içinde dörtte bir ödeme onbeş gün
   - idari para cezası peşin ödeme tebliğ tarihinden onbeş gün dörtte üçü tahsil
+  - işe giriş bildirgesi verilmemesi bir yıl içinde tekrar asgari ücretin beş katı tespit tarihi
+  - sadece prime esas kazançlarının eksik bildirildiği onda birinden az iki katından fazla olmamak
+  - ücret tediye bordrosu imza geçersiz tutanakla teslim alınmadığı sürece
 traps:
   - İki ayrı indirim vardır; m.102/2'de ceza dörtte bire iner, m.102/5'te dörtte üçü ödenir. İfadeler ters yönlüdür, hangi fıkra olduğu yazılır.
   - 15 günlük ödeme süresi iki indirim için ortak şarttır; 30 günlük süre yalnız m.102/2 indiriminin şartıdır.
@@ -52,3 +228,11 @@ traps:
   - Süresinde verilen belge ceza doğurmaz; "süresinde" ile "kendiliğinden" aynı şey değildir.
   - 30 günde verip 15 günde ödemeyen, iki indirimden de yararlanamaz; "sadece dörtte bir indirimi kalır" denmez.
   - SSİY m.102 bu konudaki indirim hükmünü içermez; atıf yapılmaz.
+  - Atıftan önce m.102/1'in ilgili bendinin bütün alt bentleri vakayla tek tek eşlenir; ilk eşleşen alt bent cevap değildir.
+  - Kanunda hüküm bulunması aramayı bitirmez; 2020/8 Genelgesinin ilgili bölümü de okunur.
+  - İşe giriş bildirgesinde beş kat ceza için bir yıl, işyeri esas alınarak mahkeme karar tarihinden, denetim memurunun tespit tarihinden, denetim raporu tarihinden veya kamu idaresi belgesinin Kuruma intikal tarihinden başlar (m.102/1-a-3; 2020/8 m.2.1.1).
+  - Sigortalı ve gün tam, yalnız prime esas kazanç eksikse m.102/1-m-4-ç uygulanır; defter türüne göre oranlar (m.102/1-m-4-a, b, c) bu hâle uygulanmaz ve defter türü sorulmaz.
+  - m.102/1-m-4-ç cezası her işyeri için tespit edilen eksik kazanç tutarındadır; aylık asgari ücretin onda birinden az, iki katından fazla olamaz. Aynı dönem için sonraki tespitte iki kat sınırına kadar fark uygulanır (2020/8 m.2.6.2.5).
+  - Aylık prim ve hizmet belgesi dönemlerinde (c) bendi, muhtasar ve prim hizmet beyannamesi dönemlerinde (m) bendi uygulanır; iki bent karıştırılmaz.
+  - Bordro geçersizliğinde ölçüt tebligat değil, kayıtların tutanakla teslim alınmasıdır; ceza bordro başınadır ve defter türüne göre ibraz etmeme cezasını aşamaz.
+  - İbraz süresi geçtikten sonra sunulan defter ve belgelerde geçersizlik için ayrıca ceza uygulanmaz, yalnız defter türüne göre ibraz etmeme cezası uygulanır (m.102/1-e-5 son cümle).

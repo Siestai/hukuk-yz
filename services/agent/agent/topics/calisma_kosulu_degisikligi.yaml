@@ -1,0 +1,184 @@
+# Konu kartları SB-003 (ücretin düşürülmesi) ve SB-013 (çalışma saatlerinin kaydırılması);
+# eval vakaları eval/cases/SB-003.yaml, eval/cases/SB-013.yaml.
+# Dayanaklar KB'de okundu: 4857 m.22 (high), m.67 (high), m.68 (medium), 6356 m.36 (high).
+# 4857 m.63 KB'de low bantta: K1 kuralına göre şu an okunamaz; inceleme onayı ya da yeniden
+# çıkarım gerekir (eval/cases/SB-013.yaml missing_in_kb).
+# Karar tablosu boş olduğundan Yargıtay künyesi dayanak yapılmadı.
+# Görev 19 B2: ücret ve çalışma saati olguları degisiklik_konusu'na bağlı sorulur (asked_when;
+# degisiklik_konusu sorulmaz, giriş adımı seçer); bilinmiyorsa iki dalın olguları da sorulur.
+id: calisma_kosulu_degisikligi
+title: Çalışma koşullarında değişiklik
+description: >-
+  İşverenin çalışma koşullarında yaptığı değişiklikler (4857 m.22): ücretin, primin, ikramiyenin
+  veya sosyal yardımın düşürülmesi, çalışma saatlerinin, vardiyanın veya servisin değiştirilmesi,
+  esaslı değişiklik, yazılı bildirim, altı işgünü içinde yazılı kabul, değişiklik feshi.
+facts:
+  - key: degisiklik_konusu
+    label: Değiştirilen çalışma koşulu
+    options:
+      - {value: ucret, label: "Ücret, prim, ikramiye veya sosyal yardım"}
+      - {value: calisma_saati, label: Çalışma saatleri veya ara dinlenmesi}
+      - {value: diger, label: Başka bir çalışma koşulu}
+  - key: degisiklik_tarihi
+    label: Değişikliğin tarihi
+    question:
+      text: Değişiklik hangi tarihte önerildi veya uygulanmaya başlandı?
+      why: >-
+        Uygulanacak metin, olayın gerçekleştiği tarihte yürürlükte olan metindir; çalışma
+        koşullarında değişiklik geçmişe etkili olarak yürürlüğe konulamamaktadır (4857 m.22/2).
+      kind: date
+      basis:
+        - {ref: "4857 m.22/2", category: statute}
+  - key: yazili_bildirim
+    label: Yazılı bildirim
+    critical: true
+    asked_when: {degisiklik_konusu: [ucret, diger, unknown]}
+    question:
+      text: İşveren değişikliği işçiye yazılı olarak bildirdi mi?
+      why: >-
+        İşveren çalışma koşullarında esaslı bir değişikliği ancak durumu işçiye yazılı olarak
+        bildirerek yapabilmektedir (4857 m.22/1).
+      kind: choice
+      options:
+        - {value: yazili, label: "Evet, yazılı bildirdi"}
+        - {value: sozlu, label: Yalnız sözlü bildirdi}
+        - {value: bildirim_yok, label: Bildirim yapmadan uyguladı}
+      basis:
+        - {ref: "4857 m.22/1", category: statute}
+  - key: yazili_kabul
+    label: İşçinin yazılı kabulü
+    critical: true
+    asked_when: {degisiklik_konusu: [ucret, diger, unknown]}
+    question:
+      text: İşçi değişikliği altı işgünü içinde yazılı olarak kabul etti mi?
+      why: >-
+        Yazılı bildirimle yapılmayan ve işçi tarafından altı işgünü içinde yazılı olarak kabul
+        edilmeyen değişiklikler işçiyi bağlamamaktadır (4857 m.22/1). Taraflar aralarında
+        anlaşarak çalışma koşullarını her zaman değiştirebilir (4857 m.22/2).
+      kind: choice
+      options:
+        - {value: yazili_kabul, label: "Evet, yazılı olarak kabul etti"}
+        - {value: reddetti, label: Kabul etmedi}
+        - {value: yazili_beyan_yok, label: "Yazılı bir beyanı yok, çalışmaya devam etti"}
+      basis:
+        - {ref: "4857 m.22/1", category: statute}
+        - {ref: "4857 m.22/2", category: statute}
+  - key: dusurulen_kalem
+    label: Düşürülen ödeme ve kaynağı
+    critical: true
+    asked_when: {degisiklik_konusu: [ucret, unknown]}
+    question:
+      text: Düşürülen ödeme hangisidir ve neye dayanmaktadır?
+      why: >-
+        4857 m.22/1, iş sözleşmesiyle, iş sözleşmesinin eki niteliğindeki personel yönetmeliği
+        ve benzeri kaynaklarla ya da işyeri uygulamasıyla oluşan çalışma koşullarını
+        kapsamaktadır; düşürülen ödemenin hangi kaynaktan doğduğu bu nedenle bilinmelidir.
+      kind: choice
+      options:
+        - {value: temel_ucret_sozlesme, label: İş sözleşmesindeki temel ücret}
+        - {value: ek_odeme_sozlesme, label: "Sözleşme veya personel yönetmeliğindeki prim, ikramiye veya sosyal yardım"}
+        - {value: isyeri_uygulamasi, label: "Yazılı dayanağı olmayan, düzenli yapılan bir ödeme"}
+        - {value: tis_odemesi, label: Toplu iş sözleşmesindeki bir ödeme}
+      basis:
+        - {ref: "4857 m.22/1", category: statute}
+  - key: tis_var_mi
+    label: Toplu iş sözleşmesi
+    critical: true
+    asked_when: {degisiklik_konusu: [ucret, unknown]}
+    question:
+      text: İşyerinde işçinin yararlandığı bir toplu iş sözleşmesi var mı?
+      why: >-
+        Toplu iş sözleşmesinde aksi belirtilmedikçe iş sözleşmeleri toplu iş sözleşmesine aykırı
+        olamamaktadır; aykırı hükümlerin yerini toplu iş sözleşmesindeki hükümler almaktadır
+        (6356 m.36/1).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: hayir, label: Hayır, assumed_never: true}
+      basis:
+        - {ref: "6356 m.36/1", category: statute}
+  - key: calisma_saati_kaynagi
+    label: Mevcut çalışma saatlerinin kaynağı
+    critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, unknown]}
+    question:
+      text: Mevcut başlama ve bitiş saatleri nerede belirlenmiştir?
+      why: >-
+        4857 m.22/1, iş sözleşmesiyle, personel yönetmeliği ve benzeri kaynaklarla ya da işyeri
+        uygulamasıyla oluşan çalışma koşullarını kapsamaktadır. Günlük çalışmanın başlama ve
+        bitiş saatleri işyerlerinde işçilere duyurulmaktadır (4857 m.67/1).
+      kind: choice
+      options:
+        - {value: sozlesme, label: İş sözleşmesinde}
+        - {value: personel_yonetmeligi, label: Personel yönetmeliği veya benzeri bir işyeri belgesinde}
+        - {value: tis, label: Toplu iş sözleşmesinde}
+        - {value: isyeri_uygulamasi, label: "Yazılı değil, süregelen uygulamayla"}
+      basis:
+        - {ref: "4857 m.22/1", category: statute}
+        - {ref: "4857 m.67/1", category: statute}
+  - key: kaymanin_kapsami
+    label: Saat değişikliğinin kapsamı
+    critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, unknown]}
+    question:
+      text: Saat değişikliği kalıcı mı, geçici mi; bütün işçilere mi, bir kısmına mı uygulanmaktadır?
+      why: >-
+        Yazılı bildirim ve kabul şartı esaslı değişiklik için aranmaktadır (4857 m.22/1); işin
+        niteliğine göre başlama ve bitiş saatleri işçiler için farklı şekilde düzenlenebilmektedir
+        (4857 m.67/2).
+      kind: choice
+      options:
+        - {value: kalici_tum, label: "Kalıcı, bütün işçilere"}
+        - {value: kalici_bir_kisim, label: "Kalıcı, bir kısım işçiye"}
+        - {value: gecici, label: Geçici bir süre için}
+      basis:
+        - {ref: "4857 m.22/1", category: statute}
+        - {ref: "4857 m.67/2", category: statute}
+  - key: somut_etki
+    label: Değişikliğin işçiye etkisi
+    critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, diger, unknown]}
+    question:
+      text: Değişiklik işçinin ulaşımını, servisini, ücretini veya günlük düzenini nasıl etkilemektedir?
+      why: >-
+        4857 m.22/1, yazılı bildirim ve altı işgünü içinde yazılı kabul şartını çalışma
+        koşullarındaki esaslı değişiklik için aramaktadır; değişikliğin esaslı olup olmadığının
+        değerlendirilmesi için işçi üzerindeki etkisi bilinmelidir.
+      kind: text
+      basis:
+        - {ref: "4857 m.22/1", category: statute}
+  - key: sure_sinirlari
+    label: Çalışma süresi ve dinlenme
+    critical: true
+    asked_when: {degisiklik_konusu: [calisma_saati, unknown]}
+    question:
+      text: Yeni saatlerle günlük çalışma süresi veya ara dinlenmesi değişmekte midir?
+      why: >-
+        Haftalık ve günlük çalışma süresinin üst sınırları 4857 m.63'te, işin süresine göre
+        verilecek en az ara dinlenmesi 4857 m.68'de düzenlenmektedir.
+      kind: choice
+      options:
+        - {value: degismiyor, label: "Hayır, yalnız başlama ve bitiş saati kaymaktadır"}
+        - {value: sure_degisiyor, label: Günlük çalışma süresi değişmektedir}
+        - {value: dinlenme_degisiyor, label: Ara dinlenmesi değişmektedir}
+      basis:
+        - {ref: "4857 m.63", category: statute}
+        - {ref: "4857 m.68", category: statute}
+event_date_fact: degisiklik_tarihi
+must_read:
+  - {ref: "4857 m.22", category: statute}
+  - {ref: "4857 m.62", category: statute}
+  - {ref: "4857 m.63", category: statute}
+  - {ref: "4857 m.67", category: statute}
+  - {ref: "4857 m.68", category: statute}
+  - {ref: "6356 m.36", category: statute}
+queries:
+  - çalışma koşullarında esaslı değişiklik yazılı bildirim altı işgünü içinde yazılı kabul
+  - ücretin düşürülmesi esaslı değişiklik işçinin yazılı onayı
+  - çalışma saatlerinin değiştirilmesi başlama ve bitiş saatleri esaslı değişiklik
+traps:
+  - Yazılı bildirim ile altı işgünü içinde yazılı kabul birlikte aranır; yalnız bildirim yetmez (4857 m.22/1).
+  - 4857 m.22'nin iki fıkrası vardır; anlaşma yolu ve geçmişe etkisizlik m.22/2'dedir. "m.22/3" veya "m.22/4" diye atıf yapılmaz.
+  - '"Ücret düşürülemez" kesin cümlesi kurulmaz; yazılı kabulle veya geçerli nedenli değişiklik feshiyle sonuç değişebilir (4857 m.22/1, m.22/2).'
+  - 4857 m.62 belirli nedenlere dayalı ücret eksiltmesini yasaklar; ücret düşürme sorusunun tek dayanağı yapılmaz.
+  - Her saat kayması esaslı değişiklik değildir; kaynaklarda yarım saat gibi bir süre eşiği yoktur.

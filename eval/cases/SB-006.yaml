@@ -1,6 +1,7 @@
 id: SB-006
 question: "Peki işçiler greve gitti. Ve işveren lokavt kararı aldı. Burada işçiler neler yapabilir, sendika neler yapabilir kısaca bahseder misin"
 expected:
+  topic: grev_lokavt
   status: conditional
   headline_contains:
     - kanuni
@@ -13,6 +14,9 @@ expected:
     - 6356 m.67/3
     - 6356 m.70
     - 6356 m.71
+  # Görev 19 B1 gözden geçirme (şablon: grev_lokavt). Bütün must_cite maddeleri KB'de okundu:
+  # 6356 m.58, m.59, m.64, m.66, m.67, m.70 (high), m.60, m.71 (medium). missing_in_kb yok.
+  # must_not'taki 9. HD kararı (2822 dönemi) KB decision tablosunda yoktur; yalnız yasak olarak durur.
   must_ask:
     - kanuni_mi
     - yasakli_isyeri

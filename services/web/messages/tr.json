@@ -154,6 +154,21 @@
         "conditional": "Koşullu cevap",
         "missing": "Tamamlanması gereken bilgiler"
       }
+    },
+    "gap": {
+      "label": "Eksik kaynaklar",
+      "topic": "Konu: {topic}",
+      "missing": "Okunamayan kaynaklar: {sources}",
+      "source": "{ref} ({reason})",
+      "given": "Verdiğiniz bilgiler: {facts}",
+      "fact": "{label}: {value}",
+      "reasons": {
+        "unmapped": "kayıtla eşleşmedi",
+        "not_found": "bilgi tabanında yok",
+        "gap": "bu tarih için metin yok",
+        "not_in_force": "olay tarihinde yürürlükte değil",
+        "truncated": "tamamı okunamadı"
+      }
     }
   }
 }

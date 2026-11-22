@@ -1,0 +1,17 @@
+{
+ "topic": "sgk_bildirim_prim",
+ "title": "06 kodu eksik gün bildirimi ve azami gün sayısı",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "bildirim_konusu",
+   "value": "Aylık prim ve hizmet belgesinde eksik gün",
+   "status": "known"
+  },
+  {
+   "key": "eksik_gun_kodu",
+   "value": "06 - Kısmi istihdam",
+   "status": "known"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "topic": "grev_lokavt",
+ "title": "Grev ve lokavt",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "grev_tarihi",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "kanuni_mi",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "yasakli_isyeri",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "uyelik_ve_katilim",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "grev_disi_isci_ilani",
+   "value": null,
+   "status": "unknown"
+  }
+ ]
+}

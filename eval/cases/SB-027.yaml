@@ -1,0 +1,40 @@
+id: SB-027
+question: "Ben ik uzmanıyım çalışan 5 gün üstüste mazaretsiz işe gelmedi üstüme insan kaynakları uzmanı olarak ne yapmam lazım?"
+# Görev 19 B1. Şablon: hakli_fesih_devamsizlik.
+# must_cite madde düzeyindedir: devamsızlık bendi 4857 m.25/II-g'dir, ancak KB metninde fıkra
+# numarası yoktur ve harfli bentler künyede taşınamaz (agent/sources.py checked_sub); "4857 m.25"
+# atfı istenir, bent doğruluğu traps ile izlenir.
+# must_ask: mazeret_bildirimi soruda ("mazeretsiz") geçtiğinden giriş modelince doldurulabilir;
+# bu yüzden ölçülen anahtarlara alınmadı (şablonda kritik olarak durur).
+# Devamsızlıkta savunma ve makul süreye ilişkin Yargıtay 9. HD kararları dergi arşivinde vardır,
+# ancak decision tablosunda yok ve E/K teyitsiz: künye yazılmadı.
+expected:
+  topic: hakli_fesih_devamsizlik
+  status: conditional
+  headline_contains:
+    - devamsızlık
+  must_cite:
+    - 4857 m.25
+    - 4857 m.26
+    - 4857 m.19
+    - 5510 m.9
+  must_ask:
+    - devamsizlik_is_gunu
+    - isciye_ulasma
+    - yazili_belge
+  must_not:
+    - savunma alınmasına gerek yoktur
+    - savunma almanıza gerek yoktur
+    - savunma alınması gerekmemektedir
+    - savunma alınmasına gerek bulunmamaktadır
+  traps:
+    - Devamsızlık bendi 4857 m.25/II-g'dir; eşikler (ardı ardına iki iş günü, bir ayda iki defa tatil sonrası iş günü, bir ayda üç iş günü) iş günüyle ölçülür, beş takvim günü kendiliğinden beş iş günü sayılmaz.
+    - 4857 m.19 savunma şartını koyar ve m.25/II'ye uygun fesih hakkını saklı tutar; devamsızlığın izinsiz ve haklı sebepsiz olduğu belirlenmeden "savunma gerekmez" gibi kesin cümle kurulmaz. Uygulamada işçiden gelmeme sebebinin yazılı olarak sorulması ve makul bir süre beklenmesi adımı ayrıca değerlendirilir.
+    - Hastalık veya kazaya dayanan devamsızlıkta m.25/II-g değil, m.25/I hükümleri ve süreleri incelenir.
+    - Fesih yetkisi öğrenmeden itibaren altı iş günü ve fiilden itibaren bir yıl içinde kullanılır (4857 m.26); süren devamsızlıkta sürenin başlangıç günü kaynak okunmadan kesin söylenmez.
+    - Fesih bildirimi yazılı ve sebebi açık ve kesin olmalıdır (4857 m.19); bildirim imzadan kaçınılırsa tutanakla tespit edilir (4857 m.109).
+    - İşten ayrılış bildirgesi 5510 m.9 uyarınca en geç on gün içinde verilir; ayrılış nedeni kodu KB'de okunan kaynakta yoksa kod numarası yazılmaz.
+  missing_in_kb:
+    - "SGK işten ayrılış nedeni kod listesi (devamsızlık feshi için kod): KB'de okunabilir kaynak yok"
+    - "Yargıtay 9. HD: devamsızlıkta savunma, işçiye mazeretinin sorulması ve makul süre (arşivde aday kararlar var, decision tablosunda yok, E/K teyitsiz)"
+tags: [is-hukuku, hakli-fesih, devamsizlik]

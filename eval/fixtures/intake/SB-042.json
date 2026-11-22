@@ -1,0 +1,32 @@
+{
+ "topic": "olum_yaslilik_aylik",
+ "title": "Emeklilik şartları ve kıdem tazminatı yazısı (2008 ilk sigortalılık)",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "sigortalilik_hali",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "ilk_sigortalilik_tarihi",
+   "value": "2008 Ocak ile 2008 Aralık arası işe giriş (ilk sigortalılık tarihi)",
+   "status": "known"
+  },
+  {
+   "key": "talep_turu",
+   "value": "08 koduyla (emeklilik için yaş dışındaki şartları tamamlayarak) işten ayrılma ve kıdem tazminatına esas yazı",
+   "status": "known"
+  },
+  {
+   "key": "olay_tarihi",
+   "value": null,
+   "status": "unknown"
+  },
+  {
+   "key": "prim_gun_sayisi",
+   "value": null,
+   "status": "unknown"
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+id: SB-039
+# Daraltma: özgün soru beş alt soru içeriyordu (ek protokol, ödenmeme, SGK bildirimi, Yüksek
+# Hakem Kurulu kararı). Eval yalnız ilk iki alt soruyu ölçer: yararlanmanın başlangıcı ve
+# Aralık 2025 ödemeleri. Şablon: tis_sendikal.
+question: "01.01.2025-31.12.2026 geçerlilik tarihli TİS 01.10.2025'te imzalandı. 10.12.2025'te sendikaya dayanışma aidatı ödemeye başlayan işçi TİS'ten nasıl ve hangi tarihten itibaren yararlanır? Aralık 2025'teki 13 günlük ilave tediye ve 20 günlük ikramiyeden yararlanır mı?"
+expected:
+  topic: tis_sendikal
+  status: conditional
+  headline_contains:
+    - talep tarihi
+  # 6356 m.39 KB'de medium bantta okundu (2021-03-03'ten beri yürürlükteki sürüm; olay 2025).
+  # m.39/4: üye olmayanların yararlanması dayanışma aidatı ödemesine bağlıdır, sendika onayı
+  # aranmaz, dayanışma aidatıyla yararlanma talep tarihinden geçerlidir. m.39/2 yalnız üyeler
+  # içindir (yürürlük tarihinden / üyeliğin bildirildiği tarihten).
+  must_cite:
+    - 6356 m.39/4
+    - "6772"
+  # İlave tediye 6772 sayılı Kanuna dayanır; Kanun KB'de ve Drive kopyasında yoktur, madde
+  # numarası okunamadığı için künye madde içermez. Kapsamı ve hak ediş koşulu okunmadan
+  # söylenmez.
+  missing_in_kb:
+    - "6772"
+  must_ask:
+    - dayanisma_talep_tarihi
+    - tis_yararlanma_hukmu
+    - hak_edis_tarihi
+  must_not: []
+  traps:
+    - Dayanışma aidatıyla yararlanma talep tarihinden geçerlidir (6356 m.39/4); TİS'in yürürlük tarihine (01.01.2025) ya da imza tarihine (01.10.2025) geri gitmez.
+    - Talep tarihi ile aidat ödemesinin başladığı tarih aynı olmayabilir; sorudaki 10.12.2025 ödeme başlangıcıdır, talep tarihi ayrıca sorulur.
+    - Üye olarak yararlanma (6356 m.39/2) ile dayanışma aidatıyla yararlanma (6356 m.39/4) ayrı kurallardır; işçiye m.39/2 uygulanmaz.
+    - Aralık 2025 ödemelerinde sonuç her ödemenin hak ediş tarihine ve TİS hükmüne bağlıdır; TİS metni ve hak ediş tarihi olmadan kesin "yararlanır" veya "yararlanamaz" denmez.
+    - İlave tediyenin kapsamı ve hak ediş koşulu 6772 sayılı Kanuna dayanır; Kanun okunmadan bu konuda kural cümlesi kurulmaz.
+    - 6356 m.39/4'ün dördüncü cümlesi Anayasa Mahkemesince iptal edilmiştir; iptal edilen cümleye dayanılmaz.
+    - Tutar hesabı yapılmaz (md.29).
+tags: [tis, sendika, dayanisma-aidati]

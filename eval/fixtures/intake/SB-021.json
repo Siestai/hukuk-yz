@@ -1,0 +1,22 @@
+{
+ "topic": "idari_para_cezasi",
+ "title": "Bordro geçersizliği ve idari para cezası",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "fiil",
+   "value": "Bordrolarda bir sigortalının imzası eksik",
+   "status": "known"
+  },
+  {
+   "key": "tutanakla_teslim",
+   "value": "Denetmen resmi tebligat olmaksızın işverenden bordro alıyor",
+   "status": "known"
+  },
+  {
+   "key": "ceza_turu",
+   "value": "Bordro geçersizliği",
+   "status": "known"
+  }
+ ]
+}

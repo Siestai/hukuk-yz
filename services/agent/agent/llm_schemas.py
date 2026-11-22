@@ -5,7 +5,15 @@ written by code from these."""
 from datetime import date
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, create_model, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    create_model,
+    model_validator,
+)
 
 from agent.topics import Topic
 from hukuk_models.chat import AnswerStatus, CaseFacts, FactStatus, HoldingResult
@@ -70,6 +78,9 @@ class MissingDraft(LlmModel):
 class DraftOutput(LlmModel):
     status: AnswerStatus
     headline: str
+    # The `row` numbers of the holding map rows whose result the headline states; the gate
+    # refuses a headline that names none of them.
+    headline_rows: list[int]
     points: Annotated[list[PointDraft], Field(min_length=1)]
     missing_info: list[MissingDraft] = []
     reasoning_summary: str
@@ -86,12 +97,17 @@ def draft_output_type(
     """
     from agent.facts import critical_unknown
 
-    keys = tuple(f.key for f in topic.facts)
-    key_type = (
-        Annotated[Literal[keys], Field(json_schema_extra={"enum": list(keys)})] | None
-        if keys
-        else type(None)
-    )
+    keys = [f.key for f in topic.facts]
+    # The provider is offered the template's keys only; a key outside them that still comes
+    # back in an additional entry is parsed, and the gate has it corrected once, then drops it.
+    key_type = Annotated[
+        str | None,
+        WithJsonSchema(
+            {"anyOf": [{"type": "string", "enum": keys}, {"type": "null"}]}
+            if keys
+            else {"type": "null"}
+        ),
+    ]
     missing_type = create_model(
         "RequestMissingDraft", __base__=MissingDraft, fact_key=(key_type, None)
     )

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from genai_prices import Usage, calc_price
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ToolOutput
 from pydantic_ai.models import Model
 
 from agent.trace import current_record
@@ -48,7 +48,15 @@ class Llm:
 
     async def run[T](self, tier: Tier, output_type: type[T], instructions: str, prompt: str) -> T:
         model = self._models.fast if tier == "fast" else self._models.strong
-        agent = Agent(model, output_type=output_type, instructions=instructions, retries=RETRIES)
+        # A plain (not strict) output tool: Anthropic compiles a strict schema (Native Output or a
+        # strict tool) into a grammar and rejects the request when it is too large, and the
+        # request-local draft schema grows with each critical unknown fact. Pydantic checks it.
+        agent = Agent(
+            model,
+            output_type=ToolOutput(output_type, strict=False),
+            instructions=instructions,
+            retries=RETRIES,
+        )
         result = await agent.run(prompt)
         usage = result.usage
         if (record := current_record()) is not None:

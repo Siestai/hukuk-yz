@@ -1,0 +1,171 @@
+# Görev 19 B2. Eval vakaları eval/cases/SB-027.yaml (işverenin devamsızlık nedeniyle feshi,
+# 4857 m.25/II-g) ve eval/cases/SB-035.yaml (yıllık izin ücretinin ödenmemesi nedeniyle işçinin
+# haklı feshi, 4857 m.24/II-e). İki taraf aynı şablonda: hak düşürücü süre (m.26) ortaktır.
+# Yalnız bir tarafa ait olgular fesih_sebebi'ne bağlı sorulur (asked_when; fesih_sebebi sorulmaz,
+# giriş adımı seçer). Sebep bilinmiyorsa iki tarafın olguları da sorulur; bu yüzden onlarda
+# "söz konusu değil" seçeneği (assumed_never) bulunmaktadır.
+# Atıf notu: KB'deki 4857 ve 1475 metinlerinde "(1)" biçiminde fıkra numarası yoktur ve harfli
+# bentler (II-g, II-e) künyede taşınamaz (agent/sources.py checked_sub); basis madde düzeyindedir,
+# bent metinde ve "why" içinde adıyla anılır.
+id: hakli_fesih_devamsizlik
+title: Haklı nedenle fesih ve devamsızlık
+description: >-
+  Bildirimsiz (haklı nedenle) fesih: işverenin işçinin devamsızlığı nedeniyle feshi
+  (4857 m.25/II-g), işçinin ücretinin veya yıllık izin ücretinin ödenmemesi nedeniyle feshi
+  (4857 m.24/II-e, m.57), altı iş günü ve bir yıllık hak düşürücü süre (m.26), savunma alınması
+  (m.19), fesih bildiriminin yazılı yapılması (m.109) ve işten ayrılış bildirgesi (5510 m.9).
+facts:
+  - key: fesih_sebebi
+    label: Feshin dayandığı sebep
+    options:
+      - {value: devamsizlik, label: İşverenin işçinin devamsızlığı nedeniyle feshi}
+      - {value: ucret_odenmemesi, label: İşçinin ücretin veya yıllık izin ücretinin ödenmemesi nedeniyle feshi}
+      - {value: diger, label: Başka bir haklı neden}
+  - key: olay_tarihi
+    label: Fesih sebebinin öğrenildiği tarih
+    critical: true
+    question:
+      text: Fesih sebebi olan olay hangi tarihte gerçekleşti veya öğrenildi?
+      why: >-
+        Ahlak ve iyi niyet kurallarına uymayan hallere dayanan fesih yetkisi, diğer tarafın bu
+        davranışı öğrendiği günden başlayarak altı iş günü geçtikten ve her hâlde fiilin
+        gerçekleşmesinden itibaren bir yıl sonra kullanılamamaktadır (4857 m.26).
+      kind: date
+      basis:
+        - {ref: "4857 m.26", category: statute}
+  - key: devamsizlik_is_gunu
+    label: Devamsızlık günleri
+    critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
+    question:
+      text: >-
+        İşçinin gelmediği günler, çalışması gereken iş günleri midir; ardı ardına mı yoksa
+        aralıklı mı gerçekleşti?
+      why: >-
+        4857 m.25/II-g, işçinin izinsiz veya haklı bir sebebe dayanmaksızın ardı ardına iki iş
+        günü, bir ay içinde iki defa herhangi bir tatil gününden sonraki iş günü veya bir ayda üç
+        iş günü işine devam etmemesini fesih sebebi saymaktadır; ölçü iş günüdür.
+      kind: choice
+      options:
+        - {value: ardi_ardina, label: Ardı ardına iki veya daha fazla iş günü}
+        - {value: ayda_uc, label: Bir ay içinde aralıklı olarak üç veya daha fazla iş günü}
+        - {value: tatil_sonrasi, label: Bir ay içinde iki defa tatil gününden sonraki iş günü}
+        - {value: tatil_dahil, label: Günlerin bir kısmı hafta tatili veya genel tatil günüdür}
+        - {value: yok, label: Devamsızlık söz konusu değil, assumed_never: true}
+      basis:
+        - {ref: "4857 m.25", category: statute}
+  - key: isciye_ulasma
+    label: İşçiye ulaşılması
+    critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
+    question:
+      text: İşçiye ulaşılıp işe gelmeme sebebi soruldu mu?
+      why: >-
+        4857 m.25/II-g, devamsızlığın işverenden izin alınmaksızın veya haklı bir sebebe
+        dayanmaksızın gerçekleşmesini aramaktadır. 4857 m.19, davranış nedeniyle fesihte
+        savunma alınmasını öngörmekte ve m.25/II'ye uygun fesih hakkını saklı tutmaktadır.
+      kind: choice
+      options:
+        - {value: ulasilamadi, label: İşçiye ulaşılamadı}
+        - {value: sebep_yok, label: Ulaşıldı; işçi bir sebep bildirmedi}
+        - {value: sebep_var, label: Ulaşıldı; işçi bir sebep bildirdi}
+        - {value: denenmedi, label: Henüz ulaşılmaya çalışılmadı}
+        - {value: yok, label: Devamsızlık söz konusu değil, assumed_never: true}
+      basis:
+        - {ref: "4857 m.25", category: statute}
+        - {ref: "4857 m.19", category: statute}
+  - key: mazeret_bildirimi
+    label: Mazeret veya izin
+    critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
+    question:
+      text: İşçi gelmediği günler için izin almış mı veya rapor gibi bir mazeret bildirmiş mi?
+      why: >-
+        İzin alınmış veya haklı bir sebep bulunan devamsızlık 4857 m.25/II-g kapsamına
+        girmemektedir; hastalık ve kaza hâllerinde 4857 m.25/I ayrı koşullar ve süreler
+        öngörmektedir.
+      kind: choice
+      options:
+        - {value: hayir, label: Hayır}
+        - {value: rapor, label: Hastalık veya kaza raporu bildirdi}
+        - {value: izin, label: İzin aldığını ileri sürmektedir}
+        - {value: diger, label: Başka bir mazeret bildirdi}
+        - {value: yok, label: Devamsızlık söz konusu değil, assumed_never: true}
+      basis:
+        - {ref: "4857 m.25", category: statute}
+  - key: ucret_odeme_durumu
+    label: Ücretin ödenmesi
+    critical: true
+    asked_when: {fesih_sebebi: [ucret_odenmemesi, unknown]}
+    question:
+      text: Ücret (yıllık izin ücreti dahil) hiç mi ödenmedi, geç mi ödendi, eksik mi ödendi?
+      why: >-
+        Ücretin kanun hükümlerine veya sözleşme şartlarına uygun olarak hesap edilmemesi veya
+        ödenmemesi işçi için fesih sebebidir (4857 m.24/II-e). Yıllık izin ücreti işçinin izine
+        başlamasından önce peşin ödenmekte veya avans olarak verilmektedir (4857 m.57).
+      kind: choice
+      options:
+        - {value: hic, label: Hiç ödenmedi}
+        - {value: gec, label: Geç ödendi}
+        - {value: eksik, label: Eksik ödendi}
+        - {value: yok, label: Ücret alacağı söz konusu değil, assumed_never: true}
+      basis:
+        - {ref: "4857 m.24", category: statute}
+        - {ref: "4857 m.57", category: statute}
+  - key: hizmet_suresi
+    label: Çalışma süresi
+    critical: true
+    asked_when: {fesih_sebebi: [ucret_odenmemesi, diger, unknown]}
+    question:
+      text: İşçi aynı işverende toplam ne kadar süre çalıştı?
+      why: >-
+        Kıdem tazminatı, işçinin işe başladığı tarihten itibaren hizmet sözleşmesinin devamı
+        süresince her geçen tam yıl için hesaplanmaktadır (1475 m.14).
+      kind: text
+      basis:
+        - {ref: "1475 m.14", category: statute}
+  - key: yazili_belge
+    label: Tutanak ve yazılı bildirim
+    critical: true
+    question:
+      text: >-
+        Olay ve taraflar arasındaki bildirimler (tutanak, ihtarname, yazılı fesih bildirimi)
+        yazılı olarak belgelendi mi?
+      why: >-
+        Kanunda öngörülen bildirimler ilgiliye yazılı olarak ve imza karşılığında yapılmakta,
+        imzadan kaçınılırsa durum tutanakla tespit edilmektedir (4857 m.109). İşveren fesih
+        bildirimini yazılı yapmak ve fesih sebebini açık ve kesin belirtmek zorundadır
+        (4857 m.19).
+      kind: choice
+      options:
+        - {value: evet, label: Evet}
+        - {value: kismen, label: Kısmen}
+        - {value: hayir, label: Hayır}
+      basis:
+        - {ref: "4857 m.109", category: statute}
+        - {ref: "4857 m.19", category: statute}
+event_date_fact: olay_tarihi
+must_read:
+  - {ref: "4857 m.24", category: statute}
+  - {ref: "4857 m.25", category: statute}
+  - {ref: "4857 m.26", category: statute}
+  - {ref: "4857 m.19", category: statute}
+  - {ref: "4857 m.17", category: statute}
+  - {ref: "4857 m.57", category: statute}
+  - {ref: "4857 m.34", category: statute}
+  - {ref: "4857 m.109", category: statute}
+  - {ref: "1475 m.14", category: statute}
+  - {ref: "5510 m.9", category: statute}
+queries:
+  - işçinin işverenden izin almaksızın ardı ardına iki işgünü işine devam etmemesi
+  - ahlak ve iyiniyet kurallarına uymayan hallere dayanarak fesih yetkisi altı iş günü
+  - işçinin ücreti kanun hükümleri veya sözleşme şartlarına uygun olarak ödenmezse
+  - yıllık izin ücretini izine başlamasından önce peşin olarak ödemek
+traps:
+  - 4857 m.25/II-g'deki eşikler iş günüyle ölçülür; takvim günü sayısı iş günü sayısı yerine konmaz.
+  - 4857 m.19 savunma şartını koyar ve m.25/II'ye uygun fesih hakkını saklı tutar; devamsızlığın izinsiz ve haklı sebepsiz olduğu belirlenmeden "savunma gerekmez" gibi kesin cümle kurulmaz.
+  - Hastalık veya kazaya dayanan devamsızlıkta m.25/II-g değil, m.25/I hükümleri ve süreleri incelenir.
+  - 4857 m.26'daki altı iş günü öğrenmeden, bir yıl fiilin gerçekleşmesinden işler; süren bir devamsızlıkta veya ödenmeyen ücrette sürenin başlangıç günü kaynak okunmadan kesin söylenmez.
+  - 4857 m.24/II-e metninde bekleme süresi bulunmaz; m.34'teki yirmi günlük süre iş görmekten kaçınma hakkına ilişkindir, fesih hakkıyla karıştırılmaz.
+  - İşçinin haklı feshinde kıdem tazminatı 1475 m.14 koşullarına bağlıdır; ihbar tazminatı işçi lehine doğmaz.
+  - İşten ayrılış bildirgesi 5510 m.9 uyarınca en geç on gün içinde verilir; ayrılış nedeni kodu okunan kaynaktan alınır, kaynakta yoksa kod yazılmaz.

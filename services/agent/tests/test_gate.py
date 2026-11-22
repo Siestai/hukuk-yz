@@ -11,9 +11,10 @@ from agent.holding import verify_rows
 from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
 from agent.sources import ReadSource, as_read_source
 from agent.topics import get_topic
-from hukuk_models.chat import CaseFacts, Fact, HoldingRow
+from hukuk_models.chat import CaseFacts, Fact, HoldingRow, SourceGap
 
 TOPIC = get_topic("ise_iade")
+GAP = SourceGap(topic="İşe iade", missing_sources=[], given_facts=[], next_step="-")
 DAY = date(2026, 10, 3)
 
 
@@ -40,7 +41,9 @@ def facts(known: bool) -> CaseFacts:
     every = [
         {
             "key": f.key,
-            "value": "03.10.2026" if f.key == "bildirim_tarihi" else "x",
+            "value": "03.10.2026"
+            if f.key == "bildirim_tarihi"
+            else (f.choices[0].value if f.choices else "x"),
             "status": "known",
         }
         for f in TOPIC.facts
@@ -56,7 +59,7 @@ def facts(known: bool) -> CaseFacts:
     )
 
 
-def check(output: dict, *, known: bool = False, result: str = "met"):  # type: ignore[no-untyped-def,type-arg]
+def check(output: dict, *, known: bool = False, result: str = "met", final: bool = False):  # type: ignore[no-untyped-def,type-arg]
     return check_draft(
         DraftOutput.model_validate(output),
         topic=TOPIC,
@@ -65,6 +68,7 @@ def check(output: dict, *, known: bool = False, result: str = "met"):  # type: i
         read=read(),
         applied_on=DAY,
         date_assumed=False,
+        final=final,
     )
 
 
@@ -192,18 +196,26 @@ def test_the_calculations_of_the_template_are_added_by_code() -> None:
     assert "Olay tarihi bilinmediğinden" in result.answer.status_note
 
 
-def test_the_not_answered_answer_shows_the_verified_rows_or_nothing() -> None:
-    kwargs = dict(topic=TOPIC, facts=facts(False), read=read(), applied_on=DAY, date_assumed=False)
+def test_the_not_answered_answer_shows_the_verified_rows_and_the_source_gap() -> None:
+    kwargs = dict(
+        topic=TOPIC, facts=facts(False), read=read(), applied_on=DAY, date_assumed=False, gap=GAP
+    )
 
     answer = not_answered(rows=rows(), **kwargs)  # type: ignore[arg-type]
 
-    assert answer is not None
     assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
     assert answer.holding_map.rows
+    assert answer.source_gap == GAP
     # The fallback cites only its holding map rows, and that is what is counted.
     counts = cited_by_status(answer)
     assert (counts.approved, counts.unreviewed) == (1, 0)
-    assert not_answered(rows=[], **kwargs) is None  # type: ignore[arg-type]
+    # With no verified row it is still the honest answer, not an error.
+    empty = not_answered(rows=[], **kwargs)  # type: ignore[arg-type]
+    assert empty.holding_map.rows == [] and empty.source_gap == GAP
+    assert "Doğrulanan hüküm bulunmamaktadır." in empty.points[0].text
+    assert empty.status_note.startswith("Okunan kaynaklarda doğrulanabilen hüküm bulunamamıştır.")
+    assert "yeterli değildir" not in empty.status_note
+    assert "Eksik bilgiler" not in empty.status_note
 
 
 def test_a_paragraph_the_text_read_does_not_have_is_not_cited() -> None:
@@ -273,19 +285,35 @@ def test_point_quote_in_another_paragraph_does_not_keep_model_sub() -> None:
     assert result.answer.points[0].citations[0].ref == "4857 m.18"
 
 
+def test_a_point_may_name_its_read_source_by_kunye_and_the_paragraph_is_still_checked() -> None:
+    output = draft()
+    output["points"][0]["citations"] = [
+        {"source_id": "4857 m.18/4", "quote": M18_4},
+        {"source_id": "4857 m.18/1", "quote": M18_4},
+        {"source_id": "4857 m.19", "quote": M18_4},
+    ]
+    result = check(output)
+    assert result.answer is not None
+    cited = result.answer.points[0].citations
+    assert [(c.source_id, c.ref) for c in cited] == [
+        ("statute:4857:m18", "4857 m.18/4"),
+        ("statute:4857:m18", "4857 m.18"),
+    ]
+    assert result.drops.citations == 1
+
+
 def test_fallback_never_returns_informal_holding_rows() -> None:
     informal = rows()[0].model_copy(update={"condition": "Kıdem aranıyorsa"})
-    assert (
-        not_answered(
-            topic=TOPIC,
-            facts=facts(False),
-            rows=[informal],
-            read=read(),
-            applied_on=DAY,
-            date_assumed=False,
-        )
-        is None
+    fallback = not_answered(
+        topic=TOPIC,
+        facts=facts(False),
+        rows=[informal],
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+        gap=GAP,
     )
+    assert fallback.holding_map.rows == []
 
 
 def test_the_expiry_day_is_not_a_valid_citation_date() -> None:
@@ -315,7 +343,16 @@ def test_missing_info_citation_purpose_is_also_checked_for_formal_tense() -> Non
 @pytest.mark.parametrize(
     ("status", "has_rows", "expected"),
     [
-        ("definite", True, {"critical_unknown": 6, "unread_source": 1, "unknown_holding": 1}),
+        (
+            "definite",
+            True,
+            {
+                "critical_unknown": 6,
+                "unread_source": 1,
+                "unknown_holding": 1,
+                "unsupported_headline": 1,
+            },
+        ),
         (
             "conditional",
             False,
@@ -360,7 +397,7 @@ def test_issue_counts_use_fixed_codes_while_feedback_keeps_details(
 def test_holding_applicability_controls_ordinary_draft(results: list[str], blocked: bool) -> None:
     verified = [r for value in results for r in rows(value)]
     result = check_draft(
-        DraftOutput.model_validate(draft()),
+        DraftOutput.model_validate(draft(headline_rows=tuple(range(1, len(results) + 1)))),
         topic=TOPIC,
         facts=facts(False),
         rows=verified,
@@ -378,8 +415,8 @@ def test_holding_applicability_controls_ordinary_draft(results: list[str], block
             read=read(),
             applied_on=DAY,
             date_assumed=False,
+            gap=GAP,
         )
-        assert fallback is not None
         assert fallback.holding_map.rows == verified
         assert all(m.fact_key is None for m in fallback.missing_info)
         assert fallback.read_sources.items[0].source_id == read()[0].source_id
@@ -416,7 +453,7 @@ def test_conditional_rejects_omitted_critical_fact_keys(omitted: tuple[str, ...]
     # Duplicates, null keys and known/unrelated keys cannot replace a missing critical key.
     output["missing_info"] += [output["missing_info"][0]] + [
         {"fact_key": key, "condition": "Ek bilgi", "result": "Bilgi gerekmektedir."}
-        for key in (None, "kidem", "unrelated")
+        for key in (None, "kidem")
     ]
     result = check(output)
     assert result.answer is None
@@ -448,7 +485,7 @@ def test_conditional_coverage_uses_actual_critical_unknowns_only(
             "condition": "Eksik bilgi",
             "result": "Okunan kaynaklarla sonuç belirlenememektedir.",
         }
-        for key in [*critical_unknown(topic, case), None, "noncritical"]
+        for key in [*critical_unknown(topic, case), None, *(["kidem"] if topic.facts else [])]
     ]
     result = check_draft(
         DraftOutput.model_validate(output),
@@ -478,10 +515,10 @@ def test_register_checks_generated_values_without_rewriting_user_or_source_text(
     case = facts(False)
     case.facts.append(Fact(key="verbatim", label="Özgün metin", value=original, status="known"))
     before = case.model_dump()
-    verified, dropped = verify_rows(
+    verified, dropped, _ = verify_rows(
         HoldingDraft.model_validate({"rows": [candidate]}), [source], DAY, facts=case
     )
-    assert dropped == 0
+    assert dropped == {}
     output = DraftOutput.model_validate(draft())
     assert progressive_in(output, verified, case) == []
     for field in ("condition", "fact_value"):
@@ -567,3 +604,308 @@ def test_an_unreviewed_source_that_was_not_read_is_not_cited_either() -> None:
     assert (result.drops.citations, result.drops.points) == (3, 2)
     counts = cited_by_status(result.answer)
     assert (counts.approved, counts.unreviewed) == (2, 0)
+
+
+@pytest.mark.parametrize("basis", [[], [0], [2], [1, 5]])
+def test_a_headline_that_names_no_verified_holding_row_is_refused(basis: list[int]) -> None:
+    output = draft()
+    output["headline_rows"] = basis
+
+    result = check(output)
+
+    assert result.answer is None
+    assert result.issue_counts == {"unsupported_headline": 1}
+    assert any("headline_rows" in i for i in result.issues)
+
+
+def test_a_headline_on_a_row_whose_source_was_not_read_is_refused() -> None:
+    other = as_read_source(hit("statute:4857:m17", "4857 m.17", "4857 m.17", M18_1))
+    assert other is not None
+
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=rows(),
+        read=[other],
+        applied_on=DAY,
+        date_assumed=False,
+    )
+
+    assert result.answer is None
+    assert result.issue_counts["unsupported_headline"] == 1
+
+
+QUALIFIED = "İşçi hak kazanır. Ancak süre dolmuyorsa hak kazanamaz."
+
+
+def informal_draft() -> dict:  # type: ignore[type-arg]
+    output = draft()
+    good = output["points"][0]
+    cited = {**good["citations"][0], "used_for": "Kıdem aranıyor."}
+    output["points"] = [
+        good,
+        {"text": QUALIFIED, "citations": good["citations"]},
+        {"text": "Bildirim şartı aranmaktadır.", "citations": [cited]},
+    ]
+    output["missing_info"].append(
+        {"fact_key": None, "condition": "Ek koşul vardır. Süre işliyorsa", "result": "Belirsizdir."}
+    )
+    output["reasoning_summary"] = (
+        "Kıdem şartı 4857 s. Kanun m. 18 uyarınca aranmaktadır. Şart sağlanıyor."
+    )
+    return output
+
+
+def test_the_register_feedback_names_the_informal_sentences() -> None:
+    result = check(informal_draft())
+
+    assert result.answer is None
+    assert result.issue_counts == {"progressive_form": 4}
+    feedback = " ".join(result.issues)
+    for sentence in (
+        "Ancak süre dolmuyorsa hak kazanamaz.",
+        "Kıdem aranıyor.",
+        "Süre işliyorsa",
+        "Şart sağlanıyor.",
+    ):
+        assert f"«{sentence}»" in feedback
+    assert "«İşçi hak kazanır.»" not in feedback
+
+
+def test_after_the_correction_an_entry_with_an_informal_sentence_drops_whole() -> None:
+    result = check(informal_draft(), final=True)
+
+    assert result.issues == []
+    assert result.answer is not None
+    # The qualified point would say the opposite of what it means without its second sentence.
+    assert [p.text for p in result.answer.points] == ["Altı aylık kıdem şartı aranmaktadır."]
+    assert None not in [m.fact_key for m in result.answer.missing_info]
+    assert result.answer.holding_map.reasoning_summary == (
+        "Kıdem şartı 4857 s. Kanun m. 18 uyarınca aranmaktadır."
+    )
+    assert (result.drops.sentences, result.drops.points, result.drops.branches) == (1, 2, 1)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "4857 s. Kanun m. 18/1 uyarınca işçi çalışıyor.",
+        "Bkz. md. 25 vb. hükümler aranıyor.",
+        "Kanunun 2. fıkrası uygulanıyor.",
+    ],
+)
+def test_the_sentence_splitter_does_not_cut_at_abbreviations_or_numbers(text: str) -> None:
+    from agent.gate import progressive_sentences
+
+    assert progressive_sentences([f"Hüküm açıktır. {text}"]) == [text]
+
+
+@pytest.mark.parametrize(
+    ("change", "code"),
+    [
+        ("headline", "progressive_form"),
+        ("reasoning_summary", "progressive_form"),
+        ("critical_branch", "uncovered_critical_facts"),
+        ("points", "no_verified_points"),
+    ],
+)
+def test_after_the_correction_an_answer_that_loses_its_meaning_is_refused(
+    change: str, code: str
+) -> None:
+    output = draft()
+    if change == "critical_branch":
+        output["missing_info"][0]["result"] = "Sonuç bellidir. Hüküm uygulanıyor."
+    elif change == "points":
+        output["points"][0]["text"] = "Kıdem aranmaktadır. Ancak süre dolmuyor."
+    elif change == "headline":
+        output[change] = "Dava açılamaz. Ancak kıdem şartı aranıyor."
+    else:
+        output[change] = "Sonuç belirsiz kalıyor."
+
+    result = check(output, final=True)
+
+    assert result.answer is None
+    assert code in result.issue_counts
+
+
+def test_after_the_correction_informal_text_outside_the_draft_is_still_refused() -> None:
+    titled = facts(False).model_copy(update={"title": "Dava açılıyor"})
+
+    result = check_draft(
+        DraftOutput.model_validate(draft()),
+        topic=TOPIC,
+        facts=titled,
+        rows=rows(),
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+        final=True,
+    )
+
+    assert result.answer is None
+    assert result.issue_counts == {"progressive_form": 1}
+
+
+ONLY_UNREVIEWED = "Cevabın dayandığı kaynakların tamamı onaysızdır (test)"
+
+
+def test_an_answer_resting_only_on_unreviewed_sources_says_so_in_its_note() -> None:
+    unreviewed = read_with_unreviewed()[1]
+    holding = HoldingDraft.model_validate(
+        {"rows": [row("analyzed:4857:m.17:2003-06-10", UNREVIEWED_M17)]}
+    )
+    on_unreviewed = verify_rows(holding, [unreviewed], DAY)[0]
+    cited = {"source_id": "analyzed:4857:m.17:2003-06-10", "quote": UNREVIEWED_M17}
+    for status, known in (("conditional", False), ("definite", True)):
+        result = check_draft(
+            DraftOutput.model_validate(
+                draft(
+                    status,
+                    missing=not known,
+                    points=[{"text": "Onaysız kaynağa dayanan nokta.", "citations": [cited]}],
+                )
+            ),
+            topic=TOPIC,
+            facts=facts(known),
+            rows=on_unreviewed,
+            read=[unreviewed],
+            applied_on=DAY,
+            date_assumed=False,
+        )
+
+        assert result.answer is not None
+        assert ONLY_UNREVIEWED in result.answer.status_note
+
+
+def test_an_answer_resting_partly_on_approved_sources_has_no_unreviewed_note() -> None:
+    unreviewed = {"source_id": "analyzed:4857:m.17:2003-06-10", "quote": UNREVIEWED_M17}
+
+    result = check_with_unreviewed(
+        [{"text": "Onaysız kaynağa dayanan nokta.", "citations": [unreviewed]}]
+    )
+
+    assert result.answer is not None
+    assert result.answer.points[0].unreviewed
+    assert ONLY_UNREVIEWED not in result.answer.status_note
+
+
+def test_an_unknown_fact_row_gives_a_branch_for_every_critical_unknown() -> None:
+    holding = HoldingDraft.model_validate(
+        {
+            "rows": [
+                {**row("statute:4857:m18", M18_1, "met"), "fact_value": "işçi sayısı bilinmiyor"}
+            ]
+        }
+    )
+    verified = verify_rows(holding, read(), DAY)[0]
+    required = critical_unknown(TOPIC, facts(False))
+    output = draft()
+
+    def gate(branches: list[dict]):  # type: ignore[no-untyped-def,type-arg]
+        return check_draft(
+            DraftOutput.model_validate({**output, "missing_info": branches}),
+            topic=TOPIC,
+            facts=facts(False),
+            rows=verified,
+            read=read(),
+            applied_on=DAY,
+            date_assumed=False,
+        )
+
+    assert [r.result for r in verified] == ["unknown"]
+    answer = gate(output["missing_info"]).answer
+    assert answer is not None
+    assert sorted(m.fact_key or "" for m in answer.missing_info) == sorted(required)
+    assert answer.holding_map.rows[0].fact_value == "işçi sayısı bilinmemektedir"
+    for key in required:
+        left_out = [m for m in output["missing_info"] if m["fact_key"] != key]
+        assert gate(left_out).issue_counts == {"uncovered_critical_facts": 1}
+
+
+def test_a_headline_on_inapplicable_rows_only_is_refused() -> None:
+    both = [*rows("not_applicable"), *rows("met")]
+    for basis, refused in (([1], True), ([1, 2], False), ([2], False)):
+        output = draft()
+        output["headline_rows"] = basis
+        result = check_draft(
+            DraftOutput.model_validate(output),
+            topic=TOPIC,
+            facts=facts(False),
+            rows=both,
+            read=read(),
+            applied_on=DAY,
+            date_assumed=False,
+        )
+        assert ("unsupported_headline" in result.issue_counts) is refused
+
+
+@pytest.mark.parametrize(("result", "refused"), [("met", False), ("not_met", False)])
+def test_a_definite_headline_names_a_met_or_not_met_row(result: str, refused: bool) -> None:
+    both = [*rows("not_applicable"), *rows(result)]
+    for basis, expected in (([1], True), ([1, 2], refused)):
+        output = draft("definite", missing=False)
+        output["headline_rows"] = basis
+        gate = check_draft(
+            DraftOutput.model_validate(output),
+            topic=TOPIC,
+            facts=facts(True),
+            rows=both,
+            read=read(),
+            applied_on=DAY,
+            date_assumed=False,
+        )
+        assert ("unsupported_headline" in gate.issue_counts) is expected
+        assert (gate.answer is None) is expected
+
+
+def invented_branch() -> dict:  # type: ignore[type-arg]
+    output = draft()
+    output["missing_info"].append(
+        {"fact_key": "fesih_bildirim_tarihi", "condition": "Ek koşul", "result": "Belirsizdir."}
+    )
+    return output
+
+
+def test_a_branch_key_outside_the_template_is_refused_with_the_keys_allowed() -> None:
+    result = check(invented_branch())
+
+    assert result.answer is None
+    assert result.issue_counts == {"unknown_fact_key": 1}
+    feedback = " ".join(result.issues)
+    assert "fesih_bildirim_tarihi" in feedback and "bildirim_tarihi, onceki_donem" in feedback
+
+
+def test_after_the_correction_a_branch_key_outside_the_template_drops_its_branch() -> None:
+    result = check(invented_branch(), final=True)
+
+    assert result.issues == []
+    assert result.answer is not None
+    assert "fesih_bildirim_tarihi" not in [m.fact_key for m in result.answer.missing_info]
+    assert result.drops.branches == 1
+
+
+def test_the_fallback_says_when_its_rows_rest_only_on_unreviewed_sources() -> None:
+    from agent.gate import ONLY_UNREVIEWED as NOTE
+
+    unreviewed = read_with_unreviewed()[1]
+    holding = HoldingDraft.model_validate(
+        {"rows": [row("analyzed:4857:m.17:2003-06-10", UNREVIEWED_M17)]}
+    )
+
+    def fallback(verified: list[HoldingRow], sources: list[ReadSource]):  # type: ignore[no-untyped-def]
+        return not_answered(
+            topic=TOPIC,
+            facts=facts(False),
+            rows=verified,
+            read=sources,
+            applied_on=DAY,
+            date_assumed=False,
+            gap=GAP,
+        )
+
+    only = fallback(verify_rows(holding, [unreviewed], DAY)[0], [unreviewed])
+    approved = fallback(rows(), read())
+
+    assert NOTE in only.status_note
+    assert NOTE not in approved.status_note

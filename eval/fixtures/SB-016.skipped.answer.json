@@ -1,7 +1,7 @@
 {
   "status": "conditional",
   "status_note": "Sonuç, aşağıda istenen bilgilere bağlıdır.",
-  "headline": "Belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse iki indirimin ikisi de kaybedilmektedir; indirimin hangi fıkradan doğduğu cezanın türüne ve belgenin kendiliğinden verilip verilmediğine bağlıdır.",
+  "headline": "Belge 30 gün içinde verilse de ceza 15 gün içinde ödenmezse indirim uygulanmaz (kendiliğinden verilen belgede ceza dörtte bir oranında uygulanır, peşin ödemede cezanın dörtte üçü tahsil edilir); hangi indirimin söz konusu olduğu cezanın türüne ve belgenin kendiliğinden verilip verilmediğine bağlıdır.",
   "fact_chips": [
     {
       "fact_key": "belge_30_gun",
@@ -65,7 +65,7 @@
           "source_id": "admin:sgk-2020-8",
           "category": "admin_act",
           "label": "2020/8 İPC Genelgesi m.3.1",
-          "ref": "2020/8 Genelge m.3.1",
+          "ref": "2020/8 m.3.1",
           "review_status": "approved",
           "verification": "verified",
           "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"
@@ -79,7 +79,7 @@
           "source_id": "admin:sgk-2020-8",
           "category": "admin_act",
           "label": "2020/8 İPC Genelgesi m.3.1",
-          "ref": "2020/8 Genelge m.3.1",
+          "ref": "2020/8 m.3.1",
           "review_status": "approved",
           "verification": "verified",
           "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"
@@ -248,7 +248,7 @@
         "source_id": "admin:sgk-2020-8",
         "category": "admin_act",
         "label": "2020/8 İPC Genelgesi m.3.1",
-        "ref": "2020/8 Genelge m.3.1",
+        "ref": "2020/8 m.3.1",
         "review_status": "approved",
         "verification": "verified",
         "used_for": "Üç şart birlikte aranır; ödeme gecikirse indirim yoktur"

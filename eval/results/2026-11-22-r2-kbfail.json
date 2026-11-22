@@ -1,0 +1,781 @@
+{
+ "tag": "r2",
+ "date": "2026-11-22",
+ "models": {
+  "fast": "anthropic:claude-haiku-4-5-20251001",
+  "strong": "anthropic:claude-sonnet-5-5"
+ },
+ "kb": "http",
+ "estimate": {
+  "per_case_usd": 0.23258320000000002,
+  "source": "önceki koşular: 10 vaka, 3 sonuç dosyası"
+ },
+ "budget_usd": 1.5,
+ "spent_usd": 0.130701,
+ "earlier_spent_usd": 3.434882,
+ "passed": false,
+ "reasons": [
+  "hata ile biten vaka: SB-001, SB-002, SB-008, SB-013, SB-014, SB-024, SB-027, SB-032, SB-035, SB-042",
+  "must_ask ortalaması %10 < %80",
+  "must_ask < %50: SB-001, SB-002, SB-008, SB-013, SB-024, SB-027, SB-032, SB-035, SB-042",
+  "must_cite (missing_in_kb hariç) ortalaması %0 < %70",
+  "esaslı cevap 0/10 < 6"
+ ],
+ "not_run": [],
+ "cases": [
+  {
+   "case_id": "SB-001",
+   "trace_id": "60164bd5edd142e8841bc953ebde829d",
+   "expected_topic": "ise_iade",
+   "topic": null,
+   "intake": {
+    "topic": "ise_iade",
+    "title": "İşe iade davası açılabilirliği - 5 ay kıdem",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "kidem",
+      "value": "5 ay",
+      "status": "known"
+     },
+     {
+      "key": "isci_sayisi",
+      "value": null,
+      "status": "unknown"
+     },
+     {
+      "key": "sozlesme_turu",
+      "value": null,
+      "status": "unknown"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10646,
+   "output_tokens": 215,
+   "cost": 0.011721,
+   "seconds": 3.5231837920146063,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10646,
+     "output_tokens": 215,
+     "cost": 0.011721,
+     "seconds": 3.5231837920146063
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-002",
+   "trace_id": "d80ea8d4f6e14f818fa90b712280151a",
+   "expected_topic": "olum_yaslilik_aylik",
+   "topic": null,
+   "intake": {
+    "topic": "olum_yaslilik_aylik",
+    "title": "4/c sigortalısının ölümü sonrası ölüm toptan ödemesi ve gelir tespiti",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "sigortalilik_hali",
+      "value": "Kamu idaresinde çalışan (4/1-c)",
+      "status": "known"
+     },
+     {
+      "key": "talep_turu",
+      "value": "Ölüm toptan ödemesi",
+      "status": "known"
+     },
+     {
+      "key": "hak_sahibi",
+      "value": null,
+      "status": "unknown"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "5510 m.Geçici 4",
+    "5434",
+    "AYM kararı (ana-baba gelir şartı, belirlenmedi)"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10657,
+   "output_tokens": 258,
+   "cost": 0.011947,
+   "seconds": 2.9537816250231117,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10657,
+     "output_tokens": 258,
+     "cost": 0.011947,
+     "seconds": 2.9537816250231117
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-008",
+   "trace_id": "099dfb196f46489c8b95471a2f039687",
+   "expected_topic": "kidem_ihbar",
+   "topic": null,
+   "intake": {
+    "topic": "genel",
+    "title": "Askerlik nedeniyle işten ayrılış ve bildirim süresi",
+    "event_date": null,
+    "facts": []
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10637,
+   "output_tokens": 111,
+   "cost": 0.011192,
+   "seconds": 1.6333740419941023,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10637,
+     "output_tokens": 111,
+     "cost": 0.011192,
+     "seconds": 1.6333740419941023
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-013",
+   "trace_id": "26ff7f95a118425c9b86def8599b2645",
+   "expected_topic": "calisma_kosulu_degisikligi",
+   "topic": null,
+   "intake": {
+    "topic": "calisma_kosulu_degisikligi",
+    "title": "Çalışma saatlerinin değiştirilmesi için işçi izni",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "degisiklik_konusu",
+      "value": "Çalışma saatlerinin başlama ve bitiş saatinin değiştirilmesi (yarım saat öne veya ileri alınması)",
+      "status": "known"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "4857 m.63",
+    "Çalışma Süreleri Yönetmeliği m.8",
+    "22. HD E.2017/20988 K.2019/6513",
+    "9. HD E.2023/3247 K.2023/3581"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10668,
+   "output_tokens": 198,
+   "cost": 0.011658,
+   "seconds": 2.3252327909576707,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10668,
+     "output_tokens": 198,
+     "cost": 0.011658,
+     "seconds": 2.3252327909576707
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-014",
+   "trace_id": "639b4b4be6a4487fb889baa003a3619c",
+   "expected_topic": "idari_para_cezasi",
+   "topic": "idari_para_cezasi",
+   "intake": {
+    "topic": "idari_para_cezasi",
+    "title": "İşe giriş bildirgesinde bir yıl içinde tekrar ve ceza artışı",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "ceza_turu",
+      "value": "Bildirge (işe giriş, işten ayrılış, işyeri bildirgesi)",
+      "status": "known"
+     },
+     {
+      "key": "fiil",
+      "value": "İşe giriş bildirgesinin verilmediği denetim, mahkeme kararı veya kamu idaresi belgesiyle anlaşıldı",
+      "status": "known"
+     },
+     {
+      "key": "onceki_tespit_tarihi",
+      "value": "Aynı işyerinde bir yıl içinde önceki tespitin tarihi ve bu dönemde ceza artışının uygulanması koşulları",
+      "status": "known"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 1.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "5510 m.102",
+    "Danıştay / BİM kararı (5510 m.102/1-a-3 bir yıllık sürenin başlangıcı)"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10682,
+   "output_tokens": 329,
+   "cost": 0.012327,
+   "seconds": 4.098215583071578,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10682,
+     "output_tokens": 329,
+     "cost": 0.012327,
+     "seconds": 4.093542249989696
+    },
+    {
+     "node": "clarify",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 1.0410440154373646e-06
+    },
+    {
+     "node": "plan",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 0.00014516699593514204
+    },
+    {
+     "node": "retrieve",
+     "models": [],
+     "input_tokens": 0,
+     "output_tokens": 0,
+     "cost": null,
+     "seconds": 0.004527125041931868
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-024",
+   "trace_id": "9f8a99ddb26541a9be0b0fecfadced32",
+   "expected_topic": "sgk_bildirim_prim",
+   "topic": null,
+   "intake": {
+    "topic": "sgk_bildirim_prim",
+    "title": "Yeni işyerinde işe giriş bildirgesinin verilme süresi",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "bildirim_konusu",
+      "value": "Sigortalı işe giriş bildirgesinin süresi",
+      "status": "known"
+     },
+     {
+      "key": "isyeri_kolu",
+      "value": "Kuruma ilk defa işyeri bildirgesi verilen işyeri",
+      "status": "known"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "SSİY m.11/3-b",
+    "HMK m.92/2",
+    "HMK m.93/1",
+    "2013/11 m.K1-B4-2.4",
+    "2013/11 m.K1-B5-1.3"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10648,
+   "output_tokens": 227,
+   "cost": 0.011783,
+   "seconds": 2.7604182499926537,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10648,
+     "output_tokens": 227,
+     "cost": 0.011783,
+     "seconds": 2.7604182499926537
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-027",
+   "trace_id": "04941587f8e64e16bf8dfa7b8899376a",
+   "expected_topic": "hakli_fesih_devamsizlik",
+   "topic": null,
+   "intake": {
+    "topic": "hakli_fesih_devamsizlik",
+    "title": "Beş gün ardı ardına devamsızlık",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "fesih_sebebi",
+      "value": "İşverenin işçinin devamsızlığı nedeniyle feshi",
+      "status": "known"
+     },
+     {
+      "key": "devamsizlik_is_gunu",
+      "value": "Ardı ardına beş iş günü mazaretsiz",
+      "status": "known"
+     },
+     {
+      "key": "isciye_ulasma",
+      "value": null,
+      "status": "unknown"
+     },
+     {
+      "key": "mazeret_bildirimi",
+      "value": "Mazaret bildirmedi",
+      "status": "known"
+     },
+     {
+      "key": "yazili_belge",
+      "value": null,
+      "status": "unknown"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "SGK işten ayrılış nedeni kod listesi (devamsızlık feshi için kod): KB'de okunabilir kaynak yok",
+    "Yargıtay 9. HD: devamsızlıkta savunma, işçiye mazeretinin sorulması ve makul süre (arşivde aday kararlar var, decision tablosunda yok, E/K teyitsiz)"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10661,
+   "output_tokens": 328,
+   "cost": 0.012301,
+   "seconds": 3.621952290995978,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10661,
+     "output_tokens": 328,
+     "cost": 0.012301,
+     "seconds": 3.621952290995978
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-032",
+   "trace_id": "cb0f0b625dba4e8286ff5d449887c674",
+   "expected_topic": "kidem_ihbar",
+   "topic": null,
+   "intake": {
+    "topic": "genel",
+    "title": "Giydirilmiş ücrete yemek, yol ve yemek kartı yardımının katılması",
+    "facts": [
+     {
+      "key": "soru_konusu",
+      "value": "Giydirilmiş ücrete yemek, yol ve kupon (yemek kartı) yardımı eklenir mi, neden eklenir; dayanağı ve yerleşik içtihat",
+      "status": "known"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "Yargıtay 9. HD / HGK: düzenli ödenen yemek, yol ve yemek kartı yardımının giydirilmiş ücrete katılması, arızi ödeme ayrımı (arşivde aday kararlar var, decision tablosunda yok, E/K teyitsiz)"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 21643,
+   "output_tokens": 384,
+   "cost": 0.023563,
+   "seconds": 4.077881790988613,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 21643,
+     "output_tokens": 384,
+     "cost": 0.023563,
+     "seconds": 4.077881790988613
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-035",
+   "trace_id": "cc29777960e946cb80849a7bdcd7370d",
+   "expected_topic": "hakli_fesih_devamsizlik",
+   "topic": null,
+   "intake": {
+    "topic": "genel",
+    "title": "Yıllık izin ücretinin ödenmemesi nedeniyle fesih hakkı",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "soru_konusu",
+      "value": "Yıllık izin ücretinin ödenmemesi durumunda işçinin haklı fesih hakkı ve usulü",
+      "status": "known"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "Yıllık Ücretli İzin Yönetmeliği (izin ücretinin peşin ödenmesi ve iznin bölünmesi): KB'de yok",
+    "Yargıtay 9. HD: yıllık izin ücretinin peşin ödenmemesi üzerine işçi feshinin haklılığı ve m.26 süresinin ücret alacağında işleyişi (arşivde aday karar var, decision tablosunda yok, E/K teyitsiz)"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10678,
+   "output_tokens": 187,
+   "cost": 0.011613,
+   "seconds": 2.3224403749918565,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10678,
+     "output_tokens": 187,
+     "cost": 0.011613,
+     "seconds": 2.3224403749918565
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  },
+  {
+   "case_id": "SB-042",
+   "trace_id": "25a65987c3704c1ca5e1e14c2780ddc9",
+   "expected_topic": "olum_yaslilik_aylik",
+   "topic": null,
+   "intake": {
+    "topic": "olum_yaslilik_aylik",
+    "title": "Emeklilik şartları ve kıdem tazminatı yazısı (2008 ilk sigortalılık)",
+    "event_date": null,
+    "facts": [
+     {
+      "key": "sigortalilik_hali",
+      "value": null,
+      "status": "unknown"
+     },
+     {
+      "key": "ilk_sigortalilik_tarihi",
+      "value": "2008 Ocak ile 2008 Aralık arası işe giriş (ilk sigortalılık tarihi)",
+      "status": "known"
+     },
+     {
+      "key": "talep_turu",
+      "value": "08 koduyla (emeklilik için yaş dışındaki şartları tamamlayarak) işten ayrılma ve kıdem tazminatına esas yazı",
+      "status": "known"
+     },
+     {
+      "key": "olay_tarihi",
+      "value": null,
+      "status": "unknown"
+     },
+     {
+      "key": "prim_gun_sayisi",
+      "value": null,
+      "status": "unknown"
+     }
+    ]
+   },
+   "asked": [],
+   "rounds": 0,
+   "answer": null,
+   "metrics": {},
+   "score": 0.0,
+   "must_ask": 0.0,
+   "must_cite": 0.0,
+   "missing_in_kb": [
+    "5510 m.28",
+    "5510 m.Geçici 7",
+    "5510 m.Geçici 9",
+    "506 m.60",
+    "506 m.Geçici 81"
+   ],
+   "must_not": [],
+   "headline": null,
+   "mode": [],
+   "unread": [],
+   "drops": {
+    "rows": 0,
+    "points": 0,
+    "branches": 0,
+    "sentences": 0,
+    "citations": 0
+   },
+   "issue_counts": {},
+   "fallback": false,
+   "substantive": false,
+   "input_tokens": 10701,
+   "output_tokens": 379,
+   "cost": 0.012596,
+   "seconds": 3.9383714579744264,
+   "retrieved": {
+    "read": [],
+    "unread": [],
+    "missing": []
+   },
+   "nodes": [
+    {
+     "node": "intake",
+     "models": [
+      "anthropic:claude-haiku-4-5-20251001"
+     ],
+     "input_tokens": 10701,
+     "output_tokens": 379,
+     "cost": 0.012596,
+     "seconds": 3.9383714579744264
+    }
+   ],
+   "rows_dropped_by": {},
+   "error": "kb_unavailable"
+  }
+ ]
+}

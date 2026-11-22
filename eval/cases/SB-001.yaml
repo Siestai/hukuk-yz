@@ -1,17 +1,27 @@
 id: SB-001
 question: "5 ay kıdeme sahip bir işçi. İşe iade davası açabilir mi gerekçesi ile birlikte açıkla"
+# Görev 19 B1 gözden geçirme (2026-11-22):
+# - must_cite madde düzeyine indirildi (4857 m.18/1, m.18/4 -> 4857 m.18; 4857 m.17/2-a ->
+#   4857 m.17; 1475 m.14/1 -> 1475 m.14). Gerekçe: eval/score.py covers() atfı ancak istenen
+#   künyeye eşit ya da onun alt parçasıysa sayar ("4857 m.18" atfı "4857 m.18/1" isteğini
+#   karşılamaz). Ajan fıkrayı yalnız KB metninde satır başında "(1)" biçiminde numara varsa
+#   taşıyabilir (agent/sources.py checked_sub); harfli bentler (17/2-a) hiç taşınamaz. KB'deki
+#   4857 m.17, m.18 ve 1475 m.14 metinlerinde böyle numara yoktur (resmî metin fıkraları
+#   numaralamaz). Fıkra düzeyindeki istek bu yüzden ulaşılamazdı (duman koşusu: must_cite 0/6).
+#   Fıkra doğruluğu must_not (m.18/5) ve traps ile ölçülmeye devam eder.
+# - "9. HD E.2016/28920 K.2017/17860" ve "7. HD E.2014/12921 K.2014/18766" must_cite'tan
+#   çıkarıldı: ikisi de dergi arşivinde var, ancak decision tablosunda yok ve E/K karararama'da
+#   teyit edilmedi. Teyit edilip yüklenince geri eklenebilir.
 expected:
+  topic: ise_iade
   status: conditional
   headline_contains:
     - işe iade
     - açılamamaktadır
   must_cite:
-    - 4857 m.18/1
-    - 4857 m.18/4
-    - 4857 m.17/2-a
-    - 1475 m.14/1
-    - 9. HD E.2016/28920 K.2017/17860
-    - 7. HD E.2014/12921 K.2014/18766
+    - 4857 m.18
+    - 4857 m.17
+    - 1475 m.14
   must_ask:
     - isci_sayisi
     - sozlesme_turu
@@ -28,4 +38,6 @@ expected:
     - m.18/5 işveren vekillerine ilişkindir; deneme süresinin kıdeme dahil olması Yargıtay içtihadıdır, m.18/2 yalnız m.66 sürelerini sayar.
     - 9. HD E.2016/28920 K.2017/17860 dürüstlük kuralını anar ancak o olayda uygulamamıştır; kesin cümle kurulmaz.
     - Altı ayın hangi gün dolduğu kaynakta yazılı değildir; sınır günleri kesin söylenmez.
+    # Eklendi: atıf madde düzeyinde olsa da gerekçe doğru fıkraya dayanmalıdır.
+    - Otuz işçi, altı ay kıdem ve belirsiz süreli sözleşme şartları 4857 m.18'in birinci fıkrasında, süre birleştirme ve işçi sayısının hesabı dördüncü fıkrasındadır; bildirim süresi 4857 m.17'nin ikinci fıkrası (a) bendindedir.
 tags: [is-hukuku, is-guvencesi, kidem]
