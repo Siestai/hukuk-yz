@@ -10,17 +10,11 @@ expected:
     # fıkra numarası yoktur; ajan fıkrayı künyede taşıyamaz (SB-001 notu). İki fıkra ayrımı
     # traps ve must_not ile ölçülür.
     - 4857 m.22
-    - 9. HD E.2021/4643 K.2021/8989
-    - 9. HD E.2016/9412 K.2019/16512
-    - 9. HD E.2012/6260 K.2014/11165
   # Görev 19 B1 gözden geçirme (şablon: calisma_kosulu_degisikligi). 4857 m.22 KB'de high bantta
-  # okundu; iki numarasız paragraftan oluşur (m.22/1, m.22/2). Üç 9. HD kararı dergi arşivinde
-  # (sayı 71, 65, 45) bulunmaktadır, ancak KB decision tablosunda kaydı ve karararama E/K teyidi
-  # yoktur: teyit edilene kadar "kaynak eksik" sayılır, ajan bunlara atıf yapamaz (md.25).
-  missing_in_kb:
-    - 9. HD E.2021/4643 K.2021/8989
-    - 9. HD E.2016/9412 K.2019/16512
-    - 9. HD E.2012/6260 K.2014/11165
+  # okundu; iki numarasız paragraftan oluşur (m.22/1, m.22/2).
+  # Dergi arşivindeki (sayı 71, 65, 45) üç 9. HD kararı karararama'da E/K ile teyit edilmediği
+  # için eval/candidates/unverified-decisions.yaml'a taşındı (md.25); teyit edilip KB'ye
+  # yüklenince must_cite'a geri döner.
   must_ask:
     - yazili_bildirim
     - yazili_kabul

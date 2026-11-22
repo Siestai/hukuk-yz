@@ -279,3 +279,17 @@
   pydantic ile doğrulanır; uymayan çıktı yazılı yeniden denemeye girer. Sağlayıcının ret
   mesajı (400/422 gövdesindeki mesaj, istisna metni değil) en çok 500 karakterle log'a yazılır;
   soru ve kişisel veri log'a girmez.
+
+### 2026-11-22 — Teyitsiz Yargıtay künyeleri aday listesinde (Görev 19 devri, açık konu 1)
+
+- **Vaka dosyasına girmez** (Orhan; md. 25, 2026-10-02 doğrulama kuralı): karararama'da esas /
+  karar numarasıyla teyit edilmemiş Yargıtay künyesi `eval/cases/*.yaml`'ın hiçbir alanında
+  (`must_cite`, `must_not`, `traps`) yer almaz. Vaka analizinde bulunan böyle künyeler
+  `eval/candidates/unverified-decisions.yaml`'da dergi sayısı ve kullanılacağı vaka / alanla
+  bekler. SB-003 (3), SB-005 (2) ve SB-013'ün (2) yedi künyesi oraya taşındı.
+- **Geri dönüş:** künye karararama'da teyit edilip KB `decision` tablosuna yüklenince vakadaki
+  yerine döner ve listeden silinir; bulunamazsa ya da E/K tutmazsa listeden silinir. Teyit
+  edilemeyen künye düzeltilmez, yerine benzeri aranmaz.
+- **Puan etkisi yok:** yedi künye zaten `missing_in_kb`'deydi (must_cite paydasının dışında) ve
+  ajan bunları okuyamıyordu. İçeriği taşıyan tuzak cümleleri künyesiz kalır, dayanak teyit
+  bekliyor diye işaretlidir. Test, aday listesindeki teyitsiz numaranın vakalara dönmesini engeller.

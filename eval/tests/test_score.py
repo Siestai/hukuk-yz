@@ -42,6 +42,29 @@ def test_cases_are_well_formed() -> None:
         assert case["tags"]
 
 
+def _candidates() -> list[dict[str, Any]]:
+    loaded = yaml.safe_load((EVAL / "candidates" / "unverified-decisions.yaml").read_text("utf-8"))
+    return loaded["decisions"]  # type: ignore[no-any-return]
+
+
+def test_the_candidate_decisions_are_well_formed() -> None:
+    for d in _candidates():
+        assert d["chamber"] and d["esas"] and d["karar"] and d["journal_issue"]
+        assert d["karararama"] in ("unverified", "verified", "not_found")
+        assert d["cases"] and all((CASES / f"{c['case']}.yaml").exists() for c in d["cases"])
+
+
+def test_no_case_names_a_decision_karararama_has_not_verified() -> None:
+    # md. 25: a künye not verified on karararama stays on the candidate list, out of the cases
+    # (in must_cite, must_not, traps or anywhere else).
+    pending = [d for d in _candidates() if d["karararama"] != "verified"]
+    for path in sorted(CASES.glob("*.yaml")):
+        text = path.read_text(encoding="utf-8")
+        for d in pending:
+            for number in (d["esas"], d["karar"]):
+                assert number not in text, f"{path.stem}: {d['chamber']} {number} is unverified"
+
+
 @pytest.mark.parametrize(
     ("case", "error"),
     [

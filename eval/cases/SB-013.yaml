@@ -12,21 +12,18 @@ expected:
     - 4857 m.22
     - 4857 m.63
     - Çalışma Süreleri Yönetmeliği m.8
-    - 22. HD E.2017/20988 K.2019/6513
-    - 9. HD E.2023/3247 K.2023/3581
   # Görev 19 B1 gözden geçirme (şablon: calisma_kosulu_degisikligi).
   # 4857 m.22 KB'de high bantta okundu. 4857 m.63 KB'de var, ancak güven bandı low ve ilk
   # sürümün başlangıç tarihi hatalı (2015-04-23): K1 gereği okunamaz, yeniden çıkarım veya
   # inceleme onayı gerekir. Çalışma Süreleri Yönetmeliği KB'ye yüklenmemiştir (yalnız Drive
-  # kopyasında) ve yönetmelik künyesinin kunye.py'de karşılığı yoktur. İki Yargıtay kararı dergi
-  # arşivinde (sayı 63, 78) bulunmaktadır, ancak KB decision tablosunda kaydı ve karararama E/K
-  # teyidi yoktur.
+  # kopyasında) ve yönetmelik künyesinin kunye.py'de karşılığı yoktur.
+  # Dergi arşivindeki (sayı 63, 78) iki Yargıtay kararı karararama'da E/K ile teyit edilmediği
+  # için eval/candidates/unverified-decisions.yaml'a taşındı (md.25); teyit edilip KB'ye
+  # yüklenince must_cite'a geri döner.
   missing_in_kb:
     # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1); F1 ile madde düzeyinde.
     - 4857 m.63
     - Çalışma Süreleri Yönetmeliği m.8
-    - 22. HD E.2017/20988 K.2019/6513
-    - 9. HD E.2023/3247 K.2023/3581
   must_ask:
     - calisma_saati_kaynagi
     - kaymanin_kapsami
@@ -39,5 +36,6 @@ expected:
     - Her saat kayması esaslı değişiklik değildir; yönetim hakkı kapsamındaki, geçerli nedene dayanan değişiklikler sayılmaz. Kaynaklarda yarım saat için eşik yoktur.
     - Süregelen uygulama çalışma koşulu olabilir (m.22/1 işyeri uygulamasını sayar).
     - Günlük 11 saat ve haftalık 45 saat sınırları ile dinlenme süreleri korunmalıdır.
-    - Servis güzergâhı değişikliği işçi aleyhine esaslı değişiklik sayılmıştır (9. HD E.2023/3247 K.2023/3581).
+    # Dayanak karar teyit bekliyor (eval/candidates/unverified-decisions.yaml).
+    - Servis güzergâhı değişikliği işçi aleyhine esaslı değişiklik sayılmıştır.
 tags: [is-hukuku, calisma-suresi, esasli-degisiklik]
