@@ -650,7 +650,7 @@ class AdminActSectionVersionOut(BaseModel):
     heading: str | None
     valid_from: date | None
     valid_to: date | None  # None: no later wording is on file
-    change_kind: Literal["original", "amended", "repealed"]
+    change_kind: Literal["original", "amended", "repealed", "added"]
     amendments: list[dict[str, Any]]  # the notes in the text: kind, date, ref
 
 

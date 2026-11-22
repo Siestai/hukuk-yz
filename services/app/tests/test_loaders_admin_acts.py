@@ -56,6 +56,12 @@ TEXT = PAGE_BREAK.join(
     ]
 )
 SHA = "a8" * 32
+# The same genelge in a later file that no longer has section "1.2".
+TEXT_WITHOUT_1_2 = TEXT.replace(
+    "1.2- Bildirim süresi\n(Değişik, 17/09/2021 tarihli ve 2021/32 sayılı Genelge) "
+    "Bildirge on gün içinde verilir.\n",
+    "",
+)
 
 
 def act_record(text: str = TEXT, sha256: str = SHA) -> dict[str, Any]:
@@ -134,6 +140,22 @@ def test_prepare_names_the_genelge_and_bands_its_sections() -> None:
     assert len(first["content_hash"]) == 64
 
 
+def test_the_stored_band_is_never_better_than_the_warnings_say() -> None:
+    record = act_record()
+    record["sections"][3]["confidence"] = "high"  # declared high, but its number was skipped
+    record["sections"][0]["confidence"] = "medium"  # declared worse than its warnings: kept
+
+    (act,) = admin_acts.prepare([record])
+
+    assert [(s.section_no, s.confidence["band"]) for s in act.sections] == [
+        ("1", "medium"),
+        ("1.1", "medium"),
+        ("1.2", "medium"),
+        ("1.4", "low"),
+        ("2", "high"),
+    ]
+
+
 def test_the_content_hash_follows_the_section_text() -> None:
     (act,) = admin_acts.prepare([act_record()])
     (other,) = admin_acts.prepare([act_record(TEXT.replace("on gün", "on beş gün"))])
@@ -181,7 +203,7 @@ async def test_load_writes_one_source_and_an_unreviewed_extraction_per_section(
         ("1.4", "low"),
         ("2", "high"),
     ]
-    assert extractions[3].warnings == ["number_skipped:1.3->1.4"]
+    assert extractions[3].warnings == ["number_skipped:1.3->1.4", "valid_from_assumed_issue_date"]
     # the queue only: nothing is approved or published by loading
     assert await _count(kb_factory, Review) == 0
     assert await _count(kb_factory, AdminAct) == 0

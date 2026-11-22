@@ -1,7 +1,13 @@
 from datetime import date
 
 from hukuk_ingest.admin_acts import confidence
-from hukuk_ingest.admin_acts.split import INTRO, amendments, is_repealed, split_act
+from hukuk_ingest.admin_acts.split import (
+    INTRO,
+    amendments,
+    heading_notes,
+    is_repealed,
+    split_act,
+)
 from hukuk_ingest.quality import PAGE_BREAK
 
 LETTERHEAD = "T.C.\nÖRNEK KURUMU BAŞKANLIĞI\nBu belge elektronik imza ile imzalanmıştır."
@@ -166,6 +172,8 @@ def test_a_skipped_or_misnumbered_heading_is_flagged() -> None:
     assert confidence.band(by_no["1.3"].warnings) == "low"
     assert confidence.band(by_no["2"].warnings) == "medium"
     assert confidence.band(by_no["1"].warnings) == "high"
+    # text filed under the wrong number can not be cited by that number
+    assert confidence.band(["unplaced_heading:1.2.2.5"]) == "low"
 
 
 def test_a_page_without_text_lowers_the_sections_on_it() -> None:
@@ -196,6 +204,56 @@ def test_amendment_notes_are_read_from_the_section() -> None:
         {"kind": "added", "date": "2025-02-07", "ref": "2025/4"},
     ]
     assert unread == 1
+
+
+def test_notes_worded_with_genelge_ile_are_read_with_the_date_they_state() -> None:
+    text = (
+        "1. Ülkeler\n(03/11/2021 tarihli ve 2021/37 sayılı Genelge ile Moğolistan ibaresi mülga "
+        "edilmiştir.)\n(İkinci paragraf, 15/08/2019 tarihli ve 2019/16 sayılı Genelge ile\n"
+        "01/08/2019 tarihinden itibaren mülga)\n"
+        "(b bendi, 11/12/2020 tarihli ve 2020/51 sayılı Genelge ile değiştirilmiştir.)"
+    )
+
+    notes, unread = amendments(text)
+
+    assert notes == [
+        {"kind": "repealed", "date": "2021-11-03", "ref": "2021/37"},
+        {"kind": "repealed", "date": "2019-08-01", "ref": "2019/16", "act_date": "2019-08-15"},
+        {"kind": "amended", "date": "2020-12-11", "ref": "2020/51"},
+    ]
+    assert unread == 0
+
+
+def test_a_note_like_passage_that_cannot_be_read_is_counted_never_guessed() -> None:
+    text = (
+        "1. Bir\n(Değişik, 31/02/2021 tarihli ve 2021/32 sayılı Genelge) Tarih geçersiz.\n"
+        "(22/2/2013 tarihli ve 2013/11 sayılı Genelge ile birlikte uygulanır.)\n"
+        "(Ek: tarihsiz not) (2013/11 sayılı Genelge)"
+    )
+
+    notes, unread = amendments(text)
+
+    assert (notes, unread) == ([], 4)
+    assert confidence.band(["unparsed_amendment_note"]) == "low"
+
+
+def test_a_note_on_a_heading_is_told_from_a_note_in_the_text() -> None:
+    split = split_act(
+        "1. Kanuna Eklenen Geçici Maddeye Göre\n"
+        "Yapılacak İşlemler (Ek, 21/05/2020 tarihli ve 2020/15 sayılı Genelge)\n"
+        "Madde metni.\n"
+        "1.1. Alt başlık\nAlt metin.\n"
+        "2. Koşullar\nKanunun (Değişik, 19/10/2023 tarihli ve 2023/26 sayılı Genelge) ilk defa\n"
+        "uygulanan hükmü.\n"
+        "2.1- (Değişik, 20/10/2021 tarihli ve 2021/35 sayılı Genelge) Numaralı paragraf\n"
+        "devam eder."
+    )
+
+    by_no = {s.section_no: s for s in split.sections}
+    assert heading_notes(by_no["1"]) == [{"kind": "added", "date": "2020-05-21", "ref": "2020/15"}]
+    assert heading_notes(by_no["1.1"]) == []
+    assert heading_notes(by_no["2"]) == []  # in the text: it does not cover the sections below
+    assert [n["date"] for n in heading_notes(by_no["2.1"])] == ["2021-10-20"]
 
 
 def test_a_section_that_is_only_a_repeal_note_is_repealed() -> None:

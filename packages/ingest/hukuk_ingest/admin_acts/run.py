@@ -7,9 +7,12 @@ record with that status and no sections; a page without text inside the body low
 the section it belongs to. No text is made up.
 
 Dates are read from the document. A genelge is taken to apply from its own date ("Sayı : ...
-01/04/2020"). The file is the consolidated text: a section that carries an amendment note
-("(Değişik, 17/09/2021 tarihli ve 2021/32 sayılı Genelge)") has its present wording from the
-newest note on, and the time before that is a gap (the earlier wording is not on file).
+01/04/2020"); that is an assumption, so every section that rests on it carries the informational
+warning `valid_from_assumed_issue_date`. The file is the consolidated text: a section that carries
+an amendment note ("(Değişik, 17/09/2021 tarihli ve 2021/32 sayılı Genelge)"), in its own text or
+on the heading of a section above it, has its present wording from the newest such note on, and
+the time before that is a gap (the earlier wording is not on file). A section added by a heading
+note "Ek" did not exist before the note, so there is no gap before it.
 """
 
 import json
@@ -18,16 +21,28 @@ from pathlib import Path
 from typing import Any
 
 from hukuk_ingest.admin_acts import confidence
-from hukuk_ingest.admin_acts.split import Section, Split, amendments, is_repealed, split_act
+from hukuk_ingest.admin_acts.split import (
+    Section,
+    Split,
+    amendments,
+    heading_notes,
+    is_repealed,
+    split_act,
+)
 
 ACT_DIR = "Mevzuat/Genelge/"
 # Written into every record; the loader keys its idempotency on it. Bump it when a change here
 # or in split.py alters the sections.
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 # The genelges in scope, by the number in the file name ("2018_38 ...", "2020-08 ...").
 IN_SCOPE = ("2018/38", "2020/8")
 _FILE_REF_RE = re.compile(r"^(\d{4})[_-]0*(\d+)(?!\d)")
 _ISSUER = "SOSYAL GÜVENLİK KURUMU"
+# Informational, on every section without a note and on the record: its start is the date of the
+# genelge only by the assumption that a genelge applies from the day it is issued.
+ASSUMED_START = "valid_from_assumed_issue_date"
+# A glyph the text layer lost: a lone "?" (a "≤" in 2020/8) or pdfium's U+FFFE.
+_LOST_GLYPH_RE = re.compile(r"(?:^|\s)\?(?=\s|$)|\ufffe", re.MULTILINE)
 
 
 def discover(scan_report: Path) -> list[dict[str, Any]]:
@@ -47,23 +62,44 @@ def discover(scan_report: Path) -> list[dict[str, Any]]:
 
 
 def _section_record(
-    section: Section, split: Split, latest: str | None, ocr: bool
+    section: Section, ancestors: list[Section], split: Split, latest: str | None, ocr: bool
 ) -> dict[str, Any]:
-    notes, unread = amendments(section.text)
+    """`ancestors`: the sections above this one, whose heading notes cover it too."""
+    own, unread = amendments(section.text)
+    on_heading = heading_notes(section)
+    inherited = [
+        {**note, "inherited_from": a.section_no} for a in ancestors for note in heading_notes(a)
+    ]
+    notes = own + inherited
     warnings = list(section.warnings)
     if ocr:
         warnings.append("ocr_text")
     if unread:
         warnings.append("unparsed_amendment_note")
+    if _LOST_GLYPH_RE.search(section.text):
+        warnings.append("lost_glyph")
+    if any(len(amendments(a.text)[0]) > len(heading_notes(a)) for a in ancestors):
+        warnings.append("ancestor_amended")  # a note in the text of a parent, not on its heading
     issued = split.issue_date.isoformat() if split.issue_date else None
+    # A heading note "Ek" adds the section and all under it: before that it did not exist.
+    added = [n["date"] for n in on_heading + inherited if n["kind"] == "added"]
+    born = max(added, default=issued)
     valid_from = max((n["date"] for n in notes), default=issued)
     gaps = []
     if notes:
         warnings.append("amended_in_place")
-        gaps.append({"from": issued, "to": valid_from, "reason": "amended_in_place"})
+        if valid_from != born:
+            gaps.append({"from": born, "to": valid_from, "reason": "amended_in_place"})
+    elif issued:
+        warnings.append(ASSUMED_START)
     if valid_from is None:
         warnings.append("issue_date_unknown")
-    repealed = is_repealed(section)
+    if is_repealed(section):
+        change_kind = "repealed"
+    elif added and valid_from == born:
+        change_kind = "added"
+    else:
+        change_kind = "amended" if notes else "original"
     return {
         "section_no": section.section_no,
         "ordinal": section.ordinal,
@@ -77,7 +113,7 @@ def _section_record(
                 "heading": section.heading,
                 "valid_from": valid_from,
                 "valid_to": None,
-                "change_kind": "repealed" if repealed else "amended" if notes else "original",
+                "change_kind": change_kind,
                 "amendments": notes,
             }
         ],
@@ -85,6 +121,19 @@ def _section_record(
         "warnings": sorted(warnings),
         "confidence": confidence.band(warnings),
     }
+
+
+def _ancestors(sections: list[Section]) -> dict[str, list[Section]]:
+    """The sections above each section (nearest first), from the `children` links."""
+    parent = {child: s for s in sections for child in s.children}
+    chains: dict[str, list[Section]] = {}
+    for s in sections:
+        chain, above = [], parent.get(s.section_no)
+        while above is not None:
+            chain.append(above)
+            above = parent.get(above.section_no)
+        chains[s.section_no] = chain
+    return chains
 
 
 def build_record(row: dict[str, Any], text: str | None) -> dict[str, Any]:
@@ -113,6 +162,7 @@ def build_record(row: dict[str, Any], text: str | None) -> dict[str, Any]:
     if split.issue_date:
         dates.append(split.issue_date.isoformat())
     latest = max(dates, default=None)
+    ancestors = _ancestors(split.sections)
     return {
         **record,
         "issuer": "sgk" if _ISSUER in text else "other",
@@ -127,8 +177,10 @@ def build_record(row: dict[str, Any], text: str | None) -> dict[str, Any]:
         "annex_pages": split.annex_pages,
         "toc_entries": split.toc_entries,
         "toc_unmatched": split.toc_unmatched,
-        "warnings": split.warnings,
-        "sections": [_section_record(s, split, latest, ocr) for s in split.sections],
+        "warnings": [*split.warnings, *([ASSUMED_START] if split.issue_date else [])],
+        "sections": [
+            _section_record(s, ancestors[s.section_no], split, latest, ocr) for s in split.sections
+        ],
     }
 
 

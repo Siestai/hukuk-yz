@@ -99,11 +99,13 @@ def test_a_record_carries_the_dates_the_document_states() -> None:
             "amendments": [],
         }
     ]
+    # its start rests on the assumption that a genelge applies from its date: said, not hidden
     assert (by_no["1"]["gaps"], by_no["1"]["warnings"], by_no["1"]["confidence"]) == (
         [],
-        [],
+        ["valid_from_assumed_issue_date"],
         "high",
     )
+    assert record["warnings"] == ["valid_from_assumed_issue_date"]
     assert by_no["1"]["children"] == ["1.1", "1.2"]
     # amended in place: the wording on file holds from the note on, the time before is a gap
     amended = by_no["1.2"]
@@ -120,6 +122,66 @@ def test_a_record_carries_the_dates_the_document_states() -> None:
     assert by_no["1.1"]["versions"][0]["valid_from"] == "2026-04-09"
 
 
+NESTED = PAGE_BREAK.join(
+    [
+        "Sayı : 51-010.06.02-E.1 06/11/2018\nKonu : Emeklilik İşlemleri\n"
+        "1. Kanuna Eklenen Geçici Maddeye Göre Yapılacak İşlemler...2\n2. Sevk İşlemleri ....2\n"
+        "3. Tutarlar ........2",
+        f"GENELGE\n2018/38\n1. Kanuna Eklenen Geçici Maddeye Göre\n"
+        "Yapılacak İşlemler (Ek, 21/05/2020 tarihli ve 2020/15 sayılı Genelge)\n"
+        f"Madde metni.\n{LINE}\n"
+        "1.1. Başvuru\nBaşvuru metni.\n"
+        "1.1.1. Süre\n(Değişik, 07/02/2025 tarihli ve 2025/4 sayılı Genelge) Süre otuz gündür.\n"
+        "2. Sevk İşlemleri\nKurumumuzca (Değişik, 31/05/2021 tarihli ve 2021/19 sayılı Genelge) "
+        "sevk\nyapılır.\n"
+        "2.1. Şartlar\nŞart metni.\n"
+        "3. Tutarlar\n177,00 TL ? 1000,50 TL ? 3.555,00 TL\n"
+        "Bilgi edinilmesini ve gereğini rica ederim.",
+    ]
+)
+
+
+def test_a_note_on_a_heading_dates_every_section_under_it() -> None:
+    record = build_record({**_row("2018_38 GENELGE.pdf"), "ref": "2018/38"}, NESTED)
+
+    by_no = {s["section_no"]: s for s in record["sections"]}
+    # added by the note on the heading of "1": nothing under it existed before, so no gap
+    for no in ("1", "1.1"):
+        version = by_no[no]["versions"][0]
+        assert (version["valid_from"], version["change_kind"]) == ("2020-05-21", "added"), no
+        assert (by_no[no]["gaps"], by_no[no]["confidence"]) == ([], "medium"), no
+        assert by_no[no]["warnings"] == ["amended_in_place"], no
+    assert by_no["1.1"]["versions"][0]["amendments"] == [
+        {"kind": "added", "date": "2020-05-21", "ref": "2020/15", "inherited_from": "1"}
+    ]
+    # amended again later: present wording from the newest note, a gap back to the day it was added
+    deepest = by_no["1.1.1"]
+    assert deepest["versions"][0]["valid_from"] == "2025-02-07"
+    assert deepest["versions"][0]["change_kind"] == "amended"
+    assert deepest["gaps"] == [
+        {"from": "2020-05-21", "to": "2025-02-07", "reason": "amended_in_place"}
+    ]
+
+
+def test_a_note_in_the_text_of_a_parent_only_warns_its_children() -> None:
+    record = build_record({**_row("2018_38 GENELGE.pdf"), "ref": "2018/38"}, NESTED)
+
+    by_no = {s["section_no"]: s for s in record["sections"]}
+    assert by_no["2"]["versions"][0]["valid_from"] == "2021-05-31"
+    child = by_no["2.1"]
+    assert child["versions"][0]["valid_from"] == "2018-11-06"
+    assert child["warnings"] == ["ancestor_amended", "valid_from_assumed_issue_date"]
+    assert child["confidence"] == "medium"
+
+
+def test_a_lost_glyph_lowers_the_band() -> None:
+    record = build_record({**_row("2018_38 GENELGE.pdf"), "ref": "2018/38"}, NESTED)
+
+    amounts = record["sections"][-1]
+    assert amounts["warnings"] == ["lost_glyph", "valid_from_assumed_issue_date"]
+    assert amounts["confidence"] == "medium"
+
+
 def test_a_missing_date_and_ocr_text_lower_the_band() -> None:
     undated = TEXT.replace("Sayı : 51-010.06.02-E.1 01/04/2020\n", "")
     row = {**_row("2020-08 Genelge.pdf", warnings=["ocr"]), "ref": "2020/8"}
@@ -130,6 +192,7 @@ def test_a_missing_date_and_ocr_text_lower_the_band() -> None:
     assert (record["date"], record["ocr"]) == (None, True)
     assert first["versions"][0]["valid_from"] is None
     assert first["warnings"] == ["issue_date_unknown", "ocr_text"]
+    assert record["warnings"] == []
     assert first["confidence"] == "low"
 
 
@@ -242,3 +305,9 @@ def test_golden_sections_of_the_real_genelges(tmp_path: Path) -> None:
         texts = {s["section_no"]: s["versions"][0]["text"] for s in record["sections"]}
         for section in act["section"]:
             assert texts[section["no"]] == section["text"], f"{act['ref']} m.{section['no']}"
+        by_no = {s["section_no"]: s for s in record["sections"]}
+        for expected in act.get("validity", []):
+            got = by_no[expected["no"]]
+            assert got["versions"][0]["valid_from"] == expected["valid_from"], expected["no"]
+            assert got["confidence"] == expected["band"], expected["no"]
+            assert [g["from"] for g in got["gaps"]] == expected["gap_from"], expected["no"]

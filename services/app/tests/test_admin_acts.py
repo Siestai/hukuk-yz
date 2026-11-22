@@ -27,7 +27,7 @@ from app.main import app
 from app.models.common import Extraction, Review, ReviewDecision
 from app.models.user import AppUser
 from app.settings import Settings, get_settings
-from tests.test_loaders_admin_acts import LINE, load_acts
+from tests.test_loaders_admin_acts import LINE, TEXT, TEXT_WITHOUT_1_2, act_record, load_acts
 
 Factory = async_sessionmaker[AsyncSession]
 KEY = "test-kb-key-for-handoff-a3"
@@ -148,7 +148,7 @@ async def test_found_returns_the_text_with_its_review_status_and_band(
         "stale": False,
         "review_status": "analyzed",
         "band": "high",
-        "warnings": [],
+        "warnings": ["valid_from_assumed_issue_date"],
         "source_id": str(extraction.source_id),
         "extraction_id": str(extraction.id),
     }
@@ -303,6 +303,44 @@ async def test_the_list_names_the_readable_sections_in_document_order(
     assert (await client.get("/admin-acts/2019-99/sections")).status_code == 404
 
 
+async def test_a_section_the_newest_load_no_longer_has_is_gone(
+    client: httpx.AsyncClient, kb_factory: Factory, allow: Allow
+) -> None:
+    await load_acts(kb_factory)
+    allow("high", "medium")
+    assert (await _get(client, "1.2", "2024-01-01")).json()["status"] == "found"
+
+    await load_acts(kb_factory, act_record(TEXT_WITHOUT_1_2, sha256="b9" * 32))
+
+    assert (await _get(client, "1.2", "2024-01-01")).json() == {
+        "status": "unknown_section",
+        "reason": "not_published",
+    }
+    listed = (await client.get("/admin-acts/2020-8/sections")).json()["sections"]
+    assert [s["section_no"] for s in listed] == ["1", "1.1", "2"]
+    assert (await _get(client, "1", "2024-01-01")).json()["status"] == "found"
+
+
+async def test_a_section_added_by_a_note_is_not_in_force_before_it(
+    client: httpx.AsyncClient, kb_factory: Factory, allow: Allow
+) -> None:
+    added = TEXT.replace(
+        "2-DİĞER HUSUSLAR\nBu genelgeye",
+        "1.5- Yeni bölüm (Ek, 07/02/2025 tarihli ve 2025/4 sayılı Genelge)\nSonradan eklendi.\n"
+        "2-DİĞER HUSUSLAR\nBu genelgeye",
+    )
+    await load_acts(kb_factory, act_record(added))
+    allow("high", "medium")
+
+    before = (await _get(client, "1.5", "2025-02-06")).json()
+    after = (await _get(client, "1.5", "2025-02-07")).json()
+
+    assert before["status"] == "not_in_force"  # it did not exist: not a gap in a known text
+    assert "version" not in before and "gap" not in before
+    assert (after["status"], after["version"]["change_kind"]) == ("found", "added")
+    assert after["band"] == "medium"
+
+
 async def test_aliases_of_ref_and_section_reach_the_same_section(
     client: httpx.AsyncClient, kb_factory: Factory, allow: Allow
 ) -> None:
@@ -376,11 +414,19 @@ async def test_the_real_genelges_through_the_database_and_the_api(
     listed = (await client.get("/admin-acts/2020-8/sections")).json()["sections"]
     assert len(listed) == 177 and listed[0]["section_no"] == "1"
     kunye = (await _get(client, "2.6.2.5", "2024-01-01")).json()
+    # medium: three "≤" signs are lost in its text layer (`lost_glyph`)
     assert (kunye["status"], kunye["citation"], kunye["band"]) == (
         "found",
         "2020/8 m.2.6.2.5",
-        "high",
+        "medium",
     )
+    assert kunye["warnings"] == ["lost_glyph", "valid_from_assumed_issue_date"]
+    # added with its parent on 21/05/2020 (the note on the heading of K4-B12-11)
+    added = "K4-B12-11.1"
+    assert (await _get(client, added, "2020-05-20", ref="2018-38")).json()["status"] == (
+        "not_in_force"
+    )
+    assert (await _get(client, added, "2020-05-21", ref="2018-38")).json()["status"] == "found"
     assert kunye["version"]["text"].startswith(
         "2.6.2.5- Mahkeme kararı, veya denetim ve kontrol ile görevlendirilmiş\n"
         "memurlarca yapılan tespitler ya da resmi kurum ve kuruluşlardan alınan yazılar\n"

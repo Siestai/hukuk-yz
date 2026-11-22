@@ -44,10 +44,20 @@ _CLOSING_RE = re.compile(r"^(?:Bilgi|Bilgilerinizi|Gereğini)\b.*\brica ederim\.
 _REF_RE = re.compile(r"^(\d{4})\s*/\s*(\d+)$")
 _NUMBER_RE = re.compile(r"^(?:Sayı|Sayi)\s*:.*?(\d{1,2})[/.](\d{1,2})[/.](\d{4})$")
 _SUBJECT_RE = re.compile(r"^Konu\s*:\s*(\S.*)$")
+# "(Değişik, 17/09/2021 tarihli ve 2021/32 sayılı Genelge)"
 _NOTE_RE = re.compile(
     r"\((Değişik|Mülga|Ek)\s*[,:]\s*(\d{1,2})/(\d{1,2})/(\d{4})\s+tarihli\s+ve\s+(\d{4}/\d+)\s+sayılı"
 )
-_ANY_NOTE_RE = re.compile(r"\((?:Değişik|Mülga|Ek)\s*[,:]")
+# "(İkinci paragraf, 15/08/2019 tarihli ve 2019/16 sayılı Genelge ile 01/08/2019 tarihinden
+# itibaren mülga)": what was done follows "Genelge ile", with or without its own date
+_NOTE_WITH_RE = re.compile(
+    r"\((?:[^()]{0,60}?,\s*)?(\d{1,2})/(\d{1,2})/(\d{4})\s+tarihli\s+ve\s+(\d{4}/\d+)\s+sayılı\s+"
+    r"Genelge\s+ile\b(?:\s+(\d{1,2})/(\d{1,2})/(\d{4})\s+tarihinden\s+itibaren\b)?([^()]*)\)"
+)
+# Anything that looks like a note: one that neither pattern reads is counted, never guessed.
+_NOTE_LIKE_RE = re.compile(r"\((?:Değişik|Mülga|Ek)\s*[,:]|\([^()]*\bsayılı\s+Genelge\b[^()]*\)")
+_WITH_KINDS = (("mülga", "repealed"), ("değiş", "amended"), ("ekle", "added"))
+_HEADING_LINES = 4  # a heading wraps over at most this many lines
 _INCORPORATED_RE = re.compile(
     r"^(\d{1,2})/(\d{1,2})/(\d{4})\s+tarihli\s+ve\s+(\d{4}/\d+)\s+sayılı$"
 )
@@ -363,18 +373,62 @@ def split_act(text: str) -> Split:
     )
 
 
+def _day(day: str, month: str, year: str) -> str | None:
+    try:
+        return date(int(year), int(month), int(day)).isoformat()
+    except ValueError:
+        return None
+
+
+def _notes(text: str) -> tuple[list[tuple[int, dict[str, str]]], int]:
+    """The amendment notes of a text as (offset, note), and how many note-like passages could
+    not be read. A note is `kind` (amended / repealed / added), `date` (from when: the date the
+    note states with "tarihinden itibaren", else the date of the amending genelge) and `ref`."""
+    read: dict[int, dict[str, str]] = {}
+    for m in _NOTE_RE.finditer(text):
+        if day := _day(m.group(2), m.group(3), m.group(4)):
+            read[m.start()] = {"kind": _NOTE_KINDS[m.group(1)], "date": day, "ref": m.group(5)}
+    for m in _NOTE_WITH_RE.finditer(text):
+        act_day = _day(m.group(1), m.group(2), m.group(3))
+        stated = _day(m.group(5), m.group(6), m.group(7)) if m.group(5) else act_day
+        done = m.group(8).replace("İ", "i").replace("I", "ı").lower()
+        kind = next((kind for word, kind in _WITH_KINDS if word in done), None)
+        if act_day and stated and kind:
+            note = {"kind": kind, "date": stated, "ref": m.group(4)}
+            read[m.start()] = note if stated == act_day else {**note, "act_date": act_day}
+    unread = sum(1 for m in _NOTE_LIKE_RE.finditer(text) if m.start() not in read)
+    return sorted(read.items()), unread
+
+
 def amendments(text: str) -> tuple[list[dict[str, str]], int]:
     """The amendment notes of a section ("(Değişik, 17/09/2021 tarihli ve 2021/32 sayılı
-    Genelge)") as kind, date and ref, and how many notes could not be read."""
-    notes = [
-        {
-            "kind": _NOTE_KINDS[m.group(1)],
-            "date": date(int(m.group(4)), int(m.group(3)), int(m.group(2))).isoformat(),
-            "ref": m.group(5),
-        }
-        for m in _NOTE_RE.finditer(text)
-    ]
-    return notes, len(_ANY_NOTE_RE.findall(text)) - len(notes)
+    Genelge)", "(15/08/2019 tarihli ve 2019/16 sayılı Genelge ile 01/08/2019 tarihinden itibaren
+    mülga)") in order, and how many note-like passages could not be read."""
+    found, unread = _notes(text)
+    return [note for _, note in found], unread
+
+
+def heading_notes(section: Section) -> list[dict[str, str]]:
+    """The notes that stand on the heading of a section and so cover everything under it: a note
+    on the heading line, or one that closes one of the next lines the heading may wrap over
+    ("... Yapılacak İşlemler (Ek, 21/05/2020 tarihli ve 2020/15 sayılı Genelge)"). When in doubt
+    a note counts as one: that only withholds text, it never dates it too early."""
+    text = section.text
+    first_break = text.find("\n")
+    notes = []
+    for offset, note in _notes(text)[0]:
+        close = text.find(")", offset)
+        line_end = text.find("\n", close)
+        closes_line = (
+            close >= 0 and not text[close + 1 : None if line_end < 0 else line_end].strip()
+        )
+        if (
+            first_break < 0
+            or offset < first_break
+            or (closes_line and text.count("\n", 0, close) < _HEADING_LINES)
+        ):
+            notes.append(note)
+    return notes
 
 
 def is_repealed(section: Section) -> bool:

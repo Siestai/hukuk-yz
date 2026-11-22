@@ -17,7 +17,7 @@ from datetime import date
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import Select, exists, select
+from sqlalchemy import Select, and_, exists, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,58 +81,74 @@ def normalize_section_no(raw: str) -> str:
     return raw
 
 
-def _allowed(bands: frozenset[Band]) -> list[str]:
-    return sorted(bands - NEVER_READABLE)
+def readable_section_ids(bands: Collection[str], ref: str | None = None) -> Select[Any]:
+    """Ids of the extractions a genelge section is read from (of one genelge if `ref` is given):
+    of the genelge's newest load (the file and parser version of its newest extraction), the
+    newest extraction of each section, when its band is in `bands` (never `low`) and no reviewer
+    rejected it. An older extraction of a reloaded section is not one of them, nor is a section
+    that the newest load no longer has."""
+    act_ref = Extraction.fields["act_ref"].as_string()
+    section_no = Extraction.fields["section_no"].as_string()
+    sha = Extraction.fields["file_sha256"].as_string()
+    is_section = Extraction.parser_name == ADMIN_ACT_PARSER_NAME
+    load = (
+        select(act_ref.label("ref"), sha.label("sha"), Extraction.parser_version.label("version"))
+        .ext(distinct_on(act_ref))
+        .where(is_section)
+        .order_by(act_ref, Extraction.extracted_at.desc(), Extraction.id)
+        .subquery()
+    )
+    newest = (
+        select(Extraction.id)
+        .ext(distinct_on(act_ref, section_no))
+        .join(
+            load,
+            and_(
+                load.c.ref == act_ref,
+                load.c.sha == sha,
+                load.c.version == Extraction.parser_version,
+            ),
+        )
+        .where(is_section)
+        .order_by(act_ref, section_no, Extraction.extracted_at.desc(), Extraction.id)
+    )
+    if ref is not None:
+        newest = newest.where(act_ref == ref)
+    return select(Extraction.id).where(
+        Extraction.id.in_(newest),
+        Extraction.confidence["band"].as_string().in_(sorted(set(bands) - NEVER_READABLE)),
+        ~exists().where(
+            Review.extraction_id == Extraction.id, Review.decision == ReviewDecision.reject
+        ),
+    )
 
 
 async def act_is_readable(db: AsyncSession, ref: str, bands: frozenset[Band]) -> bool:
-    """Whether the genelge has a section in the readable bands at all."""
-    return bool(
-        await db.scalar(
-            select(
-                exists().where(
-                    Extraction.parser_name == ADMIN_ACT_PARSER_NAME,
-                    Extraction.fields["act_ref"].as_string() == ref,
-                    Extraction.confidence["band"].as_string().in_(_allowed(bands)),
-                )
-            )
-        )
-    )
+    """Whether the genelge has a readable section at all."""
+    return bool(await db.scalar(select(readable_section_ids(bands, ref).exists())))
 
 
 async def section_as_of(
     db: AsyncSession, ref: str, section_no: str, as_of: date, bands: frozenset[Band]
 ) -> dict[str, Any]:
-    """What the newest extraction of a section says for `as_of`, as `AdminActSectionAsOf`. The
-    section is unknown (`not_published`) when it is not loaded, its band is not in `bands`, it is
-    `low` or a reviewer rejected it. A `gap` result has no `version`, so it carries no text."""
+    """What a section says for `as_of`, as `AdminActSectionAsOf`. The section is unknown
+    (`not_published`) when it is not one of `readable_section_ids`: not in the newest load, its
+    band not in `bands`, `low`, or rejected. A `gap` result has no `version`, so it carries no
+    text."""
     row = (
         await db.execute(
             select(Extraction, Source.title)
             .join(Source, Source.id == Extraction.source_id)
             .where(
-                Extraction.parser_name == ADMIN_ACT_PARSER_NAME,
-                Extraction.fields["act_ref"].as_string() == ref,
+                Extraction.id.in_(readable_section_ids(bands, ref)),
                 Extraction.fields["section_no"].as_string() == section_no,
             )
-            .order_by(Extraction.extracted_at.desc(), Extraction.id)
-            .limit(1)
         )
     ).one_or_none()
-    unknown = {"status": UNKNOWN_SECTION, "reason": "not_published"}
     if row is None:
-        return unknown
+        return {"status": UNKNOWN_SECTION, "reason": "not_published"}
     extraction, title = row
     band = extraction.confidence["band"]
-    rejected = await db.scalar(
-        select(
-            exists().where(
-                Review.extraction_id == extraction.id, Review.decision == ReviewDecision.reject
-            )
-        )
-    )
-    if band not in _allowed(bands) or rejected:
-        return unknown
     f = extraction.fields
     latest = f["latest_snapshot_date"]
     base = {
@@ -160,29 +176,6 @@ async def section_as_of(
         ):
             return {"status": GAP, "gap": g, **base}
     return {"status": NOT_IN_FORCE, **base}
-
-
-def readable_section_ids(bands: Collection[str], ref: str | None = None) -> Select[Any]:
-    """Ids of the extractions a genelge section is read from (of one genelge if `ref` is given):
-    the newest extraction of each section, when its band is in `bands` (never `low`) and no
-    reviewer rejected it. An older extraction of a reloaded section is not one of them."""
-    act_ref = Extraction.fields["act_ref"].as_string()
-    section_no = Extraction.fields["section_no"].as_string()
-    newest = (
-        select(Extraction.id)
-        .ext(distinct_on(act_ref, section_no))
-        .where(Extraction.parser_name == ADMIN_ACT_PARSER_NAME)
-        .order_by(act_ref, section_no, Extraction.extracted_at.desc(), Extraction.id)
-    )
-    if ref is not None:
-        newest = newest.where(act_ref == ref)
-    return select(Extraction.id).where(
-        Extraction.id.in_(newest),
-        Extraction.confidence["band"].as_string().in_(sorted(set(bands) - NEVER_READABLE)),
-        ~exists().where(
-            Review.extraction_id == Extraction.id, Review.decision == ReviewDecision.reject
-        ),
-    )
 
 
 async def readable_sections(

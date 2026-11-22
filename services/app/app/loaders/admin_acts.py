@@ -129,7 +129,13 @@ def prepare(records: Sequence[dict[str, Any]]) -> list[PreparedAct]:
                     section_no=s["section_no"],
                     fields={**fields, "content_hash": content_hash(fields)},
                     warnings=s["warnings"],
-                    confidence={"band": s["confidence"], "reasons": reasons},
+                    # never better than the warnings say, whatever the record declares
+                    confidence={
+                        "band": max(
+                            s["confidence"], band_rules.band(s["warnings"]), key=BANDS.index
+                        ),
+                        "reasons": reasons,
+                    },
                 )
             )
         issued = f", {date.fromisoformat(r['date']).strftime('%d.%m.%Y')}" if r["date"] else ""

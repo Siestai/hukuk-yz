@@ -12,9 +12,13 @@ RULES: dict[str, str] = {
     "page_without_text": LOW,
     "unparsed_amendment_note": LOW,
     "issue_date_unknown": LOW,
+    # a heading whose number does not continue the numbering: the text under it is filed under
+    # the section before, so a citation of that section would point at the wrong number
+    "unplaced_heading": LOW,
     # clean, but with a caveat
     "amended_in_place": MEDIUM,
-    "unplaced_heading": MEDIUM,
+    "ancestor_amended": MEDIUM,
+    "lost_glyph": MEDIUM,
     "closing_not_found": MEDIUM,
     "ocr_text": MEDIUM,
 }

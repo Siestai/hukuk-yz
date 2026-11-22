@@ -37,7 +37,7 @@ from app.search import _tsquery
 from app.settings import Settings, get_settings
 from tests.conftest import FakeEmbedder
 from tests.test_chunk_index import SUMMARY, load_decision
-from tests.test_loaders_admin_acts import TEXT, act_record, load_acts
+from tests.test_loaders_admin_acts import TEXT, TEXT_WITHOUT_1_2, act_record, load_acts
 
 PASSWORD = "correct horse battery"
 Factory = async_sessionmaker[AsyncSession]
@@ -455,3 +455,23 @@ async def test_the_old_chunk_of_a_reloaded_genelge_section_is_not_served(
     again = await search(client, headers, q="bildirge on beş gün içinde", category="admin_act")
     (hit,) = [r for r in again if r["ref"] == "2020/8 m.1.2"]
     assert "on beş gün" in hit["matches"][0]["text"]
+
+
+async def test_a_genelge_section_the_newest_load_no_longer_has_is_not_searched(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await load_acts(kb_factory)
+    await _index_sections(kb_factory, fake_embedder)
+    configure(TEST_BANDS)
+
+    await load_acts(kb_factory, act_record(TEXT_WITHOUT_1_2, sha256="b9" * 32))
+    await _index_sections(kb_factory, fake_embedder)  # the old extraction of 1.2 keeps its chunk
+
+    found = await search(
+        client, headers, q="bildirge on gün içinde idari para cezaları", category="admin_act"
+    )
+    assert {r["ref"] for r in found} == {"2020/8 m.1", "2020/8 m.2"}
