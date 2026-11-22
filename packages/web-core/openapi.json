@@ -310,7 +310,8 @@
             "enum": [
               "original",
               "amended",
-              "repealed"
+              "repealed",
+              "added"
             ],
             "title": "Change Kind",
             "type": "string"

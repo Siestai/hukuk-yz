@@ -780,7 +780,7 @@ export interface components {
              * Change Kind
              * @enum {string}
              */
-            change_kind: "original" | "amended" | "repealed";
+            change_kind: "original" | "amended" | "repealed" | "added";
             /** Heading */
             heading: string | null;
             /** Text */
