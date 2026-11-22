@@ -10,6 +10,7 @@ CI has none and skips it. Run it with
 
 import os
 import tomllib
+import uuid
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 
@@ -251,6 +252,51 @@ async def test_a_rejected_section_is_never_returned(
     assert (await _get(client, "1", "2024-01-01")).json()["status"] == "found"
 
 
+async def test_the_list_names_the_readable_sections_in_document_order(
+    client: httpx.AsyncClient, kb_factory: Factory, allow: Allow, reviewer: AppUser
+) -> None:
+    await load_acts(kb_factory)
+    closed = await client.get("/admin-acts/2020-8/sections")
+    assert closed.status_code == 404  # the gate names no band
+    assert closed.json() == {"error": {"code": "not_found", "params": {"ref": "2020/8"}}}
+    async with kb_factory() as session:
+        rows = await session.execute(
+            select(Extraction.fields["section_no"].as_string(), Extraction.id)
+        )
+        ids: dict[str, uuid.UUID] = {section_no: eid for section_no, eid in rows.all()}
+        session.add(
+            Review(extraction_id=ids["2"], reviewer_id=reviewer.id, decision=ReviewDecision.reject)
+        )
+        await session.commit()
+
+    allow("high", "medium", "low")
+    body = (await client.get("/admin-acts/2020-08/sections")).json()
+    allow("high")
+    high_only = (await client.get("/admin-acts/2020-8/sections")).json()
+
+    assert (body["ref"], body["title"]) == (
+        "2020/8",
+        "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi",
+    )
+    # 1.4 is low and 2 is rejected: neither is listed
+    assert [(s["section_no"], s["band"], s["review_status"]) for s in body["sections"]] == [
+        ("1", "high", "analyzed"),
+        ("1.1", "medium", "analyzed"),
+        ("1.2", "medium", "analyzed"),
+    ]
+    assert body["sections"][2] == {
+        "section_no": "1.2",
+        "heading": "Bildirim süresi",
+        "citation": "2020/8 m.1.2",
+        "children": [],
+        "review_status": "analyzed",
+        "band": "medium",
+        "extraction_id": str(ids["1.2"]),
+    }
+    assert [s["section_no"] for s in high_only["sections"]] == ["1"]
+    assert (await client.get("/admin-acts/2019-99/sections")).status_code == 404
+
+
 async def test_aliases_of_ref_and_section_reach_the_same_section(
     client: httpx.AsyncClient, kb_factory: Factory, allow: Allow
 ) -> None:
@@ -321,6 +367,8 @@ async def test_the_real_genelges_through_the_database_and_the_api(
             assert body["version"]["text"] == section["text"]
             assert body["version"]["valid_from"] == act["date"]
             assert body["review_status"] == "analyzed"
+    listed = (await client.get("/admin-acts/2020-8/sections")).json()["sections"]
+    assert len(listed) == 177 and listed[0]["section_no"] == "1"
     kunye = (await _get(client, "2.6.2.5", "2024-01-01")).json()
     assert (kunye["status"], kunye["citation"], kunye["band"]) == (
         "found",

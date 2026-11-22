@@ -1,22 +1,23 @@
 """Genelge API (handoff 2026-11-22, A3): what a section of a genelge said on a date.
 
     GET /admin-acts/{ref}/sections/{section_no}?as_of=YYYY-MM-DD
+    GET /admin-acts/{ref}/sections
 
 `ref` is the genelge number with a dash for the slash ("2020-8" for 2020/8), `section_no` the
 numbered heading ("2.6.2.5", "K2-B3-2.1.1", "giris"). The sections come from the review queue
 (`app.loaders.admin_acts`): they have no approval path yet, so every one is unreviewed and which
 of them may be read is decided by `unreviewed_bands` alone. A section outside those bands, a
-`low` one and a rejected one are never returned.
+`low` one and a rejected one are never returned. The list names the readable sections of a
+genelge, for a künye without a section ("2020/8").
 """
 
 import re
-import uuid
 from datetime import date
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import exists, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import Db, kb_reader
@@ -31,7 +32,7 @@ from app.models.common import (
 from app.statutes import parse_date
 from hukuk_ingest.admin_acts.citation import citation
 from hukuk_ingest.admin_acts.split import INTRO
-from hukuk_models import Band, ErrorCode
+from hukuk_models import AdminActSectionAsOf, AdminActSections, Band, ErrorCode
 
 router = APIRouter(prefix="/admin-acts", tags=["admin-acts"], dependencies=[Depends(kb_reader)])
 
@@ -53,52 +54,6 @@ def unreviewed_bands() -> frozenset[Band]:
 
 
 UnreviewedBands = Annotated[frozenset[Band], Depends(unreviewed_bands)]
-
-
-class SectionVersionOut(BaseModel):
-    text: str
-    heading: str | None
-    valid_from: date | None
-    valid_to: date | None  # None: no later wording is on file
-    change_kind: Literal["original", "amended", "repealed"]
-    amendments: list[dict[str, Any]]  # the notes in the text: kind, date, ref
-
-
-class SectionGapOut(BaseModel):
-    """An interval with no text on file: the section was amended and only its present wording is
-    known. It never carries text (md. 25: a gap cannot be cited)."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    from_: date | None = Field(alias="from")
-    to: date
-    reason: str
-
-
-class SectionAsOf(BaseModel):
-    """What a genelge section said on a date. Only fields that apply to the status are present:
-    `version` for found / repealed, `gap` for gap, `reason` for unknown_section
-    (`not_published`) and for a repealed section (`repealed`); the rest describe the section
-    whenever it was readable."""
-
-    status: Literal["found", "gap", "not_in_force", "unknown_section"]
-    reason: Literal["repealed", "not_published"] | None = None
-    ref: str | None = None  # "2020/8"
-    section_no: str | None = None
-    citation: str | None = None  # "2020/8 m.2.6.2.5"
-    title: str | None = None
-    version: SectionVersionOut | None = None
-    gap: SectionGapOut | None = None
-    children: list[str] | None = None  # the sections under this heading
-    # `stale`: the date is after the newest date the file itself shows, so the text may have
-    # been amended since.
-    latest_snapshot_date: date | None = None
-    stale: bool | None = None
-    review_status: Literal["approved", "analyzed"] | None = None
-    band: Band | None = None
-    warnings: list[str] | None = None
-    source_id: uuid.UUID | None = None
-    extraction_id: uuid.UUID | None = None
 
 
 def normalize_ref(raw: str) -> str:
@@ -144,9 +99,9 @@ async def act_is_readable(db: AsyncSession, ref: str, bands: frozenset[Band]) ->
 async def section_as_of(
     db: AsyncSession, ref: str, section_no: str, as_of: date, bands: frozenset[Band]
 ) -> dict[str, Any]:
-    """What the newest extraction of a section says for `as_of`, as `SectionAsOf`. The section
-    is unknown (`not_published`) when it is not loaded, its band is not in `bands`, it is `low`
-    or a reviewer rejected it. A `gap` result has no `version`, so it carries no text."""
+    """What the newest extraction of a section says for `as_of`, as `AdminActSectionAsOf`. The
+    section is unknown (`not_published`) when it is not loaded, its band is not in `bands`, it is
+    `low` or a reviewer rejected it. A `gap` result has no `version`, so it carries no text."""
     row = (
         await db.execute(
             select(Extraction, Source.title)
@@ -203,13 +158,72 @@ async def section_as_of(
     return {"status": NOT_IN_FORCE, **base}
 
 
+async def readable_sections(
+    db: AsyncSession, ref: str, bands: frozenset[Band]
+) -> dict[str, Any] | None:
+    """The sections of a genelge that `section_as_of` would return (newest extraction of each,
+    in a readable band, not rejected), in document order; None when there is none."""
+    section_no = Extraction.fields["section_no"].as_string()
+    newest = (
+        select(Extraction.id)
+        .ext(distinct_on(section_no))
+        .where(
+            Extraction.parser_name == ADMIN_ACT_PARSER_NAME,
+            Extraction.fields["act_ref"].as_string() == ref,
+        )
+        .order_by(section_no, Extraction.extracted_at.desc(), Extraction.id)
+    )
+    rows = (
+        await db.execute(
+            select(Extraction, Source.title)
+            .join(Source, Source.id == Extraction.source_id)
+            .where(
+                Extraction.id.in_(newest),
+                Extraction.confidence["band"].as_string().in_(_allowed(bands)),
+                ~exists().where(
+                    Review.extraction_id == Extraction.id,
+                    Review.decision == ReviewDecision.reject,
+                ),
+            )
+            .order_by(Extraction.fields["ordinal"].as_integer())
+        )
+    ).all()
+    if not rows:
+        return None
+    return {
+        "ref": ref,
+        "title": rows[0].title,
+        "sections": [
+            {
+                "section_no": e.fields["section_no"],
+                "heading": e.fields["heading"],
+                "citation": citation(ref, e.fields["section_no"]),
+                "children": e.fields["children"],
+                "review_status": REVIEW_STATUS,
+                "band": e.confidence["band"],
+                "extraction_id": e.id,
+            }
+            for e, _ in rows
+        ],
+    }
+
+
+@router.get("/{ref}/sections")
+async def list_sections(ref: str, db: Db, bands: UnreviewedBands) -> AdminActSections:
+    number = normalize_ref(ref)
+    result = await readable_sections(db, number, bands)
+    if result is None:
+        raise ApiError(404, ErrorCode.not_found, {"ref": number})
+    return AdminActSections.model_validate(result)
+
+
 @router.get("/{ref}/sections/{section_no}", response_model_exclude_unset=True)
 async def get_section(
     ref: str, section_no: str, as_of: str, db: Db, bands: UnreviewedBands
-) -> SectionAsOf:
+) -> AdminActSectionAsOf:
     day = parse_date(as_of)
     number = normalize_ref(ref)
     result = await section_as_of(db, number, normalize_section_no(section_no), day, bands)
     if result["status"] == UNKNOWN_SECTION and not await act_is_readable(db, number, bands):
         raise ApiError(404, ErrorCode.not_found, {"ref": number})
-    return SectionAsOf.model_validate(result)
+    return AdminActSectionAsOf.model_validate(result)
