@@ -98,6 +98,14 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     assert result.intake == INTAKE_SB016
     assert set(result.drops) == {"rows", "points", "branches", "sentences", "citations"}
     assert result.input_tokens > 0
+    # What the retrieve step read, did not read and found missing, and the spend of each node.
+    assert set(result.retrieved) == {"read", "unread", "missing"}
+    assert "5510 m.102" in result.retrieved["read"]
+    assert [n["node"] for n in result.nodes][:2] == ["intake", "clarify"]
+    assert sum(n["input_tokens"] for n in result.nodes) == result.input_tokens
+    assert {"models", "output_tokens", "cost", "seconds"} <= set(result.nodes[0])
+    # The holding map has not put the reasons of its drops into the trace yet.
+    assert result.rows_dropped_by == {}
 
     # The CLI: the table on stdout, the result and the table under --results, the intake
     # output of every case under --record-intake.
@@ -114,6 +122,7 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     assert saved["cases"][0]["metrics"]["formal_mode"] == 1.0
     assert saved["cases"][0]["intake"] == INTAKE_SB016
     assert saved["cases"][0]["error"] is None and saved["cases"][0]["cost"] is None
+    assert saved["cases"][0]["retrieved"]["read"] and saved["cases"][0]["nodes"]
     assert saved["not_run"] == [] and isinstance(saved["passed"], bool)
     # A run below the thresholds exits with 1.
     assert code == (0 if saved["passed"] else 1)
@@ -328,6 +337,9 @@ async def test_an_exception_in_a_case_is_its_error_and_the_run_goes_on(
 
     assert [r.error for r in run.results] == ["eval_error: RuntimeError"] * 2
     assert run.results[0].input_tokens > 0
+    # An error counts as no citation in the mean over every case; the nodes it ran are kept.
+    assert [r.must_cite for r in run.results] == [0.0, 0.0]
+    assert run.results[0].nodes and run.results[0].retrieved["read"] == []
     assert seen == [1, 2]
 
 

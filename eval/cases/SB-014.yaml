@@ -8,8 +8,13 @@ expected:
   headline_contains:
     - tespit tarih
   must_cite:
-    # Okundu: KB chunk ref "5510 m.102" (2018-05-25'ten itibaren geçerli sürüm), birinci fıkra (a) bendi (3) alt bendi.
-    - 5510 m.102/1-a-3
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1). "5510 m.102" chunk'ları
+    # yerel KB'de bulunmaktadır (2018-05-25'ten itibaren geçerli sürüm), ancak güven bandı low
+    # olduğundan ajan bunları okuyamaz; missing_in_kb'de de listelenir.
+    # Görev 19 B6 tur 1 (F1): KB metninde "(1)" biçiminde fıkra numarası yoktur; künye madde
+    # düzeyine indirildi (SB-001 notu), bent ayrımı traps'ta kalır.
+    # İçerik KB chunk metninden okundu: birinci fıkra (a) bendi (3) alt bendi.
+    - 5510 m.102
     # Okundu: KB chunk ref "2020/8 m.2.1.1", (ç) bendi, alt bent (3) açıklaması ve Örnek 4.
     - 2020/8 m.2.1.1
   # Soru kuralın kendisini sormaktadır, olaya ait olgu istemez; şablondaki onceki_tespit_tarihi
@@ -25,6 +30,8 @@ expected:
     - Bir yıl içinde birden fazla tespit hâlinde her bir işe giriş bildirgesi için beş kat ceza uygulanır (2020/8 m.2.1.1).
     - Kanunda hüküm bulunması aramayı bitirmez; 2020/8 Genelgesinin işe giriş bildirgesi bölümü taranmadan cevap verilmez.
   missing_in_kb:
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1).
+    - 5510 m.102
     # decision tablosu yerel KB'de boştur; bir yıllık sürenin başlangıcına ilişkin teyitli Danıştay
     # veya bölge idare mahkemesi kararı bulunamadı. Künye yazılmadı.
     - Danıştay / BİM kararı (5510 m.102/1-a-3 bir yıllık sürenin başlangıcı)

@@ -29,19 +29,22 @@ expected:
   topic: sgk_bildirim_prim
   status: conditional
   headline_contains:
+    # Görev 19 B6 tur 1 (G): "7,5" çıkarıldı; 7,5 saat ölçütü yalnız missing_in_kb kaynaklarında
+    # (SSİY m.101/3, 2020/20) yazılıdır, ajan KB'den buna ulaşamaz.
     - kısmi
-    - "7,5"
   must_cite:
     - 4857 m.13
     - 5510 m.86
-    - 5510 m.80/1-h
+    # Görev 19 B6 tur 1 (F1): 5510 m.80/1-h -> 5510 m.80 (KB metninde "(1)" biçiminde fıkra
+    # numarası yoktur, SB-001 notu); KB'de var ama low bant, okunmuyor, missing_in_kb'de kalır.
+    - 5510 m.80
     - SSİY m.101/1
     - SSİY m.101/3
     - SSİY m.102/13
     - 2020/20 m.K3-B1-1.2.3.5
     - 2020/20 m.K3-B1-1.2.3.6
   missing_in_kb:
-    - 5510 m.80/1-h
+    - 5510 m.80
     - SSİY m.101/1
     - SSİY m.101/3
     - SSİY m.102/13

@@ -1,7 +1,7 @@
 {
   "status": "definite",
   "status_note": "Verdiğiniz bilgilere göre.",
-  "headline": "Belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse iki indirimin ikisi de kaybedilmektedir; yalnız 1/4 indirimi kalmamaktadır.",
+  "headline": "Belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse dörtte bir ve dörtte üç indirimlerinin ikisi de kaybedilmektedir; yalnız 1/4 indirimi kalmamaktadır.",
   "fact_chips": [
     {
       "fact_key": "belge_30_gun",

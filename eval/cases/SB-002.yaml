@@ -13,8 +13,11 @@ expected:
     - baba
     - gelir
   must_cite:
-    - 5510 m.36/1
-    - 5510 m.34/1-d
+    # Görev 19 B6 tur 1 (F1): madde düzeyine indirildi (5510 m.36/1 -> m.36, m.34/1-d -> m.34).
+    # KB'deki 5510 m.36 ve m.34 metninde "(1)" biçiminde fıkra numarası yoktur; ajan fıkra ve
+    # bendi künyede taşıyamaz (SB-001 notu). Fıkra ve bent ayrımı traps'ta kalır.
+    - 5510 m.36
+    - 5510 m.34
     - 2018/38 m.K4-B6-1.2
     - 2018/38 m.K2-B4-2.2.3
   must_ask:

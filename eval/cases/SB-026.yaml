@@ -23,7 +23,9 @@ expected:
   topic: hizmet_tespiti
   status: definite
   headline_contains:
-    - geriye dönük hizmet
+    # Görev 19 B6 tur 1 (F2): eş anlamlı ifade de kabul edilir; tur 1 cevabı "geriye yönelik
+    # hizmet" yazdı.
+    - geriye dönük|geriye yönelik
     - verilmektedir
   must_cite:
     - 5510 m.86

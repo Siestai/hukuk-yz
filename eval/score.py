@@ -158,7 +158,8 @@ def score(
 
     headline = normalize(answer.get("headline", ""))
     wanted = expected.get("headline_contains", [])
-    missing = [w for w in wanted if normalize(w) not in headline]
+    # "toplu iş sözleşmesi|TİS": an item is met by any of its alternatives.
+    missing = [w for w in wanted if not any(normalize(a) in headline for a in w.split("|"))]
     metrics.append(
         Metric("headline", _fraction(len(wanted) - len(missing), len(wanted)), ", ".join(missing))
     )
@@ -246,6 +247,14 @@ def acceptance(rows: list[dict[str, Any]], not_run: Sequence[str] = ()) -> tuple
     return not reasons, reasons
 
 
+def _must_cite_cell(rows: list[dict[str, Any]]) -> str:
+    """The mean over every case (the acceptance threshold; an error is 0) and over the answered
+    cases only."""
+    answered = [r for r in rows if not r["error"]]
+    every, only = _mean(_measured(rows, "must_cite")), _mean(_measured(answered, "must_cite"))
+    return f"{_percent(every)} (cevaplı {_percent(only)})"
+
+
 def _percent(value: float | None) -> str:
     """A share in the Turkish way: %80."""
     return "-" if value is None else f"%{value * 100:.0f}"
@@ -322,7 +331,7 @@ def render_table(rows: list[dict[str, Any]], passed: bool, reasons: list[str]) -
                 "toplam",
                 f"{matched}/{len(rows)} eşleşti",
                 _percent(_mean(_measured(rows, "must_ask"))),
-                _percent(_mean(_measured(rows, "must_cite"))),
+                _must_cite_cell(rows),
                 str(sum(len(r["missing_in_kb"]) for r in rows)),
                 str(sum(len(r["must_not"]) for r in rows)),
                 _percent(_mean(_measured(rows, "headline"))),

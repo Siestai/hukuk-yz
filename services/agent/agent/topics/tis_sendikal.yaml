@@ -12,8 +12,10 @@ description: >-
   yardımlar (yakacak, giyim), ilave tediye, sendika üyeliği, dayanışma aidatı, TİS'in yürürlüğü
   ve sona ermesi, TİS alacağı için arabuluculuk ve dava.
 facts:
+  # Görev 19 B6 tur 1 (C2): label soru metniyle aynı kapsama getirildi (madde metni ve ödeme
+  # koşulu).
   - key: tis_maddesi
-    label: İlgili TİS hükmü
+    label: TİS maddesinin metni ve ödeme koşulu
     critical: true
     asked_when: {sendika_uyeligi: [unknown, imzada_uye, imzadan_sonra_uye, uye_degil]}
     question:

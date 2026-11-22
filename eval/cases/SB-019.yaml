@@ -14,12 +14,20 @@ expected:
   headline_contains:
     - defter türü
   must_cite:
-    # Okundu: KB chunk ref "5510 m.102" (2018-05-25'ten itibaren geçerli sürüm), birinci fıkra
-    # (m) bendi (4) alt bendi; (a), (b), (c) ve (ç) alt bentlerinin tamamı okundu.
-    - 5510 m.102/1-m-4-ç
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1). "5510 m.102" chunk'ları
+    # yerel KB'de bulunmaktadır (2018-05-25'ten itibaren geçerli sürüm), ancak güven bandı low
+    # olduğundan ajan bunları okuyamaz; missing_in_kb'de de listelenir.
+    # Görev 19 B6 tur 1 (F1): KB metninde "(1)" biçiminde fıkra numarası yoktur; künye madde
+    # düzeyine indirildi (SB-001 notu), bent ayrımı traps'ta kalır.
+    # İçerik KB chunk metninden okundu: birinci fıkra (m) bendi (4) alt bendi; (a), (b), (c) ve
+    # (ç) alt bentlerinin tamamı.
+    - 5510 m.102
     # Okundu: KB chunk ref "2020/8 m.2.6.2.5" (yalnız prime esas kazanç eksikliği, alt ve üst sınır,
     # aynı dönem için sonraki tespitte fark).
     - 2020/8 m.2.6.2.5
+  missing_in_kb:
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1).
+    - 5510 m.102
   # Şablonda bu iki olgu fiil = yalniz_kazanc_eksik iken sorulur (B2 asked_when).
   must_ask:
     - tespit_sekli
