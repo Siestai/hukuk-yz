@@ -1,0 +1,58 @@
+# Golden sections of the genelges in scope (handoff 2026-11-22, A3): the section count and the
+# text of three sections each, copied line by line from the text layer of the files in
+# `data/drive/Mevzuat/Genelge/` (official SGK text).
+
+[[act]]
+ref = "2020/8"
+date = "2020-04-01"
+sections = 177
+
+[[act.section]]
+no = "11.3"
+text = '''
+11.3- Bilgi ve belgelerin Sosyal Güvenlik Merkezi bulunmayan yere gönderilmesi ve
+bahse konu bilgi ve belgenin yasal süre içerisinde Kurum kayıtlarına intikal etmiş olması
+halinde idari para cezası uygulanmayacaktır.'''
+
+[[act.section]]
+no = "11.6"
+text = '''
+11.6- İdarî para cezası uygulanması 5510 sayılı Kanunun 8 inci, 9 uncu, 11 inci ve 86
+ncı maddelerde belirtilen belgelerin Kuruma verilmesi yükümlülüğünü ortadan kaldırmaz.'''
+
+[[act.section]]
+no = "11.16"
+text = '''
+11.16- Bu genelgenin yayımlandığı tarih itibariyle tebliğ edilmemiş, tebliğ edilmiş
+olmakla birlikte tahsil olunmamış idari para cezaları hakkında bu genelgedeki lehe olan
+hükümler uygulanır ancak tahsil edilmiş olan tutarlar iade veya mahsup edilmez.'''
+
+[[act]]
+ref = "2018/38"
+date = "2018-11-06"
+sections = 686
+
+[[act.section]]
+no = "K1-1.1.1"
+text = '''
+1.1.1. İşe Giriş Tarihi ile Primlerin Ödenmeye Başladığı Tarihin Farklı Olması
+4/1-(a) sigortalıları için söz konusu olup, işe giriş tarihi ile primlerin ödenmeye
+başladığı tarih farklı ise, ilk defa malullük, yaşlılık ve ölüm sigortasına tabi prim ödenmeye
+başlanan tarih sigortalılık süresinin başlangıcı olarak alınacaktır.'''
+
+[[act.section]]
+no = "K1-1.1.2"
+text = '''
+1.1.2. Kurumca Devir Alınan 506 Sayılı Kanunun Geçici 20 nci Maddesi
+Kapsamındaki Sandıklar
+Kurumca devralınan sandıklara tabi olarak ilk defa prim veya kesenek ödenmeye
+başlanılan tarih sigortalılık süresinin başladığı tarih olarak dikkate alınacaktır.'''
+
+[[act.section]]
+no = "K4-B18-2"
+text = '''
+2. Yürürlükten Kaldırılan Düzenlemeler
+Kanun ve Kanuna ilişkin Yönetmeliğin uygulanması ile ilgili olarak daha önce
+yayımlanan ve Genelge ekinde (Ek-43) belirtilen genelgeler ve genel yazılar, bu Genelgenin
+yayımı tarihinden geçerli olmak üzere yürürlükten kaldırılmıştır. Söz konusu genelgeler ve
+genel yazılar yürürlük dönemlerindeki iş ve işlemlerde kullanılabilecektir.'''

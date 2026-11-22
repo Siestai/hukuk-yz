@@ -11,6 +11,7 @@ from app.loaders.statutes_report import StatuteCounts
 from app.models.chunk import Chunk
 from tests.conftest import STATUTES_FIXTURE, FakeEmbedder
 from tests.test_chunk_index import load_decision
+from tests.test_loaders_admin_acts import load_acts
 
 Factory = async_sessionmaker[AsyncSession]
 
@@ -52,3 +53,22 @@ async def test_statutes_only_and_limit(kb_factory: Factory, fake_embedder: FakeE
     report = await build(kb_factory, fake_embedder, categories=("statute",), limit=1)
     assert report.records == 1
     assert {key[0] for key in report.chunks} == {"statute"}
+
+
+async def test_genelge_sections_are_built_with_the_rest_and_on_their_own(
+    kb_factory: Factory, fake_embedder: FakeEmbedder
+) -> None:
+    await load_decision(kb_factory)
+    await load_acts(kb_factory)
+
+    only = await build(kb_factory, None, categories=("admin_act",), dry_run=True)
+    everything = await build(kb_factory, fake_embedder)
+    second = await build(kb_factory, fake_embedder, categories=("admin_act",))
+
+    # five sections; the repealed one has no chunk
+    assert (only.records, only.empty) == (5, 1)
+    assert dict(only.chunks) == {("admin_act", "analyzed", "body"): 4}
+    assert everything.records == 6 and not everything.failed
+    assert everything.chunks[("admin_act", "analyzed", "body")] == 4
+    assert everything.embedded_chunks == await count(kb_factory)
+    assert (second.records, second.unchanged, second.embedded_chunks) == (5, 5, 0)

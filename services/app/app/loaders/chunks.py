@@ -1,14 +1,15 @@
-"""Build the search index (task 14): chunk the decisions and statute articles, embed the chunks.
+"""Build the search index (task 14): chunk the decisions, statute articles and genelge sections,
+embed the chunks.
 
-    python -m app.loaders.chunks [--category decision|statute] [--dry-run] [--limit N]
+    python -m app.loaders.chunks [--category decision|statute|admin_act] [--dry-run] [--limit N]
 
-Per record (a decision source, a statute article) the chunks are rebuilt as `app.chunk_index`
-says; then the chunks without a vector of the current model are embedded (OpenAI, `OPENAI_API_KEY`
-required unless `--dry-run`). A second run finds nothing to write and nothing to embed. `--dry-run`
-writes nothing and calls nothing: it counts the chunks and estimates the tokens and the cost.
-`--limit N` stops after N records (and embeds only their chunks). The review paths refresh a
-record's chunks themselves; this command is for the first build and for a change of model or of
-the chunking rules.
+Per record (a decision source, a statute article, a genelge section) the chunks are rebuilt as
+`app.chunk_index` says; then the chunks without a vector of the current model are embedded
+(OpenAI, `OPENAI_API_KEY` required unless `--dry-run`). A second run finds nothing to write and
+nothing to embed. `--dry-run` writes nothing and calls nothing: it counts the chunks and estimates
+the tokens and the cost. `--limit N` stops after N records (and embeds only their chunks). The
+review paths refresh a record's chunks themselves; this command is for the first build and for a
+change of model or of the chunking rules.
 
 Exit code 0 when done, 1 when some record or batch failed, 2 when the key is missing.
 """
@@ -27,23 +28,42 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.chunk_index import (
     Row,
+    admin_act_section_rows,
     decision_rows,
     embed_pending,
     review_status,
     statute_article_rows,
+    sync_admin_act_section,
     sync_decision,
     sync_statute_article,
 )
 from app.db import make_engine, make_session_factory
 from app.embeddings import Embedder, estimate_cost, make_embedder
-from app.models.common import STATUTE_PARSER_NAME, Extraction, Source, SourceCategory
+from app.models.common import (
+    ADMIN_ACT_PARSER_NAME,
+    STATUTE_PARSER_NAME,
+    Extraction,
+    Source,
+    SourceCategory,
+)
 from app.settings import get_settings
 from hukuk_ingest.index.chunking import embedding_input, estimate_tokens
 
 BATCH = 50
-Category = Literal["decision", "statute"]
-# A decision source, or a statute article as (statute number, article no).
-Unit = uuid.UUID | tuple[str, str]
+Category = Literal["decision", "statute", "admin_act"]
+CATEGORIES: tuple[Category, ...] = ("decision", "statute", "admin_act")
+
+
+@dataclass(frozen=True)
+class Section:
+    """A genelge section: the genelge's ref ("2020/8") and the section number."""
+
+    ref: str
+    section_no: str
+
+
+# A decision source, a statute article as (statute number, article no), or a genelge section.
+Unit = uuid.UUID | tuple[str, str] | Section
 
 
 @dataclass
@@ -110,13 +130,29 @@ async def _statute_articles(session: AsyncSession) -> list[tuple[str, str]]:
     return [(str(n), str(a)) for n, a in rows.all()]
 
 
+async def _admin_act_sections(session: AsyncSession) -> list[Section]:
+    ref = Extraction.fields["act_ref"].as_string()
+    section_no = Extraction.fields["section_no"].as_string()
+    rows = await session.execute(
+        select(ref, section_no)
+        .where(Extraction.parser_name == ADMIN_ACT_PARSER_NAME)
+        .distinct()
+        .order_by(ref, section_no)
+    )
+    return [Section(str(r), str(s)) for r, s in rows.all()]
+
+
 async def _record(session: AsyncSession, unit: Unit, dry_run: bool) -> tuple[list[Row], bool]:
-    """The chunks of a decision source or a statute article (number, article no), and whether
-    the sync had to write them."""
+    """The chunks of a decision source, a statute article or a genelge section, and whether the
+    sync had to write them."""
     if isinstance(unit, uuid.UUID):
         if dry_run:
             return await decision_rows(session, unit), True
         result = await sync_decision(session, unit)
+    elif isinstance(unit, Section):
+        if dry_run:
+            return await admin_act_section_rows(session, unit.ref, unit.section_no), True
+        result = await sync_admin_act_section(session, unit.ref, unit.section_no)
     else:
         if dry_run:
             return await statute_article_rows(session, *unit), True
@@ -128,7 +164,7 @@ async def build(
     factory: async_sessionmaker[AsyncSession],
     embedder: Embedder | None,
     *,
-    categories: Sequence[Category] = ("decision", "statute"),
+    categories: Sequence[Category] = CATEGORIES,
     dry_run: bool = False,
     limit: int | None = None,
 ) -> IndexReport:
@@ -150,7 +186,8 @@ async def build(
                 .all()
             )
         articles = await _statute_articles(session) if "statute" in categories else []
-    units: list[Unit] = [*decisions, *articles]
+        sections = await _admin_act_sections(session) if "admin_act" in categories else []
+    units: list[Unit] = [*decisions, *articles, *sections]
     if limit is not None:
         units = units[:limit]
 
@@ -185,7 +222,7 @@ async def build(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--category", choices=("decision", "statute"), help="default: both")
+    parser.add_argument("--category", choices=CATEGORIES, help="default: all")
     parser.add_argument("--dry-run", action="store_true", help="count and estimate, write nothing")
     parser.add_argument("--limit", type=int, help="stop after this many records")
     return parser
@@ -197,9 +234,7 @@ async def _run(args: argparse.Namespace) -> int:
     if embedder is None and not args.dry_run:
         print("OPENAI_API_KEY is not set: nothing to embed with (use --dry-run to count)")
         return 2
-    categories: tuple[Category, ...] = (
-        (args.category,) if args.category else ("decision", "statute")
-    )
+    categories: tuple[Category, ...] = (args.category,) if args.category else CATEGORIES
     engine = make_engine(settings.database_url)
     try:
         report = await build(

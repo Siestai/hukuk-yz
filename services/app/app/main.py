@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from sqlalchemy import text
 
+from app.admin_acts import router as admin_acts_router
 from app.auth import router as auth_router
 from app.chat import open_store
 from app.chat import router as fixture_chat_router
@@ -85,6 +86,7 @@ def create_app(*, chat_backend: str | None = None) -> FastAPI:
         review_router,
         review_statutes_router,
         statutes_router,
+        admin_acts_router,
         search_router,
     ):
         application.include_router(router)
