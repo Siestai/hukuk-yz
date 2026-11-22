@@ -1,0 +1,21 @@
+{
+ "topic": "idari_para_cezasi",
+ "title": "İşe giriş bildirgesinde bir yıl içinde tekrar cezası",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "ceza_turu",
+   "value": "Bildirge (işe giriş, işten ayrılış, işyeri bildirgesi)",
+   "status": "known"
+  },
+  {
+   "key": "fiil",
+   "value": "İşe giriş bildirgesi süresinden sonra verildi",
+   "status": "known"
+  },
+  {
+   "key": "onceki_tespit_tarihi",
+   "status": "unknown"
+  }
+ ]
+}

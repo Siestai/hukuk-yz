@@ -1,0 +1,33 @@
+{
+ "topic": "calisma_kosulu_degisikligi",
+ "title": "Çalışma saatlerinin değiştirilmesi",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "degisiklik_konusu",
+   "value": "Çalışma saatlerinin yarım saat değiştirilmesi (başlama ve bitiş saati kaymaktadır)",
+   "status": "known"
+  },
+  {
+   "key": "yazili_bildirim",
+   "status": "unknown"
+  },
+  {
+   "key": "yazili_kabul",
+   "status": "unknown"
+  },
+  {
+   "key": "calisma_saati_kaynagi",
+   "status": "unknown"
+  },
+  {
+   "key": "kaymanin_kapsami",
+   "status": "unknown"
+  },
+  {
+   "key": "sure_sinirlari",
+   "value": "Günlük çalışma süresi değişmemektedir; yalnız başlama ve bitiş saati kaymaktadır",
+   "status": "known"
+  }
+ ]
+}

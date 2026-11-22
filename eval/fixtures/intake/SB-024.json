@@ -1,0 +1,22 @@
+{
+ "topic": "sgk_bildirim_prim",
+ "title": "SGK bildirimleri - işyeri bildirgesinden sonra işe giriş bildirgesinin verilme süresi",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "bildirim_konusu",
+   "value": "Sigortalı işe giriş bildirgesinin süresi",
+   "status": "known"
+  },
+  {
+   "key": "isyeri_kolu",
+   "value": "Kuruma ilk defa işyeri bildirgesi verilen işyeri",
+   "status": "known"
+  },
+  {
+   "key": "tescil_ve_calistirma_tarihi",
+   "value": null,
+   "status": "unknown"
+  }
+ ]
+}
