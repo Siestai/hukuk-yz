@@ -35,6 +35,8 @@ from hukuk_models import ErrorCode
 from hukuk_models.chat import (
     Answer,
     AnswerEvent,
+    CaseFacts,
+    Clarification,
     ClarificationAnswer,
     ClarificationEvent,
     DoneEvent,
@@ -396,6 +398,7 @@ async def test_a_topic_with_all_facts_known_does_not_stop() -> None:
                 *INTAKE_SB016["facts"],
                 {"key": "ceza_turu", "value": "bildirge", "status": "known"},
                 {"key": "kendiliginden", "value": "Kendiliğinden verildi", "status": "known"},
+                {"key": "fiil", "value": "ise_giris_gec", "status": "known"},
             ],
         },
         holding={"rows": [row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde")]},
@@ -1169,3 +1172,57 @@ async def test_a_branch_key_outside_the_template_is_corrected_once_then_its_bran
     gate = (await graph.aget_state({"configurable": {"thread_id": thread}})).values["gate"]
     assert gate["attempts"] == 2 and not gate["fallback"]
     assert gate["branches_dropped"] == (0 if corrected else 1)
+
+
+async def test_an_answer_that_opens_a_branch_is_followed_by_its_questions_once() -> None:
+    graph = make_graph(Script(intake=INTAKE_SB016))
+    thread = unique_thread()
+
+    first = only(await turn(graph, ask(thread)), ClarificationEvent).clarification
+    assert [q.fact_key for q in first.questions] == ["ceza_turu", "kendiliginden", "fiil"]
+    fiil = next(q.id for q in first.questions if q.fact_key == "fiil")
+
+    def answer(clarification: Clarification, **values: str) -> RunRequest:
+        return RunRequest(
+            thread_id=thread,
+            clarification_answers=[
+                ClarificationAnswer(question_id=q.id, value=values[q.id])
+                if q.id in values
+                else ClarificationAnswer(question_id=q.id, unknown=True)
+                for q in clarification.questions
+            ],
+        )
+
+    second = await turn(graph, answer(first, **{fiil: "bordro_gecersiz"}))
+
+    follow = only(second, ClarificationEvent).clarification
+    assert not any(isinstance(e, AnswerEvent) for e in second)
+    assert [q.fact_key for q in follow.questions] == [
+        "tutanakla_teslim",
+        "odeme_sekli",
+        "defter_turu",
+    ]
+    assert [q.id for q in follow.questions] == ["q1", "q2", "q3"]
+
+    # An answer to the follow-up opens no further round: the turn goes on to the answer.
+    third = await turn(graph, answer(follow, q3="bilanco"))
+
+    assert not any(isinstance(e, ClarificationEvent) for e in third)
+    only(third, AnswerEvent)
+    facts = CaseFacts.model_validate(
+        (await graph.aget_state({"configurable": {"thread_id": thread}})).values["facts"]
+    )
+    known = {f.key: f.value for f in facts.facts if f.status == "known"}
+    assert str(known["fiil"]).startswith("Ücret tediye bordrosunda")
+    assert known["defter_turu"] == "Bilanço esasına göre defter"
+
+
+async def test_an_answer_that_opens_no_branch_goes_on_to_the_answer() -> None:
+    graph = make_graph(Script(intake=INTAKE_SB016))
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    events = await turn(graph, answer_all(thread))
+
+    assert not any(isinstance(e, ClarificationEvent) for e in events)
+    only(events, AnswerEvent)

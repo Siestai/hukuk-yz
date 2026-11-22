@@ -4,7 +4,8 @@
 # Görev 19 B2 taslağı. Şablonda iki ayrı alt konu (işe giriş bildirgesi süresi; aylık prim ve
 # hizmet belgesinde eksik gün) bulunmaktadır: bildirim_konusu (sorulmaz, giriş adımı seçer) hangi
 # alt konunun olgularının sorulacağını belirler (asked_when); calisma_bicimi yalnız 06 veya 07
-# kodunda sorulur. Alt konu bilinmiyorsa işe giriş olguları ve eksik gün kodu sorulmaz.
+# kodunda sorulur (eksik gün kodu cevapla belli olursa ek netleştirmede). Alt konu bilinmiyorsa
+# iki alt konunun olguları da sorulur.
 # "Neden soruyorum" metinleri yalnız KB'de okunabilen maddelere dayanır (5510 m.8 high,
 # 5510 m.86 high, 4857 m.13 medium). 5510 m.80'in güncel sürümü low bantta olduğundan (K1)
 # dayanak ve must_read olarak kullanılmamıştır. SSİY, 2013/11 ve 2020/20 Genelgeleri KB'de
@@ -26,7 +27,7 @@ facts:
   - key: tescil_ve_calistirma_tarihi
     label: İşyerinin ilk bildirimi ve ilk sigortalı çalıştırma tarihi
     critical: true
-    asked_when: {bildirim_konusu: [ise_giris]}
+    asked_when: {bildirim_konusu: [ise_giris, unknown]}
     question:
       text: >-
         İşyeri Kuruma ilk defa mı bildirildi? İşyeri bildirgesinin verildiği tarih ile işyerinde
@@ -42,7 +43,7 @@ facts:
   - key: isyeri_kolu
     label: İşyerinin iş kolu
     critical: true
-    asked_when: {bildirim_konusu: [ise_giris]}
+    asked_when: {bildirim_konusu: [ise_giris, unknown]}
     question:
       text: İşyeri inşaat, balıkçılık veya tarım işyeri midir?
       why: >-
@@ -59,7 +60,7 @@ facts:
   - key: eksik_gun_kodu
     label: Eksik gün nedeni (kodu)
     critical: true
-    asked_when: {bildirim_konusu: [eksik_gun]}
+    asked_when: {bildirim_konusu: [eksik_gun, unknown]}
     question:
       text: Sigortalı aylık prim ve hizmet belgesinde hangi eksik gün nedeniyle bildirildi?
       why: >-

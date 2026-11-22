@@ -270,8 +270,9 @@ def test_date_corrections_replace_or_invalidate_previous_dates(
     assert plan.as_of_assumed == (expected is None)
 
 
-# A branch fact the intake picks from, a follow-up asked only on one of its values, and a fact
-# asked on another value or while the branch is unknown (task 19, `asked_when`).
+# A branch fact the intake picks from and that is never asked (`dal`: its conditions list
+# "unknown"), and a branch fact that is asked (`tur`), with a follow-up asked on one of its values
+# (task 19, `asked_when`).
 BRANCHED = Topic.model_validate(
     {
         "id": "dal",
@@ -287,10 +288,21 @@ BRANCHED = Topic.model_validate(
                 ],
             },
             {
+                "key": "tur",
+                "label": "Tür",
+                "critical": True,
+                "question": {
+                    "text": "Tür?",
+                    "why": "Türe göre değişir.",
+                    "kind": "choice",
+                    "options": [{"value": "x", "label": "X türü"}, {"value": "y", "label": "Y"}],
+                },
+            },
+            {
                 "key": "a_olgu",
                 "label": "A olgusu",
                 "critical": True,
-                "asked_when": {"dal": ["a"]},
+                "asked_when": {"dal": ["a", "unknown"]},
                 "question": {"text": "A?", "why": "A dalında gerekir.", "kind": "text"},
             },
             {
@@ -300,14 +312,24 @@ BRANCHED = Topic.model_validate(
                 "asked_when": {"dal": ["b", "unknown"]},
                 "question": {"text": "B?", "why": "B dalında gerekir.", "kind": "text"},
             },
+            {
+                "key": "x_olgu",
+                "label": "X olgusu",
+                "critical": True,
+                "asked_when": {"tur": ["x"]},
+                "question": {"text": "X?", "why": "X türünde gerekir.", "kind": "text"},
+            },
         ],
     }
 )
 
 
+def _branched(*given: IntakeFact) -> CaseFacts:
+    return build(BRANCHED, IntakeOutput(topic="dal", title="Dal", facts=list(given)), None)
+
+
 def _asked(*given: IntakeFact) -> list[str]:
-    extracted = IntakeOutput(topic="dal", title="Dal", facts=list(given))
-    facts = build(BRANCHED, extracted, None)
+    facts = _branched(*given)
     clarification = clarification_for(BRANCHED, facts, {})
     asked = [q.fact_key for q in clarification.questions] if clarification else []
     assert asked == critical_unknown(BRANCHED, facts)
@@ -315,34 +337,40 @@ def _asked(*given: IntakeFact) -> list[str]:
 
 
 @pytest.mark.parametrize(
-    ("value", "asked"),
+    ("given", "asked"),
     [
-        ("a", ["a_olgu"]),
-        ("A dalı", ["a_olgu"]),
-        ("b", ["b_olgu"]),
+        ({"dal": "a"}, ["tur", "a_olgu"]),
+        ({"dal": "A dalı"}, ["tur", "a_olgu"]),
+        ({"dal": "b"}, ["tur", "b_olgu"]),
         # A value that is no option tells no branch: it counts as unknown.
-        ("başka bir şey", ["b_olgu"]),
+        ({"dal": "başka bir şey"}, ["tur", "a_olgu", "b_olgu"]),
+        ({}, ["tur", "a_olgu", "b_olgu"]),
+        ({"tur": "x"}, ["a_olgu", "b_olgu", "x_olgu"]),
+        # An asked branch fact whose value is no option stays unknown, so it is asked.
+        ({"tur": "başka bir şey"}, ["tur", "a_olgu", "b_olgu"]),
     ],
 )
-def test_a_conditional_fact_is_asked_only_in_its_branch(value: str, asked: list[str]) -> None:
-    assert _asked(IntakeFact(key="dal", value=value, status="known")) == asked
+def test_a_conditional_fact_is_asked_only_in_its_branch(
+    given: dict[str, str], asked: list[str]
+) -> None:
+    facts = [IntakeFact(key=k, value=v, status="known") for k, v in given.items()]
+    assert _asked(*facts) == asked
 
 
-def test_a_conditional_fact_listing_unknown_is_asked_while_the_branch_is_unknown() -> None:
-    assert _asked() == ["b_olgu"]
+def test_an_answer_that_opens_a_branch_asks_its_facts_once_more() -> None:
+    from agent.facts import follow_up
 
+    facts = _branched()
+    first = clarification_for(BRANCHED, facts, {})
+    assert first is not None
+    tur = next(q.id for q in first.questions if q.fact_key == "tur")
 
-def test_a_branch_known_after_the_clarification_makes_its_facts_critical() -> None:
-    """A branch learnt after the questions were asked (an answer) makes its facts critical: the
-    answer is conditional on them, though they are not asked again in this turn."""
-    facts = build(BRANCHED, IntakeOutput(topic="dal", title="Dal", facts=[]), None)
-    answered = facts.model_copy(
-        update={
-            "facts": [
-                f.model_copy(update={"value": "A dalı", "status": "known"}) if f.key == "dal" else f
-                for f in facts.facts
-            ]
-        }
-    )
+    def after(value: str | None) -> list[str] | None:
+        answer = ClarificationAnswer(question_id=tur, value=value, unknown=value is None)
+        answered = apply_answers(BRANCHED, first, [answer], facts, today=TODAY)
+        more = follow_up(BRANCHED, first, answered, {})
+        return [q.fact_key for q in more.questions] if more else None
 
-    assert critical_unknown(BRANCHED, answered) == ["a_olgu"]
+    assert after("X türü") == ["x_olgu"]
+    assert after("y") is None
+    assert after(None) is None

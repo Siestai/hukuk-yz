@@ -83,6 +83,7 @@ def build_facts(
     earlier = {f.key: f for f in previous.facts} if previous else {}
     supplied = {f.key: f for f in extracted.facts}
     stated_event = _stated_event_date(extracted, question, today)
+    steering = {f.key for f in topic.branch_facts}
     facts = []
     for tf in topic.facts:
         fact = _extracted(tf, extracted)
@@ -106,6 +107,10 @@ def build_facts(
                 fact = earlier.get(tf.key)
         else:
             fact = fact or earlier.get(tf.key)
+            # A branch fact is known only as one of its options: anything else tells no branch,
+            # and an asked branch fact is then asked.
+            if fact and tf.key in steering and _matching_option(tf, fact.value or "") is None:
+                fact = None
         facts.append(fact or Fact(key=tf.key, label=tf.label, status="unknown"))
     # With a template date, the fact is the single source of truth, including unknown.
     event_date = (
@@ -167,8 +172,24 @@ def clarification_for(
     """One question per unknown critical fact, from the template; None when nothing is missing.
     `sources` maps the künye of a basis to the citation the knowledge base resolved; a basis it
     could not resolve is left out, never made up."""
+    return _questions(topic, critical_unknown(topic, facts), sources)
+
+
+def follow_up(
+    topic: Topic, asked: Clarification, facts: CaseFacts, sources: dict[str, CitationRef]
+) -> Clarification | None:
+    """The questions of the critical facts the answers to `asked` brought into the branch: still
+    unknown and not asked before. None when the answers opened no branch."""
+    before = {q.fact_key for q in asked.questions}
+    keys = [k for k in critical_unknown(topic, facts) if k not in before]
+    return _questions(topic, keys, sources)
+
+
+def _questions(
+    topic: Topic, keys: list[str], sources: dict[str, CitationRef]
+) -> Clarification | None:
     questions: list[ClarificationQuestion] = []
-    for key in critical_unknown(topic, facts):
+    for key in keys:
         tf = topic.fact(key)
         assert tf is not None and tf.question is not None
         q = tf.question
