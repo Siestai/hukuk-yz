@@ -1,0 +1,97 @@
+# Teyit bekleyen Yargıtay kararları (aday listesi)
+#
+# Kural (md. 25; docs/decisions.md 2026-11-22 "teyitsiz künyeler aday listesinde"): Karararama'da
+# (karararama.yargitay.gov.tr) esas / karar numarasıyla teyit edilmemiş künye eval vaka dosyasına
+# (eval/cases/*.yaml) girmez. Vaka analizinde bulunan böyle künyeler burada bekler.
+#
+# Akış:
+# - teyit edildi ve KB decision tablosuna yüklendi -> vakaya geri döner (`use` alanındaki yere),
+#   bu listeden silinir;
+# - Karararama'da bulunamadı ya da E/K tutmadı -> listeden silinir, vaka dosyasına dönmez;
+#   bulunan bilgi düzeltilmez, "bulunmaya" çalışılmaz.
+#
+# Alanlar:
+#   chamber, esas, karar, date : dergi arşivindeki ayrıştırılmış künye (teyitsiz)
+#   journal_issue, journal_title: Çalışma ve Toplum dergisi sayısı ve karar başlığı
+#   karararama                  : unverified | verified | not_found
+#   cases                       : hangi vaka, nerede kullanılacaktı (must_cite / must_not / traps)
+#   note                        : vakadaki kullanım bağlamı
+
+decisions:
+  - chamber: 9. HD
+    esas: "2021/4643"
+    karar: "2021/8989"
+    date: "2021-05-17"
+    journal_issue: 71
+    journal_title: Ücretin düşürülmesinin iş koşullarında esaslı değişiklik niteliğinde olduğu
+    karararama: unverified
+    cases:
+      - {case: SB-003, use: must_cite}
+
+  - chamber: 9. HD
+    esas: "2016/9412"
+    karar: "2019/16512"
+    date: "2019-09-23"
+    journal_issue: 65
+    journal_title: İş koşullarında esaslı değişiklik yapılmasının koşulları
+    karararama: unverified
+    cases:
+      - {case: SB-003, use: must_cite}
+
+  - chamber: 9. HD
+    esas: "2012/6260"
+    karar: "2014/11165"
+    date: "2014-04-02"
+    journal_issue: 45
+    journal_title: Ücretin düşürülmesinin iş koşullarında esaslı değişiklik niteliğinde olması
+    karararama: unverified
+    cases:
+      - {case: SB-003, use: must_cite}
+
+  - chamber: 9. HD
+    esas: "2008/26536"
+    karar: "2008/25713"
+    date: "2008-10-07"
+    journal_issue: 20
+    journal_title: Toplu iş sözleşmesinden doğan alacak
+    karararama: unverified
+    cases:
+      - {case: SB-005, use: must_cite}
+
+  - chamber: 22. HD
+    esas: "2012/12745"
+    karar: "2013/2608"
+    date: "2013-02-11"
+    journal_issue: 38
+    journal_title: İşyerinde uzun süre ikramiye ödemesinin yapılmaması
+    karararama: unverified
+    cases:
+      - case: SB-005
+        use: must_not
+        note: >-
+          Yalnız TİS veya sözleşme dayanağı olmayan işyeri uygulaması içindir; TİS ikramiyesi
+          sorusunda dayanak gösterilmez (vakadaki tuzak cümlesi künyesiz kaldı).
+
+  - chamber: 22. HD
+    esas: "2017/20988"
+    karar: "2019/6513"
+    date: "2019-03-25"
+    journal_issue: 63
+    journal_title: İşyerinde gece vardiyasının sürekli hâle getirilmesinin iş koşullarında esaslı değişiklik niteliğinde olduğu
+    karararama: unverified
+    cases:
+      - {case: SB-013, use: must_cite}
+
+  - chamber: 9. HD
+    esas: "2023/3247"
+    karar: "2023/3581"
+    date: "2023-03-13"
+    journal_issue: 78
+    journal_title: Çalışma koşullarında esaslı değişiklik
+    karararama: unverified
+    cases:
+      - case: SB-013
+        use: [must_cite, traps]
+        note: >-
+          Servis güzergâhı değişikliği işçi aleyhine esaslı değişiklik sayılmıştır (vakadaki tuzak
+          cümlesi künyesiz kaldı).
