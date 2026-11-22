@@ -2,9 +2,10 @@
 in force on the date of the law applied, and its `condition_quote` is in that source word for
 word, in the paragraph the row cites (docs/architecture.md §5.1, item 6)."""
 
+import hashlib
 import re
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import date
 from typing import NamedTuple
 
@@ -42,21 +43,37 @@ PROGRESSIVE = "progressive"
 UNKNOWN_KEY = "unknown_key"
 
 
-# The longest quote a dropped row keeps in the trace.
+# The longest quote a dropped row keeps (in the trace only when it is in the source read).
 TRACE_QUOTE_CHARS = 300
+# The source_id of a dropped row that names no source read: the written text is the model's.
+UNRESOLVED = "unresolved"
 
 
 @dataclass(frozen=True)
 class DroppedRow:
-    """A row the check dropped, for the trace: the code of why, the source as the draft gave it
-    (even if it names no source read) and the start of its quote. Statute text only."""
+    """A row the check dropped. `reason`, `source_id` and `condition_quote` are as the draft gave
+    them: model text, for the eval only. `trace` is what may go to the trace and the log."""
 
     reason: str
     source_id: str
     condition_quote: str
+    trace: dict[str, str | int | None]
 
-    def as_dict(self) -> dict[str, str]:
-        return asdict(self)
+
+def _trace_record(
+    reason: str, source: ReadSource | None, quote: str
+) -> dict[str, str | int | None]:
+    """The record of a dropped row for the trace: fixed codes, counts and a short digest. The
+    quote itself only when it is in the source read, i.e. statute text; a dropped quote usually
+    is not, and may echo the question."""
+    verbatim = source is not None and bool(quote) and locate(source, quote) is not None
+    return {
+        "reason": reason,
+        "source_id": source.source_id if source is not None else UNRESOLVED,
+        "quote": quote[:TRACE_QUOTE_CHARS] if verbatim else None,
+        "quote_len": len(quote),
+        "quote_sha8": hashlib.sha256(quote.encode()).hexdigest()[:8],
+    }
 
 
 class Verified(NamedTuple):
@@ -196,11 +213,13 @@ def verify_rows(
         problems = _problems(row, source, applied_on, keys)
         if source is None or problems:
             dropped[problems[0]] += 1
+            quote = row.condition_quote.strip()
             dropped_rows.append(
                 DroppedRow(
                     problems[0],
                     row.source_id,
-                    row.condition_quote.strip()[:TRACE_QUOTE_CHARS],
+                    quote[:TRACE_QUOTE_CHARS],
+                    _trace_record(problems[0], source, quote),
                 )
             )
             continue

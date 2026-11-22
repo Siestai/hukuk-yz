@@ -1,6 +1,7 @@
 """The eval runner: the fixture knowledge base, the answers to the questions, the smoke run with
 fake models that CI runs, the cost estimate and the budget gate (with fake costs)."""
 
+import hashlib
 import json
 from datetime import date
 from pathlib import Path
@@ -64,13 +65,14 @@ def test_the_case_answers_the_questions_it_has_facts_for_and_says_unknown_to_the
     ]
 
 
+DROPPED_QUOTE = "kanunda hiç yazmayan bir ifade"
 SB016_SCRIPT = Script(
     intake=INTAKE_SB016,
     holding={
         "rows": [
             row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde"),
             # Not in the text read: sent back once, then dropped with its reason.
-            row("statute:5510:m102", "kanunda hiç yazmayan bir ifade"),
+            row("statute:5510:m102", DROPPED_QUOTE),
         ]
     },
     drafts=[
@@ -115,11 +117,21 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     assert {"models", "output_tokens", "cost", "seconds"} <= set(result.nodes[0])
     # Why the holding map dropped its rows, from the trace.
     assert result.rows_dropped_by == {"quote_not_found": 1}
+    # The raw quote is in the eval's own state only (`Deps.keep_dropped_text`).
+    assert result.rows_dropped_text == [
+        {
+            "reason": "quote_not_found",
+            "source_id": "statute:5510:m102",
+            "condition_quote": DROPPED_QUOTE,
+        }
+    ]
     assert result.rows_dropped == [
         {
             "reason": "quote_not_found",
             "source_id": "statute:5510:m102",
-            "condition_quote": "kanunda hiç yazmayan bir ifade",
+            "quote": None,
+            "quote_len": len(DROPPED_QUOTE),
+            "quote_sha8": hashlib.sha256(DROPPED_QUOTE.encode()).hexdigest()[:8],
         }
     ]
 
@@ -141,7 +153,9 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
         {
             "reason": "quote_not_found",
             "source_id": "statute:5510:m102",
-            "condition_quote": "kanunda hiç yazmayan bir ifade",
+            "quote": None,
+            "quote_len": len(DROPPED_QUOTE),
+            "quote_sha8": hashlib.sha256(DROPPED_QUOTE.encode()).hexdigest()[:8],
         }
     ]
     assert saved["cases"][0]["error"] is None and saved["cases"][0]["cost"] is None

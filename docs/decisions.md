@@ -300,5 +300,8 @@
   taslağın verdiği `source_id`'yi (çözülemese de) ve alıntının ilk 300 karakterini toplar.
   `holding_map` düğümünün çıktısında `dropped_rows` olarak, eval sonuç JSON'unda `CaseResult.rows_dropped`
   olarak yer alır; md tablosuna girmez.
-- **Gizlilik:** alıntı KB'deki mevzuat metnidir; soru ve olgular kayda girmez. SB-002 ve SB-014
-  düşüşleri bu izle tahmin yerine okunur.
+- **Gizlilik:** düşen satırın alıntısı modelin yazdığıdır ve soruyu ya da olguları yansıtabilir.
+  Log/trace yalnız kaynakta birebir bulunan alıntıyı taşır (kaynak çözülemezse `source_id` =
+  `unresolved`); aksi hâlde yalnız uzunluk + kısa özet (`quote_len`, `quote_sha8` = sha256 ilk 8).
+  Ham alıntı yalnız eval koşucusunda (`Deps.keep_dropped_text`), sonuç JSON'unda
+  (`rows_dropped_text`) tutulur, logda değil. SB-002 ve SB-014 düşüşleri bu izle tahmin yerine okunur.

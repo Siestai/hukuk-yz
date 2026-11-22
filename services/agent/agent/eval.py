@@ -313,8 +313,11 @@ class CaseResult:
     nodes: list[dict[str, Any]]
     # Why the holding map dropped rows, by reason, when its trace says so.
     rows_dropped_by: dict[str, Any]
-    # Each row the holding map dropped: reason, source_id, start of the quote (statute text).
+    # Each row the holding map dropped, as the trace has it (`holding._trace_record`).
     rows_dropped: list[dict[str, Any]]
+    # The same rows as the model wrote them (reason, source_id, start of the quote): the eval's
+    # own state, never in the trace.
+    rows_dropped_text: list[dict[str, Any]]
     error: str | None = None
 
 
@@ -445,6 +448,7 @@ def _failed(
         nodes=_node_spend(trace),
         rows_dropped_by={},
         rows_dropped=[],
+        rows_dropped_text=[],
         error=error,
     )
 
@@ -522,12 +526,13 @@ def _scored(
         nodes=_node_spend(trace),
         rows_dropped_by=_rows_dropped_by(trace),
         rows_dropped=_rows_dropped(trace),
+        rows_dropped_text=list(state.get("dropped_text", [])),
         error=error,
     )
 
 
 def build_eval_graph(llm: Llm, kb: KbClient) -> Graph:
-    return build_graph(Deps(llm=llm, kb=kb), InMemorySaver())
+    return build_graph(Deps(llm=llm, kb=kb, keep_dropped_text=True), InMemorySaver())
 
 
 async def run_eval(

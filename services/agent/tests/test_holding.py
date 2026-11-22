@@ -1,6 +1,7 @@
 """The holding map is checked by code: a row stays only on a read, valid source and a verbatim
 quote."""
 
+import hashlib
 from datetime import date
 from typing import Any
 
@@ -368,3 +369,25 @@ def test_a_dropped_row_is_traced_with_its_reason_source_and_truncated_quote() ->
     assert verified.dropped_rows[0].condition_quote == long_quote.strip()[:300]
     assert len(verified.dropped_rows[0].condition_quote) == 300
     assert verified.dropped_rows[1].condition_quote == M18_4.strip()[:300]
+
+
+def test_the_trace_record_of_a_dropped_row_has_no_quote_the_source_does_not_hold() -> None:
+    sentinel = "PRIVATE_SENTINEL_calisiyor bu soru kanunda yoktur"
+    verified = verify(
+        row("statute:4857:m18", sentinel),
+        row("statute:4857:m18", M18_4, sub="1"),
+        row("statute:nowhere", sentinel),
+    )
+
+    lost, other, unread = (d.trace for d in verified.dropped_rows)
+    assert lost == {
+        "reason": "quote_not_found",
+        "source_id": "statute:4857:m18",
+        "quote": None,
+        "quote_len": len(sentinel),
+        "quote_sha8": hashlib.sha256(sentinel.encode()).hexdigest()[:8],
+    }
+    assert unread["source_id"] == "unresolved" and unread["quote"] is None
+    assert "PRIVATE_SENTINEL" not in repr([lost, unread])
+    # Dropped for another reason, the quote is statute text: it stays.
+    assert other["reason"] == "other_paragraph" and other["quote"] == M18_4.strip()[:300]

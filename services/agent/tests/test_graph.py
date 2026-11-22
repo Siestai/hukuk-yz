@@ -1,6 +1,7 @@
 """The graph (task 17): SB-001 stops at the clarification and goes on after the answers; skipping
 gives a conditional answer; the gate drops what it must; what cannot pass ends in the fallback."""
 
+import hashlib
 import json
 from datetime import date
 
@@ -657,7 +658,8 @@ async def test_holding_rejection_logs_counts_and_keeps_private_text_out(
     sentinel = "PRIVATE_12345678901_calisiyor"
     informal = row("statute:4857:m18", M18_1)
     informal["condition"] = sentinel
-    script = Script(holding={"rows": [informal, row("statute:4857:m18", M18_4)]})
+    echoed = row("statute:4857:m18", f"{sentinel} kanunda hiç yazmayan ifade")
+    script = Script(holding={"rows": [informal, echoed, row("statute:4857:m18", M18_4)]})
     caplog.set_level(logging.INFO)
     graph = make_graph(script)
     thread = unique_thread()
@@ -673,22 +675,64 @@ async def test_holding_rejection_logs_counts_and_keeps_private_text_out(
     assert len(script.of("holding")) == 2
     assert outputs["node holding_map"] == {
         "rows": 1,
-        "dropped": 1,
-        "dropped_by": {"progressive": 1},
-        # Statute text and the source only: the model's `condition` (the sentinel) stays out.
+        "dropped": 2,
+        "dropped_by": {"progressive": 1, "quote_not_found": 1},
+        # A quote only where the source holds it; the model's words (the sentinel) stay out.
         "dropped_rows": [
             {
                 "reason": "progressive",
                 "source_id": "statute:4857:m18",
-                "condition_quote": M18_1[:300],
-            }
+                "quote": M18_1.strip()[:300],
+                "quote_len": len(M18_1.strip()),
+                "quote_sha8": hashlib.sha256(M18_1.strip().encode()).hexdigest()[:8],
+            },
+            {
+                "reason": "quote_not_found",
+                "source_id": "statute:4857:m18",
+                "quote": None,
+                "quote_len": len(echoed["condition_quote"]),
+                "quote_sha8": hashlib.sha256(echoed["condition_quote"].encode()).hexdigest()[:8],
+            },
         ],
         "corrected": True,
     }
     assert outputs["node draft"]["issue_counts"] == {}
-    assert outputs["node draft"]["rows_dropped"] == 1
-    assert outputs["node draft"]["rows_dropped_by"] == {"progressive": 1}
+    assert outputs["node draft"]["rows_dropped"] == 2
+    assert outputs["node draft"]["rows_dropped_by"] == {"progressive": 1, "quote_not_found": 1}
     assert outputs["node draft"]["fallback"] is False
+    assert sentinel not in json.dumps(outputs["node holding_map"], ensure_ascii=False)
+    # By default the state holds no raw text of the dropped rows.
+    state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    assert "dropped_text" not in state
+
+
+async def test_dropped_text_is_kept_in_the_state_only_when_asked() -> None:
+    sentinel = "PRIVATE_12345678901_calisiyor"
+    script = Script(
+        holding={
+            "rows": [
+                row("statute:4857:m18", f"{sentinel} kanunda yok"),
+                row("statute:4857:m18", M18_4),
+            ]
+        }
+    )
+    model = scripted(script)
+    deps = Deps(
+        llm=Llm(Models(model, model)), kb=FakeKb(), today=lambda: TODAY, keep_dropped_text=True
+    )
+    graph = build_graph(deps, InMemorySaver())
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+    await turn(graph, RunRequest(thread_id=thread, skip=True))
+
+    state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    assert state["dropped_text"] == [
+        {
+            "reason": "quote_not_found",
+            "source_id": "statute:4857:m18",
+            "condition_quote": f"{sentinel} kanunda yok",
+        }
+    ]
 
 
 @pytest.mark.parametrize(
