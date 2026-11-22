@@ -42,11 +42,20 @@ class GateDrops(BaseModel):
 
 
 class GateCited(BaseModel):
-    """The citations the gate kept in the points and the branches of the answer, by the review
-    status of their source: an unreviewed one is a test source (decision K1)."""
+    """The citations of an answer by the review status of their source: an unreviewed one is a
+    test source (decision K1)."""
 
     approved: int = 0
     unreviewed: int = 0
+
+
+def cited_by_status(answer: Answer) -> GateCited:
+    """Every citation the answer shows: of its points, its branches and its holding map."""
+    cited = [c for p in answer.points for c in p.citations]
+    cited += [c for m in answer.missing_info for c in m.citations]
+    cited += [r.citation for r in answer.holding_map.rows] + answer.holding_map.citations
+    unreviewed = sum(c.review_status == "analyzed" for c in cited)
+    return GateCited(approved=len(cited) - unreviewed, unreviewed=unreviewed)
 
 
 @dataclass
@@ -56,7 +65,6 @@ class GateResult:
     drops: GateDrops = field(default_factory=GateDrops)
     # Fixed codes only: detailed issues belong in model feedback, never in logs.
     issue_counts: dict[str, int] = field(default_factory=dict)
-    cited: GateCited = field(default_factory=GateCited)
 
 
 def holding_issue(rows: Sequence[HoldingRow]) -> tuple[str, str] | None:
@@ -220,13 +228,7 @@ def check_draft(
     for p in draft.points:
         cited = _cite(p.citations, sources, applied_on, drops)
         if cited:
-            points.append(
-                AnswerPoint(
-                    text=p.text,
-                    citations=cited,
-                    unreviewed=any(c.review_status == "analyzed" for c in cited),
-                )
-            )
+            points.append(AnswerPoint(text=p.text, citations=cited))
         else:
             drops.points += 1
     if not points:
@@ -273,12 +275,7 @@ def check_draft(
             drops,
             {"answer_schema": exc.error_count()},
         )
-    kept = [c for p in points for c in p.citations]
-    kept += [c for m in missing_info for c in m.citations]
-    unreviewed = sum(c.review_status == "analyzed" for c in kept)
-    return GateResult(
-        answer, [], drops, cited=GateCited(approved=len(kept) - unreviewed, unreviewed=unreviewed)
-    )
+    return GateResult(answer, [], drops)
 
 
 def not_answered(

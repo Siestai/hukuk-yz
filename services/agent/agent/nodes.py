@@ -17,6 +17,7 @@ from agent.gate import (
     GateCited,
     GateDrops,
     check_draft,
+    cited_by_status,
     holding_issue,
     not_answered,
     progressive_in,
@@ -104,37 +105,56 @@ def _dumps(items: list[BaseModel]) -> list[dict[str, Any]]:
     return [i.model_dump(mode="json") for i in items]
 
 
+class Missing(TypedDict):
+    """A source that was to be read and was not, for the trace. `reason`: `unmapped` (the künye
+    names no record), `not_found`, `gap`, `not_in_force`, `truncated`."""
+
+    ref: str
+    reason: str
+
+
+def _missing(ref: str, reason: str) -> Missing:
+    return {"ref": ref, "reason": reason}
+
+
 async def _read_sections(
     kb: KbClient, ref: str, as_of: date, queries: Sequence[str]
-) -> tuple[list[ReadSource], str | None]:
+) -> tuple[list[ReadSource], list[Missing]]:
     """The genelge sections `ref` names, each read whole. A künye of the whole act ("2020/8")
-    names the sections of it that the search finds for `queries`."""
+    names the sections of it that the search finds for `queries`; every one of them that is not
+    read is missing with its own reason, and the act itself when none is read."""
     found = admin_act_section(ref)
-    wanted = [] if found is None or found.section is None else [ref]
-    if found is not None and found.section is None:
+    whole_act = found is not None and found.section is None
+    wanted = [] if found is None or whole_act else [ref]
+    if found is not None and whole_act:
         for query in queries:
             hits = await kb.search(query, categories=["admin_act"], as_of=as_of, limit=SEARCH_LIMIT)
             wanted += [h.ref for h in hits if covers(h.ref, found.act) and h.ref not in wanted]
     sources = []
-    reason = "not_found"
+    missing = []
     for section in wanted:
         read = await kb.read_section(section, as_of)
         if isinstance(read, Unreadable):
-            reason = read.reason
-        elif (source := as_read_source(read)) is not None and valid_on(source, as_of):
+            missing.append(_missing(section, read.reason))
+        elif (source := as_read_source(read)) is None:
+            missing.append(_missing(section, "not_found"))
+        elif not valid_on(source, as_of):
+            missing.append(_missing(section, "not_in_force"))
+        else:
             sources.append(source)
-    return sources, None if sources else reason
+    if whole_act and not sources:
+        missing.insert(0, _missing(ref, "not_found"))
+    return sources, missing
 
 
 async def _read_ref(
     kb: KbClient, ref: SourceRef, as_of: date, queries: Sequence[str] = ()
-) -> tuple[list[ReadSource], str | None]:
+) -> tuple[list[ReadSource], list[Missing]]:
     """Reads the source `ref` names, in the version in force on `as_of`: the whole article or
-    genelge section, or the passages of a decision the search returns. With nothing read, the
-    second value says why: `unmapped` (the künye names no record), `not_found`, or the reason the
-    knowledge base gave."""
+    genelge section, or the passages of a decision the search returns. The second value names
+    what was not read and why; with no source read, `ref` itself is among them."""
     if not mapped(ref):
-        return [], "unmapped"
+        return [], [_missing(ref.ref, "unmapped")]
     if ref.category == "admin_act":
         return await _read_sections(kb, ref.ref, as_of, queries)
     # The künye of the article, so that the hit holds its other paragraphs too.
@@ -152,7 +172,7 @@ async def _read_ref(
         ),
         None,
     )
-    return ([source], None) if source is not None else ([], "not_found")
+    return ([source], []) if source is not None else ([], [_missing(ref.ref, "not_found")])
 
 
 async def _question_sources(
@@ -167,7 +187,7 @@ async def _question_sources(
     }
     found = {}
     for ref, basis in wanted.items():
-        sources, _ = await _read_ref(kb, basis, as_of, topic.queries)
+        sources, _ = await _read_ref(kb, basis, as_of)
         if sources:
             found[ref] = citation(sources[0], sub=split_ref(ref)[1].removeprefix("/") or None)
     return found
@@ -263,12 +283,12 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             _step("retrieve")
             read: list[ReadSource] = []
             unread = []
-            missing = []
+            missing: list[Missing] = []
             for ref in made.must_read:
-                sources, reason = await _read_ref(deps.kb, ref, made.as_of, made.queries)
-                if reason is not None:
+                sources, not_read = await _read_ref(deps.kb, ref, made.as_of, made.queries)
+                if not sources:
                     unread.append(ref.ref)
-                    missing.append({"ref": ref.ref, "reason": reason})
+                missing += [m for m in not_read if m not in missing]
                 read = merge(read, sources)
             for query in made.queries:
                 hits = await deps.kb.search(query, as_of=made.as_of, limit=SEARCH_LIMIT)
@@ -280,7 +300,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     covers(s.ref, ref.ref) and s.source_id in truncated for s in read
                 ):
                     unread.append(ref.ref)
-                    missing.append({"ref": ref.ref, "reason": "truncated"})
+                    missing.append(_missing(ref.ref, "truncated"))
             rec.output = {
                 "read": [s.ref for s in read],
                 "unreviewed": [
@@ -323,7 +343,6 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             issues: list[str] = []
             issue_counts: dict[str, int] = {}
             answer = None
-            cited = GateCited()
             attempts = 0
             blocked = holding_issue(rows)
             if blocked:
@@ -371,7 +390,6 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 issue_counts = result.issue_counts
                 if result.answer is not None:
                     answer = result.answer
-                    cited = result.cited
                     break
             fell_back = answer is None
             if answer is None:
@@ -384,6 +402,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     date_assumed=made.as_of_assumed,
                     unread=state["unread"],
                 )
+            cited = cited_by_status(answer) if answer else GateCited()
             gate = {
                 "citations_dropped": drops.citations,
                 "points_dropped": drops.points,

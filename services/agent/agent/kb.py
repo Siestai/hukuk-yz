@@ -142,12 +142,9 @@ class HttpKbClient:
             if not version or not version.get("text"):
                 return []
             review_status = data["review_status"]
-            if review_status == "approved":
-                source_id = str(version["id"])
-            else:
-                # An unreviewed article has no published row to name: the id says what was
-                # read, and the version of which day.
-                source_id = f"{review_status}:{number}:m.{article}:{version['valid_from']}"
+            # An unreviewed article has no published row: its extraction is the record, the
+            # same one a search hit of it names.
+            source_id = str(version["id"] if review_status == "approved" else data["extraction_id"])
             return [
                 KbHit(
                     source_id=source_id,

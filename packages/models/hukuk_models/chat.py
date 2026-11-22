@@ -176,7 +176,13 @@ class AnswerPoint(ChatModel):
     text: str
     citations: list[CitationRef]
     # The point rests on at least one `analyzed` citation: shown as "onaysız (test)" (K1).
+    # Always derived from the citations, whatever was given.
     unreviewed: bool = False
+
+    @model_validator(mode="after")
+    def _unreviewed_from_citations(self) -> Self:
+        self.unreviewed = any(c.review_status == "analyzed" for c in self.citations)
+        return self
 
 
 class MissingInfo(ChatModel):

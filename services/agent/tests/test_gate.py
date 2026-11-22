@@ -6,7 +6,7 @@ import pytest
 from agent_fakes import M18_1, M18_4, draft, hit, row
 
 from agent.facts import build_facts, critical_unknown
-from agent.gate import check_draft, not_answered, progressive_in
+from agent.gate import check_draft, cited_by_status, not_answered, progressive_in
 from agent.holding import verify_rows
 from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
 from agent.sources import ReadSource, as_read_source
@@ -200,6 +200,9 @@ def test_the_not_answered_answer_shows_the_verified_rows_or_nothing() -> None:
     assert answer is not None
     assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
     assert answer.holding_map.rows
+    # The fallback cites only its holding map rows, and that is what is counted.
+    counts = cited_by_status(answer)
+    assert (counts.approved, counts.unreviewed) == (1, 0)
     assert not_answered(rows=[], **kwargs) is None  # type: ignore[arg-type]
 
 
@@ -539,7 +542,9 @@ def test_a_point_is_marked_exactly_when_it_rests_on_an_unreviewed_source() -> No
         ("approved", None),
         ("analyzed", "medium"),
     ]
-    assert (result.cited.approved, result.cited.unreviewed) == (2, 2)
+    # two points on the approved source and the holding map row on it; two on the unreviewed
+    counts = cited_by_status(result.answer)
+    assert (counts.approved, counts.unreviewed) == (3, 2)
     listed = {i.ref: (i.review_status, i.band) for i in result.answer.read_sources.items}
     assert listed == {"4857 m.18": ("approved", None), "4857 m.17": ("analyzed", "medium")}
 
@@ -560,4 +565,5 @@ def test_an_unreviewed_source_that_was_not_read_is_not_cited_either() -> None:
     assert [p.text for p in result.answer.points] == ["Okunan kaynağa dayanan nokta."]
     assert not result.answer.points[0].unreviewed
     assert (result.drops.citations, result.drops.points) == (3, 2)
-    assert (result.cited.approved, result.cited.unreviewed) == (1, 0)
+    counts = cited_by_status(result.answer)
+    assert (counts.approved, counts.unreviewed) == (2, 0)

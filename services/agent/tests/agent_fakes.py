@@ -4,7 +4,7 @@
 import json
 import os
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
@@ -110,10 +110,15 @@ class FakeKb:
     künye; `unreadable` gives the reason of one that is not ("gap")."""
 
     def __init__(
-        self, hits: Sequence[KbHit] | None = None, unreadable: dict[str, str] | None = None
+        self,
+        hits: Sequence[KbHit] | None = None,
+        unreadable: dict[str, str] | None = None,
+        expired: Iterable[str] = (),
     ) -> None:
         self.hits = list(labour_law_hits() if hits is None else hits)
         self.unreadable = unreadable or {}
+        # Sections the search still finds but the read returns in a wording that has ended.
+        self.expired = set(expired)
         self.calls: list[dict[str, Any]] = []
         self.sections_read: list[str] = []
 
@@ -154,7 +159,8 @@ class FakeKb:
         found = next((h for h in self.hits if h.category == "admin_act" and h.ref == ref), None)
         if found is None or ref in self.unreadable:
             return Unreadable(self.unreadable.get(ref, "not_found"))
-        return found.model_copy(update={"complete": True})
+        ended = date.min if ref in self.expired else found.valid_to
+        return found.model_copy(update={"complete": True, "valid_to": ended})
 
 
 class FailingKb:

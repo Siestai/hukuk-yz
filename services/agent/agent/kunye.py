@@ -6,9 +6,10 @@ text: the reader reports it as a missing source instead (md. 25).
 """
 
 import re
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
-from agent.topics import SourceRef
+if TYPE_CHECKING:
+    from agent.topics import SourceRef
 
 _STATUTE = re.compile(r"(\d+) m\.(\S.*)")
 # The section is a numbered heading ("m.2.6.2.5", "m.K2-B3-2.1.1") or the opening ("Giriş").
@@ -37,7 +38,7 @@ def admin_act_section(ref: str) -> AdminActSection | None:
     return AdminActSection(*found.groups()) if found else None
 
 
-def mapped(ref: SourceRef) -> bool:
+def mapped(ref: "SourceRef") -> bool:
     """The künye names a record of its category. Only statutes, administrative acts and
     decisions have a künye form; a source of another category cannot be required by künye."""
     if ref.category == "statute":

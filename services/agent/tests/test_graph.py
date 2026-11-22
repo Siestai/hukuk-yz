@@ -27,6 +27,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from agent.api import Graph, RunRequest
 from agent.graph import build_graph
+from agent.kb import KbHit
 from agent.llm import Llm, Models, Tier
 from agent.llm_schemas import DraftOutput
 from agent.nodes import Deps
@@ -499,7 +500,7 @@ async def test_an_expired_required_source_is_unread_even_if_kb_returns_it(monkey
     monkeypatch.setattr(kb, "search", stale_search)
     assert await _read_ref(kb, SourceRef(ref="4857 m.18", category="statute"), TODAY) == (
         [],
-        "not_found",
+        [{"ref": "4857 m.18", "reason": "not_found"}],
     )
 
 
@@ -937,7 +938,8 @@ async def test_an_unreviewed_source_is_marked_in_the_answer_and_in_the_trace(
     assert "4857 m.18 (statute, onaylı," in script.of("draft")[0]
     outputs = _trace_outputs(caplog)
     assert outputs["node retrieve"]["unreviewed"] == [{"ref": "4857 m.17", "band": "medium"}]
-    assert outputs["node draft"]["cited_approved"] == 1
+    # the point and the holding map row on the approved article; the point on the unreviewed
+    assert outputs["node draft"]["cited_approved"] == 2
     assert outputs["node draft"]["cited_unreviewed"] == 1
 
 
@@ -960,14 +962,37 @@ async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_
                 SourceRef(ref="2020/8 m.2.6.2.5", category="admin_act"),
                 SourceRef(ref="2020/8 m.3.1", category="admin_act"),
                 SourceRef(ref="2018/38", category="admin_act"),
+                SourceRef(ref="2020/8", category="admin_act"),
                 SourceRef(ref="9. HD E.2016/28920 K.2017/17860", category="decision"),
             ],
-            queries=[],
+            queries=["peşin ödeme indirimi"],
+        )
+
+    def section(ref: str, text: str, **validity: date) -> KbHit:
+        return hit(
+            f"extraction:{ref}",
+            ref,
+            ref,
+            text,
+            category="admin_act",
+            review_status="analyzed",
+            band="high",
+            **validity,
         )
 
     monkeypatch.setattr(nodes, "make_plan", plan_with_odd_refs)
     caplog.set_level(logging.INFO)
-    kb = FakeKb([*labour_law_hits(), CIRCULAR_SECTION], {"2020/8 m.2.6.2.5": "gap"})
+    kb = FakeKb(
+        [
+            *labour_law_hits(),
+            CIRCULAR_SECTION,
+            section("2020/8 m.2.6.3", "Peşin ödeme süresi"),
+            section("2018/38 m.K2-B3-2.1.1", "Peşin ödeme usulü"),
+            section("2018/38 m.K4-B1", "Peşin ödeme hükmü"),
+        ],
+        {"2020/8 m.2.6.2.5": "gap", "2018/38 m.K2-B3-2.1.1": "gap"},
+        expired={"2018/38 m.K4-B1"},
+    )
     graph = make_graph(Script(), kb)
     thread = unique_thread()
     await turn(graph, ask(thread))
@@ -976,14 +1001,18 @@ async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_
     answer = only(await turn(graph, RunRequest(thread_id=thread, skip=True)), AnswerEvent).answer
 
     retrieve = _trace_outputs(caplog)["node retrieve"]
-    assert "2020/8 m.2.6.2.5" not in retrieve["read"]
-    assert "4857 m.18" in retrieve["read"]
-    assert retrieve["missing_source"] == [
-        {"ref": "İş Kanunu'nun on sekizinci maddesi", "reason": "unmapped"},
-        {"ref": "2020/8 m.2.6.2.5", "reason": "gap"},
-        {"ref": "2020/8 m.3.1", "reason": "not_found"},
-        {"ref": "2018/38", "reason": "not_found"},
-        {"ref": "9. HD E.2016/28920 K.2017/17860", "reason": "not_found"},
+    # Of 2020/8 one section was read, so the künye of the act is not missing; the section in
+    # a gap still is. Of 2018/38 none was read: the act and each section say why.
+    assert {"2020/8 m.2.6.3", "4857 m.18"} <= set(retrieve["read"])
+    assert "2018/38" in answer.status_note and "2020/8," not in answer.status_note
+    assert sorted((m["ref"], m["reason"]) for m in retrieve["missing_source"]) == [
+        ("2018/38", "not_found"),
+        ("2018/38 m.K2-B3-2.1.1", "gap"),
+        ("2018/38 m.K4-B1", "not_in_force"),
+        ("2020/8 m.2.6.2.5", "gap"),
+        ("2020/8 m.3.1", "not_found"),
+        ("9. HD E.2016/28920 K.2017/17860", "not_found"),
+        ("İş Kanunu'nun on sekizinci maddesi", "unmapped"),
     ]
     # A künye that names no record is not searched as free text.
     assert all("on sekizinci" not in c["q"] for c in kb.calls[asked:])

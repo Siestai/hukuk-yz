@@ -120,6 +120,7 @@ async def test_an_unreviewed_article_read_keeps_its_status_and_band() -> None:
         "status": "found",
         "review_status": "analyzed",
         "band": "medium",
+        "extraction_id": "extraction-18",
         "version": {"text": "(1) Birinci fıkra.", "valid_from": "2003-06-10", "valid_to": None},
     }
     kb = client(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
@@ -128,8 +129,8 @@ async def test_an_unreviewed_article_read_keeps_its_status_and_band() -> None:
 
     assert (hits[0].review_status, hits[0].band) == ("analyzed", "medium")
     assert hits[0].complete
-    # No published row to name: the id says what was read, and of which day.
-    assert hits[0].source_id == "analyzed:4857:m.18:2003-06-10"
+    # No published row to name: the extraction is the record, as it is for a search hit.
+    assert hits[0].source_id == "extraction-18"
 
 
 async def test_an_article_read_that_does_not_say_its_review_status_is_not_trusted() -> None:
@@ -171,7 +172,7 @@ async def test_missing_article_never_falls_back_to_search_excerpts(body: dict[st
     kb = client(httpx.MockTransport(handle))
     assert await _read_ref(
         kb, SourceRef(category="statute", ref="4857 m.18"), date(2026, 10, 3)
-    ) == ([], "not_found")
+    ) == ([], [{"ref": "4857 m.18", "reason": "not_found"}])
     assert seen == ["/statutes/4857/articles/18"]
 
 
