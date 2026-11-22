@@ -78,7 +78,8 @@ async def unreviewed_article_as_of(
     """What the newest extraction of an article says about `day`, in the shape of
     `article_as_of` plus `review_status` and `band`; None unless that extraction waits for its
     review in one of `bands`. A version without a start date is not read: nobody can say it was
-    in force on the day. `version.id` is absent: there is no published row to cite."""
+    in force on the day, nor that it was not, so a day that only such a version could cover is
+    None too. `version.id` is absent: there is no published row to cite."""
     newest = (
         await db.execute(
             select(Extraction)
@@ -95,8 +96,11 @@ async def unreviewed_article_as_of(
         return None
     if await statute_article_status(db, newest) != "pending":
         return None
-    dated = [v for v in newest.fields["versions"] if v["valid_from"]]
+    versions = newest.fields["versions"]
+    dated = [v for v in versions if v["valid_from"]]
     result = timeline.as_of({**newest.fields, "versions": dated}, day)
+    if len(dated) < len(versions) and "version" not in result and "gap" not in result:
+        return None  # the undated version may cover the day: not "not in force"
     if version := result.get("version"):
         result["version"] = {
             **version,

@@ -224,8 +224,8 @@ async def test_an_article_that_is_not_published_is_unknown_with_a_reason(
 
 
 @pytest.fixture
-def test_bands() -> Iterator[Callable[[tuple[str, ...]], None]]:
-    """`test_bands(("high", "medium"))`: the app runs with that KB_TEST_SOURCE_BANDS."""
+def source_bands() -> Iterator[Callable[[tuple[str, ...]], None]]:
+    """`source_bands(("high", "medium"))`: the app runs with that KB_TEST_SOURCE_BANDS."""
 
     def set_up(bands: tuple[str, ...]) -> None:
         configured = Settings.model_validate(
@@ -241,13 +241,13 @@ async def test_an_unreviewed_article_is_read_only_in_a_listed_band(
     client: httpx.AsyncClient,
     headers: dict[str, str],
     statutes_loaded: dict[str, uuid.UUID],
-    test_bands: Callable[[tuple[str, ...]], None],
+    source_bands: Callable[[tuple[str, ...]], None],
 ) -> None:
     # nothing of the statute is published: without the setting it does not exist for a reader
     assert (await _get(client, headers, "18", "2020-01-01")).status_code == 404
-    test_bands(("high",))
+    source_bands(("high",))
     assert (await _get(client, headers, "18", "2020-01-01")).status_code == 404  # medium
-    test_bands(("high", "medium"))
+    source_bands(("high", "medium"))
     body = (await _get(client, headers, "18", "2020-01-01")).json()
     assert (body["status"], body["review_status"], body["band"]) == ("found", "analyzed", "medium")
     version = body["version"]
@@ -260,9 +260,12 @@ async def test_an_unreviewed_article_is_read_only_in_a_listed_band(
         "2026-04-22",
         False,
     )
-    # md.4: the version in force on the date, a gap without text, nothing before the article
-    old = (await _get(client, headers, "18", "2017-06-01")).json()
+    # md.4: the version in force on the date (half-open: the new text starts on its first day),
+    # a gap without text, nothing before the article
+    old = (await _get(client, headers, "18", "2017-12-31")).json()
     assert old["version"]["text"] == "Madde 18 eski metin." and old["band"] == "medium"
+    first_day = (await _get(client, headers, "18", "2018-01-01")).json()
+    assert first_day["version"]["text"] == "Madde 18 yeni metin."
     gap = await _get(client, headers, "18", "2014-01-01")
     assert gap.json()["status"] == "gap" and "version" not in gap.json()
     assert (gap.json()["review_status"], gap.json()["band"]) == ("analyzed", "medium")
@@ -281,9 +284,9 @@ async def test_a_rejected_article_is_never_read(
     kb_factory: Factory,
     statutes_loaded: dict[str, uuid.UUID],
     reviewer: AppUser,
-    test_bands: Callable[[tuple[str, ...]], None],
+    source_bands: Callable[[tuple[str, ...]], None],
 ) -> None:
-    test_bands(("high", "medium"))
+    source_bands(("high", "medium"))
     assert (await _get(client, headers, "5", "2020-01-01")).json()["status"] == "found"
     async with kb_factory() as session:
         await reject_statute_article(session, statutes_loaded["5"], reviewer.id, "wrong text")
@@ -297,7 +300,7 @@ async def test_a_published_article_wins_over_a_newer_unreviewed_extraction(
     kb_factory: Factory,
     statutes_published: dict[str, uuid.UUID],
     statute_record: dict[str, Any],
-    test_bands: Callable[[tuple[str, ...]], None],
+    source_bands: Callable[[tuple[str, ...]], None],
 ) -> None:
     newer = {**statute_record, "parser_version": "2"}
     newer["articles"] = [
@@ -305,7 +308,7 @@ async def test_a_published_article_wins_over_a_newer_unreviewed_extraction(
         for a in statute_record["articles"]
     ]
     await statute_loader.load(kb_factory, statute_loader.prepare([newer]), {}, StatuteCounts())
-    test_bands(("high", "medium"))
+    source_bands(("high", "medium"))
     body = (await _get(client, headers, "18", "2020-01-01")).json()
     assert (body["review_status"], body["version"]["text"]) == ("approved", "Madde 18 yeni metin.")
     assert "band" not in body and uuid.UUID(body["version"]["id"])
@@ -319,26 +322,34 @@ async def test_a_published_article_wins_over_a_newer_unreviewed_extraction(
     )
 
 
-async def test_an_unreviewed_version_without_a_start_date_is_not_read(
+async def test_an_undated_unreviewed_version_never_reads_as_not_in_force(
     client: httpx.AsyncClient,
     headers: dict[str, str],
     kb_factory: Factory,
     statute_record: dict[str, Any],
-    test_bands: Callable[[tuple[str, ...]], None],
+    source_bands: Callable[[tuple[str, ...]], None],
 ) -> None:
-    """md.4: without a start date nobody can say the text was in force on the day."""
+    """md.4: "start date unknown" is not "not in force". A day that no dated version and no gap
+    of such a timeline covers is not answered at all."""
     undated = {**statute_record}
     undated["articles"] = [
-        {**a, "versions": [{**v, "valid_from": None} for v in a["versions"]]}
-        if a["article_no"] == "5"
+        {**a, "versions": [{**a["versions"][0], "valid_from": None}, *a["versions"][1:]]}
+        if a["article_no"] in ("5", "18")
         else a
         for a in statute_record["articles"]
     ]
     await statute_loader.load(kb_factory, statute_loader.prepare([undated]), {}, StatuteCounts())
-    test_bands(("high", "medium"))
-    response = await _get(client, headers, "5", "2020-01-01")
-    assert response.status_code == 200
-    assert response.json()["status"] == "not_in_force" and "version" not in response.json()
+    source_bands(("high", "medium"))
+    # "5": its only version is undated
+    assert (await _get(client, headers, "5", "2020-01-01")).status_code == 404
+    # "18": the earlier version is undated; the dated one and the gap are still read
+    found = (await _get(client, headers, "18", "2020-01-01")).json()
+    assert (found["status"], found["version"]["text"]) == ("found", "Madde 18 yeni metin.")
+    assert (await _get(client, headers, "18", "2014-01-01")).json()["status"] == "gap"
+    for day in ("2003-06-09", "2017-06-01"):  # before the gap; where the undated version was
+        response = await _get(client, headers, "18", day)
+        assert response.status_code == 404, day
+        assert "not_in_force" not in response.text
 
 
 @pytest.mark.parametrize(

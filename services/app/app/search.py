@@ -24,12 +24,13 @@ from datetime import date
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import ColumnElement, and_, exists, func, literal_column, or_, select, text
+from sqlalchemy import ColumnElement, and_, func, literal_column, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import Db, kb_reader
 from app.chunk_index import APPROVED_PARENTS, EXTRACTION, INDEXED_STATUSES, review_status
 from app.embeddings import Embedder, get_embedder
+from app.kb import newest_extractions, statute_queue
 from app.models.chunk import Chunk
 from app.models.common import ChunkKind, Extraction, License, Source, SourceCategory
 from app.models.decision import Decision
@@ -61,6 +62,25 @@ def _tsquery(q: str) -> str:
     return " | ".join(dict.fromkeys(words[:_MAX_TOKENS]))
 
 
+def _unreviewed(bands: Sequence[TestBand]) -> ColumnElement[bool]:
+    """Chunks of an extraction that still waits for its review in one of `bands`: the newest
+    extraction of its decision source, or of its statute article and not rejected. The index is
+    not trusted for this: a loader writes a newer extraction without touching the chunks of the
+    one before. (A rejected decision is out by its source status; its reject review stays after
+    a reopen, so it does not count here.)"""
+    decisions = newest_extractions()
+    articles = statute_queue(status="pending").subquery()
+    waiting = or_(
+        Chunk.parent_id.in_(
+            select(decisions.c.id).where(
+                decisions.c.confidence["band"].as_string().in_(list(bands))
+            )
+        ),
+        Chunk.parent_id.in_(select(articles.c.id).where(articles.c.band.in_(list(bands)))),
+    )
+    return and_(Chunk.parent_kind == EXTRACTION, waiting)
+
+
 def _filters(
     *,
     unreviewed_bands: Sequence[TestBand],
@@ -72,10 +92,7 @@ def _filters(
 ) -> list[ColumnElement[bool]]:
     readable: ColumnElement[bool] = Chunk.parent_kind.in_(APPROVED_PARENTS)
     if unreviewed_bands:
-        in_band = exists().where(
-            Extraction.id == Chunk.parent_id, _BAND.in_(list(unreviewed_bands))
-        )
-        readable = or_(readable, and_(Chunk.parent_kind == EXTRACTION, in_band))
+        readable = or_(readable, _unreviewed(unreviewed_bands))
     is_decision = Chunk.category == SourceCategory.decision
     conditions: list[ColumnElement[bool]] = [Source.status.in_(INDEXED_STATUSES), readable]
     if categories:

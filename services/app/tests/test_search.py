@@ -15,9 +15,18 @@ from app.chunk_index import embed_pending, sync_decision, sync_statute_article
 from app.db import make_engine
 from app.embeddings import Embedder, get_embedder
 from app.kb import approve_extraction, approve_statute_article, reject_statute_article
+from app.loaders import statutes as statute_loader
+from app.loaders.statutes_report import StatuteCounts
 from app.main import app
 from app.models.chunk import Chunk
-from app.models.common import Extraction, License, RecordStatus, Source
+from app.models.common import (
+    Extraction,
+    License,
+    RecordStatus,
+    Review,
+    ReviewDecision,
+    Source,
+)
 from app.models.user import AppUser, UserRole
 from app.search import _tsquery
 from app.settings import Settings, get_settings
@@ -191,6 +200,42 @@ async def test_unreviewed_articles_are_searched_by_band_and_never_when_rejected(
     }
     configure(OFF)
     assert await articles() == {"4857 m.18": ("approved", None)}
+
+
+async def test_a_superseded_or_rejected_extraction_is_not_searched_even_if_its_chunks_are_left(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    statutes_loaded: dict[str, uuid.UUID],
+    statute_record: dict[str, Any],
+    reviewer: AppUser,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await index_all(kb_factory, fake_embedder)
+    configure(TEST_BANDS)
+
+    async def refs() -> set[str]:
+        found = await search(client, headers, q="Madde metin metni", category="statute")
+        return {r["ref"] for r in found}
+
+    assert await refs() == {"4857 m.18", "4857 m.5", "4857 Geçici 1"}
+    # a reject review alone, without the index being synced
+    async with kb_factory() as session:
+        session.add(
+            Review(
+                extraction_id=statutes_loaded["5"],
+                reviewer_id=reviewer.id,
+                decision=ReviewDecision.reject,
+            )
+        )
+        await session.commit()
+    assert await refs() == {"4857 m.18", "4857 Geçici 1"}
+    # a newer extraction in the low band; the loader does not touch the index
+    newer = {**statute_record, "parser_version": "2"}
+    newer["articles"] = [{**a, "confidence": "low"} for a in statute_record["articles"]]
+    await statute_loader.load(kb_factory, statute_loader.prepare([newer]), {}, StatuteCounts())
+    assert await refs() == set()
 
 
 async def test_approved_records_show_with_the_setting_off(
