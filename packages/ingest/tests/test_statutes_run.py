@@ -178,12 +178,18 @@ Yayımlandığı Resmî Gazete : Tarih: 1/9/1971 Sayı: 13943
 Madde 1-13/E- (Mülga: 22/5/2003/4857/120 md.)
 Kıdem tazminatı:
 Madde 14 – (Değişik birinci fıkra: 29/7/1983 - 2869/3 md.) Kıdem tazminatı ödenir.
+Kanunla veya Cumhurbaşkanlığı kararnamesiyle kurulu kurumlarda bir fon tesis edilir.
+2
 Fon tesisi ile ilgili hususlar kanunla düzenlenir.
 Madde 15-110- (Mülga: 22/5/2003/4857/120 md.)
 Ek Madde 1-4- (Mülga: 22/5/2003/4857/120 md.)
+Geçici Madde 1-13- (Mülga: 22/5/2003/4857/120 md.)
+Ek Geçici Madde 1-(Mülga: 22/5/2003/4857/120 md.)
 Madde 111-112- (Mülga: 22/5/2003/4857/120 md.)
 1 22/5/2003 tarihli ve 4857 sayılı Kanunun 120 nci maddesiyle, bu Kanunun 14 üncü maddesi hariç
 diğer maddeleri yürürlükten kaldırılmıştır.
+2 2/7/2018 tarihli ve 700 sayılı KHK’nin 60 ıncı maddesiyle, bu fıkrada yer alan “kanunla”
+ibaresinden sonra gelmek üzere “veya Cumhurbaşkanlığı kararnamesiyle” ibaresi eklenmiştir.
 """
 REPEALED_ACTS = """
 [[act]]
@@ -197,6 +203,18 @@ law = "2869"
 kabul_tarihi = 1983-07-29
 yururluk = 1983-07-30
 source_url = "https://example.test/2869"
+
+[[act]]
+law = "4857"
+kabul_tarihi = 2003-05-22
+yururluk = 2003-06-10
+source_url = "https://example.test/4857"
+
+[[act]]
+law = "KHK-700"
+kabul_tarihi = 2018-07-02
+yururluk = 2018-07-09
+source_url = "https://example.test/700"
 """
 
 
@@ -212,9 +230,34 @@ def test_repealed_law_keeps_only_its_surviving_article() -> None:
     )
     assert [a["article_no"] for a in record["articles"]] == ["14"]
     article = record["articles"][0]
-    assert article["versions"][0]["text"].endswith("kanunla düzenlenir.")
+    assert article["heading"] == "Kıdem tazminatı:"  # printed after the stub `Madde 1-13/E-`
+    text = article["versions"][0]["text"]
+    # the footnote marker standing on its own line is no text
+    assert text.endswith(
+        "bir fon tesis edilir.\nFon tesisi ile ilgili hususlar kanunla düzenlenir."
+    )
+    # the footnote printed after the stubs at the end still belongs to m.14
+    assert [f["no"] for f in article["footnotes"]] == [1, 2]
     # the stubs around m.14 are ranges: its numbering is no splitting doubt
     assert not [w for w in article["warnings"] if w.startswith("number_skipped")]
-    assert article["confidence"] == "medium"  # known only since the 2869 wording
+    assert [v["valid_from"] for v in article["versions"]] == ["2018-07-09"]  # KHK-700 footnote
+    assert article["confidence"] == "medium"
     snap = record["snapshots"][0]
     assert snap["articles"] == 1 and "only_articles:14" in snap["warnings"]
+
+
+def test_footnote_of_a_dropped_article_lowers_the_band() -> None:
+    """A real article (not a range stub) outside `only_articles` takes a footnote with it: the
+    kept article may be the one it speaks about, so it is not passed as clean."""
+    text = REPEALED_LAW.replace(
+        "Madde 15-110- (Mülga: 22/5/2003/4857/120 md.)", "Madde 15 - Başka bir madde.3"
+    )
+    text += "3 2/7/2018 tarihli ve 700 sayılı KHK’nin 60 ıncı maddesiyle ibare eklenmiştir.\n"
+    name = "Mevzuat/Kanunlar/1475 sayılı (mülga) İş Kanunu’nun 14. maddesi.pdf"
+    records, _ = build_records(
+        [SnapshotFile(name, "a" * 64, None, text)], parse_acts(tomllib.loads(REPEALED_ACTS))
+    )
+    (article,) = records[0]["articles"]
+    assert article["article_no"] == "14"
+    assert "footnote_on_dropped_article" in article["warnings"]
+    assert article["confidence"] == "low"

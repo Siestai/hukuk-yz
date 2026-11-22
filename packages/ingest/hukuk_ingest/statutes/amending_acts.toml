@@ -23,8 +23,10 @@
 # date.
 #
 # Source of most rows: the official "yürürlüğe giriş tarihlerini gösterir liste/tablo" printed at the end of
-# the consolidated 4857 and 5510 texts (mevzuat.gov.tr); RG numbers and AYM rows cross-checked against
-# the Resmî Gazete. Dates marked "hesaplanmış" in a note are computed from a deferred annulment.
+# the consolidated text of each law of `laws.py` (mevzuat.gov.tr); for 4857 and 5510 the RG numbers and AYM
+# rows are cross-checked against the Resmî Gazete, the rows of 6356, 7036 and 1475 (end of the file) carry
+# the table date only. Dates marked "hesaplanmış" in a note are computed from a deferred annulment; a note
+# saying "ortak teyidi gerekir" marks a reading of the source that a partner has to confirm.
 
 [[act]]
 law = "4857"
@@ -44,7 +46,9 @@ yururluk = 2008-10-01
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
 note = "md. 108 (5754 ile değişik) (d) bendi: diğer hükümler 1/10/2008. (a)-(c) bentlerindeki erken tarihler 5754 ile değişen maddelere ait; o maddelerin notu var, istisna eklenmedi."
 
-# Değiştiren kanun/KHK/AYM kararı kayıt defteri: 4857 ve 5510 yürürlük tablolarından (mevzuat.gov.tr güncel metinler)
+# Değiştiren kanun/KHK/AYM kararı kayıt defteri: 4857 ve 5510 yürürlük tablolarından (mevzuat.gov.tr güncel metinler).
+# 6356, 7036 ve 1475 tablolarından gelen satırlar dosyanın sonunda; bu bölümdeki satırlara eklenen 6356 / 7036
+# istisnaları da o tablolardan.
 
 [[act]]
 law = "4884"
@@ -897,6 +901,13 @@ article = "73"
 scope = ""
 yururluk = 2016-09-07
 source = "yürürlük tablosu: 5510 güncel metin"
+
+[[act.exception]]
+statute = "6356"
+article = "Geçici 6"
+scope = ""
+yururluk = 2016-09-07
+source = "yürürlük tablosu: 6356 güncel metin"
 
 [[act]]
 law = "6764"
@@ -1874,7 +1885,7 @@ rg_tarihi = 1971-09-01
 rg_sayisi = "13943"
 yururluk = 1971-09-01
 source_url = "https://www.resmigazete.gov.tr/arsiv/13943.pdf"
-note = "md. 111 (RG 1/9/1971-13943): 'Bu Kanun yayımı tarihinde yürürlüğe girer. Ancak; 9 uncu bölümde yer alan ceza hükümleri dışında kalan hükümleri, 12/11/1970 tarihinden geçerli olmak üzere uygulanır.' Yürürlük = yayım tarihi; md. 111 mülga olduğu için güncel metinde yok."
+note = "Kaynak arşivdeki dosya değil: md. 111 mülga olduğu için güncel metinde yok. Resmî Gazete 1/9/1971-13943'ün resmigazete.gov.tr'deki taranmış PDF'inin metin katmanından (OCR) okundu: 'Madde 111 — Bu Kanun yayımı tarihinde yürürlüğe girer. Ancak; 9 uncu bölümde yer alan ceza hükümleri dışında kalan hükümleri, 12/11/1970 tarihinden geçerli olmak üzere uygulanır.' Yürürlük = yayım tarihi (1/9/1971) alındı; ikinci cümledeki 12/11/1970 geriye dönük uygulama tarihi kayda işlenmedi. Başlangıç tarihi için ortak teyidi gerekir."
 
 [[act]]
 law = "AYM"
@@ -1991,14 +2002,14 @@ law = "2320"
 kabul_tarihi = 1980-10-17
 yururluk = 1980-10-23
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
-note = "yürürlük listesi (1475 güncel metin): Madde 1, 2 -> 12/9/1980; diğer maddeleri -> 23/10/1980. 1475 md. 14'ü 2320'nin 1 inci maddesi değiştirir."
+note = "yürürlük listesi (1475 güncel metin): Madde 1, 2 -> 12/9/1980; diğer maddeleri -> 23/10/1980. Listedeki 'Madde 1, 2' 2320'nin kendi maddeleri olarak okundu; 1475 md. 14'teki notlar '2320/1 md.' dediği için md. 14'e 12/9/1980 verildi. Bu okuma için ortak teyidi gerekir."
 
 [[act.exception]]
 statute = "1475"
 article = "14"
 scope = ""
 yururluk = 1980-09-12
-source = "yürürlük listesi: 1475 güncel metin (2320 Madde 1, 2)"
+source = "yürürlük listesi: 1475 güncel metin (2320 Madde 1, 2); okuma için ortak teyidi gerekir"
 
 [[act]]
 law = "2457"
@@ -2033,7 +2044,7 @@ law = "4773"
 kabul_tarihi = 2002-08-09
 yururluk = 2003-03-15
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
-note = "yürürlük listesi (1475 güncel metin): '15/3/2003 tarihinden geçerli olmak üzere 15/8/2002 tarihinde'; geçerlilik tarihi (15/3/2003) alındı."
+note = "yürürlük listesi (1475 güncel metin): '15/3/2003 tarihinden geçerli olmak üzere 15/8/2002 tarihinde'. Listede iki tarih var; geçerlilik tarihi (15/3/2003) alındı. Hangi tarihin esas alınacağı için ortak teyidi gerekir."
 
 [[act]]
 law = "7071"

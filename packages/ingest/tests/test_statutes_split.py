@@ -158,6 +158,47 @@ def test_range_stub_ends_the_article_and_is_not_a_numbering_gap() -> None:
     ]
 
 
+def test_hyphen_range_stubs_of_a_repealed_law_are_no_articles() -> None:
+    text = (
+        "Kanun Numarası : 1\n"
+        "Madde 1-13/E- (Mülga: 22/5/2003/4857/120 md.)\n"
+        "Kıdem tazminatı:\n"
+        "Madde 14 – Kıdem tazminatı ödenir.\n"
+        "Madde 15-110- (Mülga: 22/5/2003/4857/120 md.)\n"
+        "Ek Madde 1-4- (Mülga: 22/5/2003/4857/120 md.)\n"
+        "Geçici Madde 1-13- (Mülga: 22/5/2003/4857/120 md.)\n"
+        "Madde 111-112- (Mülga: 22/5/2003/4857/120 md.)\n"
+    )
+    snap = split_statute(text)
+    assert [(a.article_no, a.heading, a.text) for a in snap.articles] == [
+        ("14", "Kıdem tazminatı:", "Kıdem tazminatı ödenir.")
+    ]
+    assert not [w for w in snap.warnings if w.startswith("number_skipped")]
+    assert [w for w in snap.warnings if w.startswith("range_stub")] == [
+        "range_stub:1-13",
+        "range_stub:15-110",
+        "range_stub:Ek 1-4",
+        "range_stub:Geçici 1-13",
+        "range_stub:111-112",
+    ]
+
+
+def test_lone_footnote_marker_line_leaves_the_text_only_under_the_new_rules() -> None:
+    text = (
+        "Kanun Numarası : 1\n"
+        "Madde 1 - Bir fon tesis edilir.\n"
+        "1\n"
+        "Fon tesisi kanunla düzenlenir.\n"
+        "1 2/7/2018 tarihli ve 700 sayılı KHK’nin 60 ıncı maddesiyle ibare eklenmiştir.\n"
+    )
+    art = split_statute(text, new_rules=True).articles[0]
+    assert art.text == "Bir fon tesis edilir.\nFon tesisi kanunla düzenlenir."
+    assert [f.no for f in art.footnotes] == [1] and art.warnings == []
+    art = split_statute(text).articles[0]  # the reviewed 4857 / 5510 output keeps the marker
+    assert art.text == "Bir fon tesis edilir. 1 Fon tesisi kanunla düzenlenir."
+    assert art.warnings == ["footnote_marker_not_found"]
+
+
 def test_in_force_table_is_cut_only_on_request() -> None:
     text = (
         "Kanun Numarası : 1\n"
@@ -167,7 +208,7 @@ def test_in_force_table_is_cut_only_on_request() -> None:
         "GİRİŞ TARİHLERİNİ GÖSTERİR LİSTE\n"
         "7445 3 1/9/2023\n"
     )
-    cut = split_statute(text, drop_in_force_table=True)
+    cut = split_statute(text, new_rules=True)
     assert cut.articles[0].text == "Bu Kanun hükümlerini Bakanlar Kurulu yürütür."
     assert [w.split(":")[0] for w in cut.warnings] == ["in_force_table_ignored"]
     kept = split_statute(text)  # the reviewed 4857 output keeps the table in its last article

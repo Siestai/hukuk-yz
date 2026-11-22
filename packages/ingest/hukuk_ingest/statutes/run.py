@@ -4,7 +4,7 @@ report (task 11a)."""
 import json
 import re
 import time
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -72,7 +72,7 @@ def _inputs_for(files: list[SnapshotFile]) -> dict[str, list[SnapshotInput]]:
     for f in files:
         law = law_for_file(Path(f.path).name)
         new_rules = law is not None and not law.legacy_rules
-        snap = split_statute(f.text, drop_in_force_table=new_rules)
+        snap = split_statute(f.text, new_rules=new_rules)
         if law and law.only_articles:
             _keep_only(snap, law)
         notes: dict[str, list[Annotation]] = {}
@@ -105,14 +105,14 @@ def _inputs_for(files: list[SnapshotFile]) -> dict[str, list[SnapshotInput]]:
 
 
 def _keep_only(snap: Snapshot, law: Law) -> None:
-    """Keeps the articles of a repealed law that are still in force. The numbers around them are
-    printed as range stubs, so the numbering checks say nothing about the kept articles."""
-    snap.articles = [
-        replace(a, warnings=[w for w in a.warnings if confidence.code(w) != "number_skipped"])
-        for a in snap.articles
-        if a.article_no in law.only_articles
-    ]
-    snap.warnings = [w for w in snap.warnings if confidence.code(w) != "number_skipped"]
+    """Keeps the articles of a repealed law that are still in force. The source prints the rest
+    as range stubs, which are no articles; a real article that is dropped must not take a
+    footnote with it unseen."""
+    dropped = [a for a in snap.articles if a.article_no not in law.only_articles]
+    snap.articles = [a for a in snap.articles if a.article_no in law.only_articles]
+    if any(a.footnotes for a in dropped):
+        for a in snap.articles:
+            a.warnings.append("footnote_on_dropped_article")
     snap.warnings.append(f"only_articles:{','.join(law.only_articles)}")
 
 

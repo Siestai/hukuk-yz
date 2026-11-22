@@ -444,6 +444,23 @@ def test_undated_single_snapshot_is_dated_by_notes_and_footnotes() -> None:
     assert snap["date"] == "2020-12-30"
 
 
+def test_inferred_snapshot_date_is_never_a_readable_start() -> None:
+    """An undated file is dated by the newest act its text names: an unrelated date. An article
+    whose start falls back to it is low, so the date is not served as `valid_from` (md. 4)."""
+    body = (
+        "MADDE 1- (1) (Ek cümle:28/3/2023-7445/41 md.) Değişmiş madde.\n"
+        "GEÇİCİ MADDE 1- (1) Notu olmayan geçici madde.\n"
+    )
+    art = by_no(single(body, name="7036 Sayılı Deneme Kanunu.pdf"))["Geçici 1"]
+    assert spans(art) == [("2023-03-28", None)]
+    assert "start_inferred" in art["warnings"] and art["confidence"] == "low"
+    # with a dated file the snapshot date is evidence: unverified, but medium as before
+    art = by_no(single(body))["Geçici 1"]
+    assert spans(art) == [("2026-01-01", None)]
+    assert art["warnings"] == ["start_unverified"]
+    assert art["confidence"] == "medium"
+
+
 def test_reviewed_laws_keep_ignoring_footnotes_at_the_start() -> None:
     """4857 / 5510 (`legacy_rules`) and unregistered numbers: the output of parser version 1."""
     note = "2/7/2018 tarihli ve 700 sayılı KHK’nin 197 nci maddesiyle ibare değiştirilmiştir."

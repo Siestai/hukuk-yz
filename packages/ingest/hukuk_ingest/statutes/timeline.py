@@ -261,6 +261,8 @@ def _first_snapshot(
         # No note says when this extra/transitional article came in: only the snapshot is evidence.
         version = _version(art, snap, snap.date, "original", [], "fallback")
         warnings.append("start_unverified")
+        if snap.date_inferred:
+            warnings.append("start_inferred")
         gap = (
             _gap(law_from, snap.date, "before_earliest_snapshot", [])
             if law_from != snap.date

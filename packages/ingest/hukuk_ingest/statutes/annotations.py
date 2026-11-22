@@ -151,8 +151,10 @@ def footnote_laws(text: str) -> set[tuple[date, str]]:
 
 
 def footnote_acts(text: str) -> set[tuple[date, str]]:
-    """(date, law) of every act a footnote text names, Constitutional Court decisions ("AYM",
-    decision date) and the older "tarih ve" wording included. Empty when none can be read."""
+    """(date, law) of every act a footnote text names, the older "tarih ve" wording included.
+    A Constitutional Court decision is ("AYM", decision date): keyed by its date only, the E./K.
+    numbers are not read, so two decisions of one day share a registry entry. Empty when no act
+    can be read."""
     flat = " ".join(text.split())
     found = set()
     for m in _FOOTNOTE_ACT_RE.finditer(flat):
