@@ -125,6 +125,11 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "unreviewed": {
+            "default": false,
+            "title": "Unreviewed",
+            "type": "boolean"
           }
         },
         "required": [
@@ -627,6 +632,22 @@
         "additionalProperties": false,
         "description": "A source the answer rests on. Tapping it opens the full text of `source_id` with the part\ngiven by `quote` (and `char_start`..`char_end` in that text) highlighted.",
         "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
           "category": {
             "enum": [
               "statute",
