@@ -313,6 +313,11 @@ class CaseResult:
     nodes: list[dict[str, Any]]
     # Why the holding map dropped rows, by reason, when its trace says so.
     rows_dropped_by: dict[str, Any]
+    # Each row the holding map dropped, as the trace has it (`holding._trace_record`).
+    rows_dropped: list[dict[str, Any]]
+    # The same rows as the model wrote them (reason, source_id, start of the quote): the eval's
+    # own state, never in the trace.
+    rows_dropped_text: list[dict[str, Any]]
     error: str | None = None
 
 
@@ -367,6 +372,11 @@ def _node_spend(trace: Trace) -> list[dict[str, Any]]:
 def _rows_dropped_by(trace: Trace) -> dict[str, Any]:
     maps = [r.output.get("dropped_by") for r in trace.records if r.node == "holding_map"]
     return dict(maps[-1] or {}) if maps else {}
+
+
+def _rows_dropped(trace: Trace) -> list[dict[str, Any]]:
+    lists = [r.output.get("dropped_rows") for r in trace.records if r.node == "holding_map"]
+    return list(lists[-1] or []) if lists else []
 
 
 def _issue_counts(trace: Trace) -> dict[str, int]:
@@ -437,6 +447,8 @@ def _failed(
         retrieved={"read": [], "unread": [], "missing": []},
         nodes=_node_spend(trace),
         rows_dropped_by={},
+        rows_dropped=[],
+        rows_dropped_text=[],
         error=error,
     )
 
@@ -513,12 +525,14 @@ def _scored(
         },
         nodes=_node_spend(trace),
         rows_dropped_by=_rows_dropped_by(trace),
+        rows_dropped=_rows_dropped(trace),
+        rows_dropped_text=list(state.get("dropped_text", [])),
         error=error,
     )
 
 
 def build_eval_graph(llm: Llm, kb: KbClient) -> Graph:
-    return build_graph(Deps(llm=llm, kb=kb), InMemorySaver())
+    return build_graph(Deps(llm=llm, kb=kb, keep_dropped_text=True), InMemorySaver())
 
 
 async def run_eval(

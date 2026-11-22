@@ -103,6 +103,8 @@ class State(TypedDict, total=False):
     # Whether the answers of this question already got their one follow-up clarification.
     followed_up: bool
     gate: dict[str, Any]
+    # The dropped rows as the model wrote them; only with `Deps.keep_dropped_text`.
+    dropped_text: list[dict[str, str]]
 
 
 class Node(Protocol):
@@ -114,6 +116,9 @@ class Deps:
     llm: Llm
     kb: KbClient
     today: Callable[[], date] = date.today
+    # Keep the raw quotes of the dropped rows in the state (`dropped_text`): the eval only, whose
+    # questions are public; never in the trace or the log.
+    keep_dropped_text: bool = False
 
 
 def _step(node: str) -> None:
@@ -383,7 +388,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
         applied_on = Plan.model_validate(state["plan"]).as_of
         async with trace().node("holding_map", {"sources": len(read)}) as rec:
             _step("holding_map")
-            verified = Verified([], {}, 0)
+            verified = Verified([], {}, 0, [])
             feedback: list[str] = []
             if read:
 
@@ -407,9 +412,10 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "rows": len(verified.rows),
                 "dropped": dropped,
                 "dropped_by": verified.dropped_by,
+                "dropped_rows": [d.trace for d in verified.dropped_rows],
                 "corrected": bool(feedback),
             }
-            return {
+            update: dict[str, Any] = {
                 "rows": _dumps(list(verified.rows)),
                 "gate": {
                     "rows_dropped": dropped,
@@ -417,6 +423,16 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     "subs_dropped": verified.subs_dropped,
                 },
             }
+            if deps.keep_dropped_text:
+                update["dropped_text"] = [
+                    {
+                        "reason": d.reason,
+                        "source_id": d.source_id,
+                        "condition_quote": d.condition_quote,
+                    }
+                    for d in verified.dropped_rows
+                ]
+            return update
 
     async def draft(state: State) -> dict[str, Any]:
         topic = get_topic(state["topic"])

@@ -515,7 +515,7 @@ def test_register_checks_generated_values_without_rewriting_user_or_source_text(
     case = facts(False)
     case.facts.append(Fact(key="verbatim", label="Özgün metin", value=original, status="known"))
     before = case.model_dump()
-    verified, dropped, _ = verify_rows(
+    verified, dropped, _, _ = verify_rows(
         HoldingDraft.model_validate({"rows": [candidate]}), [source], DAY, facts=case
     )
     assert dropped == {}

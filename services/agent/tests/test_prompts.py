@@ -14,7 +14,7 @@ from hukuk_models.chat import CaseFacts
 
 
 def test_draft_receives_the_exact_inclusive_threshold_quote() -> None:
-    rows, _, _ = verify_rows(
+    rows, _, _, _ = verify_rows(
         HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_1, "unknown")]}),
         READ,
         date(2026, 10, 3),
