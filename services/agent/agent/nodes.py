@@ -13,9 +13,17 @@ from pydantic import BaseModel
 
 from agent import prompts
 from agent.facts import apply_answers, build_facts, clarification_for, critical_unknown
-from agent.gate import GateDrops, check_draft, holding_issue, not_answered, progressive_in
+from agent.gate import (
+    GateCited,
+    GateDrops,
+    check_draft,
+    holding_issue,
+    not_answered,
+    progressive_in,
+)
 from agent.holding import verify_rows
 from agent.kb import KbClient
+from agent.kunye import mapped
 from agent.llm import Llm
 from agent.llm_schemas import HoldingDraft, IntakeOutput, draft_output_type
 from agent.plan import Plan, make_plan
@@ -98,8 +106,10 @@ def _dumps(items: list[BaseModel]) -> list[dict[str, Any]]:
 
 async def _read_ref(kb: KbClient, ref: SourceRef, as_of: date) -> ReadSource | None:
     """Reads the source `ref` names, in the version in force on `as_of`, with the other
-    paragraphs of the article the search returns with it; None when the knowledge base does not
-    have it."""
+    paragraphs of the article the search returns with it; None when the künye names no record
+    or the knowledge base does not have it."""
+    if not mapped(ref):
+        return None
     # The künye of the article, so that the hit holds its other paragraphs too.
     if ref.category == "statute":
         hits = await kb.read_article(split_ref(ref.ref)[0], as_of)
@@ -226,10 +236,13 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             _step("retrieve")
             read: list[ReadSource] = []
             unread = []
+            missing = []
             for ref in made.must_read:
                 source = await _read_ref(deps.kb, ref, made.as_of)
                 if source is None:
                     unread.append(ref.ref)
+                    reason = "not_found" if mapped(ref) else "unmapped"
+                    missing.append({"ref": ref.ref, "reason": reason})
                 else:
                     read = merge(read, [source])
             for query in made.queries:
@@ -242,7 +255,14 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     covers(s.ref, ref.ref) and s.source_id in truncated for s in read
                 ):
                     unread.append(ref.ref)
-            rec.output = {"read": [s.ref for s in read], "unread": unread}
+                    missing.append({"ref": ref.ref, "reason": "truncated"})
+            rec.output = {
+                "read": [s.ref for s in read],
+                "unreviewed": [
+                    {"ref": s.ref, "band": s.band} for s in read if s.review_status == "analyzed"
+                ],
+                "missing_source": missing,
+            }
             return {"read": _dumps(list(read)), "unread": unread}
 
     async def holding_map(state: State) -> dict[str, Any]:
@@ -278,6 +298,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             issues: list[str] = []
             issue_counts: dict[str, int] = {}
             answer = None
+            cited = GateCited()
             attempts = 0
             blocked = holding_issue(rows)
             if blocked:
@@ -325,6 +346,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 issue_counts = result.issue_counts
                 if result.answer is not None:
                     answer = result.answer
+                    cited = result.cited
                     break
             fell_back = answer is None
             if answer is None:
@@ -341,6 +363,8 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "citations_dropped": drops.citations,
                 "points_dropped": drops.points,
                 "rows_dropped": drops.rows,
+                "cited_approved": cited.approved,
+                "cited_unreviewed": cited.unreviewed,
                 "attempts": attempts,
                 "fallback": fell_back,
                 "issues": issues,

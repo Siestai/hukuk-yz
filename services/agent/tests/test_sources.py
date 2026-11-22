@@ -119,6 +119,28 @@ def test_the_read_sources_count_the_distinct_sources_per_category() -> None:
     assert [i.source_id for i in summary.items] == ["statute:4857:m18", "decision:a"]
 
 
+def test_an_unreviewed_source_is_listed_as_analyzed_with_its_band() -> None:
+    unreviewed = as_read_source(
+        hit(
+            "analyzed:5510:m.8:2008-10-01",
+            "5510 m.8",
+            "5510 m.8",
+            "metin",
+            review_status="analyzed",
+            band="medium",
+        )
+    )
+    assert unreviewed is not None
+
+    items = summarize([source(M18_1), unreviewed]).items
+
+    assert [(i.ref, i.review_status, i.band) for i in items] == [
+        ("4857 m.18", "approved", None),
+        ("5510 m.8", "analyzed", "medium"),
+    ]
+    assert citation(unreviewed, quote="metin").band == "medium"
+
+
 def test_a_paragraph_is_cited_only_when_its_number_stands_in_the_text_read() -> None:
     read = source(f"(1) {M18_1}", f"(4) {M18_4}")
 

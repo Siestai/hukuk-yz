@@ -52,6 +52,8 @@ def hit(
     category: str = "statute",
     valid_from: date | None = None,
     valid_to: date | None = None,
+    review_status: str = "approved",
+    band: str | None = None,
 ) -> KbHit:
     offset = 0
     matches = []
@@ -71,7 +73,8 @@ def hit(
             "category": category,
             "title": title,
             "ref": ref,
-            "review_status": "approved",
+            "review_status": review_status,
+            "band": band,
             "verification": None,
             "valid_from": valid_from,
             "valid_to": valid_to,

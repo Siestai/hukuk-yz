@@ -5,7 +5,6 @@ matching passages (`matches`); a passage of an `internal_only` chunk comes witho
 be read.
 """
 
-import re
 from collections.abc import Sequence
 from datetime import date
 from typing import Protocol
@@ -14,6 +13,8 @@ from urllib.parse import quote
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from agent.kunye import statute_article
+from hukuk_models import Band
 from hukuk_models.chat import CitationCategory, ReviewStatus, Verification
 
 
@@ -40,6 +41,8 @@ class KbHit(BaseModel):
     title: str
     ref: str
     review_status: ReviewStatus
+    # The confidence band of an `analyzed` record (a test source, decision K1).
+    band: Band | None = None
     verification: Verification | None = None
     valid_from: date | None = None
     valid_to: date | None = None
@@ -109,10 +112,10 @@ class HttpKbClient:
             raise KbUnavailable(str(exc)) from exc
 
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
-        match = re.fullmatch(r"(\d+) m\.(.+)", ref)
-        if match is None:
+        found = statute_article(ref)
+        if found is None:
             return []
-        number, article = match.groups()
+        number, article = found
         # The route takes the number as a path: a '/' ("18/A") stays a separator, not %2F.
         try:
             response = await self._http.get(
@@ -126,21 +129,29 @@ class HttpKbClient:
             if data["status"] != "found":
                 return []
             version = data.get("version")
-            if not version or not version.get("text") or not version.get("id"):
+            if not version or not version.get("text"):
                 return []
+            review_status = data["review_status"]
+            if review_status == "approved":
+                source_id = str(version["id"])
+            else:
+                # An unreviewed article has no published row to name: the id says what was
+                # read, and the version of which day.
+                source_id = f"{review_status}:{number}:m.{article}:{version['valid_from']}"
             return [
                 KbHit(
-                    source_id=str(version["id"]),
+                    source_id=source_id,
                     category="statute",
                     title=f"{number} m.{article}",
                     ref=ref,
-                    review_status="approved",
+                    review_status=review_status,
+                    band=data.get("band"),
                     valid_from=version.get("valid_from"),
                     valid_to=version.get("valid_to"),
                     complete=True,
                     matches=[
                         KbMatch(
-                            chunk_id=str(version["id"]),
+                            chunk_id=source_id,
                             text=version["text"],
                             char_start=0,
                             char_end=len(version["text"]),

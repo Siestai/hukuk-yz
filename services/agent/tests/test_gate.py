@@ -487,3 +487,77 @@ def test_register_checks_generated_values_without_rewriting_user_or_source_text(
     assert case.model_dump() == before
     assert verified[0].condition_quote == verified[0].citation.quote == original
     assert source.passages[0].text == original
+
+
+UNREVIEWED_M17 = "Bildirim şartına uymayan taraf tazminat ödemek zorundadır"
+
+
+def read_with_unreviewed() -> list[ReadSource]:
+    unreviewed = as_read_source(
+        hit(
+            "analyzed:4857:m.17:2003-06-10",
+            "4857 m.17",
+            "4857 m.17",
+            UNREVIEWED_M17,
+            review_status="analyzed",
+            band="medium",
+        )
+    )
+    assert unreviewed is not None
+    return [*read(), unreviewed]
+
+
+def check_with_unreviewed(points: list[dict]):  # type: ignore[no-untyped-def,type-arg]
+    return check_draft(
+        DraftOutput.model_validate(draft(points=points)),
+        topic=TOPIC,
+        facts=facts(False),
+        rows=rows(),
+        read=read_with_unreviewed(),
+        applied_on=DAY,
+        date_assumed=False,
+    )
+
+
+def test_a_point_is_marked_exactly_when_it_rests_on_an_unreviewed_source() -> None:
+    approved = {"source_id": "statute:4857:m18", "sub": "1", "quote": M18_1}
+    unreviewed = {"source_id": "analyzed:4857:m.17:2003-06-10", "quote": UNREVIEWED_M17}
+    result = check_with_unreviewed(
+        [
+            {"text": "Onaylı kaynağa dayanan nokta.", "citations": [approved]},
+            {"text": "Onaysız kaynağa dayanan nokta.", "citations": [unreviewed]},
+            {"text": "İki kaynağa dayanan nokta.", "citations": [approved, unreviewed]},
+        ]
+    )
+
+    assert result.answer is not None
+    assert [p.unreviewed for p in result.answer.points] == [False, True, True]
+    cited = [c for p in result.answer.points for c in p.citations]
+    assert [(c.review_status, c.band) for c in cited] == [
+        ("approved", None),
+        ("analyzed", "medium"),
+        ("approved", None),
+        ("analyzed", "medium"),
+    ]
+    assert (result.cited.approved, result.cited.unreviewed) == (2, 2)
+    listed = {i.ref: (i.review_status, i.band) for i in result.answer.read_sources.items}
+    assert listed == {"4857 m.18": ("approved", None), "4857 m.17": ("analyzed", "medium")}
+
+
+def test_an_unreviewed_source_that_was_not_read_is_not_cited_either() -> None:
+    approved = {"source_id": "statute:4857:m18", "sub": "1", "quote": M18_1}
+    not_read = {"source_id": "analyzed:5510:m.8:2008-10-01", "quote": UNREVIEWED_M17}
+    wrong_quote = {"source_id": "analyzed:4857:m.17:2003-06-10", "quote": "Okunmamış bir metin"}
+    result = check_with_unreviewed(
+        [
+            {"text": "Okunan kaynağa dayanan nokta.", "citations": [approved, not_read]},
+            {"text": "Okunmamış kaynağa dayanan nokta.", "citations": [not_read]},
+            {"text": "Kaynakta olmayan alıntıya dayanan nokta.", "citations": [wrong_quote]},
+        ]
+    )
+
+    assert result.answer is not None
+    assert [p.text for p in result.answer.points] == ["Okunan kaynağa dayanan nokta."]
+    assert not result.answer.points[0].unreviewed
+    assert (result.drops.citations, result.drops.points) == (3, 2)
+    assert (result.cited.approved, result.cited.unreviewed) == (1, 0)

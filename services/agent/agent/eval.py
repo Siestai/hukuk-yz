@@ -69,6 +69,7 @@ class FixtureKb:
                 title=ref.label.removesuffix(sub),
                 ref=base,
                 review_status=ref.review_status,
+                band=ref.band,
                 verification=ref.verification,
                 valid_from=ref.valid_from,
                 valid_to=ref.valid_to,

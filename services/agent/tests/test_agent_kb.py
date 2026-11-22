@@ -94,6 +94,7 @@ async def test_full_article_read_has_neighboring_paragraphs_and_stable_version_i
             200,
             json={
                 "status": "found",
+                "review_status": "approved",
                 "version": {
                     "id": "version-18",
                     "text": text,
@@ -111,6 +112,42 @@ async def test_full_article_read_has_neighboring_paragraphs_and_stable_version_i
     assert hits[0].matches[0].text == text
     assert hits[0].matches[0].char_start == 0
     assert hits[0].matches[0].char_end == len(text)
+    assert (hits[0].review_status, hits[0].band) == ("approved", None)
+
+
+async def test_an_unreviewed_article_read_keeps_its_status_and_band() -> None:
+    body = {
+        "status": "found",
+        "review_status": "analyzed",
+        "band": "medium",
+        "version": {"text": "(1) Birinci fıkra.", "valid_from": "2003-06-10", "valid_to": None},
+    }
+    kb = client(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+
+    hits = await kb.read_article("4857 m.18", date(2026, 10, 3))
+
+    assert (hits[0].review_status, hits[0].band) == ("analyzed", "medium")
+    assert hits[0].complete
+    # No published row to name: the id says what was read, and of which day.
+    assert hits[0].source_id == "analyzed:4857:m.18:2003-06-10"
+
+
+async def test_an_article_read_that_does_not_say_its_review_status_is_not_trusted() -> None:
+    body = {"status": "found", "version": {"id": "version-18", "text": "(1) Birinci fıkra."}}
+    kb = client(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+
+    with pytest.raises(KbUnavailable):
+        await kb.read_article("4857 m.18", date(2026, 10, 3))
+
+
+async def test_an_unreviewed_search_hit_keeps_its_band() -> None:
+    unreviewed = {**BODY["results"][0], "review_status": "analyzed", "band": "high"}
+    body = {"results": [unreviewed, BODY["results"][0]]}
+    kb = client(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+
+    hits = await kb.search("4857")
+
+    assert [(h.review_status, h.band) for h in hits] == [("analyzed", "high"), ("approved", None)]
 
 
 @pytest.mark.parametrize(
@@ -118,7 +155,7 @@ async def test_full_article_read_has_neighboring_paragraphs_and_stable_version_i
     [
         {"status": "gap"},
         {"status": "unknown_article"},
-        {"status": "found", "version": {"text": ""}},
+        {"status": "found", "review_status": "approved", "version": {"text": ""}},
     ],
 )
 async def test_missing_article_never_falls_back_to_search_excerpts(body: dict[str, Any]) -> None:

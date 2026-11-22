@@ -56,3 +56,17 @@ def test_holding_register_contract_covers_generated_fields_and_preserves_verbati
     payload = prompt.split("Olgular:\n", 1)[1].split("\n\n", 1)[0]
     assert json.loads(payload)["olgular"][0]["value"] == original
     assert prompt.endswith(original)
+
+
+def test_an_unreviewed_source_is_labelled_as_a_test_source_in_the_prompt() -> None:
+    from agent.prompts import sources_block
+
+    unreviewed = READ[0].model_copy(
+        update={"source_id": "analyzed:x", "review_status": "analyzed", "band": "high"}
+    )
+
+    approved_block, unreviewed_block = sources_block([READ[0], unreviewed]).split("\n\n")
+
+    assert "onaysız (test)" in unreviewed_block.splitlines()[0]
+    assert ", onaylı, " in approved_block.splitlines()[0]
+    assert "onaysız" not in approved_block

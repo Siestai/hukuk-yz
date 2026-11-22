@@ -414,8 +414,14 @@ async def test_the_models_are_called_in_the_order_of_the_graph() -> None:
     assert [k for k, _ in script.calls] == ["intake", "holding", "draft"]
 
 
-async def test_truncated_required_text_constrains_the_answer_and_cannot_support_a_quote() -> None:
+async def test_truncated_required_text_constrains_the_answer_and_cannot_support_a_quote(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
     from agent.sources import MAX_SOURCE_CHARS
+
+    caplog.set_level(logging.INFO)
 
     kb = FakeKb(
         [
@@ -444,6 +450,8 @@ async def test_truncated_required_text_constrains_the_answer_and_cannot_support_
     assert len(answer.holding_map.rows) == 1
     assert state["gate"]["rows_dropped"] == 1
     assert M18_4 not in script.of("holding")[0]
+    missing = _trace_outputs(caplog)["node retrieve"]["missing_source"]
+    assert {"ref": "4857 m.18", "reason": "truncated"} in missing
 
 
 async def test_question_text_is_not_in_structured_logs(caplog) -> None:  # type: ignore[no-untyped-def]
@@ -861,3 +869,102 @@ async def test_rewrite_mutation_exhausts_validation_without_publishing(change: s
     assert not any(isinstance(e, AnswerEvent) for e in events)
     assert len(script.of("draft")) == 1
     assert len(script.of("rewrite")) == 3
+
+
+def _trace_outputs(caplog: pytest.LogCaptureFixture) -> dict[str, dict]:  # type: ignore[type-arg]
+    records = [r for r in caplog.records if r.name == "agent.trace"]
+    return {r.getMessage(): r.fields["output"] for r in records}  # type: ignore[attr-defined]
+
+
+async def test_an_unreviewed_source_is_marked_in_the_answer_and_in_the_trace(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    m17 = "Bildirim şartına uymayan taraf tazminat ödemek zorundadır"
+    kb = FakeKb(
+        [
+            labour_law_hits()[0],
+            hit(
+                "analyzed:4857:m.17:2003-06-10",
+                "4857 m.17",
+                "4857 m.17",
+                m17,
+                review_status="analyzed",
+                band="medium",
+            ),
+        ]
+    )
+    approved = {"source_id": "statute:4857:m18", "sub": "1", "quote": M18_1}
+    unreviewed = {"source_id": "analyzed:4857:m.17:2003-06-10", "quote": m17}
+    script = Script(
+        drafts=[
+            draft(
+                points=[
+                    {"text": "Altı aylık kıdem şartı aranmaktadır.", "citations": [approved]},
+                    {"text": "Bildirim şartına uyulmalıdır.", "citations": [unreviewed]},
+                ]
+            )
+        ]
+    )
+    caplog.set_level(logging.INFO)
+    graph = make_graph(script, kb)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    answer = only(await turn(graph, answer_all(thread)), AnswerEvent).answer
+
+    assert [p.unreviewed for p in answer.points] == [False, True]
+    listed = {i.ref: (i.review_status, i.band) for i in answer.read_sources.items}
+    assert listed == {"4857 m.18": ("approved", None), "4857 m.17": ("analyzed", "medium")}
+    assert "4857 m.17 (statute, onaysız (test)," in script.of("draft")[0]
+    assert "4857 m.18 (statute, onaylı," in script.of("draft")[0]
+    outputs = _trace_outputs(caplog)
+    assert outputs["node retrieve"]["unreviewed"] == [{"ref": "4857 m.17", "band": "medium"}]
+    assert outputs["node draft"]["cited_approved"] == 1
+    assert outputs["node draft"]["cited_unreviewed"] == 1
+
+
+async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_the_trace(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import logging
+
+    from agent import nodes
+    from agent.plan import Plan
+    from agent.topics import SourceRef
+
+    def plan_with_odd_refs(*args, **kwargs) -> Plan:  # type: ignore[no-untyped-def]
+        return Plan(
+            as_of=TODAY,
+            as_of_assumed=True,
+            must_read=[
+                SourceRef(ref="4857 m.18", category="statute"),
+                SourceRef(ref="İş Kanunu'nun on sekizinci maddesi", category="statute"),
+                SourceRef(ref="2020/8 m.2.6.2.5", category="admin_act"),
+                SourceRef(ref="9. HD E.2016/28920 K.2017/17860", category="decision"),
+            ],
+            queries=[],
+        )
+
+    monkeypatch.setattr(nodes, "make_plan", plan_with_odd_refs)
+    caplog.set_level(logging.INFO)
+    kb = FakeKb()
+    graph = make_graph(Script(), kb)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+    asked = len(kb.calls)
+
+    answer = only(await turn(graph, RunRequest(thread_id=thread, skip=True)), AnswerEvent).answer
+
+    retrieve = _trace_outputs(caplog)["node retrieve"]
+    assert retrieve["read"] == ["4857 m.18"]
+    assert retrieve["missing_source"] == [
+        {"ref": "İş Kanunu'nun on sekizinci maddesi", "reason": "unmapped"},
+        {"ref": "2020/8 m.2.6.2.5", "reason": "not_found"},
+        {"ref": "9. HD E.2016/28920 K.2017/17860", "reason": "not_found"},
+    ]
+    # A künye that names no record is not searched as free text.
+    assert all("on sekizinci" not in c["q"] for c in kb.calls[asked:])
+    assert "İş Kanunu'nun on sekizinci maddesi" in answer.status_note
+    assert "2020/8 m.2.6.2.5" in answer.status_note
