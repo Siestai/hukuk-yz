@@ -1,11 +1,10 @@
 {
  "topic": "hizmet_tespiti",
- "title": "Mahkeme kararıyla geriye dönük hizmet tespiti",
- "event_date": null,
+ "title": "Mahkemece tespit edilen hizmetin geriye dönük uygulanması",
  "facts": [
   {
    "key": "tespit_yolu",
-   "value": "Mahkeme kararı yolu",
+   "value": "Mahkeme ilamı",
    "status": "known"
   }
  ]

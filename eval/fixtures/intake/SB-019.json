@@ -1,6 +1,6 @@
 {
  "topic": "idari_para_cezasi",
- "title": "Prime esas kazanç eksik bildirimi cezası",
+ "title": "Prime esas kazanç eksik bildirimi, idari para cezası",
  "event_date": null,
  "facts": [
   {
@@ -10,27 +10,22 @@
   },
   {
    "key": "ceza_turu",
-   "value": "5510 m.102/1-m-4-ç kapsamında idari para cezası",
+   "value": "Ek belge, defter ibrazı veya bordro",
    "status": "known"
   },
   {
-   "key": "tutanakla_teslim",
-   "status": "unknown"
-  },
-  {
    "key": "defter_turu",
+   "value": null,
    "status": "unknown"
   },
   {
-   "key": "belge_30_gun",
+   "key": "tutanakla_teslim",
+   "value": null,
    "status": "unknown"
   },
   {
-   "key": "odeme_15_gun",
-   "status": "unknown"
-  },
-  {
-   "key": "kendiliginden",
+   "key": "bildirim_belgesi",
+   "value": null,
    "status": "unknown"
   }
  ]

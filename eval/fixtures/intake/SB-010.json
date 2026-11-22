@@ -1,12 +1,12 @@
 {
  "topic": "ucret_turu",
- "title": "Ücretin şekli ve tazminatlar",
+ "title": "Ücret şeklinin tazminata ve SGK bildirimine etkisi",
  "event_date": null,
  "facts": [
   {
    "key": "ucret_sekli",
-   "value": "Günlük veya maktu (aylık) ücret belirlenmesi",
-   "status": "known"
+   "value": null,
+   "status": "unknown"
   }
  ]
 }

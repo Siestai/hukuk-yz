@@ -5,7 +5,7 @@
  "facts": [
   {
    "key": "degisiklik_konusu",
-   "value": "Çalışma saatlerinin yarım saat değiştirilmesi (başlama ve bitiş saati kaymaktadır)",
+   "value": "Çalışma saatlerinin yarım saat öne veya ileri alınması",
    "status": "known"
   },
   {

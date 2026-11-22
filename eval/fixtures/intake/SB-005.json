@@ -1,6 +1,6 @@
 {
  "topic": "tis_sendikal",
- "title": "Toplu iş sözleşmesinden kaynaklanan ödenmeyen ikramiye ve yakacak yardımı",
+ "title": "Toplu iş sözleşmesi ikramiye ve yakacak yardımı",
  "event_date": null,
  "facts": [
   {
@@ -18,6 +18,10 @@
   },
   {
    "key": "odenmeyen_donem",
+   "status": "unknown"
+  },
+  {
+   "key": "dayanisma_talep_tarihi",
    "status": "unknown"
   },
   {

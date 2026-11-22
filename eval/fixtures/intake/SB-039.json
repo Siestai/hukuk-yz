@@ -1,7 +1,7 @@
 {
  "topic": "tis_sendikal",
- "title": "TİS yararlanması ve dayanışma aidatı ile hak kazanımı",
- "event_date": "2025-10-01",
+ "title": "TİS yararlanması, 10.12.2025'te dayanışma aidatı ödemeye başlayan işçi",
+ "event_date": "2025-12-10",
  "facts": [
   {
    "key": "tis_maddesi",
@@ -10,23 +10,22 @@
   },
   {
    "key": "tis_yururluk",
-   "value": "İmza tarihi: 01.10.2025",
+   "value": "01.01.2025-31.12.2026 geçerlilik tarihleri, 01.10.2025'te imzalandı",
    "status": "known"
   },
   {
    "key": "sendika_uyeligi",
-   "value": "dayanisma_aidati",
-   "status": "known"
-  },
-  {
-   "key": "dayanisma_talep_tarihi",
-   "value": "10.12.2025",
+   "value": "Dayanışma aidatı ödemeye başlayan işçi, 10.12.2025'ten itibaren",
    "status": "known"
   },
   {
    "key": "odenmeyen_donem",
-   "value": "Aralık 2025 (13 günlük ilave tediye ve 20 günlük ikramiye)",
+   "value": "Aralık 2025, 13 günlük ilave tediye ve 20 günlük ikramiye",
    "status": "known"
+  },
+  {
+   "key": "tis_yararlanma_hukmu",
+   "status": "unknown"
   }
  ]
 }

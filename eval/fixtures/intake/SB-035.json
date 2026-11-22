@@ -1,0 +1,22 @@
+{
+ "topic": "hakli_fesih_devamsizlik",
+ "title": "Yıllık izin ücretinin ödenmemesi nedeniyle fesih hakkı",
+ "event_date": null,
+ "facts": [
+  {
+   "key": "fesih_sebebi",
+   "value": "İşçinin ücretin veya yıllık izin ücretinin ödenmemesi nedeniyle feshi",
+   "status": "known"
+  },
+  {
+   "key": "ucret_odeme_durumu",
+   "value": "Hiç ödenmedi",
+   "status": "known"
+  },
+  {
+   "key": "kullanilan_izin",
+   "value": null,
+   "status": "assumed_never"
+  }
+ ]
+}
