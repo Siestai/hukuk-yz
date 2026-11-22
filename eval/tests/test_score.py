@@ -63,6 +63,23 @@ def test_cases_are_well_formed() -> None:
             },
             "missing_in_kb",
         ),
+        # An unquoted law number is an int in YAML; a künye is always text.
+        (
+            {
+                "id": "SB-1",
+                "question": "?",
+                "expected": {"topic": "ise_iade", "status": "definite", "must_cite": [5434]},
+            },
+            "must_cite",
+        ),
+        (
+            {
+                "id": "SB-1",
+                "question": "?",
+                "expected": {"topic": "ise_iade", "status": "definite", "missing_in_kb": [6772]},
+            },
+            "missing_in_kb",
+        ),
     ],
 )
 def test_a_case_without_its_topic_or_with_missing_in_kb_outside_expected_is_refused(
@@ -73,6 +90,35 @@ def test_a_case_without_its_topic_or_with_missing_in_kb_outside_expected_is_refu
 
     with pytest.raises(ValueError, match=error):
         score_module.load_case(path)
+
+
+@pytest.mark.parametrize("path", sorted(CASES.glob("*.yaml")), ids=lambda p: p.stem)
+def test_every_case_scores_an_answer_without_failing(path: Path) -> None:
+    case = score_module.load_case(path)
+    answer = _fixture_answer("SB-001.answer.json")
+    questions = [{"fact_key": key} for key in case["expected"].get("must_ask", [])[:1]]
+
+    metrics = score_module.score(answer, case, {"questions": questions})
+
+    assert {m.name for m in metrics} >= {"must_cite", "must_ask", "must_not", "formal_mode"}
+    assert isinstance(score_module.must_cite_metric({}, case).detail, str)
+    score_module.must_not_found(answer, case)
+    score_module.unread_citations(answer, set())
+
+
+def test_the_users_own_words_in_the_source_gap_are_not_scanned() -> None:
+    case = {"expected": {"must_not": ["düşürüyor"]}}
+    words = "İşveren ücretimi düşürüyor"
+    answer = {
+        "headline": "Kaynak yetersizdir.",
+        "source_gap": {"given_facts": [{"key": "olay", "label": "Olay", "value": words}]},
+    }
+
+    assert score_module.progressive_found(answer) == []
+    assert score_module.must_not_found(answer, case) == []
+    # The label is the harness's wording and is still scanned.
+    answer["source_gap"]["given_facts"][0]["label"] = words
+    assert score_module.must_not_found(answer, case) == ["düşürüyor"]
 
 
 @pytest.mark.parametrize("case_id", IDS)
@@ -208,6 +254,13 @@ def test_a_run_below_a_threshold_fails_and_says_which(
 
     assert not passed
     assert any(reason in r for r in reasons), reasons
+
+
+def test_a_case_that_ended_in_an_error_is_its_own_reason() -> None:
+    passed, reasons = score_module.acceptance(twenty(SB_007={"error": "kb_unavailable"}))
+
+    assert not passed
+    assert any("hata" in r and "SB-007" in r for r in reasons)
 
 
 def test_a_run_stopped_by_the_budget_fails_with_the_cases_it_did_not_run() -> None:

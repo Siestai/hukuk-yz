@@ -8,34 +8,38 @@ case, the total, PASS or FAIL against the thresholds of task 19). The result goe
 
 Budget: `--estimate` prints the expected cost and calls no model; `--budget-usd` is a hard cap,
 checked after every model call and before every case. Real models and a real or fixture knowledge
-base are chosen on the command line; the CI smoke test runs the same code with fake models.
+base are chosen on the command line; the CI smoke test runs the same code with fake models. The
+exit code is 1 when the run is below the thresholds.
 """
 
 import argparse
 import asyncio
 import importlib.util
 import json
+import math
 import sys
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-import yaml
 from langgraph.checkpoint.memory import InMemorySaver
+from pydantic_ai import capture_run_messages
+from pydantic_ai.messages import ModelResponse
 
+from agent import llm as llm_module
 from agent.api import Graph, RunRequest, turn_events
 from agent.graph import build_graph
 from agent.kb import HttpKbClient, KbClient, KbHit, KbMatch, Unreadable
-from agent.llm import Llm, Models, Tier, _cost, _model_name
+from agent.llm import Llm, Models, Tier, _model_name
 from agent.llm_schemas import IntakeOutput
 from agent.nodes import Deps
 from agent.settings import KbSettings, LlmSettings
 from agent.sources import covers, split_ref
-from agent.trace import Trace, Tracing, current_record
+from agent.trace import NodeRecord, Trace, Tracing, current_record
 from hukuk_models.chat import (
     Answer,
     AnswerEvent,
@@ -141,7 +145,9 @@ class BudgetExceeded(Exception):
 @dataclass
 class Budget:
     """The hard cap of a run in USD. `per_case` is the estimate of one case: a case starts only
-    when it fits in what is left."""
+    when it fits in what is left. It is charged after every model call; a call is one
+    `Llm.run`, with the schema retries Pydantic AI makes inside it, so the cap can be passed by
+    at most one such call."""
 
     cap: float
     per_case: float
@@ -151,8 +157,9 @@ class Budget:
     def exceeded(self) -> bool:
         return self.spent > self.cap
 
-    def charge(self, cost: float) -> None:
-        self.spent += cost
+    def charge(self, cost: float | None) -> None:
+        """A call whose price is unknown cannot be held under the cap: it stops the run."""
+        self.spent = self.spent + cost if cost is not None else math.inf
         if self.exceeded:
             raise BudgetExceeded
 
@@ -162,7 +169,9 @@ class Budget:
 
 class EvalLlm(Llm):
     """The models of an eval run: after every call the spend is charged to the budget, and the
-    output of the intake is kept for the case in progress (`--record-intake`)."""
+    output of the intake is kept for the case in progress (`--record-intake`). A call that fails
+    (the schema retries spent, a provider error) is counted too: its tokens and cost go to the
+    trace and the budget before the error goes on."""
 
     def __init__(self, models: Models, budget: Budget | None = None) -> None:
         super().__init__(models)
@@ -171,55 +180,96 @@ class EvalLlm(Llm):
 
     async def run[T](self, tier: Tier, output_type: type[T], instructions: str, prompt: str) -> T:
         record = current_record()
-        before = (record.cost or 0.0) if record else 0.0
-        output = await super().run(tier, output_type, instructions, prompt)
+        before = (record.input_tokens, record.output_tokens, record.cost) if record else None
+        with capture_run_messages() as messages:
+            try:
+                output = await super().run(tier, output_type, instructions, prompt)
+            except Exception:
+                if record is not None:
+                    model = self._models.fast if tier == "fast" else self._models.strong
+                    used = [m.usage for m in messages if isinstance(m, ModelResponse)]
+                    i, o = sum(u.input_tokens for u in used), sum(u.output_tokens for u in used)
+                    record.add_usage(_model_name(model), i, o, llm_module._cost(model, i, o))
+                self._charge(record, before)
+                raise
         if isinstance(output, IntakeOutput):
             self.intake = output.model_dump(mode="json", exclude_unset=True)
-        if self.budget is not None and record is not None:
-            self.budget.charge((record.cost or 0.0) - before)
+        self._charge(record, before)
         return output
+
+    def _charge(
+        self, record: NodeRecord | None, before: tuple[int, int, float | None] | None
+    ) -> None:
+        if self.budget is None or record is None or before is None:
+            return
+        tokens = record.input_tokens + record.output_tokens - before[0] - before[1]
+        if not tokens:
+            return
+        priced = record.cost is not None and record.cost != before[2]
+        self.budget.charge((record.cost or 0.0) - (before[2] or 0.0) if priced else None)
 
 
 @dataclass(frozen=True)
 class Estimate:
     per_case: float | None
     source: str
+    # What every earlier result file spent: the cap of the package is for all rounds.
+    earlier_spent: float = 0.0
 
 
-def _earlier_costs(results_dir: Path) -> tuple[list[float], int]:
-    """The real cost of every case of the earlier runs that ended without an error, and the
-    number of result files."""
-    costs = []
+def _model_names(models: Models) -> dict[str, str]:
+    return {"fast": _model_name(models.fast), "strong": _model_name(models.strong)}
+
+
+def _earlier_costs(results_dir: Path, models: Models) -> tuple[list[float], int, float]:
+    """The real cost of every answered case of the earlier runs of the same models, the number
+    of result files, and what all of them spent."""
+    costs: list[float] = []
+    spent = 0.0
     paths = sorted(results_dir.glob("*.json"))
     for path in paths:
         loaded = json.loads(path.read_text(encoding="utf-8"))
         cases = loaded if isinstance(loaded, list) else loaded.get("cases", [])
-        costs += [
-            c["cost"]
-            for c in cases
-            if isinstance(c, dict) and c.get("cost") is not None and c.get("error") is None
-        ]
-    return costs, len(paths)
+        cases = [c for c in cases if isinstance(c, dict)]
+        spent += sum(c.get("cost") or 0.0 for c in cases)
+        if isinstance(loaded, dict) and loaded.get("models") == _model_names(models):
+            costs += [
+                c["cost"]
+                for c in cases
+                if c.get("cost") is not None
+                and c.get("answer") is not None
+                and c.get("error") is None
+            ]
+    return costs, len(paths), spent
 
 
 def estimate(results_dir: Path, models: Models) -> Estimate:
-    """The cost of one case: the mean real cost of the earlier runs in `results_dir`, otherwise
-    `ASSUMED_TOKENS` at the price of the models (genai-prices, as the trace)."""
-    costs, files = _earlier_costs(results_dir)
+    """The cost of one case: the mean real cost of the answered cases of the earlier runs of the
+    same models in `results_dir`, otherwise `ASSUMED_TOKENS` at the price of the models
+    (genai-prices, as the trace)."""
+    costs, files, spent = _earlier_costs(results_dir, models)
     if costs:
         mean = sum(costs) / len(costs)
-        return Estimate(mean, f"önceki koşular: {len(costs)} vaka, {files} sonuç dosyası")
+        return Estimate(mean, f"önceki koşular: {len(costs)} vaka, {files} sonuç dosyası", spent)
     total = 0.0
     for model, tokens in (
         (models.fast, ASSUMED_TOKENS["fast"]),
         (models.strong, ASSUMED_TOKENS["strong"]),
     ):
-        price = _cost(model, *tokens)
+        price = llm_module._cost(model, *tokens)
         if price is None:
-            return Estimate(None, f"fiyat tablosunda yok: {_model_name(model)}")
+            return Estimate(None, f"fiyat tablosunda yok: {_model_name(model)}", spent)
         total += price
     assumed = ", ".join(f"{t} {i}/{o}" for t, (i, o) in ASSUMED_TOKENS.items())
-    return Estimate(total, f"varsayım: vaka başına token (gir/çık) {assumed}, genai-prices fiyatı")
+    source = f"varsayım: vaka başına token (gir/çık) {assumed}, genai-prices fiyatı"
+    return Estimate(total, source, spent)
+
+
+def unpriced(models: Models) -> list[str]:
+    """The models genai-prices has no price for: a budget cannot be held with them."""
+    return [
+        _model_name(m) for m in (models.fast, models.strong) if llm_module._cost(m, 1, 1) is None
+    ]
 
 
 @dataclass
@@ -272,9 +322,9 @@ def load_score_module(cases_dir: Path) -> ModuleType:
 
 
 def load_cases(cases_dir: Path, only: Sequence[str] = ()) -> list[dict[str, Any]]:
-    cases = [
-        yaml.safe_load(p.read_text(encoding="utf-8")) for p in sorted(cases_dir.glob("*.yaml"))
-    ]
+    """The cases, checked by `eval/score.py` `load_case` before any model is called."""
+    score = load_score_module(cases_dir)
+    cases = [score.load_case(p) for p in sorted(cases_dir.glob("*.yaml"))]
     return [c for c in cases if not only or c["id"] in only]
 
 
@@ -293,35 +343,95 @@ def _issue_counts(trace: Trace) -> dict[str, int]:
     return dict(drafts[-1]) if drafts else {}
 
 
-async def run_case(
-    graph: Graph, llm: EvalLlm, tracing: Tracing, score: ModuleType, case: dict[str, Any]
-) -> CaseResult:
-    thread_id = f"eval-{case['id']}-{uuid.uuid4().hex[:8]}"
+async def _play(
+    graph: Graph, trace: Trace, thread_id: str, case: dict[str, Any]
+) -> tuple[Clarification | None, Answer | None, str | None]:
+    """The turns of a case: the question, then the answers to its clarification."""
     clarification: Clarification | None = None
     answer: Answer | None = None
     error = None
+    request = RunRequest(thread_id=thread_id, text=case["question"])
+    for _ in range(2):
+        pending: Clarification | None = None
+        async for event in turn_events(graph, request, trace):
+            if isinstance(event, ClarificationEvent):
+                pending = clarification = event.clarification
+            elif isinstance(event, AnswerEvent):
+                answer = event.answer
+            elif isinstance(event, ErrorEvent):
+                error = str(event.params.get("reason", event.code))
+        if pending is None:
+            break
+        request = RunRequest(
+            thread_id=thread_id,
+            clarification_answers=answers_for(pending, case.get("facts") or {}),
+        )
+    return clarification, answer, error
+
+
+def _failed(case: dict[str, Any], trace: Trace, llm: EvalLlm, error: str) -> CaseResult:
+    """A case the runner itself failed on: what it spent, nothing scored."""
+    expected = case["expected"]
+    return CaseResult(
+        case_id=case["id"],
+        trace_id=trace.trace_id,
+        expected_topic=expected.get("topic"),
+        topic=None,
+        intake=llm.intake,
+        asked=[],
+        answer=None,
+        metrics={},
+        score=0.0,
+        must_ask=None,
+        must_cite=None,
+        missing_in_kb=list(expected.get("missing_in_kb", [])),
+        must_not=[],
+        headline=None,
+        mode=[],
+        unread=[],
+        drops=dict.fromkeys(DROP_KEYS, 0),
+        issue_counts={},
+        fallback=False,
+        substantive=False,
+        input_tokens=trace.input_tokens,
+        output_tokens=trace.output_tokens,
+        cost=trace.cost,
+        seconds=trace.seconds,
+        error=error,
+    )
+
+
+async def run_case(
+    graph: Graph, llm: EvalLlm, tracing: Tracing, score: ModuleType, case: dict[str, Any]
+) -> CaseResult:
+    """One case. An exception of the runner (scoring, reading the state) is the case's error,
+    not the end of the run."""
+    thread_id = f"eval-{case['id']}-{uuid.uuid4().hex[:8]}"
     llm.intake = None
     with tracing.run(thread_id) as trace:
-        request = RunRequest(thread_id=thread_id, text=case["question"])
-        for _ in range(2):
-            pending: Clarification | None = None
-            async for event in turn_events(graph, request, trace):
-                if isinstance(event, ClarificationEvent):
-                    pending = clarification = event.clarification
-                elif isinstance(event, AnswerEvent):
-                    answer = event.answer
-                elif isinstance(event, ErrorEvent):
-                    error = str(event.params.get("reason", event.code))
-            if pending is None:
-                break
-            request = RunRequest(
-                thread_id=thread_id,
-                clarification_answers=answers_for(pending, case.get("facts") or {}),
-            )
-    if llm.budget is not None and llm.budget.exceeded:
-        error = "budget_exceeded"
+        try:
+            clarification, answer, error = await _play(graph, trace, thread_id, case)
+            if llm.budget is not None and llm.budget.exceeded:
+                error = "budget_exceeded"
+            state = (await graph.aget_state({"configurable": {"thread_id": thread_id}})).values
+            return _scored(case, trace, llm, score, state, clarification, answer, error)
+        except Exception as exc:
+            if llm.budget is not None and llm.budget.exceeded:
+                return _failed(case, trace, llm, "budget_exceeded")
+            return _failed(case, trace, llm, f"eval_error: {type(exc).__name__}")
+
+
+def _scored(
+    case: dict[str, Any],
+    trace: Trace,
+    llm: EvalLlm,
+    score: ModuleType,
+    state: dict[str, Any],
+    clarification: Clarification | None,
+    answer: Answer | None,
+    error: str | None,
+) -> CaseResult:
     # A case that stopped before the draft (an error, an unanswered clarification) has no gate.
-    state = (await graph.aget_state({"configurable": {"thread_id": thread_id}})).values
     gate = state.get("gate") or {}
     raw = answer.model_dump(mode="json") if answer else None
     # What the run asked: nothing when there was no clarification.
@@ -369,11 +479,15 @@ async def run_eval(
     tracing: Tracing,
     cases_dir: Path,
     only: Sequence[str] = (),
+    *,
+    run: EvalRun | None = None,
+    after_case: Callable[[EvalRun], object] | None = None,
 ) -> EvalRun:
     """The cases in order; with a budget, a case starts only when its estimate fits in what is
-    left, and the run stops at the first case the cap stopped."""
+    left, and the run stops at the first case the cap stopped. The results go into `run` (a
+    caller that keeps it has them if the run is cut); `after_case` sees it after every case."""
     score = load_score_module(cases_dir)
-    run = EvalRun()
+    run = run if run is not None else EvalRun()
     cases = load_cases(cases_dir, only)
     for i, case in enumerate(cases):
         budget = llm.budget
@@ -381,6 +495,8 @@ async def run_eval(
             run.not_run = [c["id"] for c in cases[i:]]
             break
         run.results.append(await run_case(graph, llm, tracing, score, case))
+        if after_case is not None:
+            after_case(run)
     return run
 
 
@@ -391,7 +507,10 @@ def _write(path: Path, text: str) -> None:
 
 async def amain(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m agent.eval", description=__doc__.split("\n")[0]
+        prog="python -m agent.eval",
+        description=__doc__.split("\n")[0],
+        epilog="exit: 0 PASS with every case answered; 1 FAIL, an unanswered case or a case the "
+        "budget stopped; 2 a budget with a model genai-prices has no price for",
     )
     parser.add_argument("cases", type=Path, help="the folder of the cases, eval/cases")
     parser.add_argument("--case", action="append", default=[], help="only this case id (repeat)")
@@ -423,14 +542,52 @@ async def amain(argv: Sequence[str]) -> int:
     per_case = "?" if made.per_case is None else f"${made.per_case:.3f}"
     total = "?" if made.per_case is None else f"${made.per_case * len(cases):.2f}"
     print(f"tahmin: {len(cases)} vaka × {per_case} = {total} ({made.source})")
+    print(f"önceki sonuç dosyalarının harcaması: ${made.earlier_spent:.2f}")
     if args.estimate:
         return 0
     budget = None
     if args.budget_usd is not None:
-        if made.per_case is None:
-            print(f"bütçe tutulamaz: {made.source}", file=sys.stderr)
+        if missing := unpriced(names):
+            print(f"bütçe tutulamaz, fiyat tablosunda yok: {', '.join(missing)}", file=sys.stderr)
             return 2
+        assert made.per_case is not None  # the models are priced
         budget = Budget(cap=args.budget_usd, per_case=made.per_case)
+
+    score = load_score_module(args.cases)
+    base = results_dir / f"{date.today().isoformat()}-{args.tag}"
+
+    def save(run: EvalRun) -> tuple[bool, str]:
+        """The result and its table, written after every case and at the end."""
+        rows = [vars(r) for r in run.results]
+        passed, reasons = score.acceptance(rows, run.not_run)
+        table = score.render_table(rows, passed, reasons)
+        result = {
+            "tag": args.tag,
+            "date": date.today().isoformat(),
+            "models": _model_names(names),
+            "kb": args.kb,
+            "estimate": {"per_case_usd": made.per_case, "source": made.source},
+            "budget_usd": args.budget_usd,
+            "spent_usd": sum(r.cost or 0.0 for r in run.results),
+            "earlier_spent_usd": made.earlier_spent,
+            "passed": passed,
+            "reasons": reasons,
+            "not_run": run.not_run,
+            "cases": rows,
+        }
+        _write(
+            base.with_suffix(".json"),
+            json.dumps(result, ensure_ascii=False, indent=1, default=str),
+        )
+        _write(base.with_suffix(".md"), f"# Eval {args.tag} ({result['date']})\n\n{table}\n")
+        if args.record_intake:
+            for r in run.results:
+                if r.intake is not None:
+                    _write(
+                        args.record_intake / f"{r.case_id}.json",
+                        json.dumps(r.intake, ensure_ascii=False, indent=1),
+                    )
+        return passed, table
 
     tracing = Tracing.from_settings(settings)
     kb: KbClient
@@ -443,47 +600,21 @@ async def amain(argv: Sequence[str]) -> int:
         )
     llm = EvalLlm(Models(settings.agent_model_fast, settings.agent_model_strong), budget)
     graph = build_eval_graph(llm, kb)
+    run = EvalRun()
     try:
-        run = await run_eval(graph, llm, tracing, args.cases, args.case)
+        await run_eval(graph, llm, tracing, args.cases, args.case, run=run, after_case=save)
     finally:
         if isinstance(kb, HttpKbClient):
             await kb.aclose()
         tracing.shutdown()
-
-    score = load_score_module(args.cases)
-    rows = [vars(r) for r in run.results]
-    passed, reasons = score.acceptance(rows, run.not_run)
-    spent = sum(r.cost or 0.0 for r in run.results)
-    table = score.render_table(rows, passed, reasons)
+        # Whatever ran is kept, also when the run was cut.
+        passed, table = save(run)
     print(table)
-    print(f"harcanan: ${spent:.4f}" + (f" / tavan ${budget.cap:.2f}" if budget else ""))
-    base = results_dir / f"{date.today().isoformat()}-{args.tag}"
-    result = {
-        "tag": args.tag,
-        "date": date.today().isoformat(),
-        "models": {"fast": _model_name(names.fast), "strong": _model_name(names.strong)},
-        "kb": args.kb,
-        "estimate": {"per_case_usd": made.per_case, "source": made.source},
-        "budget_usd": args.budget_usd,
-        "spent_usd": spent,
-        "passed": passed,
-        "reasons": reasons,
-        "not_run": run.not_run,
-        "cases": rows,
-    }
-    _write(
-        base.with_suffix(".json"),
-        json.dumps(result, ensure_ascii=False, indent=1, default=str),
-    )
-    _write(base.with_suffix(".md"), f"# Eval {args.tag} ({date.today().isoformat()})\n\n{table}\n")
-    if args.record_intake:
-        for r in run.results:
-            if r.intake is not None:
-                _write(
-                    args.record_intake / f"{r.case_id}.json",
-                    json.dumps(r.intake, ensure_ascii=False, indent=1),
-                )
-    return 0 if not run.not_run and all(r.answer is not None for r in run.results) else 1
+    spent = sum(r.cost or 0.0 for r in run.results)
+    cap = f" / tavan ${budget.cap:.2f}" if budget else ""
+    print(f"harcanan: ${spent:.4f}{cap}; önceki sonuç dosyaları: ${made.earlier_spent:.2f}")
+    answered = all(r.answer is not None for r in run.results)
+    return 0 if passed and answered and not run.not_run else 1
 
 
 def main() -> None:

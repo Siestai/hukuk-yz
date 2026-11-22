@@ -106,18 +106,29 @@ def must_ask_metric(case: dict[str, Any], clarification: dict[str, Any] | None) 
     )
 
 
+def _own_wording(answer: dict[str, Any]) -> dict[str, Any]:
+    """The answer without the values of `source_gap.given_facts`: those are the user's own
+    words, repeated back, not the answer's."""
+    gap = answer.get("source_gap")
+    if not isinstance(gap, dict) or not gap.get("given_facts"):
+        return answer
+    facts = [{k: v for k, v in f.items() if k != "value"} for f in gap["given_facts"]]
+    return answer | {"source_gap": gap | {"given_facts": facts}}
+
+
 def must_not_found(answer: dict[str, Any], case: dict[str, Any]) -> list[str]:
-    text = normalize(" ".join(strings(answer, QUOTED_KEYS)))
+    text = normalize(" ".join(strings(_own_wording(answer), QUOTED_KEYS)))
     return [m for m in case["expected"].get("must_not", []) if normalize(m) in text]
 
 
 def progressive_found(answer: dict[str, Any]) -> list[str]:
     """The "-iyor" forms of the answer's own wording (md. 24)."""
-    return progressive_forms(strings(answer, NOT_SCANNED_FOR_MODE))
+    return progressive_forms(strings(_own_wording(answer), NOT_SCANNED_FOR_MODE))
 
 
 def unread_citations(answer: dict[str, Any], read_ids: set[str]) -> list[str]:
-    """The künyeler cited from a source the run did not read (md. 25), by the run's trace."""
+    """The künyeler the answer cites from a source not in `read_ids`, the sources the run read
+    (the graph state `read`, md. 25)."""
     return [
         c.get("ref", "?") for c in cited_citations(answer) if c.get("source_id") not in read_ids
     ]
@@ -204,6 +215,8 @@ def acceptance(rows: list[dict[str, Any]], not_run: Sequence[str] = ()) -> tuple
     reasons = []
     if not_run:
         reasons.append(f"koşulmayan vaka (bütçe tavanı): {', '.join(not_run)}")
+    if failed := [r["case_id"] for r in rows if r["error"]]:
+        reasons.append(f"hata ile biten vaka: {', '.join(failed)}")
     ask = _mean(_measured(rows, "must_ask"))
     if ask is not None and ask < MUST_ASK_MEAN:
         reasons.append(f"must_ask ortalaması {_percent(ask)} < {_percent(MUST_ASK_MEAN)}")
@@ -333,6 +346,9 @@ def total(metrics: list[Metric]) -> float:
     return sum(measured) / len(measured) if measured else 0.0
 
 
+TEXT_LISTS = ("headline_contains", "must_cite", "missing_in_kb", "must_ask", "must_not")
+
+
 def load_case(path: Path) -> dict[str, Any]:
     """A case file: `expected.topic` names the template the case falls into, and the sources the
     knowledge base lacks are listed in `expected.missing_in_kb` (task 19)."""
@@ -341,8 +357,13 @@ def load_case(path: Path) -> dict[str, Any]:
     expected = loaded.get("expected")
     if not isinstance(expected, dict) or not isinstance(expected.get("topic"), str):
         raise ValueError(f"{path.name}: expected.topic names the template of the case")
-    if "missing_in_kb" in loaded or not isinstance(expected.get("missing_in_kb", []), list):
+    if "missing_in_kb" in loaded:
         raise ValueError(f"{path.name}: missing_in_kb is a list under expected")
+    for key in TEXT_LISTS:
+        items = expected.get(key, [])
+        # An unquoted law number ("- 5434") loads as an int and would fail the scoring later.
+        if not isinstance(items, list) or not all(isinstance(i, str) for i in items):
+            raise ValueError(f"{path.name}: expected.{key} is a list of text (quote numbers)")
     return loaded
 
 

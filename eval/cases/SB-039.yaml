@@ -14,12 +14,12 @@ expected:
   # içindir (yürürlük tarihinden / üyeliğin bildirildiği tarihten).
   must_cite:
     - 6356 m.39/4
-    - 6772
+    - "6772"
   # İlave tediye 6772 sayılı Kanuna dayanır; Kanun KB'de ve Drive kopyasında yoktur, madde
   # numarası okunamadığı için künye madde içermez. Kapsamı ve hak ediş koşulu okunmadan
   # söylenmez.
   missing_in_kb:
-    - 6772
+    - "6772"
   must_ask:
     - dayanisma_talep_tarihi
     - tis_yararlanma_hukmu

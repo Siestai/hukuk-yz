@@ -104,7 +104,7 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     results, intake = tmp_path / "results", tmp_path / "intake"
     argv = [str(CASES), "--kb", "fixtures", "--case", "SB-016", "--tag", "smoke"]
     argv += ["--results", str(results), "--record-intake", str(intake)]
-    assert await amain(argv) == 0
+    code = await amain(argv)
     [saved_path] = results.glob("*-smoke.json")
     assert saved_path.name == f"{date.today().isoformat()}-smoke.json"
     saved = json.loads(saved_path.read_text())
@@ -113,6 +113,8 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     assert saved["cases"][0]["intake"] == INTAKE_SB016
     assert saved["cases"][0]["error"] is None and saved["cases"][0]["cost"] is None
     assert saved["not_run"] == [] and isinstance(saved["passed"], bool)
+    # A run below the thresholds exits with 1.
+    assert code == (0 if saved["passed"] else 1)
     table = saved_path.with_suffix(".md").read_text()
     assert "| SB-016 |" in table and "| toplam |" in table
     assert json.loads((intake / "SB-016.json").read_text()) == INTAKE_SB016
@@ -172,19 +174,31 @@ async def test_the_budget_gate_stops_a_case_at_the_cap_and_calls_no_model_after(
     assert run.not_run == ["SB-016"]
 
 
-def test_the_estimate_is_the_mean_real_cost_of_earlier_runs(tmp_path: Path) -> None:
+def earlier(cases: list[dict[str, object]], fast: str = "anthropic:a") -> dict[str, object]:
+    return {"models": {"fast": fast, "strong": "anthropic:b"}, "cases": cases}
+
+
+def test_the_estimate_is_the_mean_real_cost_of_answered_cases_of_earlier_runs_of_the_models(
+    tmp_path: Path,
+) -> None:
+    answered: dict[str, object] = {"answer": {}, "error": None}
+    # A run of the old format (no models) and one of another model are not used for the mean.
     (tmp_path / "2026-11-01-old.json").write_text(
         json.dumps([{"case_id": "SB-001", "cost": 0.3, "error": None}])
     )
-    (tmp_path / "2026-11-02-new.json").write_text(
+    (tmp_path / "2026-11-02-other.json").write_text(
+        json.dumps(earlier([{"case_id": "SB-001", "cost": 0.9, **answered}], fast="x:y"))
+    )
+    (tmp_path / "2026-11-03-new.json").write_text(
         json.dumps(
-            {
-                "cases": [
-                    {"case_id": "SB-016", "cost": 0.1, "error": None},
-                    {"case_id": "SB-024", "cost": None, "error": None},
-                    {"case_id": "SB-026", "cost": 0.01, "error": "kb_unavailable"},
+            earlier(
+                [
+                    {"case_id": "SB-016", "cost": 0.1, **answered},
+                    {"case_id": "SB-021", "cost": 0.3, **answered},
+                    {"case_id": "SB-024", "cost": None, **answered},
+                    {"case_id": "SB-026", "cost": 0.01, "answer": None, "error": "kb_down"},
                 ]
-            }
+            )
         )
     )
 
@@ -192,6 +206,8 @@ def test_the_estimate_is_the_mean_real_cost_of_earlier_runs(tmp_path: Path) -> N
 
     assert made.per_case == pytest.approx(0.2)
     assert "2 vaka" in made.source and "önceki koşu" in made.source
+    # What every earlier result file spent, for the cap of all rounds.
+    assert made.earlier_spent == pytest.approx(0.3 + 0.9 + 0.1 + 0.3 + 0.01)
 
 
 def test_without_earlier_runs_the_estimate_prices_assumed_tokens(
@@ -203,7 +219,7 @@ def test_without_earlier_runs_the_estimate_prices_assumed_tokens(
         priced.append((model, i, o))
         return None if model == "x:unknown" else 0.05
 
-    monkeypatch.setattr("agent.eval._cost", cost)
+    monkeypatch.setattr("agent.llm._cost", cost)
 
     made = estimate(tmp_path, Models("anthropic:fast", "anthropic:strong"))
 
@@ -230,16 +246,104 @@ async def test_estimate_only_calls_no_model_and_writes_nothing(
     assert list(tmp_path.iterdir()) == []
 
 
+async def test_a_failed_model_call_counts_its_tokens_and_cost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flat_cost(monkeypatch, 0.1)
+    # An intake the schema refuses every time: the call fails after its retries.
+    script = Script(intake={"title": "konu yok"})
+    model = scripted(script)
+    budget = Budget(cap=5.0, per_case=0.1)
+    llm = EvalLlm(Models(model, model), budget)
+    graph = build_eval_graph(llm, FixtureKb())
+
+    run = await run_eval(graph, llm, Tracing(), CASES, only=["SB-016"])
+
+    result = run.results[0]
+    assert len(script.calls) > 1 and result.error is not None
+    assert result.input_tokens > 0 and result.cost == pytest.approx(0.1)
+    assert budget.spent == pytest.approx(0.1)
+
+
+async def test_under_a_budget_a_call_without_a_price_stops_the_run() -> None:
+    script = Script(**vars(SB016_SCRIPT) | {"calls": []})
+    model = scripted(script)
+    llm = EvalLlm(Models(model, model), Budget(cap=5.0, per_case=0.1))
+    graph = build_eval_graph(llm, FixtureKb())
+
+    run = await run_eval(graph, llm, Tracing(), CASES, only=["SB-001", "SB-016"])
+
+    assert len(script.calls) == 1
+    assert [r.error for r in run.results] == ["budget_exceeded"]
+    assert run.not_run == ["SB-016"]
+
+
+async def test_an_exception_in_a_case_is_its_error_and_the_run_goes_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken(trace: object) -> dict[str, int]:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("agent.eval._issue_counts", broken)
+    model = scripted(Script(**vars(SB016_SCRIPT) | {"calls": []}))
+    llm = EvalLlm(Models(model, model))
+    graph = build_eval_graph(llm, FixtureKb())
+    seen: list[int] = []
+
+    run = await run_eval(
+        graph,
+        llm,
+        Tracing(),
+        CASES,
+        only=["SB-001", "SB-016"],
+        after_case=lambda r: seen.append(len(r.results)),
+    )
+
+    assert [r.error for r in run.results] == ["eval_error: RuntimeError"] * 2
+    assert run.results[0].input_tokens > 0
+    assert seen == [1, 2]
+
+
+async def test_the_result_is_written_even_when_every_case_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def broken(trace: object) -> dict[str, int]:
+        raise RuntimeError("boom")
+
+    model = scripted(Script(**vars(SB016_SCRIPT) | {"calls": []}))
+    monkeypatch.setattr("agent.eval._issue_counts", broken)
+    monkeypatch.setattr("agent.eval.Models", lambda fast, strong: Models(model, model))
+    monkeypatch.setattr("agent.eval.Tracing.from_settings", lambda settings: Tracing())
+    argv = [str(CASES), "--kb", "fixtures", "--case", "SB-016", "--results", str(tmp_path)]
+
+    assert await amain([*argv, "--tag", "broken"]) == 1
+
+    [saved] = tmp_path.glob("*-broken.json")
+    data = json.loads(saved.read_text())
+    assert [c["error"] for c in data["cases"]] == ["eval_error: RuntimeError"]
+    assert not data["passed"] and saved.with_suffix(".md").exists()
+
+
 async def test_a_budget_cannot_be_held_for_a_model_without_a_price(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setenv("AGENT_MODEL_FAST", "x:unknown")
+    # An estimate from earlier runs of the model does not make its calls priced.
+    earlier_run = tmp_path / "2026-11-01-r0.json"
+    earlier_run.write_text(
+        json.dumps(
+            {
+                "models": {"fast": "x:unknown", "strong": "anthropic:claude-sonnet-5-5"},
+                "cases": [{"case_id": "SB-001", "cost": 0.2, "answer": {}, "error": None}],
+            }
+        )
+    )
 
     argv = [str(CASES), "--budget-usd", "1", "--results", str(tmp_path), "--kb", "fixtures"]
     assert await amain(argv) == 2
 
     assert "x:unknown" in capsys.readouterr().err
-    assert list(tmp_path.iterdir()) == []
+    assert list(tmp_path.iterdir()) == [earlier_run]
 
 
 async def test_fixture_kb_preserves_literal_quotes_and_original_offsets() -> None:

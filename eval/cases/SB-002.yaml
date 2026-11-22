@@ -34,7 +34,7 @@ expected:
     # 5434 sayılı Kanun ve 5510 Geçici m.4: 2008/Ekim öncesi 4/1-(c) (Emekli Sandığı iştirakçisi) için
     # geçiş hükmü. 5510 Geçici m.4 çıkarımı var ancak güven bandı low (K1 gereği okunamaz).
     - 5510 m.Geçici 4
-    - 5434
+    - "5434"
     # Notlarda "ilgili AYM kararları" anılmaktadır; yerel KB'nin decision tablosu boştur ve
     # teyitli karar yoktur. Künye yazılmamıştır.
     - AYM kararı (ana-baba gelir şartı, belirlenmedi)
