@@ -201,9 +201,17 @@ facts:
         - {ref: "5510 m.102/1-e", category: statute}
         - {ref: "2020/8 m.2.8.1", category: admin_act}
         - {ref: "2020/8 m.2.8.3", category: admin_act}
+# Görev 19 B6: 2020/8 bütün genelge olarak değil, dala göre adıyla okunur; indirimler (m.3.1,
+# m.3.2) her zaman, alt bent bölümleri yalnız fiil o alt bende girdiğinde (when, asked_when ile
+# aynı anlam). Adıyla okunan bölüm uzun olsa da tam gösterilir (2.8.1 yaklaşık 17 bin karakter).
 must_read:
   - {ref: "5510 m.102", category: statute}
-  - {ref: "2020/8", category: admin_act}
+  - {ref: "2020/8 m.3.1", category: admin_act}
+  - {ref: "2020/8 m.3.2", category: admin_act}
+  - {ref: "2020/8 m.2.1.1", category: admin_act, when: {fiil: [ise_giris_gec, ise_giris_tespit]}}
+  - {ref: "2020/8 m.2.8.1", category: admin_act, when: {fiil: [bordro_gecersiz]}}
+  - {ref: "2020/8 m.2.8.3", category: admin_act, when: {fiil: [bordro_gecersiz]}}
+  - {ref: "2020/8 m.2.6.2.5", category: admin_act, when: {fiil: [yalniz_kazanc_eksik]}}
 queries:
   - idari para cezası kendiliğinden verme otuz gün içinde dörtte bir ödeme onbeş gün
   - idari para cezası peşin ödeme tebliğ tarihinden onbeş gün dörtte üçü tahsil

@@ -65,7 +65,7 @@ def test_a_value_that_is_an_option_becomes_the_options_label() -> None:
 
 
 def test_assumed_never_needs_the_users_word_for_it() -> None:
-    said = IntakeFact(key="yer_alti", value="Yer altı işi değil", status="assumed_never")
+    said = IntakeFact(key="yer_alti", value="hayir", status="assumed_never")
     silent = IntakeFact(key="onceki_donem", value=None, status="assumed_never")
 
     facts = build(TOPIC, intake(said, silent), None)
@@ -83,7 +83,7 @@ def test_earlier_turns_fill_what_this_question_does_not_say() -> None:
 
 def test_only_unknown_critical_facts_are_asked_in_the_order_of_the_template() -> None:
     facts = build(
-        TOPIC, intake(KIDEM, IntakeFact(key="isci_sayisi", value="45", status="known")), None
+        TOPIC, intake(KIDEM, IntakeFact(key="isci_sayisi", value="gte_30", status="known")), None
     )
 
     assert critical_unknown(TOPIC, facts) == [
@@ -103,8 +103,14 @@ def test_only_unknown_critical_facts_are_asked_in_the_order_of_the_template() ->
 
 def test_nothing_is_asked_when_every_critical_fact_is_known() -> None:
     every = [
-        IntakeFact(key=k, value="03.10.2026" if k == "bildirim_tarihi" else "x", status="known")
-        for k in [f.key for f in TOPIC.facts]
+        IntakeFact(
+            key=f.key,
+            value="03.10.2026"
+            if f.key == "bildirim_tarihi"
+            else (f.choices[0].value if f.choices else "x"),
+            status="known",
+        )
+        for f in TOPIC.facts
     ]
     facts = build(TOPIC, intake(*every), None, "03.10.2026")
 
@@ -374,3 +380,72 @@ def test_an_answer_that_opens_a_branch_asks_its_facts_once_more() -> None:
     assert after("X türü") == ["x_olgu"]
     assert after("y") is None
     assert after(None) is None
+
+
+def test_free_text_for_any_choice_fact_is_unknown_and_so_asked_in_its_branch() -> None:
+    from agent.facts import follow_up
+
+    topic = get_topic("idari_para_cezasi")
+    # SB-021 as the intake read it: free text for three choice facts, none an option.
+    question = "Bordrolarda bir sigortalının imzası eksik; ceza ne olur?"
+    facts = build_facts(
+        topic,
+        IntakeOutput(
+            topic=topic.id,
+            title="Bordro",
+            facts=[
+                IntakeFact(
+                    key="fiil", value="Bordrolarda bir sigortalının imzası eksik", status="known"
+                ),
+                IntakeFact(
+                    key="tutanakla_teslim",
+                    value="Denetmen resmi tebligat olmaksızın işverenden bordro alıyor",
+                    status="known",
+                ),
+                IntakeFact(key="ceza_turu", value="Bordro geçersizliği", status="known"),
+                IntakeFact(key="odeme_sekli", value="Banka kanalıyla", status="known"),
+            ],
+        ),
+        None,
+        question=question,
+        today=TODAY,
+    )
+
+    assert {k: v for k, v in statuses(facts).items() if v == "known"} == {"odeme_sekli": "known"}
+    first = clarification_for(topic, facts, {})
+    assert first is not None
+    assert [q.fact_key for q in first.questions] == ["ceza_turu", "kendiliginden", "fiil"]
+    fiil = next(q.id for q in first.questions if q.fact_key == "fiil")
+    answered = apply_answers(
+        topic,
+        first,
+        [ClarificationAnswer(question_id=fiil, value="bordro_gecersiz")],
+        facts,
+        today=TODAY,
+    )
+    more = follow_up(topic, first, answered, {})
+    assert more is not None
+    assert [q.fact_key for q in more.questions] == ["tutanakla_teslim", "defter_turu"]
+
+
+@pytest.mark.parametrize(
+    ("fiil", "sections"),
+    [
+        ("bordro_gecersiz", ["2020/8 m.3.1", "2020/8 m.3.2", "2020/8 m.2.8.1", "2020/8 m.2.8.3"]),
+        ("ise_giris_tespit", ["2020/8 m.3.1", "2020/8 m.2.1.1", "2020/8 m.3.2"]),
+        (None, ["2020/8 m.3.1", "2020/8 m.3.2"]),
+    ],
+)
+def test_the_plan_reads_a_must_read_only_in_its_branch(
+    fiil: str | None, sections: list[str]
+) -> None:
+    from agent.plan import make_plan
+
+    topic = get_topic("idari_para_cezasi")
+    given = [IntakeFact(key="fiil", value=fiil, status="known")] if fiil else []
+    facts = build(topic, IntakeOutput(topic=topic.id, title="Ceza", facts=given), None)
+
+    plan = make_plan(topic, "Ceza?", facts, TODAY)
+
+    assert sorted(r.ref for r in plan.must_read if r.category == "admin_act") == sorted(sections)
+    assert "5510 m.102" in [r.ref for r in plan.must_read]

@@ -1,9 +1,11 @@
-"""The plan (no model): what the topic requires to be read, and the date whose law applies."""
+"""The plan (no model): what the topic requires to be read in the branch of the facts, and the
+date whose law applies."""
 
 from datetime import date
 
 from pydantic import BaseModel
 
+from agent.facts import holds
 from agent.topics import SourceRef, Topic
 from hukuk_models.chat import CaseFacts
 
@@ -20,6 +22,11 @@ def make_plan(topic: Topic, question: str, facts: CaseFacts, today: date) -> Pla
     return Plan(
         as_of=facts.event_date or today,
         as_of_assumed=facts.event_date is None,
-        must_read=topic.must_read,
+        # A must-read out of the branch of the facts is not read, and so not unread either.
+        must_read=[
+            SourceRef(ref=r.ref, category=r.category)
+            for r in topic.must_read
+            if holds(topic, facts, r.when)
+        ],
         queries=[question, *topic.queries],
     )

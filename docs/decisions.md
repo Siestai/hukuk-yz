@@ -254,3 +254,17 @@
   döner; böylece hata turuna da geri bildirim verilir. Cevap uydurulmaz: turda cevap yoktur,
   yalnız hata ve `source_gap`. `terminal_error` yalnız bu karardan önce kaydedilmiş teslimler
   için dolar. App tarafı yeniden denenebilir teslim hataları (`chat_unavailable`) tur olmaz.
+
+### 2026-11-22 — Görev 19 B6 tur 1: doğrulanmış satır yoksa da kaynak yetersiz cevabı
+
+- **Hata değil, dürüst cevap** (B6 tur 1 kök neden analizi; onay birleştirmede verilir; md. 25):
+  hüküm haritasında doğrulanan satır kalmayınca ajan artık `answer_not_verified` hatası değil,
+  B4'ün "kaynak yetersiz" cevabını döner (`source_gap` dolu, `holding_map.rows` boş). Sözleşmede
+  boş hüküm haritası yalnız `source_gap` taşıyan cevapta geçerlidir. B4 kaydındaki "turda cevap
+  yoktur" ifadesi bu durum için geçersizdir; hata turu ve `answer_not_verified` kodu eski kayıtlar
+  ve gerçekten cevap üretilemeyen durumlar için kalır.
+- **Okuma sınırı:** şablonun `must_read` listesinde adıyla geçen madde veya genelge bölümü
+  20.000 karaktere kadar gösterilir (2020/8 m.2.8.1 yaklaşık 17.000 karakter); diğer kaynaklar
+  6.000'de kalır. Bütün genelge künyesi ("2020/8") aramanın bulduğu en fazla 6 bölümü okur.
+  `must_read` girdisi `when` ile yalnız bir dalda okunabilir (`asked_when` ile aynı anlam); dal
+  dışında okunmaz ve okunamayan kaynak sayılmaz.

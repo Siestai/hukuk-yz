@@ -210,7 +210,8 @@ class HoldingRow(ChatModel):
 
 
 class HoldingMap(ChatModel):
-    rows: Annotated[list[HoldingRow], Field(min_length=1)]
+    # Empty only on the "kaynak yetersiz" answer (`Answer.source_gap`): no row was verified.
+    rows: list[HoldingRow]
     reasoning_summary: str
     citations: list[CitationRef] = []
 
@@ -292,6 +293,8 @@ class Answer(ChatModel):
     def _consistent(self) -> Self:
         if self.short_point_count > len(self.points):
             raise ValueError("short_point_count must not exceed the number of points")
+        if not self.holding_map.rows and self.source_gap is None:
+            raise ValueError("an answer rests on a holding map row, unless it says the source gap")
         if self.status == "conditional" and not self.missing_info:
             raise ValueError("a conditional answer says what it depends on (missing_info)")
         if self.status == "definite":

@@ -25,12 +25,13 @@ INTAKE_INSTRUCTIONS = f"""\
 Sen bir iş ve sosyal güvenlik hukuku asistanının olay kayıt adımısın. Kullanıcının sorusundan \
 yalnızca şunları çıkarırsın: konu, kısa bir başlık, olay tarihi ve olgular. Hukuki değerlendirme \
 yapmaz, soru sormaz, cevap vermezsin.
-- topic: verilen konu kimliklerinden biri; hiçbiri uymuyorsa "genel".
+- topic: verilen konu kimliklerinden biri; hiçbiri uymamakta ise "genel".
 - facts: yalnız seçtiğin konunun olgu anahtarlarını kullan. Soruda açıkça yazılan olguyu value \
 ile (kullanıcının sözleriyle) ve status "known" ile yaz. Soruda yazılmayan olguyu listeye ekleme.
-- secenekler: seçtiğin konuda verilen bu olgular, sorunun hangi dala girdiğini belirler \
-(örneğin sorunun konusu, fesih nedeni). Soru bir seçeneğe açıkça uyuyorsa olguyu value olarak \
-o seçeneğin değeriyle ve status "known" ile yaz; açıkça uymuyorsa ekleme.
+- secenekler: seçtiğin konuda seçenekleri verilen olgular yalnız bu seçeneklerden biriyle bilinir \
+(örneğin sorunun konusu, fesih nedeni, işçi sayısı aralığı). Soru bir seçeneğe açıkça uymakta ise \
+olguyu value olarak o seçeneğin değeriyle yaz; açıkça uymamakta ise ekleme. Seçeneğe uymayan \
+serbest metin bilinmeyen olgu sayılır ve kullanıcıya sorulur.
 - Bir olgunun uygulanmadığını kullanıcı açıkça söylediyse status "assumed_never"; söylemediyse \
 bunu asla varsayma.
 - event_date: yalnız soruda açıkça yazılı bir olay tarihi varsa (YYYY-MM-DD); bugünün tarihini \
@@ -45,10 +46,11 @@ hüküm için bir satır yazarsın: hükmün koşulu, olgunun bu koşul için de
 - source_id yalnız verilen kaynak listesinden olmalı; sub, hükmün fıkrasıdır (örneğin "1").
 - condition_quote, kaynak metinde BİREBİR geçen en az üç kelimelik bir parça olmalı; kaynaktan \
 kopyala, değiştirme, kısaltma, özetleme. Birebir geçmeyen satır silinir.
-- result: met (koşul sağlanıyor), not_met, not_applicable veya unknown (olgu bilinmiyorsa).
+- result: met (koşul sağlanmaktadır), not_met, not_applicable veya unknown (olgu \
+bilinmemekte ise).
 - depends_on_facts: bu satırın sonucunu değiştirebilecek bütün olgu anahtarlarını yaz; \
 istisna, önceki dönem/süre birleştirme ve alternatif koşul girdilerini de kapsa. Bunlardan biri \
-bilinmiyorsa genel koşulun sonucu unknown kalır; bilinmeyeni hayır veya yok sayma. Yalnız \
+bilinmemekte ise genel koşulun sonucu unknown kalır; bilinmeyeni hayır veya yok sayma. Yalnız \
 bilinen temel değerin eşik altında olması genel koşula not_met demeye yetmez. Bağımsız ve \
 bilinen bir alt koşul için met/not_met korunur; ilgisiz bilinmeyen olgu sonucu değiştirmez.
 - depends_on_facts yalnız Olgular listesindeki key değerlerinden oluşur; listede olmayan, \
@@ -71,13 +73,15 @@ hesaplamazsın (hesap ayrı bir motorda yapılır).
 - Kullanıcının sorusunu yanıtla; ilgisiz kaynaklardan başka bir konuya geçme.
 - Her noktanın citations alanında okunan kaynağın source_id'si ve birebir quote bulunmalı; \
 varsa sub ekle. quote kaynak metninden birebir olmalı. Atfı olmayan nokta silinir.
+- Okunan metinde quote'un önünde "(N)" fıkra işareti (örneğin "(2)") bulunmakta ise sub alanına \
+o fıkranın numarasını yaz ("2"); fıkra işareti yoksa sub boş kalır.
 - Bilinmeyen kritik olgu varsa status "conditional" olmalı ve missing_info neye göre değiştiğini \
 koşul -> sonuç olarak söylemeli. Her bilinmeyen kritik olguyu kendi fact_key değeriyle \
 missing_info içinde kapsa; netleştirmede sorulmuş olması yeterli değildir. \
 Bilinmeyen olgu varken "definite" yazma.
 - Her iddia ve missing_info içindeki her koşullu hukuki sonuç, yalnız geçerli source_id ile \
 değil, o sonucu gerçekten destekleyen okunan alıntıyla dayanmalıdır. Birden çok kural \
-birleştiriliyorsa her gerekli kuralın alıntısını ver. Aynı kaynakta geçen ilgisiz bir alıntı \
+birleştirilmekte ise her gerekli kuralın alıntısını ver. Aynı kaynakta geçen ilgisiz bir alıntı \
 dayanak değildir. Soru sorulmuş olması veya tuzak notu hukuki sonucun kaynağı değildir.
 - Okunan destek yetersizse hukuki sonuç icat etme; ilgili dalda bu kaynaklarla sonucun \
 belirlenemediğini söyle, ilgisiz alıntı ekleme. Kaynak eksikliği bilinen olguyu değiştirmez.
@@ -89,7 +93,9 @@ dalda belirsizlik yazmak başlıktaki kesin kabul veya reddi düzeltmez.
 - Eşik ve birim alıntıda nasılsa öyle kalmalı; kapsayıcı sınırı dışlayıcı yapma. Koşullu dalda \
 eşik sonucu söylersen hem eşiğin hem varsa birleştirme kuralının alıntısını göster.
 - status "definite" ise missing_info boş olur.
-- Verilen tuzak ve ayrımları gözet; kesin söylenemeyen şeyi kesin söyleme.
+- Verilen tuzak ve ayrımları gözet; kesin söylenemeyen şeyi kesin söyleme. Ancak tuzak notlarını \
+ve ayrımları cevaba yazma: bir iddiayı anıp reddeden cümle kurma ("X denemez", "X sonucu \
+kurulmamıştır" gibi); olumlu kuralı yaz.
 - headline tek cümlelik sonuçtur; points kısa ve ayrı noktalardır (en önemli üçü başta); \
 reasoning_summary hüküm haritasının kısa gerekçesidir.
 - headline_rows: başlığın sonucunu dayandırdığın hüküm haritası satırlarının row numaraları; en az \
@@ -134,10 +140,8 @@ def intake_prompt(question: str, topics: dict[str, Topic], previous: CaseFacts |
             "kapsam": t.description,
             "olgu_anahtarlari": {f.key: f.label for f in t.facts},
         }
-        if t.branch_facts:
-            entry["secenekler"] = {
-                f.key: {o.value: o.label for o in f.choices} for f in t.branch_facts
-            }
+        if options := {f.key: {o.value: o.label for o in f.choices} for f in t.facts if f.choices}:
+            entry["secenekler"] = options
         listing.append(entry)
     parts = [f"Konular:\n{_dump(listing)}", f"Soru:\n{question}"]
     if previous is not None:

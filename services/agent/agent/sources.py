@@ -50,6 +50,9 @@ class ReadSource(BaseModel):
 
 # What the models are shown of one source, at most; the rest counts as not read.
 MAX_SOURCE_CHARS = 6000
+# Of a statute article or genelge section the template names by its künye: a long genelge
+# section (2020/8 m.2.8.1 is 17k characters) holds its rule past the common limit.
+MAX_NAMED_SOURCE_CHARS = 20000
 
 
 def split_ref(ref: str) -> tuple[str, str]:
@@ -110,10 +113,10 @@ def merge(read: Iterable[ReadSource], new: Iterable[ReadSource]) -> list[ReadSou
     return list(merged.values())
 
 
-def shown(source: ReadSource) -> ReadSource:
-    """`source` cut to what a model is shown of it (`MAX_SOURCE_CHARS`), so that the sources
+def shown(source: ReadSource, limit: int = MAX_SOURCE_CHARS) -> ReadSource:
+    """`source` cut to what a model is shown of it (`limit` characters), so that the sources
     "read" are the texts that were put before the model and no more."""
-    left = MAX_SOURCE_CHARS
+    left = limit
     passages = []
     for passage in source.passages:
         if left <= 0:

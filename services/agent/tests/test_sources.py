@@ -158,6 +158,10 @@ def test_the_models_are_shown_no_more_than_what_is_recorded_as_read() -> None:
 
     assert [len(p.text) for p in cut.passages] == [MAX_SOURCE_CHARS - 10, 10]
     assert shown(source(M18_1)).passages == source(M18_1).passages
+    # A source named by its künye gets a higher limit.
+    assert shown(source(long, M18_1, M18_4), MAX_SOURCE_CHARS * 2).passages == (
+        source(long, M18_1, M18_4).passages
+    )
 
 
 def test_a_quote_in_another_paragraph_cannot_support_the_requested_sub() -> None:

@@ -32,6 +32,14 @@ class SourceRef(TopicModel):
     category: CitationCategory
 
 
+class MustRead(SourceRef):
+    """A source the topic requires to be read. With `when`, only in a branch: when every fact
+    named is in one of the listed states, as in `TopicFact.asked_when`; out of it the source is
+    not read and does not count as unread."""
+
+    when: dict[str, list[str]] = {}
+
+
 class Option(TopicModel):
     value: str
     label: str
@@ -107,7 +115,7 @@ class Topic(TopicModel):
     facts: list[TopicFact]
     # The fact whose date is the event date (md. 4), if the topic has one.
     event_date_fact: str | None = None
-    must_read: list[SourceRef] = []
+    must_read: list[MustRead] = []
     queries: list[str] = []
     # The distinctions the cards warn about; they go into the prompts as rules.
     traps: list[str] = []
@@ -123,40 +131,37 @@ class Topic(TopicModel):
             if fact is None or fact.question is None or fact.question.kind != "date":
                 raise ValueError("event_date_fact must be a fact asked as a date")
         for fact in self.facts:
-            for key, states in fact.asked_when.items():
-                branch = self.fact(key)
-                if key == fact.key:
-                    raise ValueError(f"{fact.key}: a condition does not name the fact itself")
-                if branch is None:
-                    raise ValueError(f"{fact.key}: asked_when names no fact {key}")
-                values = {o.value for o in branch.choices}
-                if not values:
-                    raise ValueError(f"{fact.key}: asked_when fact {key} has no options")
-                if UNKNOWN in values:
-                    raise ValueError(
-                        f"{key}: {UNKNOWN} is no option value, it is the unknown state"
-                    )
-                if not states:
-                    raise ValueError(f"{fact.key}: asked_when {key} lists no value")
-                if wrong := sorted(set(states) - values - {UNKNOWN}):
-                    raise ValueError(f"{fact.key}: {wrong} not an option of {key}")
-                # Without "unknown", the fact is asked only once the branch is known: so the branch
-                # fact must be asked whenever it is unknown, or the fact drops silently.
-                always_asked = branch.critical and all(
-                    UNKNOWN in other for other in branch.asked_when.values()
-                )
-                if UNKNOWN not in states and not always_asked:
-                    raise ValueError(
-                        f"{fact.key}: {key} is not always asked while unknown (never asked or "
-                        f"conditional), so the condition lists {UNKNOWN}"
-                    )
+            if fact.key in fact.asked_when:
+                raise ValueError(f"{fact.key}: a condition does not name the fact itself")
+            self._check_condition(fact.key, "asked_when", fact.asked_when)
+        for source in self.must_read:
+            self._check_condition(source.ref, "when", source.when)
         return self
 
-    @property
-    def branch_facts(self) -> list[TopicFact]:
-        """The facts a condition reads, in the order of the template."""
-        named = {key for f in self.facts for key in f.asked_when}
-        return [f for f in self.facts if f.key in named]
+    def _check_condition(self, owner: str, name: str, condition: dict[str, list[str]]) -> None:
+        for key, states in condition.items():
+            branch = self.fact(key)
+            if branch is None:
+                raise ValueError(f"{owner}: {name} names no fact {key}")
+            values = {o.value for o in branch.choices}
+            if not values:
+                raise ValueError(f"{owner}: {name} fact {key} has no options")
+            if UNKNOWN in values:
+                raise ValueError(f"{key}: {UNKNOWN} is no option value, it is the unknown state")
+            if not states:
+                raise ValueError(f"{owner}: {name} {key} lists no value")
+            if wrong := sorted(set(states) - values - {UNKNOWN}):
+                raise ValueError(f"{owner}: {wrong} not an option of {key}")
+            # Without "unknown", the condition holds only once the branch is known: so the branch
+            # fact must be asked whenever it is unknown, or the fact (the source) drops silently.
+            always_asked = branch.critical and all(
+                UNKNOWN in other for other in branch.asked_when.values()
+            )
+            if UNKNOWN not in states and not always_asked:
+                raise ValueError(
+                    f"{owner}: {key} is not always asked while unknown (never asked or "
+                    f"conditional), so the condition lists {UNKNOWN}"
+                )
 
     def fact(self, key: str) -> TopicFact | None:
         return next((f for f in self.facts if f.key == key), None)

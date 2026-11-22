@@ -512,7 +512,8 @@ async def test_real_auth_small_pool_parallel_kb_and_tcp_disconnect(
                     for id in ids
                 )
             )
-            assert all('"code":"answer_not_verified"' in r.text for r in answers)
+            # Nothing in the knowledge base: the honest "kaynak yetersiz" answer, not an error.
+            assert all('"type":"answer"' in r.text and '"source_gap":{' in r.text for r in answers)
             assert all(
                 '"code":"chat_unavailable"' not in r.text
                 and '"code":"internal_error"' not in r.text
@@ -585,14 +586,14 @@ async def test_real_auth_small_pool_parallel_kb_and_tcp_disconnect(
                         if row.delivery["status"] == "completed":
                             break
                     await asyncio.sleep(0.02)
-            # A terminal gate error is a completed request and replays its honest error,
-            # never another graph execution. Its identity also survives reload.
+            # A completed request replays its honest "kaynak yetersiz" answer, never another
+            # graph execution. Its identity also survives reload.
             detail = (await client.get(f"/chat/conversations/{id}")).json()
             assert detail["pending_request"] is None
-            assert detail["turns"][-1]["error"]["code"] == "answer_not_verified"
+            assert detail["turns"][-1]["answer"]["source_gap"] is not None
             retry_body = row.delivery["body"]
             replay = await client.post(f"/chat/conversations/{id}/messages", json=retry_body)
-            assert '"code":"answer_not_verified"' in replay.text
+            assert '"type":"answer"' in replay.text and '"source_gap":{' in replay.text
             async with target.state.engine.connect() as conn:
                 async with asyncio.timeout(10):
                     while True:

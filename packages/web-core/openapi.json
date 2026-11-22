@@ -3223,7 +3223,6 @@
             "items": {
               "$ref": "#/components/schemas/HoldingRow"
             },
-            "minItems": 1,
             "title": "Rows",
             "type": "array"
           }

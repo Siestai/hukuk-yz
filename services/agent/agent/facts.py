@@ -6,6 +6,7 @@ its question completes.
 """
 
 import re
+from collections.abc import Mapping, Sequence
 from datetime import date
 
 from agent.llm_schemas import IntakeOutput
@@ -83,7 +84,6 @@ def build_facts(
     earlier = {f.key: f for f in previous.facts} if previous else {}
     supplied = {f.key: f for f in extracted.facts}
     stated_event = _stated_event_date(extracted, question, today)
-    steering = {f.key for f in topic.branch_facts}
     facts = []
     for tf in topic.facts:
         fact = _extracted(tf, extracted)
@@ -107,9 +107,9 @@ def build_facts(
                 fact = earlier.get(tf.key)
         else:
             fact = fact or earlier.get(tf.key)
-            # A branch fact is known only as one of its options: anything else tells no branch,
-            # and an asked branch fact is then asked.
-            if fact and tf.key in steering and _matching_option(tf, fact.value or "") is None:
+            # A fact with options is known only as one of them: anything else tells no option
+            # (and no branch), and the fact is then asked where it is critical.
+            if fact and tf.choices and _matching_option(tf, fact.value or "") is None:
                 fact = None
         facts.append(fact or Fact(key=tf.key, label=tf.label, status="unknown"))
     # With a template date, the fact is the single source of truth, including unknown.
@@ -145,24 +145,27 @@ def _state(tf: TopicFact, fact: Fact | None) -> str:
     return option.value if option else UNKNOWN
 
 
+def holds(topic: Topic, facts: CaseFacts, condition: Mapping[str, Sequence[str]]) -> bool:
+    """Every fact `condition` names is in one of its listed states (an option value or UNKNOWN):
+    the facts are in the branch of an `asked_when` or a must-read `when`."""
+    by_key = {f.key: f for f in facts.facts}
+    return all(
+        _state(branch, by_key.get(key)) in states
+        for key, states in condition.items()
+        if (branch := topic.fact(key)) is not None
+    )
+
+
 def critical_unknown(topic: Topic, facts: CaseFacts) -> list[str]:
     """The keys of the critical facts that are still unknown, in the branch the facts are in."""
     by_key = {f.key: f for f in facts.facts}
-
-    def in_branch(tf: TopicFact) -> bool:
-        return all(
-            _state(branch, by_key.get(key)) in states
-            for key, states in tf.asked_when.items()
-            if (branch := topic.fact(key)) is not None
-        )
-
     return [
         tf.key
         for tf in topic.facts
         if tf.critical
         and (fact := by_key.get(tf.key)) is not None
         and fact.status == "unknown"
-        and in_branch(tf)
+        and holds(topic, facts, tf.asked_when)
     ]
 
 

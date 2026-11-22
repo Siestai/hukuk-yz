@@ -178,6 +178,14 @@ def test_a_source_gap_names_only_known_reasons_and_given_facts() -> None:
             SourceGap.model_validate(bad)
 
 
+def test_only_the_source_gap_answer_may_have_no_holding_row() -> None:
+    raw = _fixture_answer()
+    raw["holding_map"]["rows"] = []
+    with pytest.raises(ValidationError, match="holding map row"):
+        Answer.model_validate(raw)
+    assert Answer.model_validate({**raw, "source_gap": SOURCE_GAP}).holding_map.rows == []
+
+
 def test_a_point_is_unreviewed_exactly_when_one_of_its_citations_is() -> None:
     from hukuk_models.chat import AnswerPoint
 

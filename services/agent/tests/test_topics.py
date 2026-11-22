@@ -326,3 +326,53 @@ def test_a_question_basis_names_a_section_of_a_genelge_not_the_whole_act() -> No
     assert question("2020/8 m.2.6.2.5").basis[0].ref == "2020/8 m.2.6.2.5"
     with pytest.raises(ValidationError, match="section"):
         question("2020/8")
+
+
+def _reading(when: dict[str, list[str]], *facts: dict[str, Any]) -> Topic:
+    return Topic.model_validate(
+        {
+            "id": "t",
+            "title": "T",
+            "description": "T.",
+            "facts": list(facts),
+            "must_read": [{"ref": "2020/8 m.2.8.1", "category": "admin_act", "when": when}],
+        }
+    )
+
+
+def test_a_must_read_may_be_read_only_in_a_branch() -> None:
+    assert _reading({"dal": ["a"]}, ASKED_BRANCH).must_read[0].when == {"dal": ["a"]}
+    assert _reading({"dal": ["a", "unknown"]}, BRANCH).must_read[0].when == {
+        "dal": ["a", "unknown"]
+    }
+
+
+@pytest.mark.parametrize(
+    ("when", "facts", "error"),
+    [
+        ({"yok": ["a"]}, (BRANCH,), "no fact yok"),
+        ({"dal": ["c"]}, (BRANCH,), "not an option of dal"),
+        ({"dal": []}, (BRANCH,), "no value"),
+        ({"dal": ["a"]}, ({"key": "dal", "label": "Dal"},), "dal has no options"),
+        # Never asked and not listing "unknown": the source would silently go unread.
+        ({"dal": ["a"]}, (BRANCH,), "never asked"),
+    ],
+)
+def test_a_must_read_condition_on_no_such_fact_or_value_is_refused(
+    when: dict[str, list[str]], facts: tuple[dict[str, Any], ...], error: str
+) -> None:
+    with pytest.raises(ValidationError, match=error):
+        _reading(when, *facts)
+
+
+def test_the_fine_template_reads_the_genelge_sections_of_its_branch_not_the_whole_act() -> None:
+    topic = get_topic("idari_para_cezasi")
+    reading = {r.ref: r.when for r in topic.must_read if r.category == "admin_act"}
+    assert reading == {
+        "2020/8 m.3.1": {},
+        "2020/8 m.3.2": {},
+        "2020/8 m.2.1.1": {"fiil": ["ise_giris_gec", "ise_giris_tespit"]},
+        "2020/8 m.2.8.1": {"fiil": ["bordro_gecersiz"]},
+        "2020/8 m.2.8.3": {"fiil": ["bordro_gecersiz"]},
+        "2020/8 m.2.6.2.5": {"fiil": ["yalniz_kazanc_eksik"]},
+    }

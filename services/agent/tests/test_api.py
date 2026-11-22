@@ -165,7 +165,7 @@ async def test_a_failure_ends_the_stream_with_an_error_event_and_done(
     assert last == "done" and len(done["trace_id"]) == 32
 
 
-async def test_a_turn_with_no_verified_row_ends_with_its_own_error_code(
+async def test_a_turn_with_no_verified_row_ends_with_the_source_gap_answer(
     database_url: str,
 ) -> None:
     script = Script(holding={"rows": [row("statute:4857:m18", "Kanunda hiç yazmayan ifade")]})
@@ -175,10 +175,10 @@ async def test_a_turn_with_no_verified_row_ends_with_its_own_error_code(
         response = await client.post("/run", headers=KEY, json={"thread_id": thread, "skip": True})
 
     names = [name for name, _ in events(response)]
-    assert names[-2:] == ["error", "done"] and "answer" not in names
-    error = events(response)[-2][1]
-    assert error["code"] == ErrorCode.answer_not_verified
-    assert error["source_gap"]["topic"] == "İşe iade"
+    assert names[-2:] == ["answer", "done"] and "error" not in names
+    answer = events(response)[-2][1]["answer"]
+    assert answer["holding_map"]["rows"] == []
+    assert answer["source_gap"]["topic"] == "İşe iade"
 
 
 async def test_a_request_must_carry_one_of_text_answers_or_skip(

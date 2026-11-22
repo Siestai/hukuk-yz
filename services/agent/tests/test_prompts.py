@@ -14,7 +14,7 @@ from hukuk_models.chat import CaseFacts
 
 
 def test_draft_receives_the_exact_inclusive_threshold_quote() -> None:
-    rows, _ = verify_rows(
+    rows, _, _ = verify_rows(
         HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_1, "unknown")]}),
         READ,
         date(2026, 10, 3),
@@ -88,9 +88,37 @@ def test_the_intake_prompt_tells_every_template_apart_and_lists_the_branches() -
         assert by_id[topic.id]["kapsam"] == topic.description
     descriptions = [t.description for t in topics.values()]
     assert len(set(descriptions)) == len(descriptions)
-    # The facts a condition reads are given with their options, so that the intake picks one.
+    # Every fact with options is given with them, so that the intake picks one: free text for
+    # such a fact counts as unknown.
     assert by_id["kidem_ihbar"]["secenekler"]["fesih_nedeni"]["askerlik"] == (
         "İşçi muvazzaf askerlik nedeniyle ayrıldı"
     )
+    assert by_id["ise_iade"]["secenekler"]["isci_sayisi"] == {
+        "lt_30": "30'dan az",
+        "gte_30": "30 veya fazla",
+    }
     assert "hizmet_suresi" not in by_id["kidem_ihbar"]["secenekler"]
-    assert "secenekler" not in by_id["ise_iade"]
+    assert "kidem" not in by_id["ise_iade"]["secenekler"]
+
+
+def test_the_instructions_themselves_use_no_progressive_form() -> None:
+    import re
+
+    from agent import prompts
+    from hukuk_models.formal_turkish import progressive_forms
+
+    for name in ("INTAKE", "HOLDING", "DRAFT", "REWRITE"):
+        text = getattr(prompts, f"{name}_INSTRUCTIONS")
+        # The forbidden forms are named as quoted examples ("yapılıyor") or as suffixes
+        # (-iyorsa); every other word is the register the model is to copy.
+        own = re.sub(r'"[^"]*"|(?<!\w)-\w+', "", text)
+        assert progressive_forms([own]) == [], name
+
+
+def test_the_draft_is_told_to_cite_the_paragraph_and_to_state_the_rule_not_the_trap() -> None:
+    from agent.prompts import DRAFT_INSTRUCTIONS
+
+    assert '"(N)" fıkra işareti' in DRAFT_INSTRUCTIONS
+    assert "sub alanına o fıkranın numarasını yaz" in DRAFT_INSTRUCTIONS
+    assert "tuzak notlarını ve ayrımları cevaba yazma" in " ".join(DRAFT_INSTRUCTIONS.split())
+    assert "olumlu kuralı yaz" in DRAFT_INSTRUCTIONS

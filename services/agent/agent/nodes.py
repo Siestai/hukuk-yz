@@ -22,7 +22,6 @@ from agent.facts import (
 )
 from agent.gate import (
     SCHEMA_FAILED,
-    GateCited,
     GateDrops,
     check_draft,
     cited_by_status,
@@ -32,7 +31,7 @@ from agent.gate import (
     progressive_in,
     progressive_sentences,
 )
-from agent.holding import invented_keys, key_feedback, verify_rows
+from agent.holding import Verified, holding_feedback, verify_rows
 from agent.insufficient import source_gap
 from agent.kb import KbClient, Unreadable
 from agent.kunye import admin_act_section, mapped
@@ -40,6 +39,8 @@ from agent.llm import Llm
 from agent.llm_schemas import HoldingDraft, IntakeOutput, draft_output_type
 from agent.plan import Plan, make_plan
 from agent.sources import (
+    MAX_NAMED_SOURCE_CHARS,
+    MAX_SOURCE_CHARS,
     ReadSource,
     as_read_source,
     citation,
@@ -63,11 +64,14 @@ from hukuk_models.chat import (
 )
 
 # The draft is made once more when it fails the gate (docs/tasks/17-agent-v1.md); the last one
-# loses its "-iyor" sentences instead (task 19). A holding map whose rows depend on keys the
-# template does not have is made once more too; then those rows drop.
+# loses its "-iyor" sentences instead (task 19). A holding map with rows the model can mend (a key
+# the template does not have, a quote not in the text read, an "-iyor" form) is made once more
+# too, told all of it at once; then those rows drop.
 DRAFT_ATTEMPTS = 2
 # Hits of a free search that are read.
 SEARCH_LIMIT = 5
+# The sections of a genelge named as a whole ("2020/8") that are read, of those the search finds.
+WHOLE_ACT_SECTIONS = 6
 
 STEP_LABELS = {
     "intake": "Olay kaydediliyor",
@@ -139,8 +143,9 @@ async def _read_sections(
     kb: KbClient, ref: str, as_of: date, queries: Sequence[str]
 ) -> tuple[list[ReadSource], list[Missing]]:
     """The genelge sections `ref` names, each read whole. A künye of the whole act ("2020/8")
-    names the sections of it that the search finds for `queries`; every one of them that is not
-    read is missing with its own reason, and the act itself when none is read."""
+    names the first `WHOLE_ACT_SECTIONS` sections of it that the search finds for `queries`;
+    every one of them that is not read is missing with its own reason, and the act itself when
+    none is read."""
     found = admin_act_section(ref)
     whole_act = found is not None and found.section is None
     wanted = [] if found is None or whole_act else [ref]
@@ -148,6 +153,7 @@ async def _read_sections(
         for query in queries:
             hits = await kb.search(query, categories=["admin_act"], as_of=as_of, limit=SEARCH_LIMIT)
             wanted += [h.ref for h in hits if covers(h.ref, found.act) and h.ref not in wanted]
+        wanted = wanted[:WHOLE_ACT_SECTIONS]
     sources = []
     missing = []
     for section in wanted:
@@ -191,6 +197,14 @@ async def _read_ref(
         None,
     )
     return ([source], []) if source is not None else ([], [_missing(ref.ref, "not_found")])
+
+
+def _named(ref: SourceRef) -> bool:
+    """`ref` names one statute article or genelge section, not a whole act or a decision."""
+    if ref.category == "statute":
+        return True
+    found = admin_act_section(ref.ref) if ref.category == "admin_act" else None
+    return found is not None and found.section is not None
 
 
 async def _question_sources(
@@ -327,17 +341,26 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             read: list[ReadSource] = []
             unread = []
             missing: list[Missing] = []
+            named: set[str] = set()
             for ref in made.must_read:
                 sources, not_read = await _read_ref(deps.kb, ref, made.as_of, made.queries)
                 if not sources:
                     unread.append(ref.ref)
+                if _named(ref):
+                    named |= {s.source_id for s in sources}
                 missing += [m for m in not_read if m not in missing]
                 read = merge(read, sources)
             for query in made.queries:
                 hits = await deps.kb.search(query, as_of=made.as_of, limit=SEARCH_LIMIT)
                 read = merge(read, [s for h in hits if (s := as_read_source(h)) is not None])
-            truncated = {s.source_id for s in read if shown(s).passages != s.passages}
-            read = [shown(s) for s in read]
+            cut = [
+                shown(s, MAX_NAMED_SOURCE_CHARS if s.source_id in named else MAX_SOURCE_CHARS)
+                for s in read
+            ]
+            truncated = {
+                s.source_id for s, c in zip(read, cut, strict=True) if c.passages != s.passages
+            }
+            read = cut
             for ref in made.must_read:
                 if ref.ref not in unread and any(
                     covers(s.ref, ref.ref) and s.source_id in truncated for s in read
@@ -360,9 +383,8 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
         applied_on = Plan.model_validate(state["plan"]).as_of
         async with trace().node("holding_map", {"sources": len(read)}) as rec:
             _step("holding_map")
-            rows: list[HoldingRow] = []
-            dropped = 0
-            invented: list[str] = []
+            verified = Verified([], {}, 0)
+            feedback: list[str] = []
             if read:
 
                 async def made(feedback: list[str]) -> HoldingDraft:
@@ -376,12 +398,25 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     )
 
                 draft = await made([])
-                # Corrected once; the rows that still depend on such a key drop below.
-                if invented := invented_keys(draft, facts):
-                    draft = await made([key_feedback(invented, facts)])
-                rows, dropped = verify_rows(draft, read, applied_on, facts=facts)
-            rec.output = {"rows": len(rows), "dropped": dropped, "key_corrected": bool(invented)}
-            return {"rows": _dumps(list(rows)), "gate": {"rows_dropped": dropped}}
+                # Corrected once; the rows that still fail drop below.
+                if feedback := holding_feedback(draft, read, applied_on, facts):
+                    draft = await made(feedback)
+                verified = verify_rows(draft, read, applied_on, facts=facts)
+            dropped = sum(verified.dropped_by.values())
+            rec.output = {
+                "rows": len(verified.rows),
+                "dropped": dropped,
+                "dropped_by": verified.dropped_by,
+                "corrected": bool(feedback),
+            }
+            return {
+                "rows": _dumps(list(verified.rows)),
+                "gate": {
+                    "rows_dropped": dropped,
+                    "rows_dropped_by": verified.dropped_by,
+                    "subs_dropped": verified.subs_dropped,
+                },
+            }
 
     async def draft(state: State) -> dict[str, Any]:
         topic = get_topic(state["topic"])
@@ -392,7 +427,10 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
         output_type = draft_output_type(topic, facts)
         async with trace().node("draft", {"rows": len(rows), "sources": len(read)}) as rec:
             _step("draft")
-            drops = GateDrops(rows=state["gate"].get("rows_dropped", 0))
+            drops = GateDrops(
+                rows=state["gate"].get("rows_dropped", 0),
+                subs=state["gate"].get("subs_dropped", 0),
+            )
             issues: list[str] = []
             issue_counts: dict[str, int] = {}
             answer = None
@@ -450,6 +488,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 drops.points += result.drops.points
                 drops.sentences += result.drops.sentences
                 drops.branches += result.drops.branches
+                drops.subs += result.drops.subs
                 issues = result.issues
                 issue_counts = result.issue_counts
                 if result.answer is not None:
@@ -464,16 +503,16 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     read=read,
                     applied_on=made.as_of,
                     date_assumed=made.as_of_assumed,
+                    gap=source_gap(topic, facts, state.get("missing", [])),
                     unread=state["unread"],
                 )
-            gap = source_gap(topic, facts, state.get("missing", [])) if fell_back else None
-            if answer is not None and gap is not None:
-                answer = answer.model_copy(update={"source_gap": gap})
-            cited = cited_by_status(answer) if answer else GateCited()
+            cited = cited_by_status(answer)
             gate = {
                 "citations_dropped": drops.citations,
                 "points_dropped": drops.points,
                 "rows_dropped": drops.rows,
+                "rows_dropped_by": state["gate"].get("rows_dropped_by", {}),
+                "subs_dropped": drops.subs,
                 "sentences_dropped": drops.sentences,
                 "branches_dropped": drops.branches,
                 "cited_approved": cited.approved,
@@ -484,8 +523,9 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             }
             rec.output = {k: v for k, v in gate.items() if k != "issues"}
             rec.output["issue_counts"] = issue_counts
+            gap = answer.source_gap
             return {
-                "answer": answer.model_dump(mode="json") if answer else None,
+                "answer": answer.model_dump(mode="json"),
                 "source_gap": gap.model_dump(mode="json") if gap else None,
                 "gate": gate,
             }

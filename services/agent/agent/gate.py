@@ -21,7 +21,7 @@ from pydantic import BaseModel, ValidationError
 
 from agent.facts import critical_unknown
 from agent.llm_schemas import CitationPick, DraftOutput
-from agent.sources import ReadSource, citation, locate, summarize, valid_on
+from agent.sources import ReadSource, checked_sub, citation, locate, summarize, valid_on
 from agent.topics import Topic
 from hukuk_models.chat import (
     Answer,
@@ -33,6 +33,7 @@ from hukuk_models.chat import (
     HoldingMap,
     HoldingRow,
     MissingInfo,
+    SourceGap,
 )
 from hukuk_models.formal_turkish import progressive_forms
 
@@ -58,6 +59,8 @@ class GateDrops(BaseModel):
     # Of the last draft: the gerekçe sentences in the "-iyor" form, and the branches dropped.
     sentences: int = 0
     branches: int = 0
+    # The paragraphs of kept citations the text read did not bear out: cited at article level.
+    subs: int = 0
 
 
 class GateCited(BaseModel):
@@ -224,6 +227,7 @@ def _cite(
         elif not quote or locate(source, quote) is None:
             drops.citations += 1
         else:
+            drops.subs += bool(pick.sub) and checked_sub(source, pick.sub, quote) is None
             cited.append(
                 citation(
                     source,
@@ -431,13 +435,17 @@ def not_answered(
     read: list[ReadSource],
     applied_on: date,
     date_assumed: bool,
+    gap: SourceGap,
     unread: Sequence[str] = (),
-) -> Answer | None:
-    """The answer given when the draft could not pass the gate twice: it says so and shows the
-    holding map rows that were verified. None when there is no verified row to show."""
+) -> Answer:
+    """The "kaynak yetersiz" answer (md. 25), given when no draft could pass the gate: it says so,
+    shows the holding map rows that were verified, if any, and what was missing (`gap`)."""
     rows = [r for r in rows if not progressive_forms([r.condition, r.fact_value or ""])]
-    if not rows:
-        return None
+    shown_rows = (
+        "Hüküm haritası yalnız doğrulanan hükümleri göstermektedir."
+        if rows
+        else "Doğrulanan hüküm bulunmamaktadır."
+    )
     note = _status_note("conditional", date_assumed, unread)
     if all(r.result == "not_applicable" for r in rows):
         note = note.replace(
@@ -453,8 +461,7 @@ def not_answered(
             AnswerPoint(
                 text=(
                     "Bu soru için okunan kaynaklara dayanan ve doğrulanabilen bir cevap "
-                    "oluşturulamamıştır. Hüküm haritası yalnız doğrulanan hükümleri "
-                    "göstermektedir."
+                    f"oluşturulamamıştır. {shown_rows}"
                 ),
                 citations=[],
             )
@@ -473,5 +480,6 @@ def not_answered(
         read_sources=summarize(read),
         applied_law_date=applied_on,
         applied_law_text=_law_text(applied_on),
+        source_gap=gap,
     )
     return _with_unreviewed_note(answer)

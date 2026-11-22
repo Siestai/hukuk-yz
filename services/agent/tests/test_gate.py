@@ -11,9 +11,10 @@ from agent.holding import verify_rows
 from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
 from agent.sources import ReadSource, as_read_source
 from agent.topics import get_topic
-from hukuk_models.chat import CaseFacts, Fact, HoldingRow
+from hukuk_models.chat import CaseFacts, Fact, HoldingRow, SourceGap
 
 TOPIC = get_topic("ise_iade")
+GAP = SourceGap(topic="İşe iade", missing_sources=[], given_facts=[], next_step="-")
 DAY = date(2026, 10, 3)
 
 
@@ -40,7 +41,9 @@ def facts(known: bool) -> CaseFacts:
     every = [
         {
             "key": f.key,
-            "value": "03.10.2026" if f.key == "bildirim_tarihi" else "x",
+            "value": "03.10.2026"
+            if f.key == "bildirim_tarihi"
+            else (f.choices[0].value if f.choices else "x"),
             "status": "known",
         }
         for f in TOPIC.facts
@@ -193,18 +196,23 @@ def test_the_calculations_of_the_template_are_added_by_code() -> None:
     assert "Olay tarihi bilinmediğinden" in result.answer.status_note
 
 
-def test_the_not_answered_answer_shows_the_verified_rows_or_nothing() -> None:
-    kwargs = dict(topic=TOPIC, facts=facts(False), read=read(), applied_on=DAY, date_assumed=False)
+def test_the_not_answered_answer_shows_the_verified_rows_and_the_source_gap() -> None:
+    kwargs = dict(
+        topic=TOPIC, facts=facts(False), read=read(), applied_on=DAY, date_assumed=False, gap=GAP
+    )
 
     answer = not_answered(rows=rows(), **kwargs)  # type: ignore[arg-type]
 
-    assert answer is not None
     assert answer.headline == "Doğrulanmış kaynakla cevap verilemedi."
     assert answer.holding_map.rows
+    assert answer.source_gap == GAP
     # The fallback cites only its holding map rows, and that is what is counted.
     counts = cited_by_status(answer)
     assert (counts.approved, counts.unreviewed) == (1, 0)
-    assert not_answered(rows=[], **kwargs) is None  # type: ignore[arg-type]
+    # With no verified row it is still the honest answer, not an error.
+    empty = not_answered(rows=[], **kwargs)  # type: ignore[arg-type]
+    assert empty.holding_map.rows == [] and empty.source_gap == GAP
+    assert "Doğrulanan hüküm bulunmamaktadır." in empty.points[0].text
 
 
 def test_a_paragraph_the_text_read_does_not_have_is_not_cited() -> None:
@@ -276,17 +284,16 @@ def test_point_quote_in_another_paragraph_does_not_keep_model_sub() -> None:
 
 def test_fallback_never_returns_informal_holding_rows() -> None:
     informal = rows()[0].model_copy(update={"condition": "Kıdem aranıyorsa"})
-    assert (
-        not_answered(
-            topic=TOPIC,
-            facts=facts(False),
-            rows=[informal],
-            read=read(),
-            applied_on=DAY,
-            date_assumed=False,
-        )
-        is None
+    fallback = not_answered(
+        topic=TOPIC,
+        facts=facts(False),
+        rows=[informal],
+        read=read(),
+        applied_on=DAY,
+        date_assumed=False,
+        gap=GAP,
     )
+    assert fallback.holding_map.rows == []
 
 
 def test_the_expiry_day_is_not_a_valid_citation_date() -> None:
@@ -388,8 +395,8 @@ def test_holding_applicability_controls_ordinary_draft(results: list[str], block
             read=read(),
             applied_on=DAY,
             date_assumed=False,
+            gap=GAP,
         )
-        assert fallback is not None
         assert fallback.holding_map.rows == verified
         assert all(m.fact_key is None for m in fallback.missing_info)
         assert fallback.read_sources.items[0].source_id == read()[0].source_id
@@ -488,10 +495,10 @@ def test_register_checks_generated_values_without_rewriting_user_or_source_text(
     case = facts(False)
     case.facts.append(Fact(key="verbatim", label="Özgün metin", value=original, status="known"))
     before = case.model_dump()
-    verified, dropped = verify_rows(
+    verified, dropped, _ = verify_rows(
         HoldingDraft.model_validate({"rows": [candidate]}), [source], DAY, facts=case
     )
-    assert dropped == 0
+    assert dropped == {}
     output = DraftOutput.model_validate(draft())
     assert progressive_in(output, verified, case) == []
     for field in ("condition", "fact_value"):
@@ -874,10 +881,11 @@ def test_the_fallback_says_when_its_rows_rest_only_on_unreviewed_sources() -> No
             read=sources,
             applied_on=DAY,
             date_assumed=False,
+            gap=GAP,
         )
 
     only = fallback(verify_rows(holding, [unreviewed], DAY)[0], [unreviewed])
     approved = fallback(rows(), read())
 
-    assert only is not None and NOTE in only.status_note
-    assert approved is not None and NOTE not in approved.status_note
+    assert NOTE in only.status_note
+    assert NOTE not in approved.status_note
