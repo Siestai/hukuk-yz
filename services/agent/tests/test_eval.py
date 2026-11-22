@@ -63,7 +63,13 @@ def test_the_case_answers_the_questions_it_has_facts_for_and_says_unknown_to_the
 
 SB016_SCRIPT = Script(
     intake=INTAKE_SB016,
-    holding={"rows": [row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde")]},
+    holding={
+        "rows": [
+            row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde"),
+            # Not in the text read: sent back once, then dropped with its reason.
+            row("statute:5510:m102", "kanunda hiç yazmayan bir ifade"),
+        ]
+    },
     drafts=[
         draft(
             missing=False,
@@ -104,8 +110,8 @@ async def test_the_smoke_run_scores_the_cases_with_fake_models(
     assert [n["node"] for n in result.nodes][:2] == ["intake", "clarify"]
     assert sum(n["input_tokens"] for n in result.nodes) == result.input_tokens
     assert {"models", "output_tokens", "cost", "seconds"} <= set(result.nodes[0])
-    # The holding map has not put the reasons of its drops into the trace yet.
-    assert result.rows_dropped_by == {}
+    # Why the holding map dropped its rows, from the trace.
+    assert result.rows_dropped_by == {"quote_not_found": 1}
 
     # The CLI: the table on stdout, the result and the table under --results, the intake
     # output of every case under --record-intake.

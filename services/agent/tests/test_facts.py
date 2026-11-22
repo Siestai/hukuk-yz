@@ -433,6 +433,8 @@ def test_free_text_for_any_choice_fact_is_unknown_and_so_asked_in_its_branch() -
     [
         ("bordro_gecersiz", ["2020/8 m.3.1", "2020/8 m.3.2", "2020/8 m.2.8.1", "2020/8 m.2.8.3"]),
         ("ise_giris_tespit", ["2020/8 m.3.1", "2020/8 m.2.1.1", "2020/8 m.3.2"]),
+        ("defter_ibraz", ["2020/8 m.3.1", "2020/8 m.3.2", "2020/8"]),
+        ("diger", ["2020/8 m.3.1", "2020/8 m.3.2", "2020/8"]),
         (None, ["2020/8 m.3.1", "2020/8 m.3.2"]),
     ],
 )

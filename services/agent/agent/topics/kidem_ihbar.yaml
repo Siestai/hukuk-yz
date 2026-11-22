@@ -9,7 +9,7 @@
 #   iken sorulur. soru_konusu (sorulmaz, giriş adımı seçer) hak doğumu ile tazminata esas ücret
 #   sorularını ayırır (SB-032 yalnız yardim_niteligi); bilinmiyorsa iki dalın olguları da sorulur.
 # Görev 19 B6 tur 1 (C2): description'a giydirilmiş ücret eklendi; tur 1'de SB-032 (yemek, yol,
-# yemek kartı) bu şablona değil ucret_turu'na düşüyordu.
+# yemek kartı) bu şablona değil genel şablona düşüyordu.
 id: kidem_ihbar
 title: Kıdem ve ihbar tazminatı
 description: >-

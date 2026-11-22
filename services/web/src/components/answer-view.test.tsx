@@ -60,6 +60,25 @@ describe("AnswerView", () => {
         ).toBeInTheDocument();
     });
 
+    it("draws no holding table for a source-gap answer with no verified row", () => {
+        renderWithIntl(
+            <AnswerView
+                answer={{
+                    ...conditionalAnswer,
+                    source_gap: sourceGap,
+                    holding_map: { ...conditionalAnswer.holding_map, rows: [] },
+                }}
+                mode="reasoned"
+                facts={null}
+                onOpenCitation={vi.fn()}
+            />,
+        );
+        expect(screen.queryByText("Koşullar olaya uyuyor mu?")).not.toBeInTheDocument();
+        expect(
+            screen.getByText(conditionalAnswer.holding_map.reasoning_summary),
+        ).toBeInTheDocument();
+    });
+
     it("hands the tapped source to the viewer", async () => {
         const onOpen = setup("detailed");
         const first = conditionalAnswer.points[0]!.citations[0]!;

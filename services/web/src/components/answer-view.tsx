@@ -130,7 +130,13 @@ export function AnswerView({
             )}
             {mode === "reasoned" ? (
                 <div className="grid gap-3 border-t border-line p-4">
-                    <HoldingMap rows={answer.holding_map.rows} onOpenCitation={onOpenCitation} />
+                    {/* The source-gap answer may have no verified row to show. */}
+                    {answer.holding_map.rows.length ? (
+                        <HoldingMap
+                            rows={answer.holding_map.rows}
+                            onOpenCitation={onOpenCitation}
+                        />
+                    ) : null}
                     <p className="wrap-anywhere font-serif text-lg leading-relaxed text-ink">
                         {answer.holding_map.reasoning_summary}
                     </p>

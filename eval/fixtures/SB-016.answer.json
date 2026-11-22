@@ -1,7 +1,7 @@
 {
   "status": "definite",
   "status_note": "Verdiğiniz bilgilere göre.",
-  "headline": "Belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse dörtte bir ve dörtte üç indirimlerinin ikisi de kaybedilmektedir; yalnız 1/4 indirimi kalmamaktadır.",
+  "headline": "Belge 30 gün içinde verilse de ceza 15 gün içinde ödenmezse iki indirimden de yararlanılamaz: kendiliğinden verilen belgede ceza dörtte bir oranında uygulanır, peşin ödemede ise cezanın dörtte üçü tahsil edilir ve ikisi de 15 gün içinde ödeme şartına bağlıdır.",
   "fact_chips": [
     {
       "fact_key": "belge_30_gun",

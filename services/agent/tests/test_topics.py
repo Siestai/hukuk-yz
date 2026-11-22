@@ -375,4 +375,6 @@ def test_the_fine_template_reads_the_genelge_sections_of_its_branch_not_the_whol
         "2020/8 m.2.8.1": {"fiil": ["bordro_gecersiz"]},
         "2020/8 m.2.8.3": {"fiil": ["bordro_gecersiz"]},
         "2020/8 m.2.6.2.5": {"fiil": ["yalniz_kazanc_eksik"]},
+        # No section is named for these acts: the sections the search finds (at most six).
+        "2020/8": {"fiil": ["defter_ibraz", "diger"]},
     }

@@ -365,7 +365,7 @@ def _node_spend(trace: Trace) -> list[dict[str, Any]]:
 
 
 def _rows_dropped_by(trace: Trace) -> dict[str, Any]:
-    maps = [r.output.get("rows_dropped_by") for r in trace.records if r.node == "holding_map"]
+    maps = [r.output.get("dropped_by") for r in trace.records if r.node == "holding_map"]
     return dict(maps[-1] or {}) if maps else {}
 
 

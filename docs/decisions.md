@@ -261,10 +261,21 @@
   hüküm haritasında doğrulanan satır kalmayınca ajan artık `answer_not_verified` hatası değil,
   B4'ün "kaynak yetersiz" cevabını döner (`source_gap` dolu, `holding_map.rows` boş). Sözleşmede
   boş hüküm haritası yalnız `source_gap` taşıyan cevapta geçerlidir. B4 kaydındaki "turda cevap
-  yoktur" ifadesi bu durum için geçersizdir; hata turu ve `answer_not_verified` kodu eski kayıtlar
-  ve gerçekten cevap üretilemeyen durumlar için kalır.
+  yoktur" ifadesi artık geçersizdir: ajan `answer_not_verified` hatasını hiç üretmez. Kod ortak
+  `ErrorCode` listesinde, app ve web'de yalnız bu karardan önce kaydedilmiş hata turları için
+  durur. Beklenmeyen hatalar `internal_error` olarak kalır. Eval puanlamasında kaynak yetersiz
+  cevabı durum ve başlık puanı almaz.
 - **Okuma sınırı:** şablonun `must_read` listesinde adıyla geçen madde veya genelge bölümü
   20.000 karaktere kadar gösterilir (2020/8 m.2.8.1 yaklaşık 17.000 karakter); diğer kaynaklar
   6.000'de kalır. Bütün genelge künyesi ("2020/8") aramanın bulduğu en fazla 6 bölümü okur.
   `must_read` girdisi `when` ile yalnız bir dalda okunabilir (`asked_when` ile aynı anlam); dal
   dışında okunmaz ve okunamayan kaynak sayılmaz.
+- **Seçenekli olgular:** seçenekleri olan her olguda (yalnız dal olgularında değil) seçeneğe
+  uymayan serbest metin bilinmiyor sayılır; olgu kritikse sorulur. Giriş adımına her seçenekli
+  olgunun seçenekleri verilir.
+- **Model çıktısı strict olmayan output tool ile gönderilir:** Anthropic, strict şemayı (Native
+  Output veya strict tool) bir grammar'a derler ve grammar büyüyünce isteği reddeder; 6 ve daha
+  fazla kritik bilinmeyen olguda taslak şeması bu sınırı aşıp 400 döndürüyordu. Şema yine
+  pydantic ile doğrulanır; uymayan çıktı yazılı yeniden denemeye girer. Sağlayıcının ret
+  mesajı (400/422 gövdesindeki mesaj, istisna metni değil) en çok 500 karakterle log'a yazılır;
+  soru ve kişisel veri log'a girmez.

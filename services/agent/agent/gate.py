@@ -447,7 +447,12 @@ def not_answered(
         else "Doğrulanan hüküm bulunmamaktadır."
     )
     note = _status_note("conditional", date_assumed, unread)
-    if all(r.result == "not_applicable" for r in rows):
+    if not rows:
+        note = note.replace(
+            "Eksik bilgiler nedeniyle koşullu cevaptır.",
+            "Okunan kaynaklarda doğrulanabilen hüküm bulunamamıştır.",
+        )
+    elif all(r.result == "not_applicable" for r in rows):
         note = note.replace(
             "Eksik bilgiler nedeniyle koşullu cevaptır.",
             "Doğrulanan hükümler bu soruya uygulanabilir bir cevap için yeterli değildir.",

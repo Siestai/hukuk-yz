@@ -212,6 +212,9 @@ must_read:
   - {ref: "2020/8 m.2.8.1", category: admin_act, when: {fiil: [bordro_gecersiz]}}
   - {ref: "2020/8 m.2.8.3", category: admin_act, when: {fiil: [bordro_gecersiz]}}
   - {ref: "2020/8 m.2.6.2.5", category: admin_act, when: {fiil: [yalniz_kazanc_eksik]}}
+  # Defter ibrazı ve diğer fiiller için şablonda adı geçen bölüm yok: aramanın bulduğu en fazla
+  # 6 bölüm okunur.
+  - {ref: "2020/8", category: admin_act, when: {fiil: [defter_ibraz, diger]}}
 queries:
   - idari para cezası kendiliğinden verme otuz gün içinde dörtte bir ödeme onbeş gün
   - idari para cezası peşin ödeme tebliğ tarihinden onbeş gün dörtte üçü tahsil

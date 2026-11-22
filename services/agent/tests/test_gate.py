@@ -213,6 +213,9 @@ def test_the_not_answered_answer_shows_the_verified_rows_and_the_source_gap() ->
     empty = not_answered(rows=[], **kwargs)  # type: ignore[arg-type]
     assert empty.holding_map.rows == [] and empty.source_gap == GAP
     assert "Doğrulanan hüküm bulunmamaktadır." in empty.points[0].text
+    assert empty.status_note.startswith("Okunan kaynaklarda doğrulanabilen hüküm bulunamamıştır.")
+    assert "yeterli değildir" not in empty.status_note
+    assert "Eksik bilgiler" not in empty.status_note
 
 
 def test_a_paragraph_the_text_read_does_not_have_is_not_cited() -> None:

@@ -179,6 +179,21 @@ def test_a_headline_item_is_met_by_any_of_its_alternatives() -> None:
     assert headline("TİS'ten doğan alacak") == 1.0
     assert headline("Toplu iş sözleşmesinden doğan alacak") == 1.0
     assert headline("Sözleşmeden doğan alacak") == 0.0
+    # An alternative is matched from the start of a word, never inside one ("istisna").
+    assert headline("Bu hâlde istisna uygulanmaz") == 0.0
+
+
+def test_the_source_gap_answer_earns_no_status_or_headline() -> None:
+    case = {"expected": {"status": "conditional", "headline_contains": ["verilemedi"]}}
+    gap = {"topic": "T", "missing_sources": [], "given_facts": [], "next_step": "-"}
+    answer = {"status": "conditional", "headline": "Cevap verilemedi.", "source_gap": gap}
+
+    metrics = {m.name: m for m in score_module.score(answer, case)}
+
+    assert metrics["status"].value == 0.0 and metrics["headline"].value == 0.0
+    assert "source_gap" in metrics["status"].detail
+    plain = {m.name: m for m in score_module.score({**answer, "source_gap": None}, case)}
+    assert plain["status"].value == plain["headline"].value == 1.0
 
 
 def cited(*refs: tuple[str, str]) -> dict[str, Any]:

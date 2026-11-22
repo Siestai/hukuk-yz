@@ -31,7 +31,7 @@ ile (kullanıcının sözleriyle) ve status "known" ile yaz. Soruda yazılmayan 
 - secenekler: seçtiğin konuda seçenekleri verilen olgular yalnız bu seçeneklerden biriyle bilinir \
 (örneğin sorunun konusu, fesih nedeni, işçi sayısı aralığı). Soru bir seçeneğe açıkça uymakta ise \
 olguyu value olarak o seçeneğin değeriyle yaz; açıkça uymamakta ise ekleme. Seçeneğe uymayan \
-serbest metin bilinmeyen olgu sayılır ve kullanıcıya sorulur.
+serbest metin bilinmeyen olgu sayılır; olgu kritikse sorulur.
 - Bir olgunun uygulanmadığını kullanıcı açıkça söylediyse status "assumed_never"; söylemediyse \
 bunu asla varsayma.
 - event_date: yalnız soruda açıkça yazılı bir olay tarihi varsa (YYYY-MM-DD); bugünün tarihini \

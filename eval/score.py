@@ -148,18 +148,27 @@ def score(
             Metric("schema", 0.0, f"{exc.error_count()} errors: {exc.errors()[0]['msg']}")
         )
 
+    # The "kaynak yetersiz" answer is no answer to the question: its conditional status and its
+    # fixed headline earn nothing.
+    gap = answer.get("source_gap") is not None
     metrics.append(
         Metric(
             "status",
-            float(answer.get("status") == expected["status"]),
-            f"{answer.get('status')} (expected {expected['status']})",
+            float(not gap and answer.get("status") == expected["status"]),
+            "source_gap" if gap else f"{answer.get('status')} (expected {expected['status']})",
         )
     )
 
     headline = normalize(answer.get("headline", ""))
     wanted = expected.get("headline_contains", [])
-    # "toplu iş sözleşmesi|TİS": an item is met by any of its alternatives.
-    missing = [w for w in wanted if not any(normalize(a) in headline for a in w.split("|"))]
+    # "toplu iş sözleşmesi|TİS": an item is met by any of its alternatives, each matched from the
+    # start of a word (Turkish suffixes may follow: "TİS'ten"), never inside one ("istisna").
+    missing = [
+        w
+        for w in wanted
+        if gap
+        or not any(re.search(r"(?<!\w)" + re.escape(normalize(a)), headline) for a in w.split("|"))
+    ]
     metrics.append(
         Metric("headline", _fraction(len(wanted) - len(missing), len(wanted)), ", ".join(missing))
     )
