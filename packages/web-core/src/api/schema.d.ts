@@ -718,6 +718,8 @@ export interface components {
          *     (`not_published`) and for a repealed article (`repealed`).
          */
         ArticleAsOf: {
+            /** Band */
+            band?: ("high" | "medium" | "low") | null;
             /** Confidence */
             confidence?: ("high" | "medium" | "low") | null;
             gap?: components["schemas"]["ArticleGapOut"] | null;
@@ -725,6 +727,8 @@ export interface components {
             latest_snapshot_date?: string | null;
             /** Reason */
             reason?: ("repealed" | "not_published") | null;
+            /** Review Status */
+            review_status?: ("approved" | "analyzed") | null;
             /** Stale */
             stale?: boolean | null;
             /**
@@ -1763,6 +1767,8 @@ export interface components {
          *     the statute version's validity (null for a decision).
          */
         KbSearchResult: {
+            /** Band */
+            band?: ("high" | "medium" | "low") | null;
             /**
              * Category
              * @enum {string}
