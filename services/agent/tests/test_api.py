@@ -241,6 +241,36 @@ async def test_provider_exception_payload_is_not_logged(
     assert private not in "\n".join(JsonFormatter().format(r) for r in caplog.records)
 
 
+async def test_a_rejected_request_logs_the_provider_message_only(
+    database_url: str,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import logging
+
+    from pydantic_ai.exceptions import ModelHTTPError, ModelRequestRejectedError
+
+    from agent.logging_setup import JsonFormatter
+
+    monkeypatch.setattr("agent.api.configure_logging", lambda level: None)
+    caplog.set_level(logging.INFO)
+    private = "PRIVATE_QUESTION_SENTINEL"
+    message = "output_config.format.schema: Schema is too complex"
+    body = {"type": "error", "error": {"type": "invalid_request_error", "message": message}}
+    rejected = ModelHTTPError.for_category(
+        ModelRequestRejectedError, status_code=400, model_name="model", body=body
+    )
+    async with serve(database_url, kb=FailingKb(rejected)) as client:
+        response = await client.post(
+            "/run", headers=KEY, json={"thread_id": unique_thread(), "text": private}
+        )
+    assert events(response)[-2][1]["code"] == ErrorCode.internal_error
+    (failed,) = [r for r in caplog.records if r.getMessage().startswith("run failed")]
+    assert failed.fields["provider_error"] == message  # type: ignore[attr-defined]
+    assert failed.fields["provider_status"] == 400  # type: ignore[attr-defined]
+    assert private not in "\n".join(JsonFormatter().format(r) for r in caplog.records)
+
+
 @pytest.mark.parametrize("error", [KbUnavailable("down"), RuntimeError("down")])
 async def test_retrieve_failure_after_resume_cannot_be_resumed_again(
     database_url: str,

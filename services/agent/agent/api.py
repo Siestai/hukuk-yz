@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from pydantic import SecretStr
+from pydantic_ai.exceptions import ModelHTTPError, ModelRequestRejectedError
 
 from agent.db import open_database
 from agent.graph import build_graph
@@ -62,6 +63,27 @@ def _error(status: int, code: ErrorCode) -> JSONResponse:
     return JSONResponse(body.model_dump(mode="json"), status_code=status)
 
 
+# A provider error message is the provider's words about the request, bounded in length.
+REJECTION_MESSAGE_CHARS = 500
+
+
+def _rejection(exc: Exception) -> dict[str, Any]:
+    """The status and the error message of a request the provider rejected (an HTTP 400 or
+    422); the error body's message only, never the exception text, which carries the body."""
+    if not isinstance(exc, ModelRequestRejectedError):
+        return {}
+    body = exc.body
+    reported = body.get("error", body) if isinstance(body, dict) else None
+    message = reported.get("message") if isinstance(reported, dict) else None
+    if not isinstance(exc, ModelHTTPError) and message is None:
+        # Raised before sending (Pydantic AI's own schema-limit check): no provider body.
+        message = exc.message
+    return {
+        "provider_status": getattr(exc, "status_code", None),
+        "provider_error": message[:REJECTION_MESSAGE_CHARS] if isinstance(message, str) else None,
+    }
+
+
 async def turn_events(graph: Graph, request: RunRequest, trace: Trace) -> AsyncIterator[Any]:
     """The events of one turn. An answer or a clarification ends the turn; `done` always does."""
     config: Any = {"configurable": {"thread_id": request.thread_id}}
@@ -98,8 +120,13 @@ async def turn_events(graph: Graph, request: RunRequest, trace: Trace) -> AsyncI
         logger.error("knowledge base unavailable", extra={"fields": fields})
         yield ErrorEvent(code=ErrorCode.internal_error, params={"reason": "kb_unavailable"})
     except Exception as exc:
-        # Provider exceptions may embed prompts or personal data. Log only their type.
-        logger.error("run failed: %s", type(exc).__name__, extra={"fields": fields})
+        # Provider exceptions may embed prompts or personal data. Log only their type, and for a
+        # rejected request the provider's own error message, which says what it refused.
+        logger.error(
+            "run failed: %s",
+            type(exc).__name__,
+            extra={"fields": {**fields, **_rejection(exc)}},
+        )
         yield ErrorEvent(code=ErrorCode.internal_error)
     logger.info(
         "run done",

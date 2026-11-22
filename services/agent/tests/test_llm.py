@@ -244,3 +244,59 @@ async def test_conditional_register_contract_reaches_openai_typed_payload(
                 )
                 assert result.model_dump() == expected
     assert len(calls) == (max_calls if invalid else 1)
+
+
+async def test_a_draft_with_every_critical_fact_unknown_is_not_sent_as_a_strict_grammar() -> None:
+    """Anthropic compiles a strict schema (Native Output, `strict` tools) into a grammar and
+    rejects the request when it is too large; the request-local draft schema grows with every
+    critical unknown fact (eval r1: 6 or more were rejected). Its constraints are checked by
+    Pydantic and retried instead, so the schema goes out as a plain output tool."""
+    import json
+    from typing import Any
+
+    import httpx2 as httpx
+    from anthropic import AsyncAnthropic
+    from pydantic_ai.exceptions import ModelRequestRejectedError
+    from pydantic_ai.models import override_allow_model_requests
+    from pydantic_ai.models.anthropic import AnthropicModel
+    from pydantic_ai.providers.anthropic import AnthropicProvider
+
+    from agent.llm_schemas import draft_output_type
+    from agent.topics import TOPICS_DIR, get_topic
+    from hukuk_models.chat import CaseFacts, Fact
+
+    topic = max(
+        (get_topic(p.stem) for p in TOPICS_DIR.glob("*.yaml")),
+        key=lambda t: sum(f.critical for f in t.facts),
+    )
+    facts = CaseFacts(
+        title="Olay", facts=[Fact(key=f.key, label=f.label, status="unknown") for f in topic.facts]
+    )
+    sent: list[dict[str, Any]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == "offline.invalid"
+        sent.append(json.loads(request.content))
+        error = {"type": "invalid_request_error", "message": "offline"}
+        return httpx.Response(400, json={"type": "error", "error": error})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        anthropic = AsyncAnthropic(
+            api_key="offline-placeholder",
+            base_url="https://offline.invalid",
+            http_client=client,
+            max_retries=0,
+        )
+        model = AnthropicModel(
+            "claude-sonnet-5-5", provider=AnthropicProvider(anthropic_client=anthropic)
+        )
+        with override_allow_model_requests(True), pytest.raises(ModelRequestRejectedError):
+            await Llm(Models(model, model)).run(
+                "strong", draft_output_type(topic, facts), "talimat", "soru"
+            )
+
+    (body,) = sent
+    assert "output_config" not in body
+    (tool,) = body["tools"]
+    assert "strict" not in tool
+    assert "critical" in json.dumps(tool["input_schema"])
