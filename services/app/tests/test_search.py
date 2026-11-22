@@ -11,7 +11,12 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth import hash_password
-from app.chunk_index import embed_pending, sync_decision, sync_statute_article
+from app.chunk_index import (
+    embed_pending,
+    sync_admin_act_section,
+    sync_decision,
+    sync_statute_article,
+)
 from app.db import make_engine
 from app.embeddings import Embedder, get_embedder
 from app.kb import approve_extraction, approve_statute_article, reject_statute_article
@@ -32,6 +37,7 @@ from app.search import _tsquery
 from app.settings import Settings, get_settings
 from tests.conftest import FakeEmbedder
 from tests.test_chunk_index import SUMMARY, load_decision
+from tests.test_loaders_admin_acts import TEXT, TEXT_WITHOUT_1_2, act_record, load_acts
 
 PASSWORD = "correct horse battery"
 Factory = async_sessionmaker[AsyncSession]
@@ -371,3 +377,101 @@ async def test_search_service_key_is_scoped_to_kb(
     response = await client.get("/kb/search?q=test", headers={"X-Service-Key": "test-kb-key-18"})
     assert response.status_code == 200
     assert response.json()["results"] == []
+
+
+async def _index_sections(factory: Factory, embedder: FakeEmbedder) -> None:
+    async with factory() as session:
+        for section in ("1", "1.1", "1.2", "1.4", "2"):
+            await sync_admin_act_section(session, "2020/8", section)
+        await session.commit()
+        await embed_pending(session, embedder)
+
+
+async def test_unreviewed_genelge_sections_are_searched_by_band_and_never_when_rejected(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    reviewer: AppUser,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await load_acts(kb_factory)
+    await _index_sections(kb_factory, fake_embedder)
+
+    async def sections() -> dict[str, tuple[str, str | None]]:
+        found = await search(
+            client, headers, q="idari para cezaları bildirge numara işlem", category="admin_act"
+        )
+        return {r["ref"]: (r["review_status"], r["band"]) for r in found}
+
+    configure(OFF)
+    assert await sections() == {}
+    configure(("high",))
+    assert await sections() == {
+        "2020/8 m.1": ("analyzed", "high"),
+        "2020/8 m.2": ("analyzed", "high"),
+    }
+    configure(TEST_BANDS)
+    # "1.4" is in the low band: indexed, never returned ("1.1" is repealed and has no chunk)
+    assert await sections() == {
+        "2020/8 m.1": ("analyzed", "high"),
+        "2020/8 m.1.2": ("analyzed", "medium"),
+        "2020/8 m.2": ("analyzed", "high"),
+    }
+    async with kb_factory() as session:
+        extraction_id = (
+            await session.execute(
+                select(Extraction.id).where(Extraction.fields["section_no"].as_string() == "2")
+            )
+        ).scalar_one()
+        session.add(
+            Review(
+                extraction_id=extraction_id, reviewer_id=reviewer.id, decision=ReviewDecision.reject
+            )
+        )
+        await session.commit()
+    assert set(await sections()) == {"2020/8 m.1", "2020/8 m.1.2"}
+
+
+async def test_the_old_chunk_of_a_reloaded_genelge_section_is_not_served(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await load_acts(kb_factory)
+    await _index_sections(kb_factory, fake_embedder)
+    configure(TEST_BANDS)
+    before = await search(client, headers, q="bildirge on gün içinde", category="admin_act")
+    assert "2020/8 m.1.2" in {r["ref"] for r in before}
+
+    # a reload with a changed section adds a newer extraction; the index still holds the old chunk
+    await load_acts(kb_factory, act_record(TEXT.replace("on gün", "on beş gün")))
+
+    after = await search(client, headers, q="bildirge on gün içinde", category="admin_act")
+    assert "2020/8 m.1.2" not in {r["ref"] for r in after}
+    await _index_sections(kb_factory, fake_embedder)
+    again = await search(client, headers, q="bildirge on beş gün içinde", category="admin_act")
+    (hit,) = [r for r in again if r["ref"] == "2020/8 m.1.2"]
+    assert "on beş gün" in hit["matches"][0]["text"]
+
+
+async def test_a_genelge_section_the_newest_load_no_longer_has_is_not_searched(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await load_acts(kb_factory)
+    await _index_sections(kb_factory, fake_embedder)
+    configure(TEST_BANDS)
+
+    await load_acts(kb_factory, act_record(TEXT_WITHOUT_1_2, sha256="b9" * 32))
+    await _index_sections(kb_factory, fake_embedder)  # the old extraction of 1.2 keeps its chunk
+
+    found = await search(
+        client, headers, q="bildirge on gün içinde idari para cezaları", category="admin_act"
+    )
+    assert {r["ref"] for r in found} == {"2020/8 m.1", "2020/8 m.2"}

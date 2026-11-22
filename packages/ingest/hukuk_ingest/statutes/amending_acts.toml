@@ -19,11 +19,14 @@
 #                (partial_entry_into_force) between the two dates. Needs scope and yururluk.
 #   yururluk     leave it out when the date is vague ("ödeme dönemi başında"): the article then has an
 #                unknown in-force date (yururluk_unknown), never the act's date.
-# The statutes themselves (4857, 5510) are acts too: their entry gives the original in-force date.
+# The statutes themselves (every law of `laws.py`) are acts too: their entry gives the original in-force
+# date.
 #
 # Source of most rows: the official "yürürlüğe giriş tarihlerini gösterir liste/tablo" printed at the end of
-# the consolidated 4857 and 5510 texts (mevzuat.gov.tr); RG numbers and AYM rows cross-checked against
-# the Resmî Gazete. Dates marked "hesaplanmış" in a note are computed from a deferred annulment.
+# the consolidated text of each law of `laws.py` (mevzuat.gov.tr); for 4857 and 5510 the RG numbers and AYM
+# rows are cross-checked against the Resmî Gazete, the rows of 6356, 7036 and 1475 (end of the file) carry
+# the table date only. Dates marked "hesaplanmış" in a note are computed from a deferred annulment; a note
+# saying "ortak teyidi gerekir" marks a reading of the source that a partner has to confirm.
 
 [[act]]
 law = "4857"
@@ -43,7 +46,9 @@ yururluk = 2008-10-01
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
 note = "md. 108 (5754 ile değişik) (d) bendi: diğer hükümler 1/10/2008. (a)-(c) bentlerindeki erken tarihler 5754 ile değişen maddelere ait; o maddelerin notu var, istisna eklenmedi."
 
-# Değiştiren kanun/KHK/AYM kararı kayıt defteri: 4857 ve 5510 yürürlük tablolarından (mevzuat.gov.tr güncel metinler)
+# Değiştiren kanun/KHK/AYM kararı kayıt defteri: 4857 ve 5510 yürürlük tablolarından (mevzuat.gov.tr güncel metinler).
+# 6356, 7036 ve 1475 tablolarından gelen satırlar dosyanın sonunda; bu bölümdeki satırlara eklenen 6356 / 7036
+# istisnaları da o tablolardan.
 
 [[act]]
 law = "4884"
@@ -897,6 +902,13 @@ scope = ""
 yururluk = 2016-09-07
 source = "yürürlük tablosu: 5510 güncel metin"
 
+[[act.exception]]
+statute = "6356"
+article = "Geçici 6"
+scope = ""
+yururluk = 2016-09-07
+source = "yürürlük tablosu: 6356 güncel metin"
+
 [[act]]
 law = "6764"
 kabul_tarihi = 2016-12-02
@@ -944,6 +956,13 @@ rg_sayisi = "30001"
 yururluk = 2017-04-01
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.5510.pdf"
 note = "yürürlük tablosu (5510 güncel metin): md. 80, 81, Ek 13, Ek 14, Geçici 73 -> 1/4/2017; Geçici 41 ve Geçici 71 -> 8/3/2017; md. 60, 61 -> 1/1/2018"
+
+[[act.exception]]
+statute = "6356"
+article = "28"
+scope = ""
+yururluk = 2017-03-08
+source = "yürürlük tablosu: 6356 güncel metin"
 
 [[act.exception]]
 statute = "5510"
@@ -1824,7 +1843,14 @@ rg_tarihi = 2017-10-25
 rg_sayisi = "30221"
 yururluk = 2017-10-25
 source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.4857.pdf"
-note = "yürürlük tablosu (4857 güncel metin): 91, 92, Ek 3, Geçici 8 25/10/2017; 20, 21 1/1/2018 (7036 md. 38)."
+note = "yürürlük tablosu (4857 güncel metin): 91, 92, Ek 3, Geçici 8 25/10/2017; 20, 21 1/1/2018 (7036 md. 38). Kanunun kendi kaydı: md. 38 (b) diğer hükümler yayımı tarihinde."
+
+[[act.exception]]
+statute = "7036"
+article = "3"
+scope = ""
+yururluk = 2018-01-01
+source = "7036 md. 38 (a): 3 üncü, 11 inci ve 12 nci maddeleri 1/1/2018 tarihinde"
 
 [[act.exception]]
 statute = "4857"
@@ -1839,3 +1865,190 @@ article = "21"
 scope = ""
 yururluk = 2018-01-01
 source = "yürürlük tablosu: 4857 güncel metin"
+
+# Görev A2: 6356, 7036 ve 1475 (yalnız md. 14). Kaynak: her kanunun mevzuat.gov.tr güncel metninin sonundaki
+# "yürürlüğe giriş tarihlerini gösterir liste/tablo"; tabloda RG tarihi ve sayısı yok, o alanlar boş.
+
+[[act]]
+law = "6356"
+kabul_tarihi = 2012-10-18
+rg_tarihi = 2012-11-07
+rg_sayisi = "28460"
+yururluk = 2012-11-07
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "md. 82: yayımı tarihinde"
+
+[[act]]
+law = "1475"
+kabul_tarihi = 1971-08-25
+rg_tarihi = 1971-09-01
+rg_sayisi = "13943"
+yururluk = 1971-09-01
+source_url = "https://www.resmigazete.gov.tr/arsiv/13943.pdf"
+note = "Kaynak arşivdeki dosya değil: md. 111 mülga olduğu için güncel metinde yok. Resmî Gazete 1/9/1971-13943'ün resmigazete.gov.tr'deki taranmış PDF'inin metin katmanından (OCR) okundu: 'Madde 111 — Bu Kanun yayımı tarihinde yürürlüğe girer. Ancak; 9 uncu bölümde yer alan ceza hükümleri dışında kalan hükümleri, 12/11/1970 tarihinden geçerli olmak üzere uygulanır.' Yürürlük = yayım tarihi (1/9/1971) alındı; ikinci cümledeki 12/11/1970 geriye dönük uygulama tarihi kayda işlenmedi. Başlangıç tarihi için ortak teyidi gerekir."
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2014-10-22
+yururluk = 2015-11-11
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "E. 2013/1 K. 2014/161; yürürlük tablosu (6356 güncel metin): md. 25, 60, 62"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2015-05-14
+yururluk = 2015-06-11
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "E. 2014/177 K. 2015/49; yürürlük tablosu (6356 güncel metin): Ek 1"
+
+[[act]]
+law = "KHK-678"
+kabul_tarihi = 2016-10-31
+yururluk = 2016-11-22
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "yürürlük tablosu (6356 güncel metin): md. 63"
+
+[[act]]
+law = "KHK-696"
+kabul_tarihi = 2017-11-20
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "yürürlük tablosu (6356 güncel metin): Ek 2, Geçici 7 -> 2/1/2018 (KHK md. 136; dipnot). KHK'nin genel yürürlük tarihi tabloda yok, boş bırakıldı."
+
+[[act.exception]]
+statute = "6356"
+article = "Ek 2"
+scope = ""
+yururluk = 2018-01-02
+source = "yürürlük tablosu: 6356 güncel metin; dipnot"
+
+[[act.exception]]
+statute = "6356"
+article = "Geçici 7"
+scope = ""
+yururluk = 2018-01-02
+source = "yürürlük tablosu: 6356 güncel metin; dipnot"
+
+[[act]]
+law = "7079"
+kabul_tarihi = 2018-02-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "KHK-696'nın aynen kabulü; yürürlük tablosu (6356 güncel metin): Ek 2, Geçici 7 -> 2/1/2018. Kanunun genel yürürlük tarihi tabloda yok, boş bırakıldı."
+
+[[act.exception]]
+statute = "6356"
+article = "Ek 2"
+scope = ""
+yururluk = 2018-01-02
+source = "yürürlük tablosu: 6356 güncel metin; dipnot"
+
+[[act.exception]]
+statute = "6356"
+article = "Geçici 7"
+scope = ""
+yururluk = 2018-01-02
+source = "yürürlük tablosu: 6356 güncel metin; dipnot"
+
+[[act]]
+law = "7176"
+kabul_tarihi = 2019-05-30
+yururluk = 2019-06-12
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "yürürlük tablosu (6356 güncel metin): Geçici 6"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2019-11-14
+yururluk = 2020-02-13
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "E. 2018/90 K. 2019/85; yürürlük tablosu (6356 güncel metin): md. 63"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2020-12-30
+yururluk = 2021-03-03
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "E. 2020/57 K. 2020/83; yürürlük tablosu (6356 güncel metin): md. 39"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2023-12-27
+yururluk = 2024-04-17
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "E. 2018/96 K. 2023/222; yürürlük tablosu (6356 güncel metin): Ek 2"
+
+[[act]]
+law = "7445"
+kabul_tarihi = 2023-03-28
+yururluk = 2023-09-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.7036.pdf"
+note = "yürürlük listesi (7036 güncel metin): md. 3"
+
+[[act]]
+law = "7531"
+kabul_tarihi = 2024-11-07
+yururluk = 2024-11-14
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.7036.pdf"
+note = "yürürlük listesi (7036 güncel metin): md. 3"
+
+[[act]]
+law = "AYM"
+kabul_tarihi = 2025-06-03
+yururluk = 2025-10-17
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.7036.pdf"
+note = "E. 2024/157 K. 2025/121; yürürlük listesi (7036 güncel metin): md. 3"
+
+[[act]]
+law = "2320"
+kabul_tarihi = 1980-10-17
+yururluk = 1980-10-23
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
+note = "yürürlük listesi (1475 güncel metin): Madde 1, 2 -> 12/9/1980; diğer maddeleri -> 23/10/1980. Listedeki 'Madde 1, 2' 2320'nin kendi maddeleri olarak okundu; 1475 md. 14'teki notlar '2320/1 md.' dediği için md. 14'e 12/9/1980 verildi. Bu okuma için ortak teyidi gerekir."
+
+[[act.exception]]
+statute = "1475"
+article = "14"
+scope = ""
+yururluk = 1980-09-12
+source = "yürürlük listesi: 1475 güncel metin (2320 Madde 1, 2); okuma için ortak teyidi gerekir"
+
+[[act]]
+law = "2457"
+kabul_tarihi = 1981-05-05
+yururluk = 1980-09-12
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
+note = "yürürlük listesi (1475 güncel metin): 12/9/1980 (geriye etkili)"
+
+[[act]]
+law = "2762"
+kabul_tarihi = 1982-12-10
+yururluk = 1983-01-01
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
+note = "yürürlük listesi (1475 güncel metin)"
+
+[[act]]
+law = "2869"
+kabul_tarihi = 1983-07-29
+yururluk = 1983-07-30
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
+note = "yürürlük listesi (1475 güncel metin)"
+
+[[act]]
+law = "4447"
+kabul_tarihi = 1999-08-25
+yururluk = 1999-09-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
+note = "yürürlük listesi (1475 güncel metin)"
+
+[[act]]
+law = "4773"
+kabul_tarihi = 2002-08-09
+yururluk = 2003-03-15
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.1475.pdf"
+note = "yürürlük listesi (1475 güncel metin): '15/3/2003 tarihinden geçerli olmak üzere 15/8/2002 tarihinde'. Listede iki tarih var; geçerlilik tarihi (15/3/2003) alındı. Hangi tarihin esas alınacağı için ortak teyidi gerekir."
+
+[[act]]
+law = "7071"
+kabul_tarihi = 2018-02-01
+yururluk = 2018-03-08
+source_url = "https://www.mevzuat.gov.tr/mevzuatmetin/1.5.6356.pdf"
+note = "KHK-678'in kabulü; yürürlük tablosu (6356 güncel metin): md. 63"

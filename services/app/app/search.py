@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import ColumnElement, and_, func, literal_column, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.admin_acts import readable_section_ids
 from app.auth import Db, kb_reader
 from app.chunk_index import APPROVED_PARENTS, EXTRACTION, INDEXED_STATUSES, review_status
 from app.embeddings import Embedder, get_embedder
@@ -64,10 +65,10 @@ def _tsquery(q: str) -> str:
 
 def _unreviewed(bands: Sequence[TestBand]) -> ColumnElement[bool]:
     """Chunks of an extraction that still waits for its review in one of `bands`: the newest
-    extraction of its decision source, or of its statute article and not rejected. The index is
-    not trusted for this: a loader writes a newer extraction without touching the chunks of the
-    one before. (A rejected decision is out by its source status; its reject review stays after
-    a reopen, so it does not count here.)"""
+    extraction of its decision source, or of its statute article or genelge section and not
+    rejected. The index is not trusted for this: a loader writes a newer extraction without
+    touching the chunks of the one before. (A rejected decision is out by its source status; its
+    reject review stays after a reopen, so it does not count here.)"""
     decisions = newest_extractions()
     articles = statute_queue(status="pending").subquery()
     waiting = or_(
@@ -77,6 +78,7 @@ def _unreviewed(bands: Sequence[TestBand]) -> ColumnElement[bool]:
             )
         ),
         Chunk.parent_id.in_(select(articles.c.id).where(articles.c.band.in_(list(bands)))),
+        Chunk.parent_id.in_(readable_section_ids(bands)),
     )
     return and_(Chunk.parent_kind == EXTRACTION, waiting)
 

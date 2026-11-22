@@ -1,0 +1,96 @@
+# Golden sections of the genelges in scope (handoff 2026-11-22, A3): the section count and the
+# text of three sections each, copied line by line from the text layer of the files in
+# `data/drive/Mevzuat/Genelge/` (official SGK text). `validity`: the start of the wording on file,
+# read from the amendment notes in the file.
+
+[[act]]
+ref = "2020/8"
+date = "2020-04-01"
+sections = 177
+
+[[act.section]]
+no = "11.3"
+text = '''
+11.3- Bilgi ve belgelerin Sosyal Güvenlik Merkezi bulunmayan yere gönderilmesi ve
+bahse konu bilgi ve belgenin yasal süre içerisinde Kurum kayıtlarına intikal etmiş olması
+halinde idari para cezası uygulanmayacaktır.'''
+
+[[act.section]]
+no = "11.6"
+text = '''
+11.6- İdarî para cezası uygulanması 5510 sayılı Kanunun 8 inci, 9 uncu, 11 inci ve 86
+ncı maddelerde belirtilen belgelerin Kuruma verilmesi yükümlülüğünü ortadan kaldırmaz.'''
+
+[[act.section]]
+no = "11.16"
+text = '''
+11.16- Bu genelgenin yayımlandığı tarih itibariyle tebliğ edilmemiş, tebliğ edilmiş
+olmakla birlikte tahsil olunmamış idari para cezaları hakkında bu genelgedeki lehe olan
+hükümler uygulanır ancak tahsil edilmiş olan tutarlar iade veya mahsup edilmez.'''
+
+# m.2.6.2.5 has no note; three "≤" signs are lost in the text layer ("177,00 TL ? 1000,50 TL").
+[[act.validity]]
+no = "2.6.2.5"
+valid_from = "2020-04-01"
+band = "medium"
+gap_from = []
+
+[[act]]
+ref = "2018/38"
+date = "2018-11-06"
+sections = 686
+
+[[act.section]]
+no = "K1-1.1.1"
+text = '''
+1.1.1. İşe Giriş Tarihi ile Primlerin Ödenmeye Başladığı Tarihin Farklı Olması
+4/1-(a) sigortalıları için söz konusu olup, işe giriş tarihi ile primlerin ödenmeye
+başladığı tarih farklı ise, ilk defa malullük, yaşlılık ve ölüm sigortasına tabi prim ödenmeye
+başlanan tarih sigortalılık süresinin başlangıcı olarak alınacaktır.'''
+
+[[act.section]]
+no = "K1-1.1.2"
+text = '''
+1.1.2. Kurumca Devir Alınan 506 Sayılı Kanunun Geçici 20 nci Maddesi
+Kapsamındaki Sandıklar
+Kurumca devralınan sandıklara tabi olarak ilk defa prim veya kesenek ödenmeye
+başlanılan tarih sigortalılık süresinin başladığı tarih olarak dikkate alınacaktır.'''
+
+[[act.section]]
+no = "K4-B18-2"
+text = '''
+2. Yürürlükten Kaldırılan Düzenlemeler
+Kanun ve Kanuna ilişkin Yönetmeliğin uygulanması ile ilgili olarak daha önce
+yayımlanan ve Genelge ekinde (Ek-43) belirtilen genelgeler ve genel yazılar, bu Genelgenin
+yayımı tarihinden geçerli olmak üzere yürürlükten kaldırılmıştır. Söz konusu genelgeler ve
+genel yazılar yürürlük dönemlerindeki iş ve işlemlerde kullanılabilecektir.'''
+
+# The heading of K4-B12-11 ends in "(Ek, 21/05/2020 tarihli ve 2020/15 sayılı Genelge)": the
+# section and its eleven children were added then and did not exist before.
+[[act.validity]]
+no = "K4-B12-11.1"
+valid_from = "2020-05-21"
+band = "medium"
+gap_from = []
+
+# "(15/08/2019 tarihli ve 2019/16 sayılı Genelge ile 01/08/2019 tarihinden itibaren mülga)" and a
+# later "(Ek, 11/12/2020 ...)" in the text.
+[[act.validity]]
+no = "K2-B6-6.1"
+valid_from = "2020-12-11"
+band = "medium"
+gap_from = ["2018-11-06"]
+
+# "(03/11/2021 tarihli ve 2021/37 sayılı Genelge ile Moğolistan ibaresi mülga edilmiştir.)"
+[[act.validity]]
+no = "K2-B6-1.1"
+valid_from = "2021-11-03"
+band = "medium"
+gap_from = ["2018-11-06"]
+
+# The misnumbered heading "9.3.2.5" is filed under this section: not citable by its number.
+[[act.validity]]
+no = "K2-B4-9.2.2.4"
+valid_from = "2018-11-06"
+band = "low"
+gap_from = []

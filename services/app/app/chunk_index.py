@@ -2,8 +2,10 @@
 in step with its review state, and their embeddings.
 
 A record's chunks are a function of its state, so one call rebuilds them all (`sync_decision`,
-`sync_statute_article`): an approved record is indexed from its typed row, one waiting for review
-from its newest extraction, a rejected or reopened-and-rejected one not at all. The review paths
+`sync_statute_article`, `sync_admin_act_section`): an approved record is indexed from its typed
+row, one waiting for review from its newest extraction, a rejected or reopened-and-rejected one
+not at all. A genelge section has no approval path yet, so it is always indexed from its
+extraction. The review paths
 (`app.kb`) call these inside their transaction; they write text and full-text search only. The
 embedding (a network call) is `embed_pending`, run by `python -m app.loaders.chunks`; a chunk
 whose embedding input and model are unchanged keeps its vector across a rebuild.
@@ -21,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.embeddings import Embedder
 from app.models.chunk import Chunk
 from app.models.common import (
+    ADMIN_ACT_PARSER_NAME,
     PARSER_NAME,
     STATUTE_PARSER_NAME,
     ChangeKind,
@@ -37,6 +40,7 @@ from app.models.common import (
 )
 from app.models.decision import Decision
 from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
+from hukuk_ingest.admin_acts.citation import act_label, citation, section_label
 from hukuk_ingest.index.chunking import (
     EDITORIAL_SUMMARY,
     ChunkDraft,
@@ -311,6 +315,70 @@ async def statute_article_rows(session: AsyncSession, number: str, article_no: s
     )
 
 
+def _section_extractions(ref: str, section_no: str) -> Any:
+    return select(Extraction).where(
+        Extraction.parser_name == ADMIN_ACT_PARSER_NAME,
+        Extraction.fields["act_ref"].as_string() == ref,
+        Extraction.fields["section_no"].as_string() == section_no,
+    )
+
+
+async def admin_act_section_rows(session: AsyncSession, ref: str, section_no: str) -> list[Row]:
+    """The chunks a genelge section should have now: the wording of its newest extraction,
+    unless a reviewer rejected that one. A repealed section, a `gap` and a wording whose start
+    is unknown have no chunk."""
+    newest = (
+        await session.execute(
+            _section_extractions(ref, section_no)
+            .order_by(Extraction.extracted_at.desc(), Extraction.id)
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if newest is None or newest.source_id is None:
+        return []
+    rejected = (
+        await session.execute(
+            select(func.count()).where(
+                Review.extraction_id == newest.id, Review.decision == ReviewDecision.reject
+            )
+        )
+    ).scalar_one()
+    source = await session.get(Source, newest.source_id)
+    if rejected or source is None:
+        return []
+    label = section_label(section_no)
+    rows: list[Row] = []
+    for v in newest.fields["versions"]:
+        if not v["valid_from"] or v["change_kind"] == ChangeKind.repealed.value:
+            continue
+        header = " · ".join(
+            p
+            for p in (
+                act_label(ref, newest.fields["act"]["issuer"]),
+                label,
+                v["heading"],
+                f"yürürlük {v['valid_from']}",
+            )
+            if p
+        )
+        rows += _chunks(
+            chunk_article(v["text"], header),
+            source,
+            source_id=source.id,
+            category=source.category,
+            parent_kind=EXTRACTION,
+            parent_id=newest.id,
+            version_id=None,
+            title=f"{source.title} {label}" + (f" · {v['heading']}" if v["heading"] else ""),
+            ref=citation(ref, section_no),
+            court_level=None,
+            doc_date=None,
+            valid_from=date.fromisoformat(v["valid_from"]),
+            valid_to=date.fromisoformat(v["valid_to"]) if v["valid_to"] else None,
+        )
+    return rows
+
+
 def review_status(parent_kind: str) -> str:
     """The review status a result carries: "approved", or "analyzed" for a record that no
     reviewer has approved yet (its chunks are built from the extraction)."""
@@ -392,6 +460,21 @@ async def sync_statute_article(session: AsyncSession, number: str, article_no: s
         (Chunk.parent_kind == STATUTE_ARTICLE) & Chunk.parent_id.in_(article_ids),
     )
     return await _replace(session, where, await statute_article_rows(session, number, article_no))
+
+
+async def sync_admin_act_section(session: AsyncSession, ref: str, section_no: str) -> SyncResult:
+    """Rebuild the chunks of one genelge section (of all its extractions); the caller commits."""
+    ids = (
+        (
+            await session.execute(
+                _section_extractions(ref, section_no).with_only_columns(Extraction.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    where = (Chunk.parent_kind == EXTRACTION) & Chunk.parent_id.in_(ids)
+    return await _replace(session, where, await admin_act_section_rows(session, ref, section_no))
 
 
 async def sync_extraction(session: AsyncSession, extraction_id: uuid.UUID) -> None:

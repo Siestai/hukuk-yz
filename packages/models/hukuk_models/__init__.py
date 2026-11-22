@@ -643,3 +643,73 @@ class KbSearchResponse(BaseModel):
 
     mode: Literal["hybrid", "fulltext"]
     results: list[KbSearchResult]
+
+
+# --- genelge sections (handoff 2026-11-22, A3) --------------------------------------------------
+
+
+class AdminActSectionVersionOut(BaseModel):
+    text: str
+    heading: str | None
+    valid_from: date | None
+    valid_to: date | None  # None: no later wording is on file
+    change_kind: Literal["original", "amended", "repealed", "added"]
+    amendments: list[dict[str, Any]]  # the notes in the text: kind, date, ref
+
+
+class AdminActSectionGapOut(BaseModel):
+    """An interval with no text on file: the section was amended and only its present wording is
+    known. It never carries text (md. 25: a gap cannot be cited)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: date | None = Field(alias="from")
+    to: date
+    reason: str
+
+
+class AdminActSectionAsOf(BaseModel):
+    """What a genelge section said on a date. Only fields that apply to the status are present:
+    `version` for found / repealed, `gap` for gap, `reason` for unknown_section
+    (`not_published`) and for a repealed section (`repealed`); the rest describe the section
+    whenever it was readable."""
+
+    status: Literal["found", "gap", "not_in_force", "unknown_section"]
+    reason: Literal["repealed", "not_published"] | None = None
+    ref: str | None = None  # "2020/8"
+    section_no: str | None = None
+    citation: str | None = None  # "2020/8 m.2.6.2.5"
+    title: str | None = None
+    version: AdminActSectionVersionOut | None = None
+    gap: AdminActSectionGapOut | None = None
+    children: list[str] | None = None  # the sections under this heading
+    # `stale`: the date is after the newest date the file itself shows, so the text may have
+    # been amended since.
+    latest_snapshot_date: date | None = None
+    stale: bool | None = None
+    review_status: Literal["approved", "analyzed"] | None = None
+    band: Band | None = None
+    warnings: list[str] | None = None
+    source_id: uuid.UUID | None = None
+    extraction_id: uuid.UUID | None = None
+
+
+class AdminActSectionItem(BaseModel):
+    """A readable section in the list of a genelge."""
+
+    section_no: str
+    heading: str
+    citation: str  # "2020/8 m.2.6.2.5"
+    children: list[str]
+    review_status: Literal["approved", "analyzed"]
+    band: Band
+    extraction_id: uuid.UUID
+
+
+class AdminActSections(BaseModel):
+    """The readable sections of a genelge in document order: what a künye without a section
+    ("2020/8") resolves to."""
+
+    ref: str
+    title: str
+    sections: list[AdminActSectionItem]

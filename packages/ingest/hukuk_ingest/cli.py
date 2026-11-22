@@ -1,4 +1,5 @@
-"""`hukuk-ingest scan <dir> --out <report_dir>` and `hukuk-ingest decisions parse ...`."""
+"""`hukuk-ingest scan <dir> --out <report_dir>`, `hukuk-ingest decisions parse ...`,
+`hukuk-ingest statutes ...` and `hukuk-ingest admin-acts ...`."""
 
 import argparse
 import json
@@ -13,6 +14,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
+from hukuk_ingest.admin_acts import run as admin_acts
 from hukuk_ingest.decisions.run import run as parse_decisions
 from hukuk_ingest.pipeline import FileResult, error_result, process_file
 from hukuk_ingest.report import build_summary, dump_json, render_markdown
@@ -143,7 +145,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     st.add_argument("--raw-dir", type=Path, default=Path("data/drive"), help="archive root")
     st.add_argument("--acts", type=Path, default=DEFAULT_ACTS, help="amending_acts.toml")
     st.add_argument("--out", type=Path, required=True, help="report directory")
+    aa = sub.add_parser("admin-acts", help="split the genelges in scope into numbered sections")
+    aa.add_argument("--scan-report", type=Path, required=True, help="files.jsonl of `scan`")
+    aa.add_argument("--text-cache", type=Path, default=Path("data/extracted"))
+    aa.add_argument("--out", type=Path, required=True, help="report directory")
     args = parser.parse_args(argv)
+    if args.command == "admin-acts":
+        if not args.scan_report.is_file():
+            parser.error(f"not a file: {args.scan_report}")
+        records = admin_acts.run(args.scan_report, args.text_cache, args.out)
+        for record in records:
+            print(admin_acts.summarize(record))
+        missing = sorted(set(admin_acts.IN_SCOPE) - {r["ref"] for r in records})
+        if missing:
+            print(f"not in the scan report: {', '.join(missing)}")
+        return 1 if missing or any(not r["sections"] for r in records) else 0
     if args.command == "statutes":
         for path in (args.scan_report, args.acts):
             if not path.is_file():

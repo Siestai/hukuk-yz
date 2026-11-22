@@ -204,6 +204,9 @@ ayarı belirler:
   `/kb/search` sonuçlarında ve `/statutes/{no}/articles/{madde}?as_of=` yanıtında döner; yanıtta
   `review_status="analyzed"` ve `band` bulunur, ajan bunları "onaysız (test)" diye işaretler.
   Yayımlanmış madde varsa her zaman o okunur.
+- Genelge bölümleri (`/admin-acts/{ref}/sections` ve `/admin-acts/{ref}/sections/{bölüm}?as_of=`,
+  aramada `category=admin_act`) aynı ayara bağlıdır. Genelge bölümleri için henüz onay ekranı
+  olmadığından ayar boşken hiçbir genelge bölümü aranmaz ve okunmaz.
 - `low` bant hiçbir zaman okunmaz: değer listesine `low` (ya da tanınmayan bir değer) yazılırsa
   `app` açılışta hata verir. Reddedilmiş kaynak hiçbir ayarda dönmez.
 - Eski `KB_SEARCH_INCLUDE_UNREVIEWED` kalktı ve okunmaz. Ortamda tanımlıysa silin; onaysız kaynak

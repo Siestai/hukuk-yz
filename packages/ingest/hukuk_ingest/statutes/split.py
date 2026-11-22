@@ -42,6 +42,17 @@ _RG_RE = re.compile(
 _TRAILER_RE = re.compile(
     r"(?:\d{1,2}/\d{1,2}/\d{4}\s+TARİHLİ\s+VE\s+\d+\s+SAYILI\s+KANUNA\s+)?İŞLENEMEYEN", re.I
 )
+# The official list of in-force dates printed after the last article of a consolidated text.
+_IN_FORCE_TABLE_RE = re.compile(
+    r"\d+\s+SAYILI\s+KANUNA\s+EK\s+VE\s+DEĞİŞİKLİK\s+GETİREN\s+MEVZUATIN", re.I
+)
+# One stub for a whole range of articles: `MADDE 11 ila 16 - (... ile ilgili olup yerine
+# işlenmiştir.)` (they only amended other laws) or, in a repealed law, `Madde 15-110- (Mülga: ...)`,
+# `Madde 1-13/E- (...)`, `Ek Madde 1-4- (...)`.
+_RANGE_STUB_RE = re.compile(
+    r"^\s*(?P<kind>(?:(?:EK|Ek|GEÇİCİ|Geçici)\s+)*)(?:MADDE|Madde)\s+(?P<a>\d+)\s*(?:ila|[-–—])\s*"
+    r"(?P<b>\d+)(?:\s*/\s*[A-Za-zÇĞİÖŞÜçğıöşü])?\s*[-–—]"
+)
 _TERMINAL = ".;:,"
 _HEADING_LINES = 4
 _WRAPPED_TITLE = 75  # a section title line this long probably wraps onto the next line
@@ -55,7 +66,10 @@ _FOOTNOTE_LEAK_RE = re.compile(
     r"(?:değiştirilmiş|eklenmiş|çıkarılmış|kanunlaşmıştır|hüküm altına)"
 )
 # Notes at the head of an article ending in a whole-article repeal: `(Ek: ...) (Mülga: ...)`.
-_REPEAL_HEAD_RE = re.compile(r"^(?:\([^()]*\)\s*)*\(\s*(?:Mülga|İptal)\s*:[^()]*\)", re.IGNORECASE)
+# A paragraph number is no note: `(1) (Mülga: ...)` repeals the first paragraph only.
+_REPEAL_HEAD_RE = re.compile(
+    r"^(?:\((?!\d+\))[^()]*\)\s*)*\(\s*(?:Mülga|İptal)\s*:[^()]*\)", re.IGNORECASE
+)
 
 
 @dataclass
@@ -276,9 +290,26 @@ def _strip_markers(heading: str, known: set[int]) -> str:
     return heading
 
 
-def _has_marker(line: str, n: int, bracket: bool, known: set[int]) -> bool:
+def _lone_marker(line: str, known: set[int]) -> bool:
+    """A footnote marker printed on a line of its own (`... tesis edilir.` / `6` / `Fon ...`)."""
+    s = line.strip()
+    return s.isdigit() and int(s) in known
+
+
+def _stub_tail(lines: list[str]) -> tuple[int, str, list[str]]:
+    """Like `_split_tail` for a range stub: whatever follows the closing parenthesis of the
+    stub is the heading of the next article (`Kıdem tazminatı:` ends like a sentence)."""
+    close = next((j for j, x in enumerate(lines) if x.rstrip().endswith(")")), None)
+    if close is None:
+        return _split_tail(lines, 1)
+    return close + 1, " ".join(x.strip() for x in lines[close + 1 :] if x.strip()), []
+
+
+def _has_marker(line: str, n: int, bracket: bool, known: set[int], lone: bool) -> bool:
     if bracket:
         return bool(re.search(_BRACKET_MARK_RE.format(n=n), line))
+    if lone and line.strip() == str(n):
+        return True
     return any(n in (decompose(m.group(0), known) or ()) for m in _GLUED_RUN_RE.finditer(line))
 
 
@@ -385,9 +416,10 @@ def _attach_footnotes(
     body: list[_Line],
     notes: list[tuple[Footnote, int, bool]],
     known: set[int],
+    lone: bool,
 ) -> None:
     """Attaches each footnote to the article holding its marker; if no marker is found, to the
-    article of the last body line before the block."""
+    article of the last body line before the block. `lone`: a marker may stand on its own line."""
 
     def owner(index: int) -> int | None:
         if not articles:
@@ -412,7 +444,7 @@ def _attach_footnotes(
                 i
                 for i in range(lo, hi)
                 if (bracket or body[i].page == fn.page)
-                and _has_marker(body[i].text, fn.no, bracket, known)
+                and _has_marker(body[i].text, fn.no, bracket, known, lone)
             ),
             None,
         )
@@ -427,9 +459,10 @@ def _attach_footnotes(
             prev_at = max(prev_at, hi)
 
 
-def _numbering_warnings(articles: list[Article]) -> list[str]:
+def _numbering_warnings(articles: list[Article], stubbed: set[int]) -> list[str]:
     """Skipped, repeated or unordered article numbers; each is also noted on the article that
-    follows the break. A repeated number gets the suffix ` (2)` so that numbers stay unique."""
+    follows the break. A repeated number gets the suffix ` (2)` so that numbers stay unique.
+    Numbers the source prints as a range stub (`stubbed`) are not skipped."""
     out: list[str] = []
     seen: dict[str, int] = {}
     last: dict[str, int] = {}
@@ -452,7 +485,7 @@ def _numbering_warnings(articles: list[Article]) -> list[str]:
         n = int(m.group(1))
         prev = last.get(series, 0)
         msg = ""
-        if n > prev + 1:
+        if n > prev + 1 and not (series == "main" and stubbed.issuperset(range(prev + 1, n))):
             msg = f"number_skipped:{series}:{prev}->{n}"
         elif n < prev:
             msg = f"number_out_of_order:{series}:{prev}->{n}"
@@ -463,20 +496,41 @@ def _numbering_warnings(articles: list[Article]) -> list[str]:
     return out
 
 
-def split_statute(text: str) -> Snapshot:
-    """Header data and articles of one snapshot text (PDF pages separated by form feeds)."""
+def split_statute(text: str, *, new_rules: bool = False) -> Snapshot:
+    """Header data and articles of one snapshot text (PDF pages separated by form feeds).
+
+    `new_rules` cuts the in-force table at the end of the text and takes a footnote marker
+    printed on a line of its own out of the article text. Without it the table stays in the last
+    article and such markers stay in the text: how the 4857 and 5510 texts were reviewed (see
+    `laws.Law.legacy_rules`)."""
     text = clean_text(text)
     trailer = _TRAILER_RE.search(text)
     extra_warnings: list[str] = []
     if trailer:  # provisions of amending laws that were never merged into the articles
         extra_warnings.append(f"trailer_ignored:{len(text) - trailer.start()} chars")
         text = text[: trailer.start()]
+    table = _IN_FORCE_TABLE_RE.search(text) if new_rules else None
+    if table:
+        extra_warnings.append(f"in_force_table_ignored:{len(text) - table.start()} chars")
+        text = text[: table.start()]
     number, title, kabul, rg_date, rg_no = parse_header(text)
     body, notes, warnings = _extract_footnotes(text)
     warnings += extra_warnings
     known = {fn.no for fn, _, _ in notes}
 
-    heads = [(i, m) for i, line in enumerate(body) if (m := _HEAD_RE.match(line.text))]
+    # A head is an article head (`_HEAD_RE` match) or a range stub (None): the stub ends the
+    # article before it and its own lines are dropped.
+    heads: list[tuple[int, re.Match[str] | None]] = []
+    stubbed: set[int] = set()
+    for i, line in enumerate(body):
+        if stub := _RANGE_STUB_RE.match(line.text):
+            heads.append((i, None))
+            series = " ".join(stub["kind"].split()).title()
+            if not series:
+                stubbed.update(range(int(stub["a"]), int(stub["b"]) + 1))
+            warnings.append(f"range_stub:{series + ' ' if series else ''}{stub['a']}-{stub['b']}")
+        elif m := _HEAD_RE.match(line.text):
+            heads.append((i, m))
     articles: list[Article] = []
     spans: list[tuple[int, int]] = []
     if heads:
@@ -486,21 +540,29 @@ def split_statute(text: str) -> Snapshot:
         heading, heading_warnings = "", []
     for k, (i, m) in enumerate(heads):
         end = heads[k + 1][0] if k + 1 < len(heads) else len(body)
-        lines = [body[i].text[m.start("rest") :]] + [x.text for x in body[i + 1 : end]]
+        first = body[i].text[m.start("rest") :] if m else body[i].text
+        lines = [first] + [
+            x.text for x in body[i + 1 : end] if not (new_rules and _lone_marker(x.text, known))
+        ]
         last = k + 1 == len(heads)
-        stop, next_heading, next_warnings = (len(lines), "", []) if last else _split_tail(lines, 1)
-        articles.append(
-            Article(
-                article_no=_article_no(m),
-                ordinal=k + 1,
-                heading=_strip_markers(heading, known),
-                text=_paragraphs(lines[:stop]),
-                warnings=heading_warnings,
+        if last:
+            tail: tuple[int, str, list[str]] = (len(lines), "", [])
+        else:
+            tail = _split_tail(lines, 1) if m else _stub_tail(lines)
+        stop, next_heading, next_warnings = tail
+        if m:
+            articles.append(
+                Article(
+                    article_no=_article_no(m),
+                    ordinal=len(articles) + 1,
+                    heading=_strip_markers(heading, known),
+                    text=_paragraphs(lines[:stop]),
+                    warnings=heading_warnings,
+                )
             )
-        )
-        spans.append((i, i + max(stop, 1)))
+            spans.append((i, i + max(stop, 1)))
         heading, heading_warnings = next_heading, next_warnings
-    _attach_footnotes(articles, spans, body, notes, known)
+    _attach_footnotes(articles, spans, body, notes, known, new_rules)
     for a in articles:
         head = _repeal_head(a.text)
         a.status = "repealed" if head else "in_force"
@@ -512,5 +574,11 @@ def split_statute(text: str) -> Snapshot:
         if _FOOTNOTE_LEAK_RE.search(a.text):
             a.warnings.append("footnote_leak_suspect")
     return Snapshot(
-        number, title, kabul, rg_date, rg_no, articles, warnings + _numbering_warnings(articles)
+        number,
+        title,
+        kabul,
+        rg_date,
+        rg_no,
+        articles,
+        warnings + _numbering_warnings(articles, stubbed),
     )

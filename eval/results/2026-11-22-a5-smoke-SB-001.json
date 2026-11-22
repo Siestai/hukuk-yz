@@ -1,0 +1,735 @@
+[
+ {
+  "case_id": "SB-001",
+  "answer": {
+   "status": "conditional",
+   "status_note": "Eksik bilgiler nedeniyle koşullu cevaptır. Olay tarihi bilinmediğinden bugünün tarihindeki metin esas alınmıştır. Okunamayan kaynaklar bulunmaktadır: 9. HD E.2016/28920 K.2017/17860, 7. HD E.2014/12921 K.2014/18766, 7036 m.3.",
+   "headline": "5 aylık kıdem, 4857 sayılı Kanun m.18'deki en az altı aylık kıdem eşiğini tek başına karşılamamaktadır; önceki çalışma sürelerinin birleştirilmesi, yer altı işi, işçi sayısı ve sözleşme türü belirsiz olduğundan işe iade davası açılabileceği bu aşamada kesin olarak söylenememektedir.",
+   "fact_chips": [
+    {
+     "fact_key": "kidem",
+     "label": "Kıdem",
+     "status": "known"
+    },
+    {
+     "fact_key": "isci_sayisi",
+     "label": "İşçi sayısı",
+     "status": "unknown"
+    },
+    {
+     "fact_key": "sozlesme_turu",
+     "label": "Sözleşme türü",
+     "status": "unknown"
+    },
+    {
+     "fact_key": "bildirim_tarihi",
+     "label": "Bildirimin ulaştığı tarih",
+     "status": "unknown"
+    },
+    {
+     "fact_key": "onceki_donem",
+     "label": "Önceki çalışma",
+     "status": "unknown"
+    },
+    {
+     "fact_key": "yer_alti",
+     "label": "Yer altı işi",
+     "status": "unknown"
+    },
+    {
+     "fact_key": "kisaltma",
+     "label": "Sözleşmeyle kıdem şartının kısaltılması",
+     "status": "unknown"
+    }
+   ],
+   "points": [
+    {
+     "text": "4857 sayılı Kanun m.18, işe iade korumasını otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçiye tanımaktadır. Bilinen 5 aylık kıdem bu eşiğin altında kalmaktadır; bu nedenle başka bir unsur ortaya çıkmadıkça kıdem şartı karşılanmış görünmemektedir.",
+     "citations": [
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan",
+       "char_start": 0,
+       "char_end": 78,
+       "used_for": "Altı aylık kıdem ve otuz işçi şartının kanuni dayanağı"
+      }
+     ],
+     "unreviewed": false
+    },
+    {
+     "text": "Altı aylık kıdem, aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesaplanmaktadır. İşçinin aynı işverende önceki bir çalışma dönemi bulunmakta ise toplam süre altı aya ulaşabilir; bu olgu bilinmemektedir.",
+     "citations": [
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "İşçinin altı aylık kıdemi, aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir.",
+       "char_start": 1255,
+       "char_end": 1370,
+       "used_for": "Önceki sürelerin kıdeme eklenmesi"
+      },
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Altı aylık kıdem hesabında bu Kanunun 66 ncı maddesindeki süreler dikkate alınır.",
+       "char_start": 378,
+       "char_end": 459,
+       "used_for": "Kıdem hesabında m.66 sürelerinin dikkate alınması"
+      }
+     ],
+     "unreviewed": false
+    },
+    {
+     "text": "İşçi yer altı işlerinde çalışmakta ise kıdem şartı aranmamaktadır; bu durumda 5 aylık kıdem tek başına engel oluşturmaz. İşçinin yer altı işinde çalışıp çalışmadığı bilinmemektedir.",
+     "citations": [
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz.",
+       "char_start": 320,
+       "char_end": 377,
+       "used_for": "Yer altı işinde kıdem şartının aranmaması"
+      }
+     ],
+     "unreviewed": false
+    },
+    {
+     "text": "Dava yolu açık olduğu takdirde, işe iade talebiyle fesih bildiriminin tebliği tarihinden itibaren bir ay içinde arabulucuya başvurulması gerekmektedir. Bildirimin ulaştığı tarih bilinmediğinden bu sürenin işleyip işlemediği değerlendirilememektedir.",
+     "citations": [
+      {
+       "source_id": "63fdb624-7765-442d-9d60-336aaf25d525",
+       "category": "statute",
+       "label": "4857 m.20",
+       "ref": "4857 m.20",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-01-01",
+       "valid_to": null,
+       "quote": "fesih bildiriminin tebliği tarihinden itibaren bir ay içinde işe iade talebiyle",
+       "char_start": 182,
+       "char_end": 261,
+       "used_for": "Arabulucuya başvuru süresi"
+      }
+     ],
+     "unreviewed": true
+    },
+    {
+     "text": "İşe iade davası açılamasa da işçinin 5 aylık çalışma süresi altı aydan az olduğundan iki haftalık bildirim süresi söz konusudur; bildirim şartına uymayan taraf bildirim süresine ilişkin ücret tutarında tazminat ödemek zorundadır. Bu hususlar ayrıca değerlendirilmelidir.",
+     "citations": [
+      {
+       "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+       "category": "statute",
+       "label": "4857 m.17",
+       "ref": "4857 m.17",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": "İşi altı aydan az sürmüş olan işçi için, bildirimin diğer tarafa yapılmasından başlayarak iki hafta sonra",
+       "char_start": 113,
+       "char_end": 218,
+       "used_for": "Altı aydan az çalışmada iki haftalık bildirim süresi"
+      },
+      {
+       "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+       "category": "statute",
+       "label": "4857 m.17",
+       "ref": "4857 m.17",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": "Bildirim şartına uymayan taraf, bildirim süresine ilişkin ücret tutarında tazminat ödemek zorundadır.",
+       "char_start": 644,
+       "char_end": 745,
+       "used_for": "Bildirim şartına uyulmaması halinde tazminat"
+      }
+     ],
+     "unreviewed": true
+    },
+    {
+     "text": "Kıdem tazminatı, hizmet akdinin devamı süresince her geçen tam yıl için doğmaktadır; 5 aylık süre tam yıl oluşturmamaktadır.",
+     "citations": [
+      {
+       "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+       "category": "statute",
+       "label": "1475 m.14",
+       "ref": "1475 m.14",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-07-09",
+       "valid_to": null,
+       "quote": "hizmet aktinin devamı süresince her geçen tam yıl için işverence işçiye 30 günlük ücreti tutarında kıdem tazminatı ödenir",
+       "char_start": 1040,
+       "char_end": 1161,
+       "used_for": "Kıdem tazminatının tam yıl esasına bağlı olması"
+      }
+     ],
+     "unreviewed": true
+    }
+   ],
+   "short_point_count": 3,
+   "missing_info": [
+    {
+     "fact_key": "isci_sayisi",
+     "condition": "İşyerinde otuz veya daha fazla işçi çalışmakta ise (aynı işkolunda birden fazla işyeri bulunmakta ise toplam işçi sayısına göre)",
+     "result": "İşyeri sayısı şartı sağlanmış olur, ancak kıdem şartı ayrıca aranır; otuzdan az işçi çalışmakta ise m.18 kapsamı bu şart yönünden oluşmaz.",
+     "citations": [
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan",
+       "char_start": 0,
+       "char_end": 78,
+       "used_for": "İşçi sayısı ve kıdem şartlarının birlikte aranması"
+      },
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "İşverenin aynı işkolunda birden fazla işyerinin bulunması halinde, işyerinde çalışan işçi sayısı, bu işyerlerinde çalışan toplam işçi sayısına göre belirlenir.",
+       "char_start": 1371,
+       "char_end": 1530,
+       "used_for": "Birden fazla işyerinde toplam işçi sayısı"
+      }
+     ]
+    },
+    {
+     "fact_key": "sozlesme_turu",
+     "condition": "İş sözleşmesi belirsiz süreli ise",
+     "result": "m.18 hükmü belirsiz süreli iş sözleşmesini fesheden işverene ilişkin olduğundan inceleme bu hüküm üzerinden yürür; belirli süreli sözleşme halinde bu kaynaklarla işe iade sonucu belirlenememektedir.",
+     "citations": [
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "belirsiz süreli iş sözleşmesini fesheden işveren",
+       "char_start": 87,
+       "char_end": 135,
+       "used_for": "m.18'in belirsiz süreli sözleşmeye ilişkin olması"
+      }
+     ]
+    },
+    {
+     "fact_key": "bildirim_tarihi",
+     "condition": "Fesih bildiriminin işçiye ulaştığı tarih bilinmekte ve o tarihten itibaren bir ay geçmemiş ise",
+     "result": "İşe iade talebiyle arabulucuya başvuru süresi devam etmektedir; tarih bilinmediğinden sürenin işleyip işlemediği bu kaynaklarla belirlenememektedir.",
+     "citations": [
+      {
+       "source_id": "63fdb624-7765-442d-9d60-336aaf25d525",
+       "category": "statute",
+       "label": "4857 m.20",
+       "ref": "4857 m.20",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-01-01",
+       "valid_to": null,
+       "quote": "fesih bildiriminin tebliği tarihinden itibaren bir ay içinde işe iade talebiyle",
+       "char_start": 182,
+       "char_end": 261,
+       "used_for": "Bir aylık arabulucuya başvuru süresi"
+      }
+     ]
+    },
+    {
+     "fact_key": "onceki_donem",
+     "condition": "İşçinin aynı işverenin bir veya değişik işyerlerinde önceki çalışma süresi bulunmakta ve toplam süre altı aylık eşiğe ulaşmakta ise",
+     "result": "Altı aylık kıdem şartı karşılanabilir; önceki çalışma yok ise kıdem 5 ay olarak kalmakta ve eşik karşılanmamaktadır.",
+     "citations": [
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "İşçinin altı aylık kıdemi, aynı işverenin bir veya değişik işyerlerinde geçen süreler birleştirilerek hesap edilir.",
+       "char_start": 1255,
+       "char_end": 1370,
+       "used_for": "Önceki sürelerin birleştirilmesi"
+      },
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan",
+       "char_start": 0,
+       "char_end": 78,
+       "used_for": "En az altı aylık kıdem eşiği"
+      }
+     ]
+    },
+    {
+     "fact_key": "yer_alti",
+     "condition": "İşçi yer altı işlerinde çalışmakta ise",
+     "result": "Kıdem şartı aranmaz ve 5 aylık kıdem engel oluşturmaz; işçi sayısı ve belirsiz süreli sözleşme gibi diğer unsurlar ayrıca incelenir. Yer altı işinde çalışmamakta ise kıdem şartı aranmaya devam eder.",
+     "citations": [
+      {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz.",
+       "char_start": 320,
+       "char_end": 377,
+       "used_for": "Yer altı işinde kıdem şartının aranmaması"
+      }
+     ]
+    },
+    {
+     "fact_key": "kisaltma",
+     "condition": "Kıdem şartı toplu veya bireysel sözleşmeyle kısaltılmış ise",
+     "result": "Okunan kaynaklarda kıdem şartının sözleşmeyle kısaltılmasına ilişkin bir hüküm bulunmadığından bu dalda sonuç bu kaynaklarla belirlenememektedir; kısaltma bulunmamakta ise m.18'deki altı aylık eşik uygulanır.",
+     "citations": []
+    }
+   ],
+   "holding_map": {
+    "rows": [
+     {
+      "condition": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan işçinin belirsiz süreli iş sözleşmesini fesheden işveren, işçinin yeterliliğinden veya davranışlarından ya da işletmenin, işyerinin veya işin gereklerinden kaynaklanan geçerli bir sebebe dayanmak",
+      "condition_quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan",
+      "citation": {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Otuz veya daha fazla işçi çalıştıran işyerlerinde en az altı aylık kıdemi olan",
+       "char_start": 0,
+       "char_end": 78,
+       "used_for": null
+      },
+      "fact_value": "5 aylık kıdem bulunmaktadır; altı aylık kıdem eşiğine ulaşılmamıştır. Ancak önceki çalışma dönemi ve toplu iş sözleşmesine dayalı kıdem kısaltması bilinmemektedir; işçi sayısı da belirsizdir.",
+      "result": "unknown"
+     },
+     {
+      "condition": "İşi altı aydan az sürmüş olan işçi için, bildirimin diğer tarafa yapılmasından başlayarak iki hafta sonra",
+      "condition_quote": "İşi altı aydan az sürmüş olan işçi için, bildirimin",
+      "citation": {
+       "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+       "category": "statute",
+       "label": "4857 m.17",
+       "ref": "4857 m.17",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2003-06-10",
+       "valid_to": null,
+       "quote": "İşi altı aydan az sürmüş olan işçi için, bildirimin",
+       "char_start": 113,
+       "char_end": 164,
+       "used_for": null
+      },
+      "fact_value": "5 aylık çalışma süresi altı aydan az olduğundan, bildirimin ulaşması üzerine iki haftalık bildirim süresi uygulanmaktadır.",
+      "result": "unknown"
+     },
+     {
+      "condition": "İş sözleşmesi feshedilen işçi, fesih bildiriminde sebep gösterilmediği veya gösterilen sebebin geçerli bir sebep olmadığı iddiası ile fesih bildiriminin tebliği tarihinden itibaren bir ay içinde işe iade talebiyle arabulucuya başvurmak",
+      "condition_quote": "fesih bildiriminin tebliği tarihinden itibaren bir ay içinde işe iade talebiyle",
+      "citation": {
+       "source_id": "63fdb624-7765-442d-9d60-336aaf25d525",
+       "category": "statute",
+       "label": "4857 m.20",
+       "ref": "4857 m.20",
+       "review_status": "analyzed",
+       "band": "medium",
+       "verification": "not_applicable",
+       "valid_from": "2018-01-01",
+       "valid_to": null,
+       "quote": "fesih bildiriminin tebliği tarihinden itibaren bir ay içinde işe iade talebiyle",
+       "char_start": 182,
+       "char_end": 261,
+       "used_for": null
+      },
+      "fact_value": "Fesih bildiriminin işçiye ulaştığı tarihi ve işçinin arabulucuya başvuru düşüncesini gösteren davranışını belirten bilgiler bilinmemektedir; tarihsel veriler eksiktir.",
+      "result": "unknown"
+     },
+     {
+      "condition": "Altı aylık kıdem hesabında bu Kanunun 66 ncı maddesindeki süreler dikkate alınır",
+      "condition_quote": "Altı aylık kıdem hesabında bu Kanunun 66 ncı maddesindeki süreler",
+      "citation": {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Altı aylık kıdem hesabında bu Kanunun 66 ncı maddesindeki süreler",
+       "char_start": 378,
+       "char_end": 443,
+       "used_for": null
+      },
+      "fact_value": "Madde 66'deki süreler hakkında bilgi kaynakta yer almamaktadır; önceki çalışma dönemi, deneme süresi ve toplu sözleşme kısaltması varlığı belirsizdir.",
+      "result": "unknown"
+     },
+     {
+      "condition": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+      "condition_quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+      "citation": {
+       "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+       "category": "statute",
+       "label": "4857 m.18",
+       "ref": "4857 m.18",
+       "review_status": "approved",
+       "band": null,
+       "verification": "not_applicable",
+       "valid_from": "2014-09-11",
+       "valid_to": null,
+       "quote": "Yer altı işlerinde çalışan işçilerde kıdem şartı aranmaz",
+       "char_start": 320,
+       "char_end": 376,
+       "used_for": null
+      },
+      "fact_value": "İşçinin yer altı işinde çalışıp çalışmadığı bilinmemektedir.",
+      "result": "not_applicable"
+     }
+    ],
+    "reasoning_summary": "Bilinen 5 aylık kıdem m.18'deki en az altı aylık eşiğin altındadır. Ancak aynı işverendeki önceki sürelerin birleştirilmesi, yer altı işi istisnası, otuz işçi şartı, sözleşme türü ve sözleşmeyle kısaltma olgularının bilinmemesi sonucu değiştirebilmektedir. Bu nedenle sonuç koşulludur. Bildirimin ulaştığı tarih bilinmediğinden bir aylık arabulucuya başvuru süresi de değerlendirilememekte; dava yolu kapalı olsa dahi iki haftalık bildirim süresi ve ihbar tazminatı ayrıca incelenmelidir.",
+    "citations": []
+   },
+   "calculations": [],
+   "read_sources": {
+    "statute_articles": 12,
+    "decisions": 0,
+    "admin_acts": 4,
+    "items": [
+     {
+      "source_id": "4ffaed6f-ed61-418b-92a1-03ca5294c455",
+      "category": "statute",
+      "label": "4857 m.15",
+      "ref": "4857 m.15",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2003-06-10",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "10154f9c-158f-4b46-97a0-a91c7416a7a6",
+      "category": "statute",
+      "label": "4857 m.17",
+      "ref": "4857 m.17",
+      "review_status": "analyzed",
+      "band": "medium",
+      "verification": "not_applicable",
+      "valid_from": "2003-06-10",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "d9777537-ea27-44ac-a531-5655d32232d5",
+      "category": "statute",
+      "label": "4857 m.18",
+      "ref": "4857 m.18",
+      "review_status": "approved",
+      "band": null,
+      "verification": "not_applicable",
+      "valid_from": "2014-09-11",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "63fdb624-7765-442d-9d60-336aaf25d525",
+      "category": "statute",
+      "label": "4857 m.20",
+      "ref": "4857 m.20",
+      "review_status": "analyzed",
+      "band": "medium",
+      "verification": "not_applicable",
+      "valid_from": "2018-01-01",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "273c7d66-207f-4759-b60d-166f78e5c563",
+      "category": "statute",
+      "label": "4857 m.21",
+      "ref": "4857 m.21",
+      "review_status": "analyzed",
+      "band": "medium",
+      "verification": "not_applicable",
+      "valid_from": "2018-01-01",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "78e76d44-bae0-4e2f-b8ef-02a3f28d66e8",
+      "category": "statute",
+      "label": "7036 m.3",
+      "ref": "7036 m.3",
+      "review_status": "analyzed",
+      "band": "medium",
+      "verification": "not_applicable",
+      "valid_from": "2025-10-17",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "9af940ff-4849-4546-b1bb-c1229dede836",
+      "category": "statute",
+      "label": "1475 m.14",
+      "ref": "1475 m.14",
+      "review_status": "analyzed",
+      "band": "medium",
+      "verification": "not_applicable",
+      "valid_from": "2018-07-09",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "44f29325-0592-4692-8c82-06bd4674da3d",
+      "category": "statute",
+      "label": "İŞ KANUNU m.24 · İşçinin haklı nedenle derhal fesih hakkı",
+      "ref": "4857 m.24",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2003-06-10",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "cff70dd9-bb7c-4fb4-b983-c0421440cb3f",
+      "category": "statute",
+      "label": "İŞ KANUNU m.12 · Belirli ve belirsiz süreli iş sözleşmesi ayırımın sınırları",
+      "ref": "4857 m.12",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2003-06-10",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "ea9f17ea-3799-4a53-9216-3405ce78e5fc",
+      "category": "statute",
+      "label": "İŞ KANUNU m.5 · Eşit davranma ilkesi",
+      "ref": "4857 m.5",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2014-02-19",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "5f09799f-4966-4b2d-986e-621d278a4b50",
+      "category": "statute",
+      "label": "İŞ KANUNU m.29 · Toplu işçi çıkarma",
+      "ref": "4857 m.29",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2003-06-10",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "d86b1de4-e34f-4e08-877b-03cd05082956",
+      "category": "statute",
+      "label": "İŞ KANUNU m.13 · Kısmî süreli ve tam süreli iş sözleşmesi",
+      "ref": "4857 m.13",
+      "review_status": "analyzed",
+      "band": "medium",
+      "verification": "not_applicable",
+      "valid_from": "2016-02-10",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "aff2e413-50ac-4a2f-9d65-509a1a0cafd4",
+      "category": "admin_act",
+      "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B14-2.1.1 · Kapsam",
+      "ref": "2018/38 m.K4-B14-2.1.1",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2018-11-06",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "8a39e18b-dbf3-490c-94a9-059a24007129",
+      "category": "admin_act",
+      "label": "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi m.2.2.2.7 · 1/10/2008 tarihi itibariyle 5510 sayılı Kanunun 4 üncü maddesinin birinci",
+      "ref": "2020/8 m.2.2.2.7",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2020-04-01",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "0e822c28-7e9b-45c8-971c-85e00551fe45",
+      "category": "admin_act",
+      "label": "SGK Genelgesi 2018/38 · Emeklilik İşlemleri m.K4-B12-1.2 · Vazife Malullüğünün Kuruma Bildirim Süresi",
+      "ref": "2018/38 m.K4-B12-1.2",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2018-11-06",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     },
+     {
+      "source_id": "abb4925a-602d-4ae0-be18-0833e33b01a0",
+      "category": "admin_act",
+      "label": "SGK Genelgesi 2020/8 · İdari Para Cezası Genelgesi m.2.18 · 5510 Sayılı Kanunun 4 üncü Maddesinin Birinci Fıkrasının (c) Bendi",
+      "ref": "2020/8 m.2.18",
+      "review_status": "analyzed",
+      "band": "high",
+      "verification": "not_applicable",
+      "valid_from": "2020-04-01",
+      "valid_to": null,
+      "quote": null,
+      "char_start": null,
+      "char_end": null,
+      "used_for": null
+     }
+    ]
+   },
+   "applied_law_date": "2026-11-22",
+   "applied_law_text": "22.11.2026 tarihinde yürürlükte olan metin",
+   "disclaimer": "Hukuki görüş değildir."
+  },
+  "metrics": {
+   "schema": 1.0,
+   "status": 1.0,
+   "headline": 0.5,
+   "must_cite": 0.0,
+   "citation_validity": 1.0,
+   "must_ask": 1.0,
+   "must_not": 1.0,
+   "formal_mode": 1.0,
+   "disclaimer": 1.0
+  },
+  "score": 0.8333333333333334,
+  "dropped": 1,
+  "fell_back": false,
+  "input_tokens": 101535,
+  "output_tokens": 17181,
+  "cost": 0.341521,
+  "seconds": 126.53350353986025,
+  "error": null
+ }
+]
