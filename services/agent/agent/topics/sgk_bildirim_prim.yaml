@@ -1,0 +1,110 @@
+# Konu kartı SB-024 (yeni işyerinde işe giriş bildirgesi için bir aylık süre, 5510 m.8/1-b) ve
+# SB-012 (eksik gün kodu 06 kısmi istihdam ile 07 puantaj ayrımı); eval/cases/SB-024.yaml,
+# eval/cases/SB-012.yaml.
+# Görev 19 B2 taslağı. Olgular kritik değildir: şablonda iki ayrı alt konu (işe giriş bildirgesi
+# süresi; aylık prim ve hizmet belgesinde eksik gün) bulunmaktadır ve şablonda koşullu sorma alanı
+# olmadığından kritik yapılırlarsa her soruda hepsi sorulur (idari_para_cezasi.yaml ile aynı
+# gerekçe). Kapı (B3) koşullu sormayı getirene ya da şablon ikiye bölünene kadar sorulmazlar.
+# "Neden soruyorum" metinleri yalnız KB'de okunabilen maddelere dayanır (5510 m.8 high,
+# 5510 m.86 high, 4857 m.13 medium). 5510 m.80'in güncel sürümü low bantta olduğundan (K1)
+# dayanak ve must_read olarak kullanılmamıştır. SSİY, 2013/11 ve 2020/20 Genelgeleri KB'de
+# yoktur; vaka dosyalarında missing_in_kb altında listelenmiştir.
+id: sgk_bildirim_prim
+title: SGK bildirimleri, eksik gün ve prim ödeme gün sayısı
+description: >-
+  4/a sigortalılarının Kuruma bildirimi: sigortalı işe giriş bildirgesinin verilme süresi ve
+  istisnaları (5510 m.8/1: inşaat, balıkçılık, tarım işyerleri; Kuruma ilk defa işyeri bildirgesi
+  verilen işyerlerinde bir aylık süre), aylık prim ve hizmet belgesinde eksik gün nedeni ve sayısı
+  (5510 m.86/4), kısmi süreli çalışma ile puantaj kaydına dayalı eksik gün bildirimi, prim ödeme
+  gün sayısı.
+facts:
+  - key: tescil_ve_calistirma_tarihi
+    label: İşyerinin ilk bildirimi ve ilk sigortalı çalıştırma tarihi
+    question:
+      text: >-
+        İşyeri Kuruma ilk defa mı bildirildi? İşyeri bildirgesinin verildiği tarih ile işyerinde
+        ilk sigortalının çalışmaya başladığı tarih nedir?
+      why: >-
+        Kuruma ilk defa işyeri bildirgesi verilecek işyerlerinde, ilk defa sigortalı çalıştırmaya
+        başlanılan tarihten itibaren bir ay içinde çalışmaya başlayan sigortalıların işe giriş
+        bildirgesi, en geç bu bir aylık sürenin dolduğu tarihe kadar verilirse sigortalılık
+        başlangıcından önce bildirilmiş sayılmaktadır (5510 m.8/1-b).
+      kind: text
+      basis:
+        - {ref: "5510 m.8/1-b", category: statute}
+  - key: isyeri_kolu
+    label: İşyerinin iş kolu
+    question:
+      text: İşyeri inşaat, balıkçılık veya tarım işyeri midir?
+      why: >-
+        İnşaat, balıkçılık ve tarım işyerlerinde işe başlatılacak sigortalıların işe giriş
+        bildirgesi en geç çalışmaya başlatıldıkları gün verilmektedir (5510 m.8/1-a); bir aylık
+        süre ise m.8/1-b'de ayrı bir bentte düzenlenmiştir.
+      kind: choice
+      options:
+        - {value: insaat_balikcilik_tarim, label: "İnşaat, balıkçılık veya tarım işyeri"}
+        - {value: diger, label: "Bunların dışında bir işyeri", assumed_never: true}
+      basis:
+        - {ref: "5510 m.8/1-a", category: statute}
+        - {ref: "5510 m.8/1-b", category: statute}
+  - key: eksik_gun_kodu
+    label: Eksik gün nedeni (kodu)
+    question:
+      text: Sigortalı aylık prim ve hizmet belgesinde hangi eksik gün nedeniyle bildirildi?
+      why: >-
+        Ay içinde bazı iş günlerinde çalıştırılmayan ve ücret ödenmeyen sigortalının eksik gün
+        nedeni ve eksik gün sayısı aylık prim ve hizmet belgesinde veya muhtasar ve prim hizmet
+        beyannamesinde beyan edilmektedir; eksik gün nedenleri ve bunları ispatlayan belgeler
+        Kurumca çıkarılan yönetmelikle belirlenmektedir (5510 m.86/4).
+      kind: choice
+      options:
+        - {value: "06", label: "06 - Kısmi istihdam"}
+        - {value: "07", label: "07 - Puantaj kayıtları"}
+        - {value: diger, label: Diğer bir eksik gün nedeni}
+      basis:
+        - {ref: "5510 m.86/4", category: statute}
+  - key: calisma_bicimi
+    label: Çalışmanın dayandığı sözleşme
+    question:
+      text: >-
+        İşçi ile işveren arasında, iki tarafça imzalanmış ve çalışma süresini gösteren yazılı bir
+        kısmi süreli iş sözleşmesi var mı, yoksa işçi tam süreli sözleşmeyle çalışıp eksik günleri
+        yalnız puantaj kaydıyla mı belirlendi?
+      why: >-
+        Kısmi süreli iş sözleşmesi, işçinin normal haftalık çalışma süresinin tam süreli emsal
+        işçiye göre önemli ölçüde daha az belirlendiği sözleşmedir (4857 m.13/1). Eksik gün
+        nedenini ispatlayan belgeler yönetmelikle belirlenmektedir (5510 m.86/4); bu belgeler
+        Kurumca istendiği hâlde ibraz edilmez veya geçerli sayılmaz ve belge tebligata rağmen bir
+        ay içinde verilmezse, otuz günden az bildirilen sürelere ait belge Kurumca re'sen
+        düzenlenmektedir (5510 m.86/5).
+      kind: choice
+      options:
+        - {value: yazili_kismi, label: "Yazılı kısmi süreli iş sözleşmesi var"}
+        - {value: puantaj, label: "Tam süreli sözleşme; eksik günler yalnız puantaj kaydıyla"}
+        - {value: sozlesme_belirsiz, label: "Sözleşmenin yazılı olup olmadığı bilinmemektedir"}
+      basis:
+        - {ref: "4857 m.13/1", category: statute}
+        - {ref: "5510 m.86/4", category: statute}
+        - {ref: "5510 m.86/5", category: statute}
+must_read:
+  - {ref: "5510 m.8", category: statute}
+  - {ref: "5510 m.86", category: statute}
+  - {ref: "4857 m.13", category: statute}
+queries:
+  - Kuruma ilk defa işyeri bildirgesi verilecek işyerlerinde ilk defa sigortalı çalıştırmaya başlanılan tarihten itibaren bir ay
+  - inşaat balıkçılık ve tarım işyerlerinde en geç çalışmaya başlatıldığı gün işe giriş bildirgesi
+  - eksik gün nedeni ve eksik gün sayısı aylık prim ve hizmet belgesinde beyan edilir
+  - kısmi süreli iş sözleşmesi normal haftalık çalışma süresi tam süreli emsal işçiye göre önemli ölçüde daha az
+traps:
+  - Yeni işyerindeki bir aylık süre her sigortalının başlama gününden değil, işyerinde ilk defa sigortalı çalıştırmaya başlanılan tarihten işler ve tek bir tarihte kapanır (5510 m.8/1-b).
+  - İnşaat, balıkçılık ve tarım işyerlerinde işe giriş bildirgesi en geç çalışmaya başlatıldığı gün verilir (5510 m.8/1-a); bu işyerleri için bir aylık süre kendiliğinden uygulanmaz.
+  - İşyeri bildirgesinin süresi ile sigortalı işe giriş bildirgesinin süresi ayrı hükümlerdir; biri ötekinin yerine kullanılmaz.
+  - 06 (kısmi istihdam) ile 07 (puantaj kayıtları) ayrı rejimlerdir. Kısmi süreli çalışmada prim ödeme gün sayısı yazılı kısmi süreli sözleşmeye ve toplam çalışma saatine dayanır; puantajda saat toplanıp güne çevrilmez. Kod verilmişse o rejimin kuralı uygulanır, verilmemişse kod ve sözleşmenin yazılı olup olmadığı sorulur.
+  - 5510 m.80/1-h'nin güncel metni KB'de düşük güven bandındadır; okunamayan metne dayanarak kesin gün sayısı kurulmaz.
+  - Tek bir sabit "en fazla gün" sayısı kaynaksız verilmez; sonuç ayın çalışılabilecek gün sayısına ve sözleşmedeki çalışma süresine bağlıdır. Hesap tutarı ve gün sayısı hesabı hesap motorunun işidir.
+calculations:
+  - title: Kısmi süreli çalışmada prim ödeme gün sayısı
+    needs:
+      - Yazılı kısmi süreli iş sözleşmesindeki günlük ve haftalık çalışma süresi
+      - Ay içindeki toplam çalışma saati
+      - Bildirim dönemi (ay)

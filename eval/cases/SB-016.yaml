@@ -11,7 +11,10 @@ expected:
   must_cite:
     - 5510 m.102/2
     - 5510 m.102/5
-    - 2020/8 Genelge m.3.1
+    # Görev 19 B1: künye KB biçimine çevrildi ("2020/8 Genelge m.3.1" -> "2020/8 m.3.1"); KB chunk ref'i
+    # "2020/8 m.3.1"dir ve eski biçim eval/score.py'de hiçbir atıfla eşleşmezdi. İçerik okundu: m.3.1
+    # iki indirimin birlikte ve ayrı uygulanmasını, 15 gün aşılınca hiçbir indirim olmadığını (Örnek 2, 4) yazar.
+    - 2020/8 m.3.1
   must_ask:
     - ceza_turu
     - kendiliginden

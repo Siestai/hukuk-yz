@@ -11,6 +11,11 @@ expected:
     - 7036 m.3/1
     - 4857 m.24/II-e
     - 9. HD E.2008/26536 K.2008/25713
+  # Görev 19 B1 gözden geçirme (şablon: tis_sendikal). 6356 m.36 (high), m.39 (medium),
+  # 7036 m.3 (medium), 4857 m.24 (high) KB'de okundu. 9. HD kararı dergi arşivinde (sayı 20)
+  # bulunmaktadır, ancak KB decision tablosunda kaydı ve karararama E/K teyidi yoktur.
+  missing_in_kb:
+    - 9. HD E.2008/26536 K.2008/25713
   must_ask:
     - tis_maddesi
     - sendika_uyeligi
@@ -23,6 +28,9 @@ expected:
     - Yararlanma taraf sendika üyeliğine bağlıdır (m.39); dayanışma aidatı geriye işlemez.
     - Süresi biten TİS'in normatif hükümleri devam eder; faiz türü değişir (yasal faiz).
     - 22. HD E.2012/12745 K.2013/2608 yalnız TİS veya sözleşme dayanağı olmayan işyeri uygulaması içindir, TİS ikramiyesi için kullanılmaz.
-    - Arabuluculuk son tutanağı olmadan dava dilekçesi usulden reddedilir (7036 m.3/2).
+    # Görev 19 B1: 7036 m.3/2 metnine göre düzeltildi. Önceki cümle ("son tutanak olmadan dava
+    # usulden reddedilir") eksikti: tutanak eklenmezse önce bir haftalık kesin süre verilir;
+    # doğrudan usulden ret, arabulucuya hiç başvurulmadan açılan dava içindir.
+    - Arabulucuya başvurulmadan açılan dava dava şartı yokluğundan usulden reddedilir (7036 m.3/2); son tutanak dilekçeye eklenmemişse bir haftalık kesin süre verilir, süresinde sunulmazsa dava usulden reddedilir.
     - Yakacak yardımının ayni mi nakdi mi, ücret eki mi olduğu TİS metnine göre belirlenir.
 tags: [tis, sendika, alacak]

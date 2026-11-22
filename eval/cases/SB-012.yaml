@@ -1,0 +1,63 @@
+id: SB-012
+question: "bie soru daha. 6 eksik gün koduyla bildirrilen bir işçi eksik gün bildirileceği varsayımıyla sgk ya en fazla kaç gün bildirilebilir."
+# Görev 19 B1 (2026-11-22), şablon: sgk_bildirim_prim. Soru aynen alınmıştır (yazım hataları
+# dahil): ajanın gerçek kullanıcı metnini okuması ölçülür.
+# Soru eksik gün kodunu (06 - Kısmi istihdam) vermektedir; ajan bunu sorudan okur. Açık kalan olgu,
+# 06 kodunun dayandığı yazılı kısmi süreli iş sözleşmesinin bulunup bulunmadığıdır: sözleşme
+# yoksa bildirim 06 rejimiyle kabul edilmez, puantaj (07) kuralı devreye girer (2020/20
+# m.K3-B1-1.2.3.6). Bu yüzden status conditional, facts boştur.
+# Kaynaklar:
+# - 4857 m.13 (kısmi süreli tanımı) ve 5510 m.86 (dördüncü fıkra: eksik gün nedeni ve sayısı
+#   beyan edilir; beşinci fıkra: belge ibraz edilmezse re'sen düzenleme) KB'de okunabilir
+#   (medium / high). Madde düzeyinde istenir (SB-001 notu: fıkra künyede taşınamaz).
+# - 5510 m.80/1-h (yazılı kısmi süreli sözleşme şartı, toplam saatin günlük çalışma saatine
+#   bölünmesi, gün kesrinin bir gün sayılması) KB'de var, ancak 2023-01-15'ten bu yana geçerli
+#   sürümü low bantta olduğundan okunamaz (K1).
+# - SSİY m.101/1 (üçte iki ölçütü), m.101/3 (7,5 saate bölme, 7,5 saatin altı bir gün),
+#   m.102/13 (d: yazılı kısmi süreli sözleşme; e: puantaj kayıtları) data/drive/Mevzuat/Yönetmelik
+#   altındaki SSİY metninden okundu; KB'de yoktur.
+# - 2020/20 m.K3-B1-1.2.3.1 (eksik gün kodları: 06 kısmi istihdam, 07 puantaj kayıtları),
+#   m.K3-B1-1.2.3.5 (kısmi süreli: yazılı ve iki tarafça imzalı sözleşme, haftalık 30 saat ve altı,
+#   ayın Pazar dışı günleri x 7,5 x 2/3 karşılaştırması, aşarsa 30 gün; 2018 Mart örneği 18 gün),
+#   m.K3-B1-1.2.3.6 (puantaj: sözleşmesiz saat toplama kabul edilmez, imzalı her gün tam gün)
+#   data/drive/Mevzuat/Genelge/2020-20 dosyasında okundu; KB'de yoktur.
+# - Çalışma Süreleri Yönetmeliği m.6 ("üçte ikisi oranına kadar") data/drive/Mevzuat/Yönetmelik
+#   altında okundu; KB'de yoktur.
+# Hesap yoktur (md.29): beklenen cevap yöntemi ve sınırı kaynaklarıyla anlatır, gün sayısını
+# hesap motoruna bırakır.
+expected:
+  status: conditional
+  headline_contains:
+    - kısmi
+    - "7,5"
+  must_cite:
+    - 4857 m.13
+    - 5510 m.86
+    - 5510 m.80/1-h
+    - SSİY m.101/1
+    - SSİY m.101/3
+    - SSİY m.102/13
+    - 2020/20 m.K3-B1-1.2.3.5
+    - 2020/20 m.K3-B1-1.2.3.6
+  missing_in_kb:
+    - 5510 m.80/1-h
+    - SSİY m.101/1
+    - SSİY m.101/3
+    - SSİY m.102/13
+    - 2020/20 m.K3-B1-1.2.3.1
+    - 2020/20 m.K3-B1-1.2.3.5
+    - 2020/20 m.K3-B1-1.2.3.6
+    - Çalışma Süreleri Yönetmeliği m.6
+  must_ask:
+    - calisma_bicimi
+  must_not:
+    - puantaj cetvelindeki saatler toplanarak 7,5'e bölünür
+  traps:
+    - Puantaj ile kısmi süreli çalışma ayrı rejimlerdir. Kısmi süreli çalışma yazılı ve iki tarafça imzalı sözleşmeyle olur (kod 06); puantaj, tam süreli sözleşmeyle çalışanın eksik günlerinin puantaj kaydıyla gösterilmesidir (kod 07). İki rejimin kuralı birbirine aktarılmaz.
+    - Kod verilmişse o kodun kuralı uygulanır; verilmemişse hangi kodla bildirildiği, kod 06 ise yazılı kısmi süreli sözleşmenin bulunup bulunmadığı sorulur.
+    - Kod 06'da prim ödeme gün sayısı ay içindeki toplam çalışma saatinin 7,5 saate bölünmesiyle bulunur; kesir bir güne tamamlanır.
+    - Sözleşmedeki aylık çalışma süresi, ayın Pazar dışındaki günleri ile 7,5 saatin çarpımının üçte ikisini aşarsa sözleşme tam süreli sayılır ve sigortalı 30 gün üzerinden bildirilir; bu nedenle 06 koduyla bildirilebilecek gün sayısının üst sınırı bu üçte iki ölçütüne bağlıdır ve aydan aya değişir.
+    - Tek bir sabit "en fazla gün" sayısı kaynaksız verilmez; genelge örneği (2018 Mart, 135 saat, 18 gün) yalnız o ay içindir.
+    - Puantajda (07) saat toplanıp 7,5'e bölünmez; imzalı her gün tam gün sayılır, haftanın altı günü çalışan hafta tatiline de hak kazanır. Bu kural 06 koduna uygulanmaz.
+    - Kanun, yönetmelik ve genelge katmanı birlikte taranır; 5510 m.80'in okunamaması (low bant) cevapta kaynak eksikliği olarak belirtilir, metin uydurulmaz.
+tags: [sgk, eksik-gun, kismi-sureli, prim-gun]

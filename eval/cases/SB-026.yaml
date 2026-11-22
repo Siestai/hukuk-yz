@@ -1,5 +1,21 @@
 id: SB-026
 question: "Mahkeme kararıyla geriye dönük hizmet veriliyor mu verilemiyor mu"
+# Görev 19 B1 gözden geçirme (2026-11-22), şablon: hizmet_tespiti.
+# - "5510 m.86/9" ve "5510 m.86/8" -> "5510 m.86": KB metninde (5510 m.86, high bant) fıkra
+#   numarası yoktur; ajan fıkrayı künyede taşıyamaz (agent/sources.py checked_sub) ve
+#   eval/score.py covers() madde düzeyi atfı fıkra isteğine saymaz (SB-001 notu). Fıkra ayrımı
+#   traps ve must_not ile ölçülür. Not: KB metninde dokuzuncu ve onuncu fıkra aynı satıra
+#   birleşmiştir (dipnot 148 ayrıştırma izi); m.86/9 metni okunabilir durumdadır.
+# - Yargıtay 10. HD kararı must_cite'tan çıkarıldı: karar dergi arşivinde (sayı 2026/2)
+#   bulunmaktadır, ancak decision tablosunda kaydı ve karararama'da E/K teyidi yoktur. Teyit edilip
+#   yüklenince geri eklenir. Şablondaki basis ve must_read de aynı gerekçeyle çıkarıldı.
+# - "2020/20 Genelge İkinci Kısım İkinci Bölüm 1.3" -> "2020/20 m.K2-B2-1.3" (kunye.py genelge
+#   biçimi). Başlık data/drive/Mevzuat/Genelge/2020-20 dosyasında okundu ("Hizmet akdinin
+#   feshinin geçersizliği halinde yapılacak ödemeler", en çok dört aylık süre). 2020/20 KB'de
+#   yoktur.
+# - SSİY m.18/1-c ("Hizmet tespitine ilişkin kesinleşen yargı kararlarına göre" re'sen tescil)
+#   data/drive/Mevzuat/Yönetmelik/Sosyal Sigorta İşlemleri Yönetmeliği dosyasında okundu; KB'de
+#   yoktur.
 facts:
   hizmet_yillari: "2022"
   bildirim_durumu: hic_bildirim
@@ -9,11 +25,12 @@ expected:
     - geriye dönük hizmet
     - verilmektedir
   must_cite:
-    - 5510 m.86/9
-    - 5510 m.86/8
-    - 10. HD E.2026/513 K.2026/4936
+    - 5510 m.86
     - SSİY m.18/1-c
-    - 2020/20 Genelge İkinci Kısım İkinci Bölüm 1.3
+    - 2020/20 m.K2-B2-1.3
+  missing_in_kb:
+    - SSİY m.18/1-c
+    - 2020/20 m.K2-B2-1.3
   must_ask:
     - hizmet_yillari
     - bildirim_durumu
@@ -21,10 +38,13 @@ expected:
     - dönem sınırı yok
     - açık nokta
     - İkinci Kısım Birinci Bölüm 1.3
+    # Eklendi: aynı yanlış başlığın künye biçimi.
+    - 2020/20 m.K2-B1-1.3
   traps:
     - m.86/8 (denetimde en fazla bir yıl) ile m.86/9 (ilam, beş yıl) karıştırılmaz; fıkra sayımına mülga altıncı fıkra dahildir.
     - Bir yıllık sınır yoktur ancak her hizmet yılı için beş yıllık dava süresi vardır; "dönem sınırı yok" tek başına yanıltıcıdır.
-    - Beş yılın hak düşürücü olması m.86/9 metninde değil Yargıtay 10. HD gerekçesindedir; SGK yazısı "zamanaşımı" der. Kaynak belirtilir.
+    # Değişti: teyitli karar KB'de yokken kaynağın eksik olduğu da belirtilir.
+    - Beş yılın hak düşürücü olması m.86/9 metninde değil Yargıtay 10. HD gerekçesindedir; SGK yazısı "zamanaşımı" der. Teyitli karar KB'de yokken künye verilmez, kaynağın eksik olduğu belirtilir.
     - İşe iade kararı hizmet tespiti kararı değildir; yalnız en çok dört aylık süre prime ve hizmete dahil edilir.
     - Genelge künyesi İkinci Kısım İkinci Bölüm 1.3'tür; Birinci Bölüm yazmak yanlıştır.
     - Kanun hükmü okunmadan "uygulanmıyor" veya "açık nokta" gibi dayanaksız kanaat cümlesi kurulmaz.

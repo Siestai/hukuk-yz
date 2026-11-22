@@ -6,8 +6,12 @@ expected:
     - tutanak
   must_cite:
     - 5510 m.102/1-e-5
-    - 2020/8 Genelge 2.8.1
-    - 2020/8 Genelge 2.8.3
+    # Görev 19 B1: künyeler KB biçimine çevrildi ("2020/8 Genelge 2.8.1" -> "2020/8 m.2.8.1", 2.8.3 aynı);
+    # eski biçim eval/score.py'de KB atıflarıyla eşleşmezdi. İçerik okundu, beklenen sonuç değişmedi.
+    - 2020/8 m.2.8.1
+    - 2020/8 m.2.8.3
+  # Görev 19 B2: üç anahtar idari_para_cezasi şablonuna eklendi; şablonda kritik değildir (koşullu
+  # sorma alanı yok), kapı bunu getirene kadar bu ölçüt karşılanamaz.
   must_ask:
     - tutanakla_teslim
     - odeme_sekli
@@ -20,4 +24,6 @@ expected:
     - Ceza bordro başınadır; bir bordroda birden çok sigortalının imzası eksikse tek ceza verilir.
     - Ücret makbuz mukabilinde veya banka kanalıyla ödenmişse imza şartı aranmaz.
     - e-4 ve e-5 cezaları, tutmakla yükümlü olunan defter türüne göre ibraz etmeme cezasını aşamaz.
+    # Görev 19 B1: eklendi; dayanak 5510 m.102/1-e-5 son cümlesi ve 2020/8 m.2.8.1.
+    - Defter ve belgeler ibraz süresi geçtikten sonra sunulmuşsa geçersizlik için ayrıca ceza uygulanmaz, yalnız defter türüne göre ibraz etmeme cezası uygulanır.
 tags: [sgk, idari-para-cezasi, bordro]

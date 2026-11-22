@@ -1,13 +1,21 @@
 id: SB-008
 question: "Mesela askere gidecek işçi ne kadar süre önce işten ayrılmalıdır"
+# Görev 19 B1 gözden geçirme (2026-11-22):
+# - "1475 m.14/1" -> "1475 m.14": KB metninde fıkra numarası yoktur, ajan fıkrayı künyede
+#   taşıyamaz; eval/score.py covers() madde düzeyi atfı fıkra isteğine saymaz (SB-001 notu).
+#   Muvazzaf askerlik bendi 1475 m.14 birinci fıkra 3. bentte yer almaktadır.
+# - "9. HD E.2009/12918 K.2011/12793" ve "9. HD E.2015/21153 K.2018/15767" must_cite'tan
+#   çıkarıldı: dergi arşivinde var, ancak decision tablosunda yok ve E/K karararama'da teyit
+#   edilmedi. "Makul süre" ölçütü bu kararlara dayandığından teyit edilip yüklenince geri eklenir.
+# - must_ask anahtarları (sevk_tarihi, sevk_tehiri, sonraki_calisma, ayrilis_gerekcesi)
+#   kidem_ihbar şablonuna kritik olmayan olgu olarak eklendi; koşullu sorma (B3) gelene kadar
+#   sorulmazlar, must_ask bu vakada o zamana kadar karşılanamaz.
 expected:
   status: conditional
   headline_contains:
     - makul
   must_cite:
-    - 1475 m.14/1
-    - 9. HD E.2009/12918 K.2011/12793
-    - 9. HD E.2015/21153 K.2018/15767
+    - 1475 m.14
   must_ask:
     - sevk_tarihi
     - sevk_tehiri

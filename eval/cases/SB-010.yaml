@@ -1,0 +1,58 @@
+id: SB-010
+question: "İşçinin ücretinin günlük yada maktu olarak belirlenmesi iş akdinin feshinden sonraki tazminatları nasıl etkiler? Primlerin sgk ya bildirimleri de dikkate alındığında işveren açısından günlük veya maktu ücreti seçmenin hangisi avantajlıdır"
+# Görev 19 B1 (2026-11-22), şablon: ucret_turu (yeni). Soru aynen alınmıştır.
+# Daraltma: "hangisi avantajlıdır" kısmı tavsiye ve görüş istemektedir; kaynakta karşılığı yoktur.
+# Vaka hukuki farkları (tatil ücreti, kıdem ve ihbar tazminatına esas ücret, SGK'ya bildirilen
+# gün ve kazanç) kaynaklarıyla göstermeyi bekler, tavsiye beklemez; tavsiye cümlesi must_not'tadır.
+# Hesap tutarı yoktur (md.29).
+# Status definite: farklar kanun metninden okunabilmektedir ve cevap bir olguya bağlı değildir.
+# Kaynaklar:
+# - 4857 m.46, m.47, m.49 (high), 1475 m.14 ve 4857 m.17 (medium) KB'de okunabilir. Madde
+#   düzeyinde istenir (SB-001 notu: fıkra künyede taşınamaz). İlgili fıkralar: m.46 ikinci
+#   fıkra (hafta tatili ücreti), m.49 dördüncü fıkra (aylığı tam ödenen aylık ücretli), m.17
+#   dördüncü fıkra (bildirim süresine ilişkin ücret tutarında tazminat) ve yedinci fıkra (32/1
+#   ücrete ek menfaatler), 1475 m.14 (30 günlük ücret, son ücret).
+# - 4857 m.57 must_cite'a alınmadı: hem günlük hem aylık ücret "belirli ücret"tir, m.57'nin
+#   ücret şekline bağlı ayrımı (akort, komisyon, yüzde) bu soruyu ayırmaz.
+# - SGK tarafı: SSİY m.100/2 (tam çalışan 30 gün, ayın kaç gün çektiğine bakılmaksızın) ve
+#   m.100/3 (ücret almaya hak kazanılmamış günlerin düşülmesi) data/drive/Mevzuat/Yönetmelik
+#   altındaki SSİY metninde okundu; 2020/20 m.K3-B1-1.2.2.1 aynı kuralı örnekle açıklar
+#   (data/drive/Mevzuat/Genelge/2020-20). İkisi de KB'de yoktur. 5510 m.80/1-g (günlük kazanç
+#   aylık kazancın otuzda biri; eksik günlerde ücret alınan gün sayısına bölünür) KB'de var,
+#   ancak geçerli sürümü low bantta olduğundan okunamaz (K1).
+# - Notlarda anılan saat ücreti bölenine ilişkin iki Yargıtay kararı (7. HD ve 9. HD) dergi
+#   arşivinde bulunmaktadır, ancak decision tablosunda kaydı ve karararama E/K teyidi yoktur;
+#   künyeleri yazılmamıştır.
+expected:
+  status: definite
+  headline_contains:
+    - tazminat
+  must_cite:
+    - 4857 m.49
+    - 4857 m.46
+    - 4857 m.47
+    - 1475 m.14
+    - 4857 m.17
+    - SSİY m.100/2
+    - SSİY m.100/3
+  missing_in_kb:
+    - SSİY m.100/2
+    - SSİY m.100/3
+    - 2020/20 m.K3-B1-1.2.2.1
+    - 5510 m.80/1-g
+    - Yargıtay kararı (saat ücretine esas bölen; arşivde var, teyitsiz, künye yazılmadı)
+  must_ask: []
+  must_not:
+    - günlük ücret avantajlıdır
+    - maktu ücret avantajlıdır
+    - aylık ücret avantajlıdır
+    - daha avantajlıdır
+  traps:
+    - Kıdem tazminatı her geçen tam yıl için 30 günlük ücret tutarındadır ve son ücret üzerinden hesaplanır (1475 m.14); ücretin günlük ya da aylık belirlenmesi hak doğumunu ve 30 günlük oranı değiştirmez.
+    - İhbar tazminatı bildirim süresine ilişkin ücret tutarındadır (4857 m.17 dördüncü fıkra); hesabında 32 nci maddenin birinci fıkrasındaki ücrete ek para ve para ile ölçülebilen menfaatler de dikkate alınır (m.17 yedinci fıkra). Ücret şekli bu kuralı değiştirmez.
+    - Hasta, izinli veya mazeretli olduğu hâllerde dahi aylığı tam ödenen aylık ücretliye 4857 m.46, m.47 ve m.48'in birinci fıkrası hükümleri uygulanmaz; ulusal bayram ve genel tatilde çalışırsa ayrıca çalıştığı her gün için bir günlük ücret ödenir (4857 m.49 dördüncü fıkra). Günlük ücretlide çalışılmayan hafta tatili günü için o günün ücreti (m.46 ikinci fıkra), çalışılmayan ulusal bayram ve genel tatil günü için o günün ücreti (m.47) ödenir.
+    - Saat ücretiyle çalışanın tatil günü ücreti saat ücretinin yedi buçuk katıdır (4857 m.49 üçüncü fıkra); saat ücretinin aylık ücretten hangi bölenle bulunacağı kanunda yazılı değildir, teyitli Yargıtay kararı KB'de yokken bölen kesin dille ve künyeyle verilmez.
+    - SGK'ya tam çalışan ve buna göre ücret alan sigortalının prim ödeme gün sayısı, ayın kaç gün çektiğine bakılmaksızın 30 gün bildirilir (SSİY m.100/2); ücret şekli bu kuralı değiştirmez. Kaynak KB'de yoksa okunamayan kaynak olarak belirtilir.
+    - Soru tavsiye istese de cevap yalnız hukuki farkları kaynaklarıyla gösterir; işverene hangi ücret şeklinin avantajlı olduğu yönünde görüş kurulmaz.
+    - Tutar ve örnek hesap verilmez (md.29).
+tags: [is-hukuku, ucret, kidem, ihbar, sgk, prim-gun]
