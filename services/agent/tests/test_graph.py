@@ -337,6 +337,10 @@ async def test_a_draft_that_cannot_pass_twice_ends_in_the_not_answered_answer() 
     assert {f.key for f in answer.source_gap.given_facts} == ANSWERS_KEYS - {"isci_sayisi"} | {
         "kidem"
     }
+    # A new question in the thread starts without the gap of the last one.
+    assert any(isinstance(e, ClarificationEvent) for e in await turn(graph, ask(thread)))
+    values = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    assert values["source_gap"] is None and values["missing"] == []
 
 
 async def test_no_verified_row_ends_in_an_error() -> None:

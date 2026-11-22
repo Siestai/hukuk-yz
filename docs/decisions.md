@@ -143,7 +143,7 @@
   Geçici/Ek, harfli madde ve sayısal fıkra ekleri ayrı ayrıştırılır.
 - Gerçek-model kabulü ve önceki SB001 semantik bulguları açık kalır.
 
-### 2026-10-31 — Görev 18 tamamlanmış hata teslimi
+### 2026-10-31 — Görev 18 tamamlanmış hata teslimi (2026-11-22 kaydıyla değişti)
 
 - **Terminal hata hidrasyonu** (Orhan'ın dar üretim düzeltmesi talebi; md. 25, 31):
   tamamlanmış `error` + `done(turn_id=null)` teslimi bekleyen istek değildir.
@@ -156,7 +156,7 @@
   SB001 kaynak/başlık/desteklenmeyen sonuç bulgularını kapatmaz.
 
 
-### 2026-10-31 — Görev 18 tamamlanmış hata politikası
+### 2026-10-31 — Görev 18 tamamlanmış hata politikası (2026-11-22 kaydıyla değişti)
 
 - **Canlı teslim ile hidrasyon eşitliği** (dar inceleme düzeltmesi; md. 25, 31):
   kalıcı teslimde `error` + `done` tüm hata kodları için terminaldir. Yeniden

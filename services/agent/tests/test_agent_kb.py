@@ -7,7 +7,7 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from agent.kb import HttpKbClient, KbHit, KbUnavailable, Unreadable
+from agent.kb import HttpKbClient, KbHit, KbUnavailable, Unreadable, UnreadableReason
 
 BODY = {
     "results": [
@@ -249,7 +249,7 @@ async def test_a_genelge_section_is_read_whole_with_its_status_and_band() -> Non
     ],
 )
 async def test_only_a_found_section_is_read_and_the_rest_say_why(
-    response: httpx.Response, reason: str
+    response: httpx.Response, reason: UnreadableReason
 ) -> None:
     kb = client(httpx.MockTransport(lambda request: response))
 

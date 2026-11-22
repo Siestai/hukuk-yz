@@ -193,7 +193,10 @@ async def bridge(
                         data.clear()
                         if event.type == "error":
                             # The turn that ended in an error is stored, so that it can get
-                            # feedback.
+                            # feedback. The error is the agent's last word: a result sent
+                            # before it is not kept as if it had been delivered.
+                            fields.pop("answer", None)
+                            fields.pop("clarification", None)
                             fields["error"] = event
                         elif event.type in ("facts", "answer", "clarification"):
                             fields[event.type] = getattr(event, event.type)

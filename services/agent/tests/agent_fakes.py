@@ -14,7 +14,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, User
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from agent.api import Graph, RunRequest, turn_events
-from agent.kb import KbHit, KbMatch, Unreadable
+from agent.kb import KbHit, KbMatch, Unreadable, UnreadableReason
 from agent.sources import covers
 from agent.topics import get_topic
 from agent.trace import Tracing
@@ -112,7 +112,7 @@ class FakeKb:
     def __init__(
         self,
         hits: Sequence[KbHit] | None = None,
-        unreadable: dict[str, str] | None = None,
+        unreadable: dict[str, UnreadableReason] | None = None,
         expired: Iterable[str] = (),
     ) -> None:
         self.hits = list(labour_law_hits() if hits is None else hits)

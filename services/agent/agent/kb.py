@@ -8,7 +8,7 @@ be read.
 
 from collections.abc import Sequence
 from datetime import date
-from typing import NamedTuple, Protocol
+from typing import Literal, NamedTuple, Protocol
 from urllib.parse import quote
 
 import httpx
@@ -52,11 +52,14 @@ class KbHit(BaseModel):
     complete: bool = False
 
 
+UnreadableReason = Literal["not_found", "gap", "not_in_force"]
+
+
 class Unreadable(NamedTuple):
     """Why a genelge section was not read: `not_found`, or the status the knowledge base gave
     (`gap`: no text on file for the date; `not_in_force`)."""
 
-    reason: str
+    reason: UnreadableReason
 
 
 class KbSearchResponse(BaseModel):

@@ -713,6 +713,11 @@ async def test_a_terminal_error_is_a_turn_that_takes_feedback_and_replays(
             f"/chat/turns/{failed['id']}/feedback", json={"rating": "down", "point_index": 0}
         )
     ).status_code == 422
+    app.dependency_overrides[current_user] = lambda: other
+    assert (
+        await client.post(f"/chat/turns/{failed['id']}/feedback", json={"rating": "up"})
+    ).status_code == 404
+    app.dependency_overrides[current_user] = lambda: user
     settings.chat_daily_limit = 1
     replay = await client.post(f"/chat/conversations/{id}/messages", json=body)
     assert [
@@ -728,6 +733,44 @@ async def test_a_terminal_error_is_a_turn_that_takes_feedback_and_replays(
         await client.post(f"/chat/conversations/{id}/messages", json={"text": "New"})
     ).status_code == 200
     assert len(calls) == 2
+
+
+async def test_an_error_after_an_answer_ends_the_turn_in_that_error(
+    stack: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+    from pathlib import Path
+
+    from hukuk_models import ErrorCode
+    from hukuk_models.chat import Answer, AnswerEvent
+
+    client, user, other, settings, app = stack
+    id = (await client.post("/chat/conversations")).json()["id"]
+    fixture = Path(__file__).parents[3] / "eval" / "fixtures" / "SB-001.answer.json"
+    answer = Answer.model_validate(json.loads(fixture.read_text(encoding="utf-8")))
+    error = ErrorEvent(code=ErrorCode.internal_error)
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda **kwargs: real_client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    content=_sse(AnswerEvent(answer=answer)) + _sse(error) + _sse(DoneEvent()),
+                )
+            )
+        ),
+    )
+
+    response = await client.post(f"/chat/conversations/{id}/messages", json={"text": "Question"})
+
+    # The error is the agent's last word: the answer it retracted is not stored with it.
+    assert '"code":"chat_unavailable"' not in response.text
+    failed = (await client.get(f"/chat/conversations/{id}")).json()["turns"][-1]
+    assert failed["error"]["code"] == "internal_error"
+    assert failed["answer"] is None
+    assert f'"turn_id":"{failed["id"]}"' in response.text
 
 
 async def test_a_delivery_stored_before_error_turns_still_reads_back_its_error(

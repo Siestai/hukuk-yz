@@ -48,6 +48,7 @@ from hukuk_models.chat import (
     ClarificationAnswer,
     FactsEvent,
     HoldingRow,
+    MissingReason,
     StepEvent,
 )
 
@@ -110,14 +111,13 @@ def _dumps(items: list[BaseModel]) -> list[dict[str, Any]]:
 
 
 class Missing(TypedDict):
-    """A source that was to be read and was not, for the trace. `reason`: `unmapped` (the künye
-    names no record), `not_found`, `gap`, `not_in_force`, `truncated`."""
+    """A source that was to be read and was not, for the trace and the source gap."""
 
     ref: str
-    reason: str
+    reason: MissingReason
 
 
-def _missing(ref: str, reason: str) -> Missing:
+def _missing(ref: str, reason: MissingReason) -> Missing:
     return {"ref": ref, "reason": reason}
 
 
@@ -242,8 +242,10 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "plan": {},
                 "read": [],
                 "unread": [],
+                "missing": [],
                 "rows": [],
                 "answer": None,
+                "source_gap": None,
                 "gate": {},
             }
 
