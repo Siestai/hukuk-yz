@@ -146,3 +146,20 @@ def test_turn_roles() -> None:
         Turn.model_validate({**base, "role": "assistant", "text": "soru"})
     with pytest.raises(ValidationError):
         Turn.model_validate({**base, "role": "assistant"})
+
+
+def test_a_point_is_unreviewed_exactly_when_one_of_its_citations_is() -> None:
+    from hukuk_models.chat import AnswerPoint
+
+    approved = _fixture_answer()["points"][0]["citations"][0]
+    assert approved["review_status"] == "approved"
+    analyzed = {**approved, "review_status": "analyzed", "band": "medium"}
+
+    def point(citations: list[dict[str, Any]], **given: bool) -> AnswerPoint:
+        return AnswerPoint.model_validate({"text": "Nokta.", "citations": citations, **given})
+
+    assert point([approved, analyzed]).unreviewed
+    assert point([approved, analyzed], unreviewed=False).unreviewed
+    assert not point([approved]).unreviewed
+    assert not point([approved], unreviewed=True).unreviewed
+    assert not point([]).unreviewed

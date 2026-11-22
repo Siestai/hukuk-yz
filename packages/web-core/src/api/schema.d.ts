@@ -864,6 +864,11 @@ export interface components {
             citations: components["schemas"]["CitationRef"][];
             /** Text */
             text: string;
+            /**
+             * Unreviewed
+             * @default false
+             */
+            unreviewed: boolean;
         };
         /**
          * ArticleAsOf
@@ -876,6 +881,8 @@ export interface components {
             band?: ("high" | "medium" | "low") | null;
             /** Confidence */
             confidence?: ("high" | "medium" | "low") | null;
+            /** Extraction Id */
+            extraction_id?: string | null;
             gap?: components["schemas"]["ArticleGapOut"] | null;
             /** Latest Snapshot Date */
             latest_snapshot_date?: string | null;
@@ -1019,6 +1026,8 @@ export interface components {
          *     given by `quote` (and `char_start`..`char_end` in that text) highlighted.
          */
         CitationRef: {
+            /** Band */
+            band?: ("high" | "medium" | "low") | null;
             /**
              * Category
              * @enum {string}

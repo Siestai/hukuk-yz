@@ -41,6 +41,23 @@ class GateDrops(BaseModel):
     rows: int = 0
 
 
+class GateCited(BaseModel):
+    """The citations of an answer by the review status of their source: an unreviewed one is a
+    test source (decision K1)."""
+
+    approved: int = 0
+    unreviewed: int = 0
+
+
+def cited_by_status(answer: Answer) -> GateCited:
+    """Every citation the answer shows: of its points, its branches and its holding map."""
+    cited = [c for p in answer.points for c in p.citations]
+    cited += [c for m in answer.missing_info for c in m.citations]
+    cited += [r.citation for r in answer.holding_map.rows] + answer.holding_map.citations
+    unreviewed = sum(c.review_status == "analyzed" for c in cited)
+    return GateCited(approved=len(cited) - unreviewed, unreviewed=unreviewed)
+
+
 @dataclass
 class GateResult:
     answer: Answer | None

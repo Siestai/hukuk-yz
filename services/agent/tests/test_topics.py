@@ -98,3 +98,23 @@ def test_parse_date_reads_iso_and_turkish_dates() -> None:
     assert parse_date("2026-10-03") == parse_date("03.10.2026")
     assert parse_date("dün") is None
     assert parse_date("31.02.2026") is None
+
+
+def test_a_question_basis_names_a_section_of_a_genelge_not_the_whole_act() -> None:
+    from pydantic import ValidationError
+
+    from agent.topics import Question
+
+    def question(ref: str) -> Question:
+        return Question.model_validate(
+            {
+                "text": "Belge kendiliğinden mi verildi?",
+                "why": "Genelge ayrım yapmaktadır.",
+                "kind": "text",
+                "basis": [{"ref": ref, "category": "admin_act"}],
+            }
+        )
+
+    assert question("2020/8 m.2.6.2.5").basis[0].ref == "2020/8 m.2.6.2.5"
+    with pytest.raises(ValidationError, match="section"):
+        question("2020/8")

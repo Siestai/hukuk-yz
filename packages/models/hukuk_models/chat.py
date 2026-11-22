@@ -15,7 +15,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 
-from hukuk_models import ErrorCode
+from hukuk_models import Band, ErrorCode
 
 DISCLAIMER = "Hukuki görüş değildir."
 
@@ -31,6 +31,8 @@ CitationCategory = Literal[
     "doctrine",
     "calc",
 ]
+# `analyzed`: no reviewer has approved the record yet. It is read only as a test source
+# (decision K1) and shown as "onaysız (test)".
 ReviewStatus = Literal["approved", "analyzed"]
 Verification = Literal["verified", "unverified", "not_applicable"]
 FactStatus = Literal["known", "unknown", "assumed_never"]
@@ -54,6 +56,8 @@ class CitationRef(ChatModel):
     label: str  # as shown, e.g. "4857 sayılı İş Kanunu m.18/1"
     ref: str  # the künye the eval set matches, e.g. "4857 m.18/1"
     review_status: ReviewStatus
+    # The review-queue confidence band of an `analyzed` source; None for an approved one.
+    band: Band | None = None
     # Official-source check; for decisions it is the check against karararama.yargitay.gov.tr.
     verification: Verification
     # Validity of the text in force (md. 4). `valid_to` None: still in force. `valid_from` None:
@@ -171,6 +175,14 @@ class FactChip(ChatModel):
 class AnswerPoint(ChatModel):
     text: str
     citations: list[CitationRef]
+    # The point rests on at least one `analyzed` citation: shown as "onaysız (test)" (K1).
+    # Always derived from the citations, whatever was given.
+    unreviewed: bool = False
+
+    @model_validator(mode="after")
+    def _unreviewed_from_citations(self) -> Self:
+        self.unreviewed = any(c.review_status == "analyzed" for c in self.citations)
+        return self
 
 
 class MissingInfo(ChatModel):
