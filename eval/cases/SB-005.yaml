@@ -4,13 +4,17 @@ expected:
   topic: tis_sendikal
   status: conditional
   headline_contains:
-    - toplu iş sözleşmesi
+    # Görev 19 B6 tur 1 (F2): kısaltma da kabul edilir; tur 1 cevabı başlıkta "TİS" yazdı.
+    - toplu iş sözleşmesi|TİS
   must_cite:
     - 6356 m.36/1
     - 6356 m.36/2
     - 6356 m.39/1
     - 7036 m.3/1
-    - 4857 m.24/II-e
+    # Görev 19 B6 tur 1 (F1): 4857 m.24/II-e -> 4857 m.24. KB metninde fıkra numarası yoktur,
+    # harfli bent künyede taşınamaz (SB-001 notu). 6356 ve 7036 metinlerinde "(1)" numarası
+    # bulunduğundan onların fıkra düzeyi kalır.
+    - 4857 m.24
     - 9. HD E.2008/26536 K.2008/25713
   # Görev 19 B1 gözden geçirme (şablon: tis_sendikal). 6356 m.36 (high), m.39 (medium),
   # 7036 m.3 (medium), 4857 m.24 (high) KB'de okundu. 9. HD kararı dergi arşivinde (sayı 20)
@@ -25,6 +29,8 @@ expected:
   must_not:
     - 22. HD E.2012/12745 K.2013/2608
   traps:
+    # Görev 19 B6 tur 1 (F1): bent künyeden çıktı, burada kalır.
+    - Haklı fesih dayanağı 4857 m.24'ün II numaralı bendinin (e) alt bendidir (ücretin ödenmemesi).
     - Cevap TİS'in kendi metnine bağlıdır; TİS metni olmadan kesin tutar ve zamanaşımı söylenmez.
     - Yararlanma taraf sendika üyeliğine bağlıdır (m.39); dayanışma aidatı geriye işlemez.
     - Süresi biten TİS'in normatif hükümleri devam eder; faiz türü değişir (yasal faiz).

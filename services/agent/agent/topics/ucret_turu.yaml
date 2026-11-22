@@ -7,13 +7,16 @@
 # "Neden soruyorum" metni yalnız KB'de okunabilen maddelere dayanır (4857 m.46, 47, 49 high;
 # 1475 m.14, 4857 m.17 medium). 5510 m.80'in güncel sürümü low bantta, SSİY KB'de yoktur;
 # SGK tarafı vaka dosyasında missing_in_kb altında listelenmiştir.
+# Görev 19 B6 tur 1 (C2): description ücret şeklinin etkisiyle sınırlandı; "tazminata esas
+# ücret" geniş yazıldığından tur 1'de SB-032 (giydirilmiş ücret) bu şablona düşüyordu.
 id: ucret_turu
 title: Ücretin şekli (günlük, aylık, saatlik) ve sonuçları
 description: >-
-  Ücretin günlük, aylık (maktu), saatlik veya parça başı belirlenmesinin hafta tatili, ulusal
-  bayram ve genel tatil ücretine (4857 m.46, 47, 49), kıdem ve ihbar tazminatına esas ücrete
-  (1475 m.14, 4857 m.17) ve SGK'ya bildirilen prim ödeme gün sayısı ile prime esas kazanca
-  etkisi. İşverene hangi ücret şeklinin avantajlı olduğu yönünde tavsiye bu konunun dışındadır.
+  Ücret şeklinin (günlük, aylık veya maktu) tazminata ve SGK bildirimine etkisi: hafta tatili,
+  ulusal bayram ve genel tatil ücreti (4857 m.46, 47, 49), kıdem ve ihbar tazminatı (1475 m.14,
+  4857 m.17), prim ödeme gün sayısı ve prime esas kazanç. Tazminata hangi yardımların katıldığı
+  (giydirilmiş ücret) bu konunun dışındadır; işverene hangi ücret şeklinin avantajlı olduğu
+  yönünde tavsiye de bu konunun dışındadır.
 facts:
   - key: ucret_sekli
     label: Ücretin şekli

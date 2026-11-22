@@ -14,12 +14,14 @@ expected:
     - fark
     - sigortalılık
   must_cite:
-    - 1475 m.14/1
+    # Görev 19 B6 tur 1 (F1): 1475 m.14/1 -> 1475 m.14, 5510 m.38/1 -> 5510 m.38. KB'deki iki
+    # metinde "(1)" biçiminde fıkra numarası yoktur; ajan fıkrayı künyede taşıyamaz (SB-001 notu).
+    - 1475 m.14
     - 2018/38 m.K2-B3-7
     - 2018/38 m.K2-B3-2.1.2.1
     - 2018/38 m.K2-B3-2.1.3
     - 5510 m.Geçici 6
-    - 5510 m.38/1
+    - 5510 m.38
   must_ask:
     - ilk_sigortalilik_tarihi
   must_not:

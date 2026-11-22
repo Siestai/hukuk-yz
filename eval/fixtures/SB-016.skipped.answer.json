@@ -1,7 +1,7 @@
 {
   "status": "conditional",
   "status_note": "Sonuç, aşağıda istenen bilgilere bağlıdır.",
-  "headline": "Belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse iki indirimin ikisi de kaybedilmektedir; indirimin hangi fıkradan doğduğu cezanın türüne ve belgenin kendiliğinden verilip verilmediğine bağlıdır.",
+  "headline": "Belge 30 gün içinde verilip ceza 15 gün içinde ödenmezse dörtte bir ve dörtte üç indirimlerinin ikisi de kaybedilmektedir; indirimin hangi fıkradan doğduğu cezanın türüne ve belgenin kendiliğinden verilip verilmediğine bağlıdır.",
   "fact_chips": [
     {
       "fact_key": "belge_30_gun",

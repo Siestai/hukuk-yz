@@ -154,6 +154,8 @@ def test_scorer_catches_what_it_should() -> None:
             citation["ref"] = "9999 m.1"
     for row in raw["holding_map"]["rows"]:
         row["citation"]["ref"] = "9999 m.1"
+    for citation in raw["holding_map"]["citations"]:
+        citation["ref"] = "9999 m.1"
     raw["disclaimer"] = ""
     by_name = {m.name: m for m in score_module.score(raw, case, clarification)}
     assert by_name["headline"].value == 0.0
@@ -165,6 +167,18 @@ def test_scorer_catches_what_it_should() -> None:
     # must_ask cannot be measured without the clarification
     none = {m.name: m for m in score_module.score(_fixture_answer("SB-016.answer.json"), case)}
     assert none["must_ask"].value is None
+
+
+def test_a_headline_item_is_met_by_any_of_its_alternatives() -> None:
+    case = {"expected": {"status": "definite", "headline_contains": ["toplu iş sözleşmesi|TİS"]}}
+
+    def headline(text: str) -> float | None:
+        metrics = {m.name: m for m in score_module.score({"headline": text}, case)}
+        return metrics["headline"].value
+
+    assert headline("TİS'ten doğan alacak") == 1.0
+    assert headline("Toplu iş sözleşmesinden doğan alacak") == 1.0
+    assert headline("Sözleşmeden doğan alacak") == 0.0
 
 
 def cited(*refs: tuple[str, str]) -> dict[str, Any]:
@@ -311,4 +325,6 @@ def test_the_table_has_a_row_per_case_a_total_and_the_verdict() -> None:
     assert "2/3" in total  # templates matched
     assert "esaslı 1/3" in total
     assert "$0.20" in total
+    # must_cite over every case (an error is 0) and over the answered ones only.
+    assert "| %50 (cevaplı %100) |" in total
     assert "**FAIL**" in table and "kip" in table

@@ -306,6 +306,13 @@ class CaseResult:
     output_tokens: int
     cost: float | None
     seconds: float
+    # The retrieve step: the refs it read, the planned refs it could not read, its
+    # `missing_source` entries.
+    retrieved: dict[str, list[Any]]
+    # The spend of each node run, in order (`_node_spend`).
+    nodes: list[dict[str, Any]]
+    # Why the holding map dropped rows, by reason, when its trace says so.
+    rows_dropped_by: dict[str, Any]
     error: str | None = None
 
 
@@ -343,6 +350,25 @@ def answers_for(clarification: Clarification, facts: dict[str, str]) -> list[Cla
     ]
 
 
+def _node_spend(trace: Trace) -> list[dict[str, Any]]:
+    return [
+        {
+            "node": r.node,
+            "models": r.models,
+            "input_tokens": r.input_tokens,
+            "output_tokens": r.output_tokens,
+            "cost": r.cost,
+            "seconds": r.seconds,
+        }
+        for r in trace.records
+    ]
+
+
+def _rows_dropped_by(trace: Trace) -> dict[str, Any]:
+    maps = [r.output.get("rows_dropped_by") for r in trace.records if r.node == "holding_map"]
+    return dict(maps[-1] or {}) if maps else {}
+
+
 def _issue_counts(trace: Trace) -> dict[str, int]:
     drafts = [r.output.get("issue_counts", {}) for r in trace.records if r.node == "draft"]
     return dict(drafts[-1]) if drafts else {}
@@ -376,8 +402,11 @@ async def _play(
     return rounds, answer, error
 
 
-def _failed(case: dict[str, Any], trace: Trace, llm: EvalLlm, error: str) -> CaseResult:
-    """A case the runner itself failed on: what it spent, nothing scored."""
+def _failed(
+    case: dict[str, Any], trace: Trace, llm: EvalLlm, score: ModuleType, error: str
+) -> CaseResult:
+    """A case the runner itself failed on: what it spent, nothing scored but must_cite, which
+    is 0 (no citation) wherever something was there to cite."""
     expected = case["expected"]
     return CaseResult(
         case_id=case["id"],
@@ -391,7 +420,7 @@ def _failed(case: dict[str, Any], trace: Trace, llm: EvalLlm, error: str) -> Cas
         metrics={},
         score=0.0,
         must_ask=None,
-        must_cite=None,
+        must_cite=score.must_cite_metric({}, case).value,
         missing_in_kb=list(expected.get("missing_in_kb", [])),
         must_not=[],
         headline=None,
@@ -405,6 +434,9 @@ def _failed(case: dict[str, Any], trace: Trace, llm: EvalLlm, error: str) -> Cas
         output_tokens=trace.output_tokens,
         cost=trace.cost,
         seconds=trace.seconds,
+        retrieved={"read": [], "unread": [], "missing": []},
+        nodes=_node_spend(trace),
+        rows_dropped_by={},
         error=error,
     )
 
@@ -425,8 +457,8 @@ async def run_case(
             return _scored(case, trace, llm, score, state, rounds, answer, error)
         except Exception as exc:
             if llm.budget is not None and llm.budget.exceeded:
-                return _failed(case, trace, llm, "budget_exceeded")
-            return _failed(case, trace, llm, f"eval_error: {type(exc).__name__}")
+                return _failed(case, trace, llm, score, "budget_exceeded")
+            return _failed(case, trace, llm, score, f"eval_error: {type(exc).__name__}")
 
 
 def _scored(
@@ -474,6 +506,13 @@ def _scored(
         output_tokens=trace.output_tokens,
         cost=trace.cost,
         seconds=trace.seconds,
+        retrieved={
+            "read": [s["ref"] for s in state.get("read", [])],
+            "unread": list(state.get("unread", [])),
+            "missing": list(state.get("missing", [])),
+        },
+        nodes=_node_spend(trace),
+        rows_dropped_by=_rows_dropped_by(trace),
         error=error,
     )
 

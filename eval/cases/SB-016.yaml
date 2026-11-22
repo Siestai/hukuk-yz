@@ -7,15 +7,24 @@ expected:
   topic: idari_para_cezasi
   status: definite
   headline_contains:
-    - iki indirim
+    # Görev 19 B6 tur 1 (G): "iki indirim" yerine kanun metnindeki ifadeler. KB'deki 5510 m.102
+    # metni (2018-05-25 sürümü): ikinci fıkra "dörtte bir oranına karşılık gelen tutar üzerinden
+    # uygulanır", beşinci fıkra "bunun dörtte üçü tahsil edilir".
+    - dörtte bir
+    - dörtte üç
     - 15 gün
   must_cite:
-    - 5510 m.102/2
-    - 5510 m.102/5
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1); missing_in_kb'de de
+    # listelenir. (F1): 5510 m.102/2 ve m.102/5 -> 5510 m.102; KB metninde "(1)" biçiminde fıkra
+    # numarası yoktur (SB-001 notu). Hangi fıkra olduğu traps'ta kalır.
+    - 5510 m.102
     # Görev 19 B1: künye KB biçimine çevrildi ("2020/8 Genelge m.3.1" -> "2020/8 m.3.1"); KB chunk ref'i
     # "2020/8 m.3.1"dir ve eski biçim eval/score.py'de hiçbir atıfla eşleşmezdi. İçerik okundu: m.3.1
     # iki indirimin birlikte ve ayrı uygulanmasını, 15 gün aşılınca hiçbir indirim olmadığını (Örnek 2, 4) yazar.
     - 2020/8 m.3.1
+  missing_in_kb:
+    # Görev 19 B6 tur 1 (A): KB'de var ama low bant, okunmuyor (K1).
+    - 5510 m.102
   must_ask:
     - ceza_turu
     - kendiliginden
