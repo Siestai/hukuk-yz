@@ -12,6 +12,7 @@ from agent.sources import (
     ReadSource,
     checked_sub,
     citation,
+    kunye_sub,
     locate,
     named_source,
     quote_paragraph,
@@ -74,6 +75,13 @@ def _other_paragraph(source: ReadSource, row: RowDraft, quote: str) -> bool:
     return found is not None and found != cited[1]
 
 
+def _with_kunye_sub(row: RowDraft) -> RowDraft:
+    """The row with the paragraph of the künye in its `source_id` as its sub, when it has none."""
+    if row.sub or (sub := kunye_sub(row.source_id)) is None:
+        return row
+    return row.model_copy(update={"sub": sub})
+
+
 def _formal_value(row: RowDraft) -> str | None:
     return _UNKNOWN_VALUE.sub(r"\1ilinmemektedir", row.fact_value or "") or None
 
@@ -134,7 +142,9 @@ def holding_feedback(
         forms = ", ".join(progressive_forms([row.condition, _formal_value(row) or ""]))
         if found := [
             _ROW_FEEDBACK[p].format(forms=forms)
-            for p in _problems(row, named_source(sources, row.source_id), applied_on, None)
+            for p in _problems(
+                _with_kunye_sub(row), named_source(sources, row.source_id), applied_on, None
+            )
             if p in _ROW_FEEDBACK
         ]:
             feedback.append(
@@ -161,6 +171,7 @@ def verify_rows(
     keys = set(values) if facts is not None else None
     for row in draft.rows:
         source = named_source(sources, row.source_id)
+        row = _with_kunye_sub(row)
         problems = _problems(row, source, applied_on, keys)
         if source is None or problems:
             dropped[problems[0]] += 1

@@ -285,6 +285,23 @@ def test_point_quote_in_another_paragraph_does_not_keep_model_sub() -> None:
     assert result.answer.points[0].citations[0].ref == "4857 m.18"
 
 
+def test_a_point_may_name_its_read_source_by_kunye_and_the_paragraph_is_still_checked() -> None:
+    output = draft()
+    output["points"][0]["citations"] = [
+        {"source_id": "4857 m.18/4", "quote": M18_4},
+        {"source_id": "4857 m.18/1", "quote": M18_4},
+        {"source_id": "4857 m.19", "quote": M18_4},
+    ]
+    result = check(output)
+    assert result.answer is not None
+    cited = result.answer.points[0].citations
+    assert [(c.source_id, c.ref) for c in cited] == [
+        ("statute:4857:m18", "4857 m.18/4"),
+        ("statute:4857:m18", "4857 m.18"),
+    ]
+    assert result.drops.citations == 1
+
+
 def test_fallback_never_returns_informal_holding_rows() -> None:
     informal = rows()[0].model_copy(update={"condition": "Kıdem aranıyorsa"})
     fallback = not_answered(

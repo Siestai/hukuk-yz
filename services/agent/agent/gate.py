@@ -21,7 +21,16 @@ from pydantic import BaseModel, ValidationError
 
 from agent.facts import critical_unknown
 from agent.llm_schemas import CitationPick, DraftOutput
-from agent.sources import ReadSource, checked_sub, citation, locate, summarize, valid_on
+from agent.sources import (
+    ReadSource,
+    checked_sub,
+    citation,
+    kunye_sub,
+    locate,
+    named_source,
+    summarize,
+    valid_on,
+)
 from agent.topics import Topic
 from hukuk_models.chat import (
     Answer,
@@ -220,18 +229,20 @@ def _cite(
 ) -> list[CitationRef]:
     cited = []
     for pick in picks:
-        source = sources.get(pick.source_id)
+        # By its id, or by its künye when one source read has it (`named_source`).
+        source = named_source(sources, pick.source_id)
+        sub = pick.sub or kunye_sub(pick.source_id)
         quote = pick.quote.strip() if pick.quote else None
         if source is None or not valid_on(source, applied_on):
             drops.citations += 1
         elif not quote or locate(source, quote) is None:
             drops.citations += 1
         else:
-            drops.subs += bool(pick.sub) and checked_sub(source, pick.sub, quote) is None
+            drops.subs += bool(sub) and checked_sub(source, sub, quote) is None
             cited.append(
                 citation(
                     source,
-                    sub=pick.sub,
+                    sub=sub,
                     quote=quote or None,
                     used_for=pick.used_for,
                 )

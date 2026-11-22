@@ -95,6 +95,13 @@ def named_source(sources: dict[str, ReadSource], written: str) -> ReadSource | N
     return found[0] if len(found) == 1 else None
 
 
+def kunye_sub(written: str) -> str | None:
+    """The paragraph of a künye written as a `source_id` ("4": "4857 m.18/4"); None without one.
+    It is a claim like a written `sub`: `checked_sub` decides whether it is cited."""
+    found = re.fullmatch(r"/([1-9]\d*)", split_ref(_key(written))[1])
+    return found[1] if found else None
+
+
 def covers(hit_ref: str, wanted: str) -> bool:
     """`hit_ref` is the künye wanted or a part of it ("4857 m.18" covers "4857 m.18/1")."""
     hit, want = _key(hit_ref), _key(split_ref(wanted)[0])

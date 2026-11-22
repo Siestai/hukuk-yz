@@ -11,6 +11,7 @@ from agent.sources import (
     checked_sub,
     citation,
     covers,
+    kunye_sub,
     locate,
     merge,
     named_source,
@@ -112,6 +113,12 @@ def test_a_model_may_name_a_read_source_by_its_kunye_when_only_one_has_it() -> N
     assert named_source(sources, "statute:4857") is None
     # Two sources read under the same künye: the künye names neither.
     assert named_source({**sources, other.source_id: other}, "4857 m.18") is None
+
+
+def test_the_paragraph_of_a_kunye_written_as_source_id_is_its_sub() -> None:
+    assert kunye_sub("4857 m.18/4") == "4"
+    assert kunye_sub("4857 m.18") is None
+    assert kunye_sub("statute:4857:m18") is None
 
 
 def test_valid_on_respects_the_bounds_that_are_recorded() -> None:

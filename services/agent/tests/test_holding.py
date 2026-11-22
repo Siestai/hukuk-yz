@@ -62,11 +62,12 @@ def test_a_row_on_a_source_that_was_not_read_drops() -> None:
 
 
 def test_a_row_naming_its_read_source_by_kunye_stands_on_that_source() -> None:
-    rows, dropped, _ = verify(row("4857 m.18", M18_4, sub="4"))
+    rows, dropped, _ = verify(row("4857 m.18", M18_4, sub="4"), row("4857 m.18/4", M18_4))
 
     assert dropped == {}
-    assert rows[0].citation.source_id == "statute:4857:m18"
-    assert rows[0].citation.ref == "4857 m.18/4"
+    assert [r.citation.source_id for r in rows] == ["statute:4857:m18"] * 2
+    # With no sub, the paragraph of the künye is the one cited, still checked against the text.
+    assert [r.citation.ref for r in rows] == ["4857 m.18/4"] * 2
 
 
 def test_a_typographic_apostrophe_written_plain_is_the_same_quote() -> None:
