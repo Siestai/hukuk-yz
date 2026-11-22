@@ -14,10 +14,19 @@ from app.auth import hash_password
 from app.chunk_index import embed_pending, sync_decision, sync_statute_article
 from app.db import make_engine
 from app.embeddings import Embedder, get_embedder
-from app.kb import approve_extraction
+from app.kb import approve_extraction, approve_statute_article, reject_statute_article
+from app.loaders import statutes as statute_loader
+from app.loaders.statutes_report import StatuteCounts
 from app.main import app
 from app.models.chunk import Chunk
-from app.models.common import Extraction, License, RecordStatus, Source
+from app.models.common import (
+    Extraction,
+    License,
+    RecordStatus,
+    Review,
+    ReviewDecision,
+    Source,
+)
 from app.models.user import AppUser, UserRole
 from app.search import _tsquery
 from app.settings import Settings, get_settings
@@ -26,7 +35,9 @@ from tests.test_chunk_index import SUMMARY, load_decision
 
 PASSWORD = "correct horse battery"
 Factory = async_sessionmaker[AsyncSession]
-SettingsFor = Callable[[bool], None]
+SettingsFor = Callable[[tuple[str, ...]], None]
+OFF: tuple[str, ...] = ()
+TEST_BANDS = ("high", "medium")
 
 
 @pytest.fixture
@@ -62,10 +73,8 @@ async def headers(client: httpx.AsyncClient, kb_factory: Factory) -> dict[str, s
 
 @pytest.fixture
 def configure(fake_embedder: FakeEmbedder) -> SettingsFor:
-    def set_up(include_unreviewed: bool) -> None:
-        app.dependency_overrides[get_settings] = lambda: Settings(
-            kb_search_include_unreviewed=include_unreviewed
-        )
+    def set_up(bands: tuple[str, ...]) -> None:
+        app.dependency_overrides[get_settings] = lambda: Settings(kb_test_source_bands=bands)
         embedder: Embedder = fake_embedder
         app.dependency_overrides[get_embedder] = lambda: embedder
 
@@ -78,7 +87,7 @@ async def index_all(factory: Factory, embedder: FakeEmbedder, *, articles: bool 
             if not articles:
                 await sync_decision(session, source_id)
         if articles:
-            for article in ("18", "Geçici 1", "5"):
+            for article in ("18", "Geçici 1", "Ek 2", "5"):
                 await sync_statute_article(session, "4857", article)
         await session.commit()
         await embed_pending(session, embedder)
@@ -111,7 +120,7 @@ async def test_a_statute_search_returns_the_version_in_force_on_as_of(
     fake_embedder: FakeEmbedder,
     configure: SettingsFor,
 ) -> None:
-    configure(True)
+    configure(TEST_BANDS)
     await index_all(kb_factory, fake_embedder)
 
     async def eighteen(as_of: str) -> list[tuple[str, str, str | None]]:
@@ -128,7 +137,14 @@ async def test_a_statute_search_returns_the_version_in_force_on_as_of(
     assert await eighteen("2015-01-01") == []
 
 
-async def test_unreviewed_records_show_only_while_the_setting_is_on(
+async def set_band(factory: Factory, band: str) -> None:
+    """The confidence band of every loaded extraction, as the loader would have set it."""
+    async with factory() as session:
+        await session.execute(update(Extraction).values(confidence={"band": band, "reasons": []}))
+        await session.commit()
+
+
+async def test_unreviewed_records_show_only_in_the_listed_bands(
     client: httpx.AsyncClient,
     headers: dict[str, str],
     kb_factory: Factory,
@@ -137,12 +153,89 @@ async def test_unreviewed_records_show_only_while_the_setting_is_on(
 ) -> None:
     await load_decision(kb_factory)
     await index_all(kb_factory, fake_embedder, articles=False)
-    configure(False)
+    await set_band(kb_factory, "medium")
+    configure(OFF)
     assert await search(client, headers, q="işe iade kıdem") == []
-    configure(True)
+    configure(("high",))
+    assert await search(client, headers, q="işe iade kıdem") == []
+    configure(TEST_BANDS)
     results = await search(client, headers, q="işe iade kıdem")
-    assert len(results) == 1 and results[0]["review_status"] == "analyzed"
-    assert results[0]["category"] == "decision"
+    assert len(results) == 1 and results[0]["category"] == "decision"
+    assert (results[0]["review_status"], results[0]["band"]) == ("analyzed", "medium")
+    await set_band(kb_factory, "low")
+    assert await search(client, headers, q="işe iade kıdem") == []
+
+
+async def test_unreviewed_articles_are_searched_by_band_and_never_when_rejected(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    statutes_loaded: dict[str, uuid.UUID],
+    reviewer: AppUser,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await index_all(kb_factory, fake_embedder)
+
+    async def articles() -> dict[str, tuple[str, str | None]]:
+        found = await search(client, headers, q="Madde metin metni", category="statute")
+        return {r["ref"]: (r["review_status"], r["band"]) for r in found}
+
+    configure(OFF)
+    assert await articles() == {}
+    configure(TEST_BANDS)
+    # "Ek 2" is in the low band: indexed, never returned
+    assert await articles() == {
+        "4857 m.18": ("analyzed", "medium"),
+        "4857 m.5": ("analyzed", "high"),
+        "4857 Geçici 1": ("analyzed", "high"),
+    }
+    async with kb_factory() as session:
+        await reject_statute_article(session, statutes_loaded["5"], reviewer.id, "wrong text")
+        await approve_statute_article(session, statutes_loaded["18"], reviewer.id)
+        await session.commit()
+    assert await articles() == {
+        "4857 m.18": ("approved", None),
+        "4857 Geçici 1": ("analyzed", "high"),
+    }
+    configure(OFF)
+    assert await articles() == {"4857 m.18": ("approved", None)}
+
+
+async def test_a_superseded_or_rejected_extraction_is_not_searched_even_if_its_chunks_are_left(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    statutes_loaded: dict[str, uuid.UUID],
+    statute_record: dict[str, Any],
+    reviewer: AppUser,
+    fake_embedder: FakeEmbedder,
+    configure: SettingsFor,
+) -> None:
+    await index_all(kb_factory, fake_embedder)
+    configure(TEST_BANDS)
+
+    async def refs() -> set[str]:
+        found = await search(client, headers, q="Madde metin metni", category="statute")
+        return {r["ref"] for r in found}
+
+    assert await refs() == {"4857 m.18", "4857 m.5", "4857 Geçici 1"}
+    # a reject review alone, without the index being synced
+    async with kb_factory() as session:
+        session.add(
+            Review(
+                extraction_id=statutes_loaded["5"],
+                reviewer_id=reviewer.id,
+                decision=ReviewDecision.reject,
+            )
+        )
+        await session.commit()
+    assert await refs() == {"4857 m.18", "4857 Geçici 1"}
+    # a newer extraction in the low band; the loader does not touch the index
+    newer = {**statute_record, "parser_version": "2"}
+    newer["articles"] = [{**a, "confidence": "low"} for a in statute_record["articles"]]
+    await statute_loader.load(kb_factory, statute_loader.prepare([newer]), {}, StatuteCounts())
+    assert await refs() == set()
 
 
 async def test_approved_records_show_with_the_setting_off(
@@ -159,9 +252,10 @@ async def test_approved_records_show_with_the_setting_off(
         extraction_id = (await session.execute(select(Extraction.id))).scalars().one()
         await approve_extraction(session, extraction_id, reviewer.id)
         await session.commit()
-    configure(False)
+    configure(OFF)
     results = await search(client, headers, q="işe iade kıdem")
-    assert len(results) == 1 and results[0]["review_status"] == "approved"
+    assert len(results) == 1
+    assert (results[0]["review_status"], results[0]["band"]) == ("approved", None)
     assert results[0]["verification"] is not None
 
 
@@ -177,7 +271,7 @@ async def test_a_rejected_status_is_not_searched_even_if_a_chunk_is_left(
     async with kb_factory() as session:
         await session.execute(update(Source).values(status=RecordStatus.rejected))
         await session.commit()
-    configure(True)
+    configure(TEST_BANDS)
     assert await search(client, headers, q="işe iade kıdem") == []
 
 
@@ -190,7 +284,7 @@ async def test_internal_only_text_is_never_returned(
 ) -> None:
     await load_decision(kb_factory)
     await index_all(kb_factory, fake_embedder, articles=False)
-    configure(True)
+    configure(TEST_BANDS)
     # only the editorial summary has these words
     results = await search(client, headers, q="Editoryal özet")
     assert len(results) == 1
@@ -220,7 +314,7 @@ async def test_filters_and_validation(
 ) -> None:
     await load_decision(kb_factory)
     await index_all(kb_factory, fake_embedder, articles=False)
-    configure(True)
+    configure(TEST_BANDS)
     assert await search(client, headers, q="işe iade", category="statute") == []
     assert len(await search(client, headers, q="işe iade", category="decision")) == 1
     assert await search(client, headers, q="işe iade", as_of="1990-01-01") == []
@@ -239,7 +333,7 @@ async def test_without_an_embedder_the_search_is_full_text_only(
 ) -> None:
     await load_decision(kb_factory)
     await index_all(kb_factory, fake_embedder, articles=False)
-    app.dependency_overrides[get_settings] = lambda: Settings(kb_search_include_unreviewed=True)
+    app.dependency_overrides[get_settings] = lambda: Settings(kb_test_source_bands=TEST_BANDS)
     app.dependency_overrides[get_embedder] = lambda: None
     response = await client.get("/kb/search", params={"q": "işe iade"}, headers=headers)
     assert response.json()["mode"] == "fulltext" and len(response.json()["results"]) == 1
@@ -254,7 +348,7 @@ async def test_a_capital_dotted_i_query_finds_the_lowercase_text(
 ) -> None:
     await load_decision(kb_factory)
     await index_all(kb_factory, fake_embedder, articles=False)
-    configure(True)
+    configure(TEST_BANDS)
     app.dependency_overrides[get_embedder] = lambda: None
     assert len(await search(client, headers, q="İADE")) == 1
 
@@ -267,7 +361,7 @@ async def test_search_service_key_is_scoped_to_kb(
 
     from app.settings import get_settings
 
-    configure(False)
+    configure(OFF)
     original = app.dependency_overrides[get_settings]()
     original.kb_service_key = SecretStr("test-kb-key-18")
     app.dependency_overrides[get_settings] = lambda: original

@@ -25,7 +25,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from agent.api import Graph, RunRequest, turn_events
 from agent.graph import build_graph
-from agent.kb import HttpKbClient, KbClient, KbHit, KbMatch
+from agent.kb import HttpKbClient, KbClient, KbHit, KbMatch, Unreadable
 from agent.llm import Llm, Models
 from agent.nodes import Deps
 from agent.settings import KbSettings, LlmSettings
@@ -69,6 +69,7 @@ class FixtureKb:
                 title=ref.label.removesuffix(sub),
                 ref=base,
                 review_status=ref.review_status,
+                band=ref.band,
                 verification=ref.verification,
                 valid_from=ref.valid_from,
                 valid_to=ref.valid_to,
@@ -118,6 +119,10 @@ class FixtureKb:
 
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
         return await self.search(ref, categories=["statute"], as_of=as_of)
+
+    async def read_section(self, ref: str, as_of: date) -> KbHit | Unreadable:
+        found = await self.search(ref, categories=["admin_act"], as_of=as_of)
+        return next((h for h in found if h.ref == ref), Unreadable("not_found"))
 
 
 @dataclass

@@ -4,7 +4,7 @@
 import json
 import os
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
@@ -14,7 +14,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, User
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from agent.api import Graph, RunRequest, turn_events
-from agent.kb import KbHit, KbMatch
+from agent.kb import KbHit, KbMatch, Unreadable
 from agent.sources import covers
 from agent.topics import get_topic
 from agent.trace import Tracing
@@ -52,6 +52,8 @@ def hit(
     category: str = "statute",
     valid_from: date | None = None,
     valid_to: date | None = None,
+    review_status: str = "approved",
+    band: str | None = None,
 ) -> KbHit:
     offset = 0
     matches = []
@@ -71,7 +73,8 @@ def hit(
             "category": category,
             "title": title,
             "ref": ref,
-            "review_status": "approved",
+            "review_status": review_status,
+            "band": band,
             "verification": None,
             "valid_from": valid_from,
             "valid_to": valid_to,
@@ -103,11 +106,21 @@ def labour_law_hits() -> list[KbHit]:
 
 class FakeKb:
     """`/kb/search` over a list of hits: a query that is a künye finds the source it covers, any
-    other query the sources that share a word of it."""
+    other query the sources that share a word of it. A genelge section is read whole by its
+    künye; `unreadable` gives the reason of one that is not ("gap")."""
 
-    def __init__(self, hits: Sequence[KbHit] | None = None) -> None:
+    def __init__(
+        self,
+        hits: Sequence[KbHit] | None = None,
+        unreadable: dict[str, str] | None = None,
+        expired: Iterable[str] = (),
+    ) -> None:
         self.hits = list(labour_law_hits() if hits is None else hits)
+        self.unreadable = unreadable or {}
+        # Sections the search still finds but the read returns in a wording that has ended.
+        self.expired = set(expired)
         self.calls: list[dict[str, Any]] = []
+        self.sections_read: list[str] = []
 
     async def search(
         self,
@@ -141,6 +154,14 @@ class FakeKb:
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
         return await self.search(ref, categories=["statute"], as_of=as_of)
 
+    async def read_section(self, ref: str, as_of: date) -> KbHit | Unreadable:
+        self.sections_read.append(ref)
+        found = next((h for h in self.hits if h.category == "admin_act" and h.ref == ref), None)
+        if found is None or ref in self.unreadable:
+            return Unreadable(self.unreadable.get(ref, "not_found"))
+        ended = date.min if ref in self.expired else found.valid_to
+        return found.model_copy(update={"complete": True, "valid_to": ended})
+
 
 class FailingKb:
     """A knowledge base whose every search raises `error`."""
@@ -159,6 +180,9 @@ class FailingKb:
         raise self.error
 
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
+        raise self.error
+
+    async def read_section(self, ref: str, as_of: date) -> KbHit | Unreadable:
         raise self.error
 
 

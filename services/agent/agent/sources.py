@@ -12,6 +12,7 @@ from datetime import date
 from pydantic import BaseModel
 
 from agent.kb import KbHit
+from hukuk_models import Band
 from hukuk_models.chat import (
     CitationCategory,
     CitationRef,
@@ -37,6 +38,7 @@ class ReadSource(BaseModel):
     title: str
     ref: str
     review_status: ReviewStatus
+    band: Band | None = None
     verification: Verification
     valid_from: date | None
     valid_to: date | None
@@ -79,6 +81,7 @@ def as_read_source(hit: KbHit) -> ReadSource | None:
         title=hit.title,
         ref=hit.ref,
         review_status=hit.review_status,
+        band=hit.band,
         verification=hit.verification or "not_applicable",
         valid_from=hit.valid_from,
         valid_to=hit.valid_to,
@@ -200,6 +203,7 @@ def citation(
         label=source.title + suffix,
         ref=source.ref + suffix,
         review_status=source.review_status,
+        band=source.band,
         verification=source.verification,
         valid_from=source.valid_from,
         valid_to=source.valid_to,

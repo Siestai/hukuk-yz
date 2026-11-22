@@ -43,15 +43,44 @@ def test_the_llm_detection_is_off_by_default(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_search_settings_default_to_the_public_safe_values(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("KB_SEARCH_INCLUDE_UNREVIEWED", "OPENAI_API_KEY", "EMBEDDING_MODEL"):
+    for name in ("KB_TEST_SOURCE_BANDS", "OPENAI_API_KEY", "EMBEDDING_MODEL"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
     settings = Settings()
-    assert settings.kb_search_include_unreviewed is False
+    assert settings.kb_test_source_bands == ()
     assert settings.openai_api_key is None
     assert settings.embedding_model == "text-embedding-3-large"
+    monkeypatch.setenv("KB_TEST_SOURCE_BANDS", "")
+    assert Settings().kb_test_source_bands == ()
+
+
+@pytest.mark.parametrize(
+    ("raw", "bands"),
+    [("high,medium", ("high", "medium")), (" Medium , high,high ", ("medium", "high"))],
+)
+def test_the_test_source_bands_are_a_comma_separated_list(
+    monkeypatch: pytest.MonkeyPatch, raw: str, bands: tuple[str, ...]
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
+    monkeypatch.setenv("KB_TEST_SOURCE_BANDS", raw)
+    assert Settings().kb_test_source_bands == bands
+
+
+@pytest.mark.parametrize("raw", ["low", "high,medium,low", "LOW", "all", "true", "high;medium"])
+def test_low_or_an_unknown_band_is_refused_as_a_test_source(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
+    monkeypatch.setenv("KB_TEST_SOURCE_BANDS", raw)
+    with pytest.raises(ValidationError, match="KB_TEST_SOURCE_BANDS"):
+        Settings()
+
+
+def test_the_retired_unreviewed_switch_opens_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("KB_TEST_SOURCE_BANDS", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://unused")
     monkeypatch.setenv("KB_SEARCH_INCLUDE_UNREVIEWED", "true")
-    assert Settings().kb_search_include_unreviewed is True
+    assert Settings().kb_test_source_bands == ()
 
 
 @pytest.mark.parametrize("name", ["AGENT_SERVICE_KEY", "KB_SERVICE_KEY"])

@@ -125,6 +125,11 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "unreviewed": {
+            "default": false,
+            "title": "Unreviewed",
+            "type": "boolean"
           }
         },
         "required": [
@@ -137,6 +142,22 @@
       "ArticleAsOf": {
         "description": "What a published article said on a date (task 11b). Only fields that apply to the status\nare present: `version` for found / repealed, `gap` for gap, `reason` for unknown_article\n(`not_published`) and for a repealed article (`repealed`).",
         "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
           "confidence": {
             "anyOf": [
               {
@@ -152,6 +173,18 @@
               }
             ],
             "title": "Confidence"
+          },
+          "extraction_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Id"
           },
           "gap": {
             "anyOf": [
@@ -189,6 +222,21 @@
               }
             ],
             "title": "Reason"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "approved",
+                  "analyzed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
           },
           "stale": {
             "anyOf": [
@@ -596,6 +644,22 @@
         "additionalProperties": false,
         "description": "A source the answer rests on. Tapping it opens the full text of `source_id` with the part\ngiven by `quote` (and `char_start`..`char_end` in that text) highlighted.",
         "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
           "category": {
             "enum": [
               "statute",
@@ -3249,6 +3313,22 @@
       "KbSearchResult": {
         "description": "One record: a decision, or one version of a statute article. `score` is the best chunk's.\n`review_status` is `analyzed` for a record no reviewer has approved yet (show it as \"not\napproved\"). `verification` is the decision's (null for a statute); `valid_from` / `valid_to`\nthe statute version's validity (null for a decision).",
         "properties": {
+          "band": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band"
+          },
           "category": {
             "enum": [
               "statute",

@@ -9,9 +9,10 @@ has none and skips it. Run it with
 
 import os
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -21,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from agent.kb import HttpKbClient
 from app.auth import hash_password
 from app.db import make_engine
+from app.kb import reject_statute_article
 from app.loaders import statutes as statute_loader
 from app.loaders.statutes_report import StatuteCounts
 from app.main import app
@@ -140,6 +142,7 @@ async def test_found_returns_the_text_in_force_on_the_date(
     assert body["latest_snapshot_date"] == "2026-04-22"
     assert body["stale"] is False
     assert "reason" not in body and "gap" not in body
+    assert body["review_status"] == "approved" and "band" not in body
 
 
 async def test_a_found_version_carries_its_label_evidence_and_footnotes(
@@ -183,7 +186,7 @@ async def test_a_gap_names_the_known_amendments_and_carries_no_text(
     assert body["gap"]["from"] == start and body["gap"]["to"] == end
     assert body["gap"]["reason"] == "before_earliest_snapshot"
     assert set(body["gap"]) == {"from", "to", "reason", "known_amendments"}
-    assert set(body) == {"status", "gap", "latest_snapshot_date", "stale"}
+    assert set(body) == {"status", "gap", "latest_snapshot_date", "stale", "review_status"}
     assert "text" not in response.text and "eski metin" not in response.text
     if article == "18":
         assert body["gap"]["known_amendments"] == [
@@ -204,7 +207,7 @@ async def test_not_in_force_before_the_article_existed_and_after_it_was_repealed
 ) -> None:
     before = (await _get(client, headers, "18", "2003-06-09")).json()
     assert before["status"] == "not_in_force"
-    assert set(before) == {"status", "latest_snapshot_date", "stale"}
+    assert set(before) == {"status", "latest_snapshot_date", "stale", "review_status"}
     repealed = (await _get(client, headers, "Geçici 1", "2010-01-01")).json()
     assert (repealed["status"], repealed["reason"]) == ("not_in_force", "repealed")
     assert repealed["version"]["change_kind"] == "repealed"
@@ -218,6 +221,138 @@ async def test_an_article_that_is_not_published_is_unknown_with_a_reason(
         response = await _get(client, headers, article, "2020-01-01")
         assert response.status_code == 200
         assert response.json() == {"status": "unknown_article", "reason": "not_published"}
+
+
+@pytest.fixture
+def source_bands() -> Iterator[Callable[[tuple[str, ...]], None]]:
+    """`source_bands(("high", "medium"))`: the app runs with that KB_TEST_SOURCE_BANDS."""
+
+    def set_up(bands: tuple[str, ...]) -> None:
+        configured = Settings.model_validate(
+            {**get_settings().model_dump(), "kb_test_source_bands": bands}
+        )
+        app.dependency_overrides[get_settings] = lambda: configured
+
+    yield set_up
+    app.dependency_overrides.pop(get_settings, None)
+
+
+async def test_an_unreviewed_article_is_read_only_in_a_listed_band(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    statutes_loaded: dict[str, uuid.UUID],
+    source_bands: Callable[[tuple[str, ...]], None],
+) -> None:
+    # nothing of the statute is published: without the setting it does not exist for a reader
+    assert (await _get(client, headers, "18", "2020-01-01")).status_code == 404
+    source_bands(("high",))
+    assert (await _get(client, headers, "18", "2020-01-01")).status_code == 404  # medium
+    source_bands(("high", "medium"))
+    body = (await _get(client, headers, "18", "2020-01-01")).json()
+    assert (body["status"], body["review_status"], body["band"]) == ("found", "analyzed", "medium")
+    version = body["version"]
+    assert version["text"] == "Madde 18 yeni metin." and "id" not in version
+    # no published row to name: the extraction that was read is the record to cite and open
+    assert body["extraction_id"] == str(statutes_loaded["18"])
+    assert (version["valid_from"], version["valid_to"]) == ("2018-01-01", None)
+    assert version["amending_ref"] == "7036 (12/10/2017)"
+    assert version["evidence"]["amendments"][0]["law"] == "7036"
+    assert (body["confidence"], body["latest_snapshot_date"], body["stale"]) == (
+        "medium",
+        "2026-04-22",
+        False,
+    )
+    # md.4: the version in force on the date (half-open: the new text starts on its first day),
+    # a gap without text, nothing before the article
+    old = (await _get(client, headers, "18", "2017-12-31")).json()
+    assert old["version"]["text"] == "Madde 18 eski metin." and old["band"] == "medium"
+    first_day = (await _get(client, headers, "18", "2018-01-01")).json()
+    assert first_day["version"]["text"] == "Madde 18 yeni metin."
+    gap = await _get(client, headers, "18", "2014-01-01")
+    assert gap.json()["status"] == "gap" and "version" not in gap.json()
+    assert (gap.json()["review_status"], gap.json()["band"]) == ("analyzed", "medium")
+    assert "metin" not in gap.text
+    assert (await _get(client, headers, "18", "2003-06-09")).json()["status"] == "not_in_force"
+    repealed = (await _get(client, headers, "gecici-1", "2010-01-01")).json()
+    assert (repealed["status"], repealed["reason"]) == ("not_in_force", "repealed")
+    assert (repealed["review_status"], repealed["band"]) == ("analyzed", "high")
+    # the low band is never read
+    assert (await _get(client, headers, "Ek 2", "2020-01-01")).status_code == 404
+
+
+async def test_a_rejected_article_is_never_read(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    statutes_loaded: dict[str, uuid.UUID],
+    reviewer: AppUser,
+    source_bands: Callable[[tuple[str, ...]], None],
+) -> None:
+    source_bands(("high", "medium"))
+    assert (await _get(client, headers, "5", "2020-01-01")).json()["status"] == "found"
+    async with kb_factory() as session:
+        await reject_statute_article(session, statutes_loaded["5"], reviewer.id, "wrong text")
+        await session.commit()
+    assert (await _get(client, headers, "5", "2020-01-01")).status_code == 404
+
+
+async def test_a_published_article_wins_over_a_newer_unreviewed_extraction(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    statutes_published: dict[str, uuid.UUID],
+    statute_record: dict[str, Any],
+    source_bands: Callable[[tuple[str, ...]], None],
+) -> None:
+    newer = {**statute_record, "parser_version": "2"}
+    newer["articles"] = [
+        {**a, "versions": [{**v, "text": "Yeni çıkarım."} for v in a["versions"]]}
+        for a in statute_record["articles"]
+    ]
+    await statute_loader.load(kb_factory, statute_loader.prepare([newer]), {}, StatuteCounts())
+    source_bands(("high", "medium"))
+    body = (await _get(client, headers, "18", "2020-01-01")).json()
+    assert (body["review_status"], body["version"]["text"]) == ("approved", "Madde 18 yeni metin.")
+    assert "band" not in body and uuid.UUID(body["version"]["id"])
+    assert "extraction_id" not in body
+    # published in the low band: still read, as before
+    assert (await _get(client, headers, "Ek 2", "2020-01-01")).json()["status"] == "found"
+    # never approved: its newest extraction is the readable one
+    unreviewed = (await _get(client, headers, "5", "2020-01-01")).json()
+    assert (unreviewed["review_status"], unreviewed["version"]["text"]) == (
+        "analyzed",
+        "Yeni çıkarım.",
+    )
+
+
+async def test_an_undated_unreviewed_version_never_reads_as_not_in_force(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+    kb_factory: Factory,
+    statute_record: dict[str, Any],
+    source_bands: Callable[[tuple[str, ...]], None],
+) -> None:
+    """md.4: "start date unknown" is not "not in force". A day that no dated version and no gap
+    of such a timeline covers is not answered at all."""
+    undated = {**statute_record}
+    undated["articles"] = [
+        {**a, "versions": [{**a["versions"][0], "valid_from": None}, *a["versions"][1:]]}
+        if a["article_no"] in ("5", "18")
+        else a
+        for a in statute_record["articles"]
+    ]
+    await statute_loader.load(kb_factory, statute_loader.prepare([undated]), {}, StatuteCounts())
+    source_bands(("high", "medium"))
+    # "5": its only version is undated
+    assert (await _get(client, headers, "5", "2020-01-01")).status_code == 404
+    # "18": the earlier version is undated; the dated one and the gap are still read
+    found = (await _get(client, headers, "18", "2020-01-01")).json()
+    assert (found["status"], found["version"]["text"]) == ("found", "Madde 18 yeni metin.")
+    assert (await _get(client, headers, "18", "2014-01-01")).json()["status"] == "gap"
+    for day in ("2003-06-09", "2017-06-01"):  # before the gap; where the undated version was
+        response = await _get(client, headers, "18", day)
+        assert response.status_code == 404, day
+        assert "not_in_force" not in response.text
 
 
 @pytest.mark.parametrize(

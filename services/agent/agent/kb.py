@@ -1,19 +1,21 @@
-"""The knowledge base as the agent sees it: `GET /kb/search` of `app` (docs/tasks/14-kb-search.md).
+"""The knowledge base as the agent sees it: `GET /kb/search` of `app` (docs/tasks/14-kb-search.md)
+and the whole-text reads of a statute article and of a genelge section.
 
 The client is a protocol, so the graph is tested with a fake one. A hit is one record with the
 matching passages (`matches`); a passage of an `internal_only` chunk comes without text and cannot
 be read.
 """
 
-import re
 from collections.abc import Sequence
 from datetime import date
-from typing import Protocol
+from typing import NamedTuple, Protocol
 from urllib.parse import quote
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from agent.kunye import admin_act_section, statute_article
+from hukuk_models import Band
 from hukuk_models.chat import CitationCategory, ReviewStatus, Verification
 
 
@@ -40,12 +42,21 @@ class KbHit(BaseModel):
     title: str
     ref: str
     review_status: ReviewStatus
+    # The confidence band of an `analyzed` record (a test source, decision K1).
+    band: Band | None = None
     verification: Verification | None = None
     valid_from: date | None = None
     valid_to: date | None = None
     score: float = 0.0
     matches: list[KbMatch] = []
     complete: bool = False
+
+
+class Unreadable(NamedTuple):
+    """Why a genelge section was not read: `not_found`, or the status the knowledge base gave
+    (`gap`: no text on file for the date; `not_in_force`)."""
+
+    reason: str
 
 
 class KbSearchResponse(BaseModel):
@@ -65,6 +76,8 @@ class KbClient(Protocol):
     ) -> list[KbHit]: ...
 
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]: ...
+
+    async def read_section(self, ref: str, as_of: date) -> KbHit | Unreadable: ...
 
 
 class HttpKbClient:
@@ -109,10 +122,10 @@ class HttpKbClient:
             raise KbUnavailable(str(exc)) from exc
 
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]:
-        match = re.fullmatch(r"(\d+) m\.(.+)", ref)
-        if match is None:
+        found = statute_article(ref)
+        if found is None:
             return []
-        number, article = match.groups()
+        number, article = found
         # The route takes the number as a path: a '/' ("18/A") stays a separator, not %2F.
         try:
             response = await self._http.get(
@@ -126,21 +139,26 @@ class HttpKbClient:
             if data["status"] != "found":
                 return []
             version = data.get("version")
-            if not version or not version.get("text") or not version.get("id"):
+            if not version or not version.get("text"):
                 return []
+            review_status = data["review_status"]
+            # An unreviewed article has no published row: its extraction is the record, the
+            # same one a search hit of it names.
+            source_id = str(version["id"] if review_status == "approved" else data["extraction_id"])
             return [
                 KbHit(
-                    source_id=str(version["id"]),
+                    source_id=source_id,
                     category="statute",
                     title=f"{number} m.{article}",
                     ref=ref,
-                    review_status="approved",
+                    review_status=review_status,
+                    band=data.get("band"),
                     valid_from=version.get("valid_from"),
                     valid_to=version.get("valid_to"),
                     complete=True,
                     matches=[
                         KbMatch(
-                            chunk_id=str(version["id"]),
+                            chunk_id=source_id,
                             text=version["text"],
                             char_start=0,
                             char_end=len(version["text"]),
@@ -150,6 +168,48 @@ class HttpKbClient:
             ]
         except (httpx.HTTPError, ValueError, KeyError) as exc:
             raise KbUnavailable("article read failed") from exc
+
+    async def read_section(self, ref: str, as_of: date) -> KbHit | Unreadable:
+        found = admin_act_section(ref)
+        if found is None or found.section is None:
+            return Unreadable("not_found")
+        try:
+            # The route names the genelge with a dash for the slash: "2020-8".
+            response = await self._http.get(
+                f"/admin-acts/{found.act.replace('/', '-')}/sections/{quote(found.section)}",
+                params={"as_of": as_of.isoformat()},
+            )
+            if response.status_code == 404:
+                return Unreadable("not_found")
+            response.raise_for_status()
+            data = response.json()
+            if data["status"] in ("gap", "not_in_force"):
+                return Unreadable(data["status"])
+            version = data.get("version")
+            if data["status"] != "found" or not version or not version.get("text"):
+                return Unreadable("not_found")
+            source_id = str(data["extraction_id"])
+            return KbHit(
+                source_id=source_id,
+                category="admin_act",
+                title=data["citation"],
+                ref=data["citation"],
+                review_status=data["review_status"],
+                band=data.get("band"),
+                valid_from=version.get("valid_from"),
+                valid_to=version.get("valid_to"),
+                complete=True,
+                matches=[
+                    KbMatch(
+                        chunk_id=source_id,
+                        text=version["text"],
+                        char_start=0,
+                        char_end=len(version["text"]),
+                    )
+                ],
+            )
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            raise KbUnavailable("section read failed") from exc
 
     async def aclose(self) -> None:
         await self._http.aclose()

@@ -366,6 +366,14 @@ class ArticleAsOf(BaseModel):
     latest_snapshot_date: date | None = None
     stale: bool | None = None
     confidence: Band | None = None
+    # `analyzed`: read from an extraction no reviewer has approved yet (test sources, decision
+    # K1), in the review-queue confidence `band` given next to it; show it as "not approved".
+    # Absent when no record was read (`unknown_article`); `band` is absent for `approved`.
+    review_status: Literal["approved", "analyzed"] | None = None
+    band: Band | None = None
+    # The extraction an `analyzed` article was read from: the record to cite and to open, since
+    # there is no published `version.id`. Absent for `approved`.
+    extraction_id: uuid.UUID | None = None
 
 
 # --- statute article review (task 11c-1) -------------------------------------------------------
@@ -620,6 +628,8 @@ class KbSearchResult(BaseModel):
     title: str
     ref: str | None = None
     review_status: Literal["approved", "analyzed"]
+    # The review-queue confidence band of an `analyzed` record; null for an approved one.
+    band: Band | None = None
     verification: VerificationStatus | None = None
     valid_from: date | None = None
     valid_to: date | None = None

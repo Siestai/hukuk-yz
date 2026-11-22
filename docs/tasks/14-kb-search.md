@@ -12,7 +12,7 @@ Bugün canlıda `chunk` tablosu boş, arama API'si yok. Onaylı karar 90, analiz
 
 ## Karar: kapalı betada onaysız kaynak (Orhan, 2026-10-27)
 
-Beta süresince `analyzed` durumdaki kaynaklar da indekslenir ve aranabilir. Her sonuç `review_status` (`approved` / `analyzed`) taşır; ajan ve UI onaysızı "onaylanmadı" etiketiyle gösterir. `rejected` hiçbir zaman indekslenmez. Açık yayından önce bu davranış bir ayarla (`KB_SEARCH_INCLUDE_UNREVIEWED`, varsayılan `false`) kapatılır; beta ortamında `true`.
+Beta süresince `analyzed` durumdaki kaynaklar da indekslenir ve aranabilir. Her sonuç `review_status` (`approved` / `analyzed`) taşır; ajan ve UI onaysızı "onaylanmadı" etiketiyle gösterir. `rejected` hiçbir zaman indekslenmez. Açık yayından önce bu davranış bir ayarla kapatılır (2026-11-22, K1: ayar `KB_TEST_SOURCE_BANDS` oldu, varsayılan boş; testte `high,medium`, `low` bant hiç dönmez; eski `KB_SEARCH_INCLUDE_UNREVIEWED` kalktı).
 
 ## Kapsam
 
@@ -43,7 +43,7 @@ Beta süresince `analyzed` durumdaki kaynaklar da indekslenir ve aranabilir. Her
 - `make lint`, `make typecheck`, `make test` yeşil. Chunk bölme ve RRF birleştirme birim testli (DB'siz); `/kb/search` entegrasyon testi CI Postgres'inde (pgvector), embedding sahte istemciyle.
 - `--dry-run` tam korpusta çalışır, chunk sayısı ve tahmini token/maliyet raporlanır (PR açıklamasında çıktı).
 - Testte: `as_of=2015-01-01` ile 4857 m.18 araması 2015'te geçerli sürümü döner; `gap` aralığına düşen tarih için o madde sonuç vermez.
-- `rejected` kaynak hiçbir aramada çıkmaz; `KB_SEARCH_INCLUDE_UNREVIEWED=false` iken `analyzed` kaynak çıkmaz (test).
+- `rejected` kaynak hiçbir aramada çıkmaz; `KB_TEST_SOURCE_BANDS` boşken `analyzed` kaynak çıkmaz (test).
 - `internal_only` chunk metni yanıtta yok (test).
 - Retrieval eval komutu çalışır ve raporu PR'da (gerçek embedding ile koşu canlı indeksten sonra Themis tarafından yapılır, sonuç PR yorumuna).
 

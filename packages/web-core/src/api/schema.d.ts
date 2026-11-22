@@ -710,6 +710,11 @@ export interface components {
             citations: components["schemas"]["CitationRef"][];
             /** Text */
             text: string;
+            /**
+             * Unreviewed
+             * @default false
+             */
+            unreviewed: boolean;
         };
         /**
          * ArticleAsOf
@@ -718,13 +723,19 @@ export interface components {
          *     (`not_published`) and for a repealed article (`repealed`).
          */
         ArticleAsOf: {
+            /** Band */
+            band?: ("high" | "medium" | "low") | null;
             /** Confidence */
             confidence?: ("high" | "medium" | "low") | null;
+            /** Extraction Id */
+            extraction_id?: string | null;
             gap?: components["schemas"]["ArticleGapOut"] | null;
             /** Latest Snapshot Date */
             latest_snapshot_date?: string | null;
             /** Reason */
             reason?: ("repealed" | "not_published") | null;
+            /** Review Status */
+            review_status?: ("approved" | "analyzed") | null;
             /** Stale */
             stale?: boolean | null;
             /**
@@ -861,6 +872,8 @@ export interface components {
          *     given by `quote` (and `char_start`..`char_end` in that text) highlighted.
          */
         CitationRef: {
+            /** Band */
+            band?: ("high" | "medium" | "low") | null;
             /**
              * Category
              * @enum {string}
@@ -1763,6 +1776,8 @@ export interface components {
          *     the statute version's validity (null for a decision).
          */
         KbSearchResult: {
+            /** Band */
+            band?: ("high" | "medium" | "low") | null;
             /**
              * Category
              * @enum {string}

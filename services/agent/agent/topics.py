@@ -12,6 +12,7 @@ from typing import Annotated, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from agent.kunye import admin_act_section
 from hukuk_models.chat import CitationCategory, InputKind
 
 TOPICS_DIR = Path(__file__).parent / "topics"
@@ -47,6 +48,17 @@ class Question(TopicModel):
     def _options_match_kind(self) -> Self:
         if (self.kind == "choice") != bool(self.options):
             raise ValueError("a choice has options, other inputs have none")
+        return self
+
+    @model_validator(mode="after")
+    def _basis_names_a_section(self) -> Self:
+        # "Neden soruyorum" shows the text it rests on: a whole genelge is not such a text.
+        for basis in self.basis:
+            if basis.category != "admin_act":
+                continue
+            found = admin_act_section(basis.ref)
+            if found is not None and found.section is None:
+                raise ValueError(f"a question basis names a section of the genelge: {basis.ref}")
         return self
 
 
