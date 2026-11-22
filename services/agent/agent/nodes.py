@@ -13,7 +13,13 @@ from pydantic import BaseModel
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 
 from agent import prompts
-from agent.facts import apply_answers, build_facts, clarification_for, critical_unknown
+from agent.facts import (
+    apply_answers,
+    build_facts,
+    clarification_for,
+    critical_unknown,
+    follow_up,
+)
 from agent.gate import (
     SCHEMA_FAILED,
     GateCited,
@@ -90,6 +96,8 @@ class State(TypedDict, total=False):
     answer: dict[str, Any] | None
     # The "kaynak yetersiz" content of a fallback (`SourceGap`); None otherwise.
     source_gap: dict[str, Any] | None
+    # Whether the answers of this question already got their one follow-up clarification.
+    followed_up: bool
     gate: dict[str, Any]
 
 
@@ -186,12 +194,12 @@ async def _read_ref(
 
 
 async def _question_sources(
-    kb: KbClient, topic: Topic, facts: CaseFacts, as_of: date
+    kb: KbClient, topic: Topic, keys: list[str], as_of: date
 ) -> dict[str, CitationRef]:
-    """The citations behind the "neden soruyorum" of the questions that will be asked."""
+    """The citations behind the "neden soruyorum" of the questions of `keys`."""
     wanted = {
         b.ref: b
-        for key in critical_unknown(topic, facts)
+        for key in keys
         if (tf := topic.fact(key)) and tf.question
         for b in tf.question.basis
     }
@@ -229,7 +237,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 today=deps.today(),
             )
             sources = await _question_sources(
-                deps.kb, topic, facts, facts.event_date or deps.today()
+                deps.kb, topic, critical_unknown(topic, facts), facts.event_date or deps.today()
             )
             clarification = clarification_for(topic, facts, sources)
             _facts_event(facts)
@@ -253,6 +261,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "answer": None,
                 "source_gap": None,
                 "gate": {},
+                "followed_up": False,
             }
 
     async def clarify(state: State) -> dict[str, Any]:
@@ -264,18 +273,40 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             reply = interrupt(clarification.model_dump(mode="json"))
             if reply["skip"]:
                 rec.output = {"skipped": True}
-                return {}
+                return {"clarification": None}
             answers = [ClarificationAnswer.model_validate(a) for a in reply["answers"]]
+            topic = get_topic(state["topic"])
             facts = apply_answers(
-                get_topic(state["topic"]),
+                topic,
                 clarification,
                 answers,
                 CaseFacts.model_validate(state["facts"]),
                 today=deps.today(),
             )
             _facts_event(facts)
-            rec.output = {"answered": len(answers)}
-            return {"facts": facts.model_dump(mode="json")}
+            # An answer that puts the case into a branch asks that branch's facts, once: the
+            # answers to the follow-up open no further round.
+            more = None
+            if not state.get("followed_up"):
+                more = follow_up(topic, clarification, facts, {})
+            if more is not None:
+                sources = await _question_sources(
+                    deps.kb,
+                    topic,
+                    [q.fact_key for q in more.questions],
+                    facts.event_date or deps.today(),
+                )
+                more = follow_up(topic, clarification, facts, sources)
+                _step("clarify")
+            rec.output = {
+                "answered": len(answers),
+                "follow_up": [q.fact_key for q in more.questions] if more else [],
+            }
+            return {
+                "facts": facts.model_dump(mode="json"),
+                "clarification": more.model_dump(mode="json") if more else None,
+                "followed_up": True,
+            }
 
     async def plan(state: State) -> dict[str, Any]:
         async with trace().node("plan", {"topic": state["topic"]}) as rec:

@@ -11,10 +11,10 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from agent.facts import build_facts, clarification_for
+from agent.facts import build_facts, clarification_for, follow_up
 from agent.llm_schemas import IntakeFact, IntakeOutput
 from agent.topics import GENERAL, TOPICS_DIR, Topic, get_topic, load_topics, parse_date
-from hukuk_models.chat import QuestionInput
+from hukuk_models.chat import CaseFacts, QuestionInput
 from hukuk_models.formal_turkish import progressive_forms
 
 EXPECTED = {
@@ -122,9 +122,24 @@ def _conditional(asked_when: dict[str, list[str]], *, critical: bool = True) -> 
     }
 
 
+ASKED_BRANCH: dict[str, Any] = {
+    "key": "dal",
+    "label": "Dal",
+    "critical": True,
+    "question": {
+        "text": "Dal?",
+        "why": "Gerekir.",
+        "kind": "choice",
+        "options": [{"value": "a", "label": "A"}],
+    },
+}
+
+
 def test_a_condition_names_a_branch_fact_and_its_options() -> None:
     topic = _topic(BRANCH, _conditional({"dal": ["a", "unknown"]}))
     assert topic.facts[1].asked_when == {"dal": ["a", "unknown"]}
+    # A branch fact that is asked while unknown may open its facts on one value only.
+    assert _topic(ASKED_BRANCH, _conditional({"dal": ["a"]})).facts[1].asked_when == {"dal": ["a"]}
 
 
 @pytest.mark.parametrize(
@@ -136,6 +151,16 @@ def test_a_condition_names_a_branch_fact_and_its_options() -> None:
         ((BRANCH, _conditional({"dal": ["a"]}, critical=False)), "for a critical fact only"),
         (({"key": "dal", "label": "Dal"}, _conditional({"dal": ["a"]})), "dal has no options"),
         ((_conditional({"olgu": ["a"]}),), "itself"),
+        # Never asked and not listing "unknown": the fact would drop silently.
+        ((BRANCH, _conditional({"dal": ["a"]})), "never asked"),
+        (
+            (
+                {**ASKED_BRANCH, "key": "ust", "question": {**ASKED_BRANCH["question"]}},
+                {**ASKED_BRANCH, "asked_when": {"ust": ["a"]}},
+                _conditional({"dal": ["a"]}),
+            ),
+            "never asked",
+        ),
         (
             (
                 {"key": "dal", "label": "Dal", "options": [{"value": "unknown", "label": "?"}]},
@@ -200,7 +225,9 @@ ALSO_ASKED: dict[str, set[str]] = {
     # The event date (md. 4) and the full year of service (1475 m.14) hold in the askerlik branch.
     "SB-008": {"fesih_tarihi", "hizmet_suresi"},
     # The question does not say whether the declaration was late or found by an inspection.
-    "SB-014": {"kendiliginden"},
+    "SB-014": {"fiil", "kendiliginden"},
+    # The act the fine is for decides which sub-clause facts follow; the question does not say.
+    "SB-016": {"fiil"},
     # The six workdays of m.26 run from the day the employer learnt of the absence.
     "SB-027": {"olay_tarihi"},
 }
@@ -228,6 +255,41 @@ def test_a_case_is_asked_its_must_ask_from_its_template_and_nothing_out_of_place
     asked = {q.fact_key for q in clarification.questions} if clarification else set()
 
     assert asked == set(case["expected"]["must_ask"]) | ALSO_ASKED.get(case_id, set())
+
+
+def _nothing_known(topic: Topic) -> CaseFacts:
+    extracted = IntakeOutput(topic=topic.id, title=topic.title, facts=[])
+    return build_facts(topic, extracted, None, question="", today=date(2026, 11, 22))
+
+
+@pytest.mark.parametrize("topic_id", sorted(EXPECTED))
+def test_with_the_branch_unknown_no_critical_fact_drops_silently(topic_id: str) -> None:
+    """Every critical fact is asked at once, or after one answer of the first questions."""
+    topic = get_topic(topic_id)
+    facts = _nothing_known(topic)
+    first = clarification_for(topic, facts, {})
+    asked = {q.fact_key for q in first.questions} if first else set()
+    for fact in topic.facts:
+        if not fact.critical or fact.key in asked:
+            continue
+        assert first is not None and set(fact.asked_when) <= asked, fact.key
+        chosen = {
+            key: next(o.label for o in branch.choices if o.value in states)
+            for key, states in fact.asked_when.items()
+            if (branch := topic.fact(key)) is not None
+        }
+        answered = facts.model_copy(
+            update={
+                "facts": [
+                    f.model_copy(update={"value": chosen[f.key], "status": "known"})
+                    if f.key in chosen
+                    else f
+                    for f in facts.facts
+                ]
+            }
+        )
+        more = follow_up(topic, first, answered, {})
+        assert more is not None and fact.key in {q.fact_key for q in more.questions}, fact.key
 
 
 @pytest.mark.parametrize("case_id", sorted(CASES))

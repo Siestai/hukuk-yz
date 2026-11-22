@@ -140,6 +140,16 @@ class Topic(TopicModel):
                     raise ValueError(f"{fact.key}: asked_when {key} lists no value")
                 if wrong := sorted(set(states) - values - {UNKNOWN}):
                     raise ValueError(f"{fact.key}: {wrong} not an option of {key}")
+                # Without "unknown", the fact is asked only once the branch is known: so the branch
+                # fact must be asked whenever it is unknown, or the fact drops silently.
+                always_asked = branch.critical and all(
+                    UNKNOWN in other for other in branch.asked_when.values()
+                )
+                if UNKNOWN not in states and not always_asked:
+                    raise ValueError(
+                        f"{fact.key}: {key} is not always asked while unknown (never asked or "
+                        f"conditional), so the condition lists {UNKNOWN}"
+                    )
         return self
 
     @property

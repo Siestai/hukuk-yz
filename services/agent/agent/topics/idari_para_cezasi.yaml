@@ -3,7 +3,8 @@
 # Görev 19 B2: alt bent düzeyindeki olgular fiile bağlı olarak sorulur (asked_when): yalnız
 # kazanç eksikliğinde tespit_sekli ve bildirim_belgesi (SB-019), bordro geçersizliğinde
 # tutanakla_teslim, odeme_sekli ve defter_turu (SB-021; defter_turu ibraz etmemede de). fiil
-# bilinmiyorsa yalnız indirim olguları (ceza_turu, kendiliginden; SB-016) sorulur.
+# kritiktir: bilinmiyorsa kendisi ve indirim olguları (ceza_turu, kendiliginden; SB-016) sorulur,
+# cevabı bir alt bende girerse o bendin olguları ek netleştirmede sorulur.
 # onceki_tespit_tarihi ve muafiyet_siniri vakaların must_ask'inde olmadığından kritik değildir.
 id: idari_para_cezasi
 title: SGK idari para cezası ve indirimler
@@ -52,6 +53,7 @@ facts:
         - {ref: "5510 m.102/2", category: statute}
   - key: fiil
     label: Cezaya konu fiil (alt bent)
+    critical: true
     question:
       text: Cezaya konu fiil hangisidir?
       why: >-
