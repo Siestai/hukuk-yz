@@ -596,7 +596,9 @@
           "before_earliest_snapshot": "Elimizdeki en eski kopyadan önceki dönem için bilgi yok. O döneme ait bir sorgu cevapsız kalabilir.",
           "start_unverified": "Bu sürümün başlangıç tarihi başka bir kaynakla doğrulanamadı. Dayanak kutusundaki tarihi kontrol edin.",
           "heading_suspect": "Kenar başlığı yanlış okunmuş olabilir. Maddenin yanındaki kısa başlığı kopyayla karşılaştırın.",
-          "section_title_guess": "Maddenin bağlı olduğu bölüm başlığı tahmin edildi. Başlığı kopyadan doğrulayın."
+          "section_title_guess": "Maddenin bağlı olduğu bölüm başlığı tahmin edildi. Başlığı kopyadan doğrulayın.",
+          "start_inferred": "Kopyanın tarihi belli değil; metinde adı geçen en yeni kanunun tarihinden tahmin edildi. Maddenin başlangıcı olarak bu tahmin yazıldı, gerçek başlangıç tarihi bilinmez. Tarihi kaynaktan bulmadan onaylamayın.",
+          "footnote_on_dropped_article": "Mülga kanunun kayda alınmayan bir maddesinde dipnot vardı ve o maddeyle birlikte düştü. Dipnot bu maddeyle ilgili olabilir. Kopyadaki dipnotları okuyup maddeyi etkileyen bir değişiklik var mı bakın."
         }
       }
     }
@@ -763,7 +765,9 @@
       "before_earliest_snapshot": "İlk kopyadan önce bilinmiyor",
       "start_unverified": "Başlangıç tarihi doğrulanamadı",
       "heading_suspect": "Kenar başlığı şüpheli",
-      "section_title_guess": "Bölüm başlığı tahmin"
+      "section_title_guess": "Bölüm başlığı tahmin",
+      "start_inferred": "Başlangıç tarihi tahmin",
+      "footnote_on_dropped_article": "Alınmayan maddenin dipnotu"
     },
     "statuteWarning": {
       "number_skipped": "Madde numaralarında atlama var; bir madde eksik okunmuş olabilir.",
@@ -785,13 +789,18 @@
       "start_unverified": "Maddenin ne zaman yürürlüğe girdiği doğrulanamadı; en eski kopyanın tarihi alındı.",
       "heading_suspect": "Kenar başlığı doğru okunmamış olabilir.",
       "section_title_guess": "Bölüm başlığı madde başlığından ayrılırken tahmin yürütüldü.",
+      "start_inferred": "Kopyanın tarihi belli değil, metindeki en yeni kanun tarihinden tahmin edildi; başlangıç bu tahmine dayandığı için güven düşük.",
+      "footnote_on_dropped_article": "Kayda alınmayan bir maddenin dipnotu onunla birlikte düştü; dipnot bu maddeyi ilgilendirebileceği için güven düşük.",
       "footnote_marker_not_found": "Bir dipnotun metindeki işareti bulunamadı.",
       "footnote_sequence_gap": "Dipnot numaralarında atlama var.",
       "repealed_text_retained": "Madde mülga ama eski metni kopyada duruyor.",
       "snapshot_date_inferred": "Kopyanın tarihi dosya adından tahmin edildi.",
       "statute_number_missing": "Kanun numarası kopyada bulunamadı.",
       "trailer_ignored": "Metnin sonundaki ek bölüm madde metnine alınmadı.",
-      "removed_unexplained": "Madde sonraki kopyada bulunamadı; kaldırılma nedeni bilinmiyor."
+      "removed_unexplained": "Madde sonraki kopyada bulunamadı; kaldırılma nedeni bilinmiyor.",
+      "in_force_table_ignored": "Metnin sonundaki yürürlük tarihleri tablosu madde metnine alınmadı.",
+      "range_stub": "Kaynakta tek satırda toplu yazılan maddeler (örneğin “Madde 11 ila 16”) ayrı madde olarak alınmadı.",
+      "only_articles": "Kanun mülga; yalnız yürürlükte kalan maddeleri alındı."
     },
     "docType": {
       "kanun": "Kanun",
