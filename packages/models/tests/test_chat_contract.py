@@ -139,6 +139,14 @@ def test_message_request_is_exactly_one_thing() -> None:
         MessageRequest.model_validate({"clarification_answers": [{"question_id": "q1"}]})
 
 
+SOURCE_GAP = {
+    "topic": "Bildirim süreleri",
+    "missing_sources": [{"ref": "4857 m.17", "reason": "not_found"}],
+    "given_facts": [{"key": "kidem", "label": "Kıdem: 2 yıl", "value": "2 yıl", "status": "known"}],
+    "next_step": "Bu soru, şu kaynaklar bilgi tabanına eklendiğinde cevaplanabilir: 4857 m.17.",
+}
+
+
 def test_turn_roles() -> None:
     base = {"id": "00000000-0000-4000-8000-000000000000", "created_at": "2026-10-28T00:00:00Z"}
     Turn.model_validate({**base, "role": "user", "text": "soru"})
@@ -146,6 +154,28 @@ def test_turn_roles() -> None:
         Turn.model_validate({**base, "role": "assistant", "text": "soru"})
     with pytest.raises(ValidationError):
         Turn.model_validate({**base, "role": "assistant"})
+    # A turn that ended in an error is stored too, so that it can get feedback (task 19, B4).
+    error = {"type": "error", "code": "answer_not_verified", "source_gap": SOURCE_GAP}
+    assert Turn.model_validate({**base, "role": "assistant", "error": error}).error
+    with pytest.raises(ValidationError):
+        Turn.model_validate(
+            {**base, "role": "assistant", "error": error, "answer": _fixture_answer()}
+        )
+    with pytest.raises(ValidationError):
+        Turn.model_validate({**base, "role": "user", "text": "soru", "error": error})
+
+
+def test_a_source_gap_names_only_known_reasons_and_given_facts() -> None:
+    from hukuk_models.chat import SourceGap
+
+    assert SourceGap.model_validate(SOURCE_GAP).missing_sources[0].reason == "not_found"
+    answer = Answer.model_validate({**_fixture_answer(), "source_gap": SOURCE_GAP})
+    assert answer.source_gap is not None
+    bad_reason = {**SOURCE_GAP, "missing_sources": [{"ref": "4857 m.17", "reason": "lost"}]}
+    unknown = {"key": "isci_sayisi", "label": "İşçi sayısı", "status": "unknown"}
+    for bad in (bad_reason, {**SOURCE_GAP, "given_facts": [unknown]}):
+        with pytest.raises(ValidationError):
+            SourceGap.model_validate(bad)
 
 
 def test_a_point_is_unreviewed_exactly_when_one_of_its_citations_is() -> None:

@@ -1,10 +1,10 @@
 "use client";
 
 import { cn } from "@hukuk/ui";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 
-import type { Answer, CaseFacts, ChatMode, CitationRef } from "@/lib/chat-types";
+import type { Answer, CaseFacts, ChatMode, CitationRef, SourceGap } from "@/lib/chat-types";
 import { CitationList } from "./citation-list";
 import { FactsCard } from "./facts-card";
 import { FoldSection } from "./fold-section";
@@ -107,6 +107,11 @@ export function AnswerView({
                     />
                 ) : null}
             </div>
+            {answer.source_gap ? (
+                <div className="border-t border-line p-4">
+                    <SourceGapNote gap={answer.source_gap} />
+                </div>
+            ) : null}
             {definite ? null : (
                 <FoldSection title={t("missing")} open>
                     <ul className="grid gap-3">
@@ -176,5 +181,35 @@ export function AnswerView({
                 <p>{answer.disclaimer}</p>
             </footer>
         </article>
+    );
+}
+
+/**
+ * "Kaynak yetersiz": what a fallback lacked, one line each: the topic, the sources that could not
+ * be read and why, what the user told, and the next step (the design comes later).
+ */
+export function SourceGapNote({ gap }: { gap: SourceGap }) {
+    const t = useTranslations("chat.gap");
+    const format = useFormatter();
+    const sources = gap.missing_sources.map((source) =>
+        t("source", { ref: source.ref, reason: t(`reasons.${source.reason}`) }),
+    );
+    const facts = gap.given_facts.map((fact) =>
+        t("fact", { label: fact.label, value: fact.value ?? "" }),
+    );
+    const lines = [
+        t("topic", { topic: gap.topic }),
+        sources.length > 0 ? t("missing", { sources: format.list(sources) }) : null,
+        facts.length > 0 ? t("given", { facts: format.list(facts) }) : null,
+        gap.next_step,
+    ].filter((line) => line !== null);
+    return (
+        <ul aria-label={t("label")} className="grid gap-1 text-sm text-ink-2">
+            {lines.map((line, index) => (
+                <li key={index} className="wrap-anywhere">
+                    {line}
+                </li>
+            ))}
+        </ul>
     );
 }

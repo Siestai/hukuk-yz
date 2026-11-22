@@ -381,3 +381,29 @@ it("offers retry with the same request id after a transient bridge error the ser
     expect(sendMessage).toHaveBeenCalledTimes(2);
     expect(vi.mocked(sendMessage).mock.calls[1]?.[1]).toEqual(original);
 });
+
+it("shows a durable error the server kept as a turn in the thread, not as a failure", async () => {
+    const initial = {
+        id: "c1",
+        durable_delivery: true,
+        pending_request: null,
+        terminal_error: null,
+        turns: [],
+    } as unknown as ConversationDetail;
+    vi.mocked(sendMessage).mockImplementation(
+        finishing([
+            { type: "error", code: "answer_not_verified", params: {} } as ChatEvent,
+            { type: "done", turn_id: "failed" } as ChatEvent,
+        ]),
+    );
+    const { result } = renderHook(() => useChatSession(initial, []));
+    await act(async () => result.current.send({ text: "soru" }, "short"));
+    expect(result.current.turns.map((t) => [t.role, t.error?.code])).toEqual([
+        ["user", undefined],
+        ["assistant", "answer_not_verified"],
+    ]);
+    expect(result.current.turns.at(-1)?.id).toBe("failed");
+    expect(result.current.failure).toBeNull();
+    await act(async () => result.current.retry());
+    expect(sendMessage).toHaveBeenCalledOnce();
+});

@@ -88,7 +88,10 @@ async def turn_events(graph: Graph, request: RunRequest, trace: Trace) -> AsyncI
             elif "draft" in chunk:
                 answer = chunk["draft"]["answer"]
                 if answer is None:
-                    yield ErrorEvent(code=ErrorCode.answer_not_verified)
+                    yield ErrorEvent(
+                        code=ErrorCode.answer_not_verified,
+                        source_gap=chunk["draft"]["source_gap"],
+                    )
                 else:
                     yield AnswerEvent.model_validate({"answer": answer})
     except KbUnavailable:

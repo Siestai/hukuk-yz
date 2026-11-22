@@ -14,6 +14,8 @@ export type ConversationDetail = Schemas["ConversationDetail"];
 export type FeedbackIn = Schemas["FeedbackIn"];
 export type HoldingRow = Schemas["HoldingRow"];
 export type MessageRequest = Schemas["MessageRequest"];
+export type ErrorEvent = Schemas["ErrorEvent"];
+export type SourceGap = Schemas["SourceGap"];
 export type Turn = Schemas["Turn"];
 export type ChatMode = NonNullable<MessageRequest["mode"]>;
 /** What the user sends: a question, answers to the open questions, or the choice to skip them. */

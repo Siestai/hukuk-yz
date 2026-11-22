@@ -112,7 +112,10 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 if (controller.signal.aborted) return;
                 const turn = toTurn(current, new Date().toISOString());
                 if (turn) setTurns((previous) => [...previous, turn]);
-                if (current.error) {
+                // An error the server saved as a turn is shown in the thread, where it takes
+                // feedback; it is final, so there is nothing to retry.
+                if (turn?.error) lastBody.current = null;
+                else if (current.error) {
                     // A durable delivery says itself whether it is still pending on the server.
                     const terminalError =
                         current.finished &&

@@ -459,6 +459,16 @@
             "title": "Short Point Count",
             "type": "integer"
           },
+          "source_gap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceGap"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "enum": [
               "definite",
@@ -1825,6 +1835,16 @@
             "default": false,
             "title": "Retryable",
             "type": "boolean"
+          },
+          "source_gap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceGap"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "type": {
             "const": "error",
@@ -4014,6 +4034,32 @@
         "title": "MissingInfo",
         "type": "object"
       },
+      "MissingSource": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "enum": [
+              "unmapped",
+              "not_found",
+              "gap",
+              "not_in_force",
+              "truncated"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "reason"
+        ],
+        "title": "MissingSource",
+        "type": "object"
+      },
       "QuestionInput": {
         "additionalProperties": false,
         "properties": {
@@ -4844,6 +4890,42 @@
         "title": "RunUsage",
         "type": "object"
       },
+      "SourceGap": {
+        "additionalProperties": false,
+        "description": "\"Kaynak yetersiz\" (md. 25): why no source-backed answer could be given. Written by the\nharness from its trace, never by the model: the topic, the must-read sources that could not\nbe read, what the user told, and what would make the question answerable.",
+        "properties": {
+          "given_facts": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "title": "Given Facts",
+            "type": "array"
+          },
+          "missing_sources": {
+            "items": {
+              "$ref": "#/components/schemas/MissingSource"
+            },
+            "title": "Missing Sources",
+            "type": "array"
+          },
+          "next_step": {
+            "title": "Next Step",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "missing_sources",
+          "given_facts",
+          "next_step"
+        ],
+        "title": "SourceGap",
+        "type": "object"
+      },
       "StatuteBulkApproveRequest": {
         "description": "Same contract as `BulkApproveRequest`; the cursor is the id of the last article of the\nprevious call (`next_cursor`), the run goes in id order.",
         "properties": {
@@ -5562,6 +5644,16 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "facts": {
             "anyOf": [

@@ -2,9 +2,9 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { conditionalAnswer } from "@/test/answer-fixture";
+import { conditionalAnswer, sourceGap } from "@/test/answer-fixture";
 import { renderWithIntl } from "@/test/intl";
-import { AnswerView } from "./answer-view";
+import { AnswerView, SourceGapNote } from "./answer-view";
 
 function setup(mode: "short" | "detailed" | "reasoned") {
     const onOpenCitation = vi.fn();
@@ -74,5 +74,30 @@ describe("AnswerView", () => {
         setup("short");
         const footer = screen.getByText("Hukuki görüş değildir.").closest("footer")!;
         expect(within(footer).getByText("Uygulanan mevzuat:")).toBeInTheDocument();
+    });
+});
+
+describe("SourceGapNote", () => {
+    it("lists the topic, the unread sources with their reason, the given facts and the next step", () => {
+        renderWithIntl(<SourceGapNote gap={sourceGap} />);
+        const lines = screen.getAllByRole("listitem").map((item) => item.textContent);
+        expect(lines).toEqual([
+            "Konu: İşe iade",
+            "Okunamayan kaynaklar: 4857 m.18 (bilgi tabanında yok) ve 7036 m.3 (olay tarihinde yürürlükte değil)",
+            "Verdiğiniz bilgiler: Kıdem: 5 ay",
+            sourceGap.next_step,
+        ]);
+    });
+
+    it("is part of a fallback answer", () => {
+        renderWithIntl(
+            <AnswerView
+                answer={{ ...conditionalAnswer, source_gap: sourceGap }}
+                mode="short"
+                facts={null}
+                onOpenCitation={vi.fn()}
+            />,
+        );
+        expect(screen.getByText(sourceGap.next_step)).toBeInTheDocument();
     });
 });
