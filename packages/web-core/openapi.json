@@ -174,6 +174,18 @@
             ],
             "title": "Confidence"
           },
+          "extraction_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Id"
+          },
           "gap": {
             "anyOf": [
               {

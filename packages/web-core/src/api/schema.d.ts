@@ -727,6 +727,8 @@ export interface components {
             band?: ("high" | "medium" | "low") | null;
             /** Confidence */
             confidence?: ("high" | "medium" | "low") | null;
+            /** Extraction Id */
+            extraction_id?: string | null;
             gap?: components["schemas"]["ArticleGapOut"] | null;
             /** Latest Snapshot Date */
             latest_snapshot_date?: string | null;
