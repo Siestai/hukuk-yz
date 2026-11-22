@@ -24,6 +24,10 @@ RULES: dict[str, str] = {
     "yururluk_outside_window": LOW,
     "removed_article": LOW,
     "footnote_leak_suspect": LOW,
+    # the start is the inferred date of an undated file: a guess, never served as a date
+    "start_inferred": LOW,
+    # a footnote went away with an article outside `only_articles`; it may concern a kept one
+    "footnote_on_dropped_article": LOW,
     # clean, but with a caveat
     "exception_effective": MEDIUM,
     "split_effective_dates": MEDIUM,

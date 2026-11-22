@@ -616,3 +616,220 @@ article = "999"
 as_of = 2020-01-01
 expect = "unknown_article"
 source = "No MADDE 999 in any 5510 snapshot (law has ~110 articles)."
+
+# --- 6356, 7036, 1475 (handoff A2): one undated snapshot each -----------------------------------
+# `contains` is copied from the official consolidated text (mevzuat.gov.tr PDF in the archive);
+# line breaks are those of the PDF, the check ignores white space.
+
+[[query]]
+statute = "6356"
+article = "1"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(1) Bu Kanunun amacı, işçi ve işveren sendikaları ile konfederasyonların
+kuruluşu, yönetimi, işleyişi, denetlenmesi, çalışma ve örgütlenmesine ilişkin usul ve esaslar
+ile işçilerin ve işverenlerin karşılıklı olarak ekonomik ve sosyal durumları ile çalışma
+şartlarını belirlemek üzere toplu iş sözleşmesi yapmalarına, uyuşmazlıkları barışçı yollarla
+çözümlemelerine, grev ve lokavta başvurmalarına ilişkin usul ve esasları düzenlemektir.'''
+source = "6356 m.1, whole article. No note, no footnote: in force since 7/11/2012 (m.82, yayımı tarihinde)."
+
+[[query]]
+statute = "6356"
+article = "41"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(2) İşletme toplu iş sözleşmeleri için işyerleri bir bütün olarak dikkate alınır ve yüzde
+kırk çoğunluk buna göre hesaplanır.
+(3) İşletmede birden çok sendikanın yüzde kırk veya fazla üyesinin olması durumunda
+başvuru tarihinde en çok üyeye sahip sendika toplu iş sözleşmesi yapmaya yetkilidir.
+(4) Bir işveren sendikası, üyesi işverenlere ait işyeri veya işyerleri, sendika üyesi
+olmayan bir işveren ise kendi işyeri veya işyerleri için toplu iş sözleşmesi yapmaya yetkilidir.'''
+not_contains = "Bakanlar Kurulu"
+source = "6356 m.41 fıkra 2-4. not_contains: the footnote of m.40 (KHK-700, 'Bakanlar Kurulu' -> 'Cumhurbaşkanı') is printed between the pages of m.41 and must not reach its text."
+
+[[query]]
+statute = "6356"
+article = "41"
+as_of = 2016-01-01
+expect = "gap"
+source = "m.41 carries 7036 notes (yürürlük tablosu: 25/10/2017) and a 6552 footnote; the only snapshot shows the text after them. Before 25/10/2017 the wording is unknown: gap, never the current text (md. 4)."
+
+[[query]]
+statute = "6356"
+article = "58"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(1) İşçilerin, topluca çalışmamak suretiyle işyerinde faaliyeti
+durdurmak veya işin niteliğine göre önemli ölçüde aksatmak amacıyla, aralarında anlaşarak
+veya bir kuruluşun aynı amaçla topluca çalışmamaları için verdiği karara uyarak işi
+bırakmalarına grev denir.
+(2) Toplu iş sözleşmesinin yapılması sırasında uyuşmazlık çıkması hâlinde, işçilerin
+ekonomik ve sosyal durumları ile çalışma şartlarını korumak veya geliştirmek amacıyla, bu
+Kanun hükümlerine uygun olarak yapılan greve kanuni grev denir.
+(3) Kanuni grev için aranan şartlar gerçekleşmeden yapılan grev kanun dışıdır.'''
+source = "6356 m.58, whole article. A footnote block (no. 10, of m.55) sits between fıkra 1 and 2 at a page break: the text must come out without it."
+
+[[query]]
+statute = "6356"
+article = "83"
+as_of = 2026-01-01
+expect = "found"
+contains = "(1) Bu Kanun hükümlerini Bakanlar Kurulu yürütür."
+not_contains = "YÜRÜRLÜĞE GİRİŞ TARİHLERİNİ"
+source = "6356 m.83, last article. The in-force table printed after it is not article text."
+
+[[query]]
+statute = "7036"
+article = "1"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(1) Bu Kanunun amacı; iş mahkemelerinin kuruluş, görev, yetki ve
+yargılama usulünü düzenlemektir.'''
+source = "7036 m.1, whole article."
+
+[[query]]
+statute = "7036"
+article = "3"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(1) Kanuna, bireysel veya toplu iş sözleşmesine dayanan işçi veya işveren
+alacağı ve tazminatı ile işe iade talebiyle açılan davalarda, arabulucuya başvurulmuş olması
+dava şartıdır. (Ek cümle:28/3/2023-7445/41 md.) Bu alacak ve tazminatla ilgili itirazın iptali,
+menfi tespit ve istirdat davaları hakkında birinci cümle hükmü uygulanır.'''
+source = "7036 m.3 fıkra 1 with the 7445 sentence. Yürürlük listesi: 7445 -> 1/9/2023, 7531 -> 14/11/2024, AYM E.2024/157 -> 17/10/2025; the snapshot text is in force since the last of them."
+
+[[query]]
+statute = "7036"
+article = "3"
+as_of = 2020-01-01
+expect = "gap"
+source = "m.3 entered into force on 1/1/2018 (m.38/a) and was changed by 7445, 7531 and an AYM decision; the only snapshot is later than all of them. On 2020-01-01 the wording is unknown: gap."
+
+[[query]]
+statute = "7036"
+article = "5"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(1) İş mahkemeleri;
+a) 5953 sayılı Kanuna tabi gazeteciler, 854 sayılı Kanuna tabi gemiadamları,
+22/5/2003 tarihli ve 4857 sayılı İş Kanununa veya 11/1/2011 tarihli ve 6098 sayılı Türk
+Borçlar Kanununun İkinci Kısmının Altıncı Bölümünde düzenlenen hizmet sözleşmelerine
+tabi işçiler ile işveren veya işveren vekilleri arasında, iş ilişkisi nedeniyle sözleşmeden veya
+kanundan doğan her türlü hukuk uyuşmazlıklarına,
+b) İdari para cezalarına itirazlar ile 5510 sayılı Kanunun geçici 4 üncü maddesi
+kapsamındaki uyuşmazlıklar hariç olmak üzere Sosyal Güvenlik Kurumu veya Türkiye İş
+Kurumunun taraf olduğu iş ve sosyal güvenlik mevzuatından kaynaklanan uyuşmazlıklara,
+c) Diğer kanunlarda iş mahkemelerinin görevli olduğu belirtilen uyuşmazlıklara,
+ilişkin dava ve işlere bakar.'''
+source = "7036 m.5, whole article."
+
+[[query]]
+statute = "7036"
+article = "10"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(2) Mevzuatta, yürürlükten kaldırılan 5521 sayılı Kanuna yapılan atıflar, bu Kanuna
+yapılmış sayılır.'''
+not_contains = "yerine işlenmiştir"
+source = "7036 m.10. The stubs 'MADDE 11 ila 16', '17 ila 28', '29 ila 36' follow it and are not its text."
+
+[[query]]
+statute = "7036"
+article = "11"
+as_of = 2026-01-01
+expect = "unknown_article"
+source = "7036 m.11-16 amended 4857 and are printed as one range stub ('yerine işlenmiştir'): no article record."
+
+[[query]]
+statute = "7036"
+article = "38"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(1) Bu Kanunun;
+a) 3 üncü, 11 inci ve 12 nci maddeleri 1/1/2018 tarihinde,
+b) Diğer hükümleri yayımı tarihinde,
+yürürlüğe girer.'''
+source = "7036 m.38, whole article."
+
+[[query]]
+statute = "1475"
+article = "14"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+Feshedilmesi veya kadının evlendiği tarihten itibaren bir yıl içerisinde kendi arzusu ile sona
+erdirmesi veya işçinin ölümü sebebiyle son bulması hallerinde işçinin işe başladığı tarihten itibaren
+hizmet aktinin devamı süresince her geçen tam yıl için işverence işçiye 30 günlük ücreti tutarında
+kıdem tazminatı ödenir. Bir yıldan artan süreler için de aynı oran üzerinden ödeme yapılır.'''
+source = "1475 m.14, end of the first fıkra."
+
+[[query]]
+statute = "1475"
+article = "14"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+Kıdem tazminatının hesaplanması, son ücret üzerinden yapılır. Parça başı, akort, götürü
+veya yüzde usulü gibi ücretin sabit olmadığı hallerde son bir yıllık süre içinde ödenen ücretin o
+süre içinde çalışılan günlere bölünmesi suretiyle bulunacak ortalama ücret bu tazminatın
+hesabına esas tutulur.
+Ancak, son bir yıl içinde işçi ücretine zam yapıldığı takdirde, tazminata esas ücret,
+işçinin işten ayrılma tarihi ile zammın yapıldığı tarih arasında alınan ücretin aynı süre içinde
+çalışılan günlere bölünmesi suretiyle hesaplanır.'''
+not_contains = "sayılı Kanunun 1 inci maddesiyle"
+source = "1475 m.14, the two fıkra on the last wage. not_contains: the 2457 footnotes at the page bottom are not article text."
+
+[[query]]
+statute = "1475"
+article = "14"
+as_of = 2026-01-01
+expect = "found"
+contains = '''
+(Değişik fıkralar: 17/10/1980 - 2320/1 md.):
+İşçinin ölümü halinde yukarıdaki hükümlere göre doğan tazminat tutarı, kanuni
+mirasçılarına ödenir.
+Kıdem tazminatından doğan sorumluluğu işveren şahıslara veya sigorta şirketlerine
+sigorta ettiremez.'''
+not_contains = "Madde 15-110"
+source = "1475 m.14, last fıkralar. The article ends before the stub 'Madde 15-110- (Mülga ...)'."
+
+[[query]]
+statute = "1475"
+article = "14"
+as_of = 2015-06-01
+expect = "gap"
+source = "The text carries the KHK-700 wording ('veya Cumhurbaşkanlığı kararnamesiyle', dipnot; yürürlük listesi 9/7/2018). Before that date the wording is unknown from the only snapshot: gap."
+
+[[query]]
+statute = "1475"
+article = "17"
+as_of = 2026-01-01
+expect = "unknown_article"
+source = "1475 is repealed except m.14 (4857 m.120); the registry keeps m.14 only."
+
+# Article numbers of the single-snapshot laws, in the order of the official text.
+[[law]]
+statute = "6356"
+articles = [
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+  "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40",
+  "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60",
+  "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80",
+  "81", "Ek 1", "Ek 2", "Geçici 1", "Geçici 2", "Geçici 3", "Geçici 4", "Geçici 5", "Geçici 6", "Geçici 7", "82", "83",
+]
+
+[[law]]
+statute = "7036"
+articles = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "37", "Geçici 1", "38", "39"]
+
+[[law]]
+statute = "1475"
+articles = ["14"]

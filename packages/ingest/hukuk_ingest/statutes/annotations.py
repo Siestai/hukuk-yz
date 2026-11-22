@@ -48,6 +48,17 @@ _FOOTNOTE_LAW_RE = re.compile(
     r"(Kanun\s+Hükmünde|KHK|Kanun)",
     re.IGNORECASE,
 )
+# The same, also in the older wording ("5/5/1981 tarih ve 2457 sayılı Kanunun").
+_FOOTNOTE_ACT_RE = re.compile(
+    r"(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})\s+tarih(?:li)?\s+ve\s+(\d+)\s+sayılı\s+"
+    r"(Kanun\s+Hükmünde|KHK|Kanun)",
+    re.IGNORECASE,
+)
+_FOOTNOTE_COURT_RE = re.compile(
+    r"Anayasa Mahkemesi[’']?\s*nin\s+(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})\s+"
+    r"tarih(?:li)?\s+ve\s+E\.",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -136,4 +147,22 @@ def footnote_laws(text: str) -> set[tuple[date, str]]:
         when = _date(m[1], m[2], m[3])
         if when is not None:
             found.add((when, m[4] if m[5].lower() == "kanun" else f"KHK-{m[4]}"))
+    return found
+
+
+def footnote_acts(text: str) -> set[tuple[date, str]]:
+    """(date, law) of every act a footnote text names, the older "tarih ve" wording included.
+    A Constitutional Court decision is ("AYM", decision date): keyed by its date only, the E./K.
+    numbers are not read, so two decisions of one day share a registry entry. Empty when no act
+    can be read."""
+    flat = " ".join(text.split())
+    found = set()
+    for m in _FOOTNOTE_ACT_RE.finditer(flat):
+        when = _date(m[1], m[2], m[3])
+        if when is not None:
+            found.add((when, m[4] if m[5].lower() == "kanun" else f"KHK-{m[4]}"))
+    for m in _FOOTNOTE_COURT_RE.finditer(flat):
+        when = _date(m[1], m[2], m[3])
+        if when is not None:
+            found.add((when, "AYM"))
     return found

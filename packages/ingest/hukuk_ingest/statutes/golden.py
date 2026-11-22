@@ -11,6 +11,12 @@ def load_golden(path: Path) -> list[dict[str, Any]]:
     return queries
 
 
+def load_golden_laws(path: Path) -> dict[str, list[str]]:
+    """Expected article numbers (in text order) of the laws that list them."""
+    laws = tomllib.loads(path.read_text(encoding="utf-8")).get("law", [])
+    return {law["statute"]: law["articles"] for law in laws}
+
+
 def _flat(text: str) -> str:
     return " ".join(text.split())
 
