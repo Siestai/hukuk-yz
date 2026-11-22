@@ -176,7 +176,9 @@ async def test_a_turn_with_no_verified_row_ends_with_its_own_error_code(
 
     names = [name for name, _ in events(response)]
     assert names[-2:] == ["error", "done"] and "answer" not in names
-    assert events(response)[-2][1]["code"] == ErrorCode.answer_not_verified
+    error = events(response)[-2][1]
+    assert error["code"] == ErrorCode.answer_not_verified
+    assert error["source_gap"]["topic"] == "İşe iade"
 
 
 async def test_a_request_must_carry_one_of_text_answers_or_skip(

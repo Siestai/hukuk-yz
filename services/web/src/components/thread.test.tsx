@@ -2,10 +2,14 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { postFeedback } from "@/lib/chat-client";
+
 import type { Turn } from "@/lib/chat-types";
-import { conditionalAnswer } from "@/test/answer-fixture";
+import { conditionalAnswer, sourceGap } from "@/test/answer-fixture";
 import { renderWithIntl } from "@/test/intl";
 import { Thread } from "./thread";
+
+vi.mock("@/lib/chat-client", () => ({ postFeedback: vi.fn() }));
 
 describe("Thread", () => {
     it("opens each answer's citation with that answer's law date", async () => {
@@ -141,3 +145,43 @@ it.each(["internal_error", "chat_unavailable", "upstream_unavailable"])(
         ).not.toBeInTheDocument();
     },
 );
+
+it("shows a failed turn with what was missing and takes feedback on it", async () => {
+    const turns = [
+        {
+            id: "failed",
+            role: "assistant",
+            created_at: "2026-11-22",
+            error: {
+                type: "error",
+                code: "answer_not_verified",
+                params: {},
+                retryable: false,
+                source_gap: sourceGap,
+            },
+        },
+    ] as Turn[];
+    renderWithIntl(
+        <Thread
+            turns={turns}
+            live={null}
+            partial={null}
+            failure={null}
+            mode="short"
+            onSend={vi.fn()}
+            onRetry={vi.fn()}
+            onOpenCitation={vi.fn()}
+        />,
+    );
+    expect(
+        screen.getByText("Kaynaklar doğrulanmış bir yanıt oluşturmak için yetersiz."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(sourceGap.next_step)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kopyala" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Faydalı" }));
+    expect(postFeedback).toHaveBeenCalledWith(expect.anything(), "failed", {
+        rating: "up",
+        comment: "",
+        correction: "",
+    });
+});

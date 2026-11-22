@@ -327,8 +327,16 @@ async def test_a_draft_that_cannot_pass_twice_ends_in_the_not_answered_answer() 
     assert answer.status == "conditional"
     assert answer.holding_map.rows
     assert Answer.model_validate(answer.model_dump()) == answer
-    gate = (await graph.aget_state({"configurable": {"thread_id": thread}})).values["gate"]
+    values = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    gate = values["gate"]
     assert gate["fallback"] and gate["attempts"] == 2
+    # The fallback says what it lacked: the must-read sources the knowledge base did not have.
+    assert answer.source_gap is not None
+    assert answer.source_gap.topic == "İşe iade"
+    assert [m.ref for m in answer.source_gap.missing_sources] == values["unread"]
+    assert {f.key for f in answer.source_gap.given_facts} == ANSWERS_KEYS - {"isci_sayisi"} | {
+        "kidem"
+    }
 
 
 async def test_no_verified_row_ends_in_an_error() -> None:
@@ -343,6 +351,31 @@ async def test_no_verified_row_ends_in_an_error() -> None:
     assert error.code == ErrorCode.answer_not_verified
     assert not any(isinstance(e, AnswerEvent) for e in events)
     assert script.of("draft") == []
+    # The error is not empty: the topic and the facts the user gave come with it.
+    assert error.source_gap is not None
+    assert error.source_gap.topic == "İşe iade"
+    assert {f.key for f in error.source_gap.given_facts} == ANSWERS_KEYS | {"kidem"}
+
+
+async def test_with_nothing_read_the_error_names_every_must_read_source() -> None:
+    script = Script()
+    graph = make_graph(script, FakeKb([]))
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    error = only(await turn(graph, answer_all(thread)), ErrorEvent)
+
+    must_read = [
+        r["ref"]
+        for r in (await graph.aget_state({"configurable": {"thread_id": thread}})).values["plan"][
+            "must_read"
+        ]
+    ]
+    assert error.source_gap is not None
+    assert [(m.ref, m.reason) for m in error.source_gap.missing_sources] == [
+        (ref, "not_found") for ref in must_read
+    ]
+    assert error.source_gap.next_step.endswith(", ".join(must_read) + ".")
 
 
 async def test_a_topic_with_all_facts_known_does_not_stop() -> None:
@@ -1018,3 +1051,5 @@ async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_
     assert all("on sekizinci" not in c["q"] for c in kb.calls[asked:])
     assert "İş Kanunu'nun on sekizinci maddesi" in answer.status_note
     assert "2020/8 m.2.6.2.5" in answer.status_note
+    # An answer that passed the gate is no fallback: it carries no source gap.
+    assert answer.source_gap is None

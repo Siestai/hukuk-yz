@@ -241,3 +241,16 @@
   gösterilmez. `low` yazılırsa uygulama açılışta hata verir.
 - **Açık yayından önce yeniden karar gerekir:** açık yayında ayar boş bırakılarak davranış
   kapatılır; onaysız kaynağın açık yayında gösterilip gösterilmeyeceği o zaman ayrıca kararlaştırılır.
+
+### 2026-11-22 — Görev 19 B4: kaynak yetersiz cevabının içeriği
+
+- **Fallback boş kalmaz** (Görev 19 spec'i, Orhan onayı; md. 25): kapıdan geçemeyen cevap ve
+  `answer_not_verified` hatası `source_gap` taşır: konu, okunamayan `must_read` künyeleri ve
+  nedenleri (retrieve izindeki `missing_source`), kullanıcının verdiği olgular (bilinmeyenler
+  hariç), bir sonraki adım. Hepsi iz ve olay kaydından yazılır, modelden gelmez; künye yalnız
+  okunamayan `must_read` listesinden çıkar.
+- **Hata turu kaydedilir** (2026-10-31 "terminal hata hidrasyonu" kaydının yerine): ajandan
+  gelen terminal hata, `Turn.error` taşıyan assistant turu olarak saklanır ve `done.turn_id`
+  döner; böylece hata turuna da geri bildirim verilir. Cevap uydurulmaz: turda cevap yoktur,
+  yalnız hata ve `source_gap`. `terminal_error` yalnız bu karardan önce kaydedilmiş teslimler
+  için dolar. App tarafı yeniden denenebilir teslim hataları (`chat_unavailable`) tur olmaz.

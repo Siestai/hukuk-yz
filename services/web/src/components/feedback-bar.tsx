@@ -12,8 +12,11 @@ import { postFeedback } from "@/lib/chat-client";
 import type { Answer } from "@/lib/chat-types";
 import { FeedbackDialog } from "./feedback-dialog";
 
-/** Under every answer: thumbs up and down, "Hata bildir", and copying the answer as plain text. */
-export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer }) {
+/**
+ * Under every answer: thumbs up and down, "Hata bildir", and copying the answer as plain text.
+ * A turn that ended in an error (`answer` null) takes the same feedback, with nothing to copy.
+ */
+export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer | null }) {
     const t = useTranslations("chat.feedback");
     const errorMessage = useErrorMessage();
     const api = useMemo(() => createApiClient(), []);
@@ -45,6 +48,7 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
     }
 
     async function copy() {
+        if (!answer) return;
         setError(null);
         try {
             await navigator.clipboard.writeText(
@@ -94,9 +98,11 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                 >
                     {t("report")}
                 </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={copy}>
-                    {copied ? t("copied") : t("copy")}
-                </Button>
+                {answer ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={copy}>
+                        {copied ? t("copied") : t("copy")}
+                    </Button>
+                ) : null}
             </div>
             <div role="status" className="text-sm text-ink-2">
                 {sent ? t(`sent.${sent}`) : null}
@@ -106,7 +112,7 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                 open={dialog !== null}
                 rating={dialog === "down" ? "down" : null}
                 turnId={turnId}
-                points={answer.points}
+                points={answer?.points ?? []}
                 onClose={() => setDialog(null)}
                 onSent={() => {
                     setSent(dialog === "down" ? "down" : "report");

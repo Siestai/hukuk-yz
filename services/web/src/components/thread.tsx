@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 import type { LiveTurn } from "@/lib/chat-state";
 import type { ChatMode, CitationRef, Reply, Turn } from "@/lib/chat-types";
 import type { Failure } from "@/lib/use-chat-session";
-import { AnswerView } from "./answer-view";
+import { AnswerView, SourceGapNote } from "./answer-view";
 import { FactsCard } from "./facts-card";
 import { FeedbackBar } from "./feedback-bar";
 import { QuestionCard } from "./question-card";
@@ -101,6 +101,22 @@ export function Thread({
                                             }
                                         />
                                         <FeedbackBar turnId={turn.id} answer={turn.answer} />
+                                    </>
+                                ) : null}
+                                {turn.error ? (
+                                    <>
+                                        <div className="grid gap-2 rounded-md bg-low-soft px-4 py-3 text-sm text-low">
+                                            <p>
+                                                {errorMessage(
+                                                    turn.error.code,
+                                                    turn.error.params ?? {},
+                                                )}
+                                            </p>
+                                            {turn.error.source_gap ? (
+                                                <SourceGapNote gap={turn.error.source_gap} />
+                                            ) : null}
+                                        </div>
+                                        <FeedbackBar turnId={turn.id} answer={null} />
                                     </>
                                 ) : null}
                             </>

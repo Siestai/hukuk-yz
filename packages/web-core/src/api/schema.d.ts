@@ -841,6 +841,7 @@ export interface components {
              * @default 3
              */
             short_point_count: number;
+            source_gap?: components["schemas"]["SourceGap"] | null;
             /**
              * Status
              * @enum {string}
@@ -1290,6 +1291,7 @@ export interface components {
              * @default false
              */
             retryable: boolean;
+            source_gap?: components["schemas"]["SourceGap"] | null;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -2037,6 +2039,16 @@ export interface components {
             /** Result */
             result: string;
         };
+        /** MissingSource */
+        MissingSource: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "unmapped" | "not_found" | "gap" | "not_in_force" | "truncated";
+            /** Ref */
+            ref: string;
+        };
         /** QuestionInput */
         QuestionInput: {
             /**
@@ -2332,6 +2344,22 @@ export interface components {
             output_tokens: number;
         };
         /**
+         * SourceGap
+         * @description "Kaynak yetersiz" (md. 25): why no source-backed answer could be given. Written by the
+         *     harness from its trace, never by the model: the topic, the must-read sources that could not
+         *     be read, what the user told, and what would make the question answerable.
+         */
+        SourceGap: {
+            /** Given Facts */
+            given_facts: components["schemas"]["Fact"][];
+            /** Missing Sources */
+            missing_sources: components["schemas"]["MissingSource"][];
+            /** Next Step */
+            next_step: string;
+            /** Topic */
+            topic: string;
+        };
+        /**
          * StatuteBulkApproveRequest
          * @description Same contract as `BulkApproveRequest`; the cursor is the id of the last article of the
          *     previous call (`next_cursor`), the run goes in id order.
@@ -2608,6 +2636,7 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            error?: components["schemas"]["ErrorEvent"] | null;
             facts?: components["schemas"]["CaseFacts"] | null;
             /**
              * Id

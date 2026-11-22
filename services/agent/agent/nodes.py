@@ -23,6 +23,7 @@ from agent.gate import (
     progressive_in,
 )
 from agent.holding import verify_rows
+from agent.insufficient import source_gap
 from agent.kb import KbClient, Unreadable
 from agent.kunye import admin_act_section, mapped
 from agent.llm import Llm
@@ -77,8 +78,11 @@ class State(TypedDict, total=False):
     plan: dict[str, Any]
     read: list[dict[str, Any]]
     unread: list[str]
+    missing: list[dict[str, Any]]
     rows: list[dict[str, Any]]
     answer: dict[str, Any] | None
+    # The "kaynak yetersiz" content of a fallback (`SourceGap`); None otherwise.
+    source_gap: dict[str, Any] | None
     gate: dict[str, Any]
 
 
@@ -308,7 +312,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 ],
                 "missing_source": missing,
             }
-            return {"read": _dumps(list(read)), "unread": unread}
+            return {"read": _dumps(list(read)), "unread": unread, "missing": list(missing)}
 
     async def holding_map(state: State) -> dict[str, Any]:
         topic = get_topic(state["topic"])
@@ -402,6 +406,9 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     date_assumed=made.as_of_assumed,
                     unread=state["unread"],
                 )
+            gap = source_gap(topic, facts, state.get("missing", [])) if fell_back else None
+            if answer is not None and gap is not None:
+                answer = answer.model_copy(update={"source_gap": gap})
             cited = cited_by_status(answer) if answer else GateCited()
             gate = {
                 "citations_dropped": drops.citations,
@@ -415,7 +422,11 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             }
             rec.output = {k: v for k, v in gate.items() if k != "issues"}
             rec.output["issue_counts"] = issue_counts
-            return {"answer": answer.model_dump(mode="json") if answer else None, "gate": gate}
+            return {
+                "answer": answer.model_dump(mode="json") if answer else None,
+                "source_gap": gap.model_dump(mode="json") if gap else None,
+                "gate": gate,
+            }
 
     return {
         "intake": intake,

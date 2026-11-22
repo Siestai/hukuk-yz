@@ -124,13 +124,11 @@ async def get_conversation(
     delivery = row.delivery
     completed = bool(delivery and delivery["status"] == "completed")
     terminal_error = None
-    if delivery and completed:
+    # Deliveries stored before error turns existed (task 19) keep their error here.
+    events = delivery.get("events", []) if delivery else []
+    if completed and not (events and events[-1].get("turn_id")):
         terminal_error = next(
-            (
-                ErrorEvent.model_validate(e)
-                for e in reversed(delivery.get("events", []))
-                if e["type"] == "error"
-            ),
+            (ErrorEvent.model_validate(e) for e in reversed(events) if e["type"] == "error"),
             None,
         )
     return ConversationDetail(
@@ -174,7 +172,6 @@ async def bridge(
     conversation_id = conv.id
     started = time.monotonic()
     fields: dict[str, Any] = {}
-    failed = False
     events: list[dict[str, Any]] = []
     done = False
     try:
@@ -195,11 +192,13 @@ async def bridge(
                         event = ChatEvent.model_validate_json("\n".join(data)).root
                         data.clear()
                         if event.type == "error":
-                            failed = True
+                            # The turn that ended in an error is stored, so that it can get
+                            # feedback.
+                            fields["error"] = event
                         elif event.type in ("facts", "answer", "clarification"):
                             fields[event.type] = getattr(event, event.type)
                         elif event.type == "done":
-                            if not failed and ("answer" in fields or "clarification" in fields):
+                            if fields.keys() & {"answer", "clarification", "error"}:
                                 turn = Turn(
                                     id=uuid.uuid4(),
                                     role="assistant",
@@ -221,10 +220,8 @@ async def bridge(
                                 event = DoneEvent(
                                     turn_id=turn.id, trace_id=event.trace_id, usage=event.usage
                                 )
-                            elif not failed:
-                                raise ValueError("agent ended without a result")
                             else:
-                                event = DoneEvent(trace_id=event.trace_id, usage=event.usage)
+                                raise ValueError("agent ended without a result")
                             events.append(ChatEvent(event).model_dump(mode="json"))
                             conv.delivery = {
                                 **(conv.delivery or {}),
