@@ -37,10 +37,14 @@ def _matching_option(fact: TopicFact, value: str) -> Option | None:
 def _extracted(fact: TopicFact, extracted: IntakeOutput) -> Fact | None:
     """The fact as the intake model read it from the question; None: the question says nothing."""
     found = next((f for f in extracted.facts if f.key == fact.key), None)
-    value = (found.value or "").strip() if found else ""
-    if found is None or found.status == "unknown" or not value:
+    if found is None or found.status == "unknown":
         return None
-    option = _matching_option(fact, value)
+    # The picked option wins over the user's words; an option the template has not is no pick.
+    picked = _matching_option(fact, found.option) if fact.choices and found.option else None
+    value = picked.label if picked else (found.value or "").strip()
+    if not value:
+        return None
+    option = picked or _matching_option(fact, value)
     if option is not None:
         value = option.label
     status = "assumed_never" if found.status == "assumed_never" else "known"

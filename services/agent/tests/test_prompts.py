@@ -8,7 +8,7 @@ from test_holding import READ
 
 from agent.holding import verify_rows
 from agent.llm_schemas import HoldingDraft
-from agent.prompts import HOLDING_INSTRUCTIONS, draft_prompt
+from agent.prompts import HOLDING_INSTRUCTIONS, INTAKE_INSTRUCTIONS, draft_prompt
 from agent.topics import get_topic
 from hukuk_models.chat import CaseFacts
 
@@ -142,3 +142,11 @@ def test_the_draft_prompt_forbids_joining_quote_pieces() -> None:
     # Round 4 SB-008: a quote stitched with "[...]" is in no source and dropped the only row.
     assert '"[...]"' in HOLDING_INSTRUCTIONS and "kesintisiz" in HOLDING_INSTRUCTIONS
     assert "iki satır yaz" in HOLDING_INSTRUCTIONS
+
+
+def test_the_intake_is_told_to_pick_the_option_not_to_restate_it() -> None:
+    from agent.llm_schemas import IntakeFact
+
+    assert "option alanına" in INTAKE_INSTRUCTIONS
+    assert "yeniden sordurma" in INTAKE_INSTRUCTIONS
+    assert "option" in IntakeFact.model_json_schema()["properties"]

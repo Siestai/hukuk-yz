@@ -451,3 +451,53 @@ def test_the_plan_reads_a_must_read_only_in_its_branch(
 
     assert sorted(r.ref for r in plan.must_read if r.category == "admin_act") == sorted(sections)
     assert "5510 m.102" in [r.ref for r in plan.must_read]
+
+
+KIDEM_IHBAR = get_topic("kidem_ihbar")
+
+
+def _kidem_ihbar(fact: IntakeFact) -> CaseFacts:
+    out = IntakeOutput(topic="kidem_ihbar", title="Askerlik", event_date=None, facts=[fact])
+    return build(KIDEM_IHBAR, out, None)
+
+
+def _fesih(facts: CaseFacts) -> tuple[str, str | None]:
+    f = next(f for f in facts.facts if f.key == "fesih_nedeni")
+    return f.status, f.value
+
+
+def test_a_picked_option_binds_the_users_words_to_it_and_opens_the_branch() -> None:
+    # Round 4 SB-008 / SB-039: the intake wrote only free text; the fact stayed unknown and the
+    # user was asked again what the question had said.
+    said = "İşçi muvazzaf askerlik nedeniyle ayrılacaktır"
+    facts = _kidem_ihbar(
+        IntakeFact(key="fesih_nedeni", value=said, option="askerlik", status="known")
+    )
+
+    assert _fesih(facts) == ("known", "İşçi muvazzaf askerlik nedeniyle ayrıldı")
+    assert "fesih_nedeni" not in critical_unknown(KIDEM_IHBAR, facts)
+    assert "sevk_tarihi" in critical_unknown(KIDEM_IHBAR, facts)
+
+
+def test_free_text_without_an_option_stays_unknown_and_is_asked() -> None:
+    said = "İşçi muvazzaf askerlik nedeniyle ayrılacaktır"
+    facts = _kidem_ihbar(IntakeFact(key="fesih_nedeni", value=said, status="known"))
+
+    assert _fesih(facts)[0] == "unknown"
+    assert "fesih_nedeni" in critical_unknown(KIDEM_IHBAR, facts)
+
+
+def test_an_option_the_template_has_not_is_no_pick() -> None:
+    facts = _kidem_ihbar(
+        IntakeFact(key="fesih_nedeni", value="askere gidiyor", option="askere", status="known")
+    )
+
+    assert _fesih(facts)[0] == "unknown"
+
+
+def test_an_option_on_a_fact_without_options_is_ignored() -> None:
+    facts = build(
+        TOPIC, intake(IntakeFact(key="kidem", value="5 ay", option="x", status="known")), None
+    )
+
+    assert next(f for f in facts.facts if f.key == "kidem").value == "5 ay"
