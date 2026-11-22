@@ -1,5 +1,5 @@
-"""The eval runner: the fixture knowledge base, the answers to the questions, and the smoke run
-with fake models that CI runs."""
+"""The eval runner: the fixture knowledge base, the answers to the questions, the smoke run with
+fake models that CI runs, the cost estimate and the budget gate (with fake costs)."""
 
 import json
 from datetime import date
@@ -9,11 +9,13 @@ import pytest
 from agent_fakes import INTAKE_SB016, FailingKb, Script, draft, row, scripted
 
 from agent.eval import (
+    Budget,
+    EvalLlm,
     FixtureKb,
     amain,
     answers_for,
     build_eval_graph,
-    render,
+    estimate,
     run_eval,
 )
 from agent.kb import KbUnavailable
@@ -57,66 +59,187 @@ def test_the_case_answers_the_questions_it_has_facts_for_and_says_unknown_to_the
     ]
 
 
+SB016_SCRIPT = Script(
+    intake=INTAKE_SB016,
+    holding={"rows": [row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde")]},
+    drafts=[
+        draft(
+            missing=False,
+            points=[
+                {
+                    "text": "Peşin ödeme indirimi onbeş gün içinde uygulanmaktadır.",
+                    "citations": [{"source_id": "statute:5510:m102", "sub": "5"}],
+                }
+            ],
+            headline="İki indirim ayrıdır ve 15 gün ortak şarttır.",
+        )
+    ],
+)
+
+
 async def test_the_smoke_run_scores_the_cases_with_fake_models(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    script = Script(
-        intake=INTAKE_SB016,
-        holding={"rows": [row("statute:5510:m102", "tebliğ tarihinden itibaren onbeş gün içinde")]},
-        drafts=[
-            draft(
-                missing=False,
-                points=[
-                    {
-                        "text": "Peşin ödeme indirimi onbeş gün içinde uygulanmaktadır.",
-                        "citations": [{"source_id": "statute:5510:m102", "sub": "5"}],
-                    }
-                ],
-                headline="İki indirim ayrıdır ve 15 gün ortak şarttır.",
-            )
-        ],
-    )
-    model = scripted(script)
-    graph = build_eval_graph(Models(model, model), FixtureKb())
+    model = scripted(SB016_SCRIPT)
+    llm = EvalLlm(Models(model, model))
+    graph = build_eval_graph(llm, FixtureKb())
 
-    results = await run_eval(graph, Tracing(), CASES, only=["SB-016"])
+    run = await run_eval(graph, llm, Tracing(), CASES, only=["SB-016"])
 
-    assert [r.case_id for r in results] == ["SB-016"]
-    result = results[0]
+    assert [r.case_id for r in run.results] == ["SB-016"] and run.not_run == []
+    result = run.results[0]
     assert result.answer is not None and result.error is None
     assert result.metrics["schema"] == 1.0
-    assert result.metrics["must_ask"] == 1.0
-    assert result.metrics["formal_mode"] == 1.0
+    assert result.must_ask == result.metrics["must_ask"] == 1.0
+    assert result.mode == [] and result.unread == [] and result.must_not == []
+    assert result.topic == "idari_para_cezasi" and result.trace_id
+    assert result.intake == INTAKE_SB016
+    assert set(result.drops) == {"rows", "points", "branches", "sentences", "citations"}
     assert result.input_tokens > 0
-    table = render(results)
-    assert table.splitlines()[0].startswith("vaka")
-    assert "SB-016" in table.splitlines()[1]
 
-    # Exercise the CLI parser and JSON/table output with the same non-network provider.
+    # The CLI: the table on stdout, the result and the table under --results, the intake
+    # output of every case under --record-intake.
     monkeypatch.setattr("agent.eval.Models", lambda fast, strong: Models(model, model))
     monkeypatch.setattr("agent.eval.Tracing.from_settings", lambda settings: Tracing())
-    report = tmp_path / "eval.json"
-    assert (
-        await amain([str(CASES), "--kb", "fixtures", "--case", "SB-016", "--json", str(report)])
-        == 0
-    )
-    saved = json.loads(report.read_text())
-    assert [r["case_id"] for r in saved] == ["SB-016"]
-    assert saved[0]["metrics"]["schema"] == saved[0]["metrics"]["formal_mode"] == 1.0
-    assert saved[0]["error"] is None and saved[0]["cost"] is None
-    assert "SB-016" in capsys.readouterr().out
+    results, intake = tmp_path / "results", tmp_path / "intake"
+    argv = [str(CASES), "--kb", "fixtures", "--case", "SB-016", "--tag", "smoke"]
+    argv += ["--results", str(results), "--record-intake", str(intake)]
+    assert await amain(argv) == 0
+    [saved_path] = results.glob("*-smoke.json")
+    assert saved_path.name == f"{date.today().isoformat()}-smoke.json"
+    saved = json.loads(saved_path.read_text())
+    assert [r["case_id"] for r in saved["cases"]] == ["SB-016"]
+    assert saved["cases"][0]["metrics"]["formal_mode"] == 1.0
+    assert saved["cases"][0]["intake"] == INTAKE_SB016
+    assert saved["cases"][0]["error"] is None and saved["cases"][0]["cost"] is None
+    assert saved["not_run"] == [] and isinstance(saved["passed"], bool)
+    table = saved_path.with_suffix(".md").read_text()
+    assert "| SB-016 |" in table and "| toplam |" in table
+    assert json.loads((intake / "SB-016.json").read_text()) == INTAKE_SB016
+    assert "| SB-016 |" in capsys.readouterr().out
 
 
 async def test_a_case_that_stops_before_the_gate_is_reported_not_fatal() -> None:
     model = scripted(Script(intake=INTAKE_SB016))
-    graph = build_eval_graph(Models(model, model), FailingKb(KbUnavailable("down")))
+    llm = EvalLlm(Models(model, model))
+    graph = build_eval_graph(llm, FailingKb(KbUnavailable("down")))
 
-    results = await run_eval(graph, Tracing(), CASES, only=["SB-016"])
+    run = await run_eval(graph, llm, Tracing(), CASES, only=["SB-016"])
 
-    result = results[0]
+    result = run.results[0]
     assert result.answer is None and result.error == "kb_unavailable"
-    assert (result.dropped, result.fell_back) == (0, False)
-    assert "kb_unavailable" in render(results)
+    assert not result.fallback and not result.substantive
+    assert result.must_cite == 0.0
+
+
+def flat_cost(monkeypatch: pytest.MonkeyPatch, usd: float) -> None:
+    """Every model call costs `usd` (the fake models have no price)."""
+    monkeypatch.setattr("agent.llm._cost", lambda model, i, o: usd)
+
+
+async def test_the_budget_gate_stops_before_a_case_whose_estimate_would_pass_the_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flat_cost(monkeypatch, 0.1)
+    script = Script(**vars(SB016_SCRIPT) | {"calls": []})
+    model = scripted(script)
+    budget = Budget(cap=1.0, per_case=0.95)
+    llm = EvalLlm(Models(model, model), budget)
+    graph = build_eval_graph(llm, FixtureKb())
+
+    run = await run_eval(graph, llm, Tracing(), CASES, only=["SB-001", "SB-016", "SB-026"])
+
+    assert [r.case_id for r in run.results] == ["SB-001"]
+    assert run.results[0].error is None and run.not_run == ["SB-016", "SB-026"]
+    # What the first case spent leaves less than the estimate of the next one.
+    assert 0 < budget.spent <= budget.cap < budget.spent + budget.per_case
+
+
+async def test_the_budget_gate_stops_a_case_at_the_cap_and_calls_no_model_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flat_cost(monkeypatch, 0.4)
+    script = Script(**vars(SB016_SCRIPT) | {"calls": []})
+    model = scripted(script)
+    budget = Budget(cap=0.5, per_case=0.1)
+    llm = EvalLlm(Models(model, model), budget)
+    graph = build_eval_graph(llm, FixtureKb())
+
+    run = await run_eval(graph, llm, Tracing(), CASES, only=["SB-001", "SB-016"])
+
+    assert len(script.calls) == 2
+    assert [r.error for r in run.results] == ["budget_exceeded"]
+    assert run.not_run == ["SB-016"]
+
+
+def test_the_estimate_is_the_mean_real_cost_of_earlier_runs(tmp_path: Path) -> None:
+    (tmp_path / "2026-11-01-old.json").write_text(
+        json.dumps([{"case_id": "SB-001", "cost": 0.3, "error": None}])
+    )
+    (tmp_path / "2026-11-02-new.json").write_text(
+        json.dumps(
+            {
+                "cases": [
+                    {"case_id": "SB-016", "cost": 0.1, "error": None},
+                    {"case_id": "SB-024", "cost": None, "error": None},
+                    {"case_id": "SB-026", "cost": 0.01, "error": "kb_unavailable"},
+                ]
+            }
+        )
+    )
+
+    made = estimate(tmp_path, Models("anthropic:a", "anthropic:b"))
+
+    assert made.per_case == pytest.approx(0.2)
+    assert "2 vaka" in made.source and "önceki koşu" in made.source
+
+
+def test_without_earlier_runs_the_estimate_prices_assumed_tokens(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    priced: list[tuple[str, int, int]] = []
+
+    def cost(model: str, i: int, o: int) -> float | None:
+        priced.append((model, i, o))
+        return None if model == "x:unknown" else 0.05
+
+    monkeypatch.setattr("agent.eval._cost", cost)
+
+    made = estimate(tmp_path, Models("anthropic:fast", "anthropic:strong"))
+
+    assert made.per_case == pytest.approx(0.1)
+    assert {m for m, _, _ in priced} == {"anthropic:fast", "anthropic:strong"}
+    assert "varsayım" in made.source
+    unknown = estimate(tmp_path, Models("x:unknown", "anthropic:strong"))
+    assert unknown.per_case is None and "x:unknown" in unknown.source
+
+
+async def test_estimate_only_calls_no_model_and_writes_nothing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def no_graph(*args: object) -> None:
+        raise AssertionError("--estimate builds no graph")
+
+    monkeypatch.setattr("agent.eval.build_eval_graph", no_graph)
+
+    argv = [str(CASES), "--estimate", "--case", "SB-001", "--case", "SB-016"]
+    assert await amain([*argv, "--results", str(tmp_path)]) == 0
+
+    out = capsys.readouterr().out
+    assert "2 vaka" in out and "varsayım" in out
+    assert list(tmp_path.iterdir()) == []
+
+
+async def test_a_budget_cannot_be_held_for_a_model_without_a_price(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("AGENT_MODEL_FAST", "x:unknown")
+
+    argv = [str(CASES), "--budget-usd", "1", "--results", str(tmp_path), "--kb", "fixtures"]
+    assert await amain(argv) == 2
+
+    assert "x:unknown" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []
 
 
 async def test_fixture_kb_preserves_literal_quotes_and_original_offsets() -> None:

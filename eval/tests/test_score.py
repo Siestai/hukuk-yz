@@ -1,5 +1,5 @@
-"""The eval set and its scorer (`eval/score.py`, task 15): the cases are well formed and the
-hand-made fixtures score full marks."""
+"""The eval set and its scorer (`eval/score.py`, tasks 15 and 19): the cases are well formed, the
+hand-made fixtures score full marks, and the acceptance table of a run says PASS or FAIL and why."""
 
 import importlib.util
 import json
@@ -119,3 +119,141 @@ def test_scorer_catches_what_it_should() -> None:
     # must_ask cannot be measured without the clarification
     none = {m.name: m for m in score_module.score(_fixture_answer("SB-016.answer.json"), case)}
     assert none["must_ask"].value is None
+
+
+def cited(*refs: tuple[str, str]) -> dict[str, Any]:
+    """An answer whose one point cites (ref, source_id) pairs."""
+    return {"points": [{"citations": [{"ref": r, "source_id": s} for r, s in refs]}]}
+
+
+def test_must_cite_leaves_the_sources_missing_in_the_kb_out_of_the_denominator() -> None:
+    case = {
+        "expected": {
+            "must_cite": ["4857 m.18", "4857 m.17", "HMK m.92/2"],
+            "missing_in_kb": ["HMK m.92/2"],
+        }
+    }
+
+    metric = score_module.must_cite_metric(cited(("4857 m.18/1", "a")), case)
+
+    assert metric.value == 0.5
+    assert "4857 m.17" in metric.detail and "HMK" not in metric.detail
+    # Nothing left to cite once every wanted source is missing: not measurable.
+    case["expected"]["missing_in_kb"] = case["expected"]["must_cite"]
+    assert score_module.must_cite_metric(cited(), case).value is None
+
+
+def test_a_citation_of_a_source_the_run_did_not_read_is_found() -> None:
+    answer = cited(("4857 m.18", "statute:4857:m18"), ("4857 m.25", "statute:4857:m25"))
+
+    assert score_module.unread_citations(answer, {"statute:4857:m18"}) == ["4857 m.25"]
+    assert score_module.unread_citations(answer, {"statute:4857:m18", "statute:4857:m25"}) == []
+
+
+def run_row(case_id: str = "SB-001", **changes: Any) -> dict[str, Any]:
+    """A case row of a run that meets every threshold."""
+    row: dict[str, Any] = {
+        "case_id": case_id,
+        "expected_topic": "ise_iade",
+        "topic": "ise_iade",
+        "must_ask": 1.0,
+        "must_cite": 1.0,
+        "missing_in_kb": [],
+        "must_not": [],
+        "headline": 1.0,
+        "mode": [],
+        "unread": [],
+        "drops": {"rows": 0, "points": 0, "branches": 0, "sentences": 0, "citations": 0},
+        "issue_counts": {},
+        "fallback": False,
+        "substantive": True,
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "cost": 0.1,
+        "seconds": 2.0,
+        "error": None,
+    }
+    return row | changes
+
+
+def twenty(**changes_of: dict[str, Any]) -> list[dict[str, Any]]:
+    """Twenty passing rows; `changes_of["SB-003"] = {...}` changes one of them."""
+    ids = [f"SB-{n:03d}" for n in range(1, 21)]
+    return [run_row(i, **changes_of.get(i.replace("-", "_"), {})) for i in ids]
+
+
+def test_a_run_that_meets_every_threshold_passes() -> None:
+    rows = twenty(SB_001={"must_ask": 0.6, "must_cite": None}, SB_002={"must_cite": 0.4})
+    rows[12:] = [r | {"substantive": False, "fallback": True} for r in rows[12:]]
+
+    assert score_module.acceptance(rows) == (True, [])
+
+
+@pytest.mark.parametrize(
+    ("rows", "reason"),
+    [
+        ([run_row(f"SB-{n:03d}", must_ask=0.7) for n in range(1, 21)], "must_ask ortalaması"),
+        (twenty(SB_003={"must_ask": 0.4}), "SB-003"),
+        ([run_row(f"SB-{n:03d}", must_cite=0.6) for n in range(1, 21)], "must_cite"),
+        (twenty(SB_004={"must_not": ["kesin"]}), "must_not"),
+        (twenty(SB_005={"mode": ["ediyor"]}), "kip"),
+        (twenty(SB_006={"unread": ["4857 m.25"]}), "md.25"),
+        ([run_row(f"SB-{n:03d}", substantive=n <= 11) for n in range(1, 21)], "esaslı"),
+    ],
+)
+def test_a_run_below_a_threshold_fails_and_says_which(
+    rows: list[dict[str, Any]], reason: str
+) -> None:
+    passed, reasons = score_module.acceptance(rows)
+
+    assert not passed
+    assert any(reason in r for r in reasons), reasons
+
+
+def test_a_run_stopped_by_the_budget_fails_with_the_cases_it_did_not_run() -> None:
+    passed, reasons = score_module.acceptance(twenty()[:15], not_run=["SB-016", "SB-017"])
+
+    assert not passed
+    assert any("SB-016" in r and "SB-017" in r for r in reasons)
+
+
+def test_the_substantive_threshold_scales_with_the_cases_run() -> None:
+    rows = [run_row(f"SB-{n:03d}", substantive=n <= 3) for n in range(1, 6)]
+
+    assert score_module.acceptance(rows) == (True, [])
+    assert not score_module.acceptance(rows[:2] + [run_row("SB-009", substantive=False)] * 3)[0]
+
+
+def test_the_table_has_a_row_per_case_a_total_and_the_verdict() -> None:
+    rows = [
+        run_row("SB-001"),
+        run_row(
+            "SB-003",
+            expected_topic="calisma_kosulu_degisikligi",
+            topic="genel",
+            must_cite=None,
+            missing_in_kb=["HMK m.92/2"],
+            mode=["ediyor"],
+            drops={"rows": 1, "points": 2, "branches": 0, "sentences": 3, "citations": 0},
+            issue_counts={"progressive": 2},
+            fallback=True,
+            substantive=False,
+            cost=None,
+        ),
+        run_row("SB-005", error="kb_unavailable", substantive=False, must_cite=0.0),
+    ]
+
+    table = score_module.render_table(rows, *score_module.acceptance(rows))
+    lines = table.splitlines()
+
+    assert lines[0].startswith("| vaka | şablon | must_ask | must_cite | kaynak eksik |")
+    sb003 = next(line for line in lines if line.startswith("| SB-003"))
+    assert "genel (beklenen calisma_kosulu_degisikligi)" in sb003
+    assert "| 1/2/0/3/0 |" in sb003 and "progressive×2" in sb003
+    assert "kaynak yetersiz" in sb003
+    assert "hata: kb_unavailable" in next(line for line in lines if line.startswith("| SB-005"))
+    total = next(line for line in lines if line.startswith("| toplam"))
+    assert "2/3" in total  # templates matched
+    assert "esaslı 1/3" in total
+    assert "$0.20" in total
+    assert "**FAIL**" in table and "kip" in table
