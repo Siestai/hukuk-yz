@@ -223,3 +223,21 @@
   bağlantısı; yükleme ve arşiv yalnız adıyla ("Kaynak: Arşiv"), API'nin vermediği alan uydurulmaz.
 - **E2E verisi:** `infra/demo/journal_scans.py` iki tarama satırı yazar ve Demo 09 / 10'u ilk
   taramanın kaydı yapar (ağ yok); `make demo-data` çalıştırır.
+
+### 2026-11-22 — Test kaynak kuralı (K1)
+
+- **Onaysız kaynak yalnız `high` / `medium` bantta okunur** (Orhan; md. 25): otomatik onay
+  mekanizması gelene kadar TEST / kapalı betada, inceleme kuyruğunda onay bekleyen ama güven bandı
+  `high` ya da `medium` olan kaynaklar (önce mevzuat maddeleri) aranır ve okunur. `low` bant ve
+  reddedilmiş (`rejected`) kaynak hiçbir zaman okunmaz. Bu kaynaklar arama sonucunda ve madde
+  okumada `review_status="analyzed"` ve `band` ile gelir; cevapta ve izde "onaysız (test)" diye
+  işaretlenir. md. 25 kapısı aynen çalışır (okunmamış kaynağa atıf yok). Yayımlanmış madde varsa
+  o okunur, onaysız çıkarım onun yerine geçmez; md. 4 gereği olay tarihinde yürürlükte olan sürüm
+  döner, başlangıç tarihi bilinmeyen sürüm okunmaz.
+- **Tek ayar: `KB_TEST_SOURCE_BANDS`** (varsayılan boş = yalnız onaylı kaynak; TEST'te
+  `high,medium`). 2026-10-27 tarihli "Betada onaysız kaynak" kaydındaki
+  `KB_SEARCH_INCLUDE_UNREVIEWED` anahtarı kalktı ve bu kaydın yerini bu kural aldı: eski anahtar
+  artık okunmaz (ayarlı kalsa da onaysız kaynak açılmaz), bant ayrımı olmadan onaysız kaynak
+  gösterilmez. `low` yazılırsa uygulama açılışta hata verir.
+- **Açık yayından önce yeniden karar gerekir:** açık yayında ayar boş bırakılarak davranış
+  kapatılır; onaysız kaynağın açık yayında gösterilip gösterilmeyeceği o zaman ayrıca kararlaştırılır.

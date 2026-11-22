@@ -83,7 +83,7 @@ async def _run(args: argparse.Namespace) -> int:
                     session,
                     embedder,
                     q=q["question"],
-                    include_unreviewed=settings.kb_search_include_unreviewed,
+                    unreviewed_bands=settings.kb_test_source_bands,
                     limit=args.limit,
                 )
             ranked.append([r.model_dump(mode="json") for r in found.results])

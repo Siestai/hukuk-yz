@@ -54,6 +54,7 @@ hata vermez. Sır değerleri repoya yazılmaz.
 | `TRUSTED_PROXY_HOPS` | `2`: önde Cloudflare proxy ve Traefik var (aşağıdaki DNS bölümüne bak). DNS kaydı "DNS only" yapılırsa `1` |
 | `FILE_STORE_ROOT` | Dosya deposunun konteyner içindeki yolu. Compose `app` ve `worker` için `/filestore` koyar (`filestore` adlı Docker volume, ikisine okuma-yazma bağlı); elle ayarlanmaz. Boşsa `/files` yükleme uç noktaları 503 verir, worker taramaz, karar PDF'i yalnız `ARCHIVE_ROOT`'tan gelir |
 | `FILE_DETECT_LLM_PROVIDER`, `FILE_DETECT_LLM_MODEL`, `FILE_DETECT_LLM_API_KEY`, `FILE_DETECT_LLM_BASE_URL` | Yüklemede tespitin LLM yedeği (Görev 13a). Varsayılan `none`: yalnız kurallar çalışır. `anthropic` + anahtar verilirse kuralların boş bıraktığı alanlar için belgenin ilk 2 sayfası (6.000 karakter) ve dosya adı Anthropic Messages API'sine gider (dosyanın kendisi gitmez). Sağlayıcı, bölge (`..._BASE_URL`) ve anahtar Orhan'ın kararıdır (`architecture.md`); worker'a verilir |
+| `KB_TEST_SOURCE_BANDS` | Kapalı test / beta: `high,medium`. Açık yayın: **boş** (yalnız onaylı kaynak). Aşağıda "Test kaynakları (K1)" |
 | `ARCHIVE_HOST_DIR` | **İsteğe bağlı, eski.** Karar PDF'lerinin sunucudaki **mutlak** klasörü (aşağıda); compose bunu `app`'e salt okunur `/archive` olarak bağlar. Arşiv "Arşivin içeri alınması" adımıyla dosya deposuna alındıktan sonra gerekmez; `storage_key`'i boş kayıtlar için geçiş süresince kalır |
 | `DASHBOARD_HOST_PORT`, `POSTGRES_HOST_PORT` | tanımlanmaz (yalnız yerel override dosyasında kullanılır; Traefik konteyner portuna ağdan ulaşır) |
 
@@ -191,6 +192,26 @@ dosya yanlışsa uygulama onu sunmaz (SHA-256 kontrolü).
 Bu belge sunucuda denenmedi; Docker imajı CI'da derlenir ve `/healthz` kontrol edilir ama Dokploy
 alan adı ve ağ ayarı, `FORWARDED_ALLOW_IPS` değeri ve Traefik'in tek proxy olması ilk yayında
 elle doğrulanmalıdır. Aktarım komutu ve yedek komutu da sunucuda denenmedi (aktarım yerelde tam Drive kopyasıyla denendi, sayılar PR'da).
+
+## Test kaynakları (K1)
+
+Karar: `docs/decisions.md`, 2026-11-22. Otomatik onay mekanizması gelene kadar kapalı testte ajan,
+inceleme kuyruğunda onay bekleyen kaynakları da okuyabilir; hangilerini okuyacağını `app`'in tek
+ayarı belirler:
+
+- `KB_TEST_SOURCE_BANDS` boş (varsayılan): yalnız onaylı / yayımlanmış kaynak aranır ve okunur.
+- `KB_TEST_SOURCE_BANDS=high,medium`: güven bandı `high` ya da `medium` olan onaysız kaynaklar da
+  `/kb/search` sonuçlarında ve `/statutes/{no}/articles/{madde}?as_of=` yanıtında döner; yanıtta
+  `review_status="analyzed"` ve `band` bulunur, ajan bunları "onaysız (test)" diye işaretler.
+  Yayımlanmış madde varsa her zaman o okunur.
+- `low` bant hiçbir zaman okunmaz: değer listesine `low` (ya da tanınmayan bir değer) yazılırsa
+  `app` açılışta hata verir. Reddedilmiş kaynak hiçbir ayarda dönmez.
+- Eski `KB_SEARCH_INCLUDE_UNREVIEWED` kalktı ve okunmaz. Ortamda tanımlıysa silin; onaysız kaynak
+  isteniyorsa yerine `KB_TEST_SOURCE_BANDS=high,medium` yazın (eski anahtar `true` kalsa bile
+  onaysız kaynak açılmaz).
+
+**Açık yayından önce** bu ayar boşaltılır ve onaysız kaynağın gösterilmesi yeniden kararlaştırılır.
+Değişiklikten sonra `app` yeniden başlatılır; arama indeksinin yeniden kurulması gerekmez.
 
 ## Chat ve ajan (Görev 18)
 

@@ -1,12 +1,14 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import SecretStr, ValidationInfo, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MIN_SERVICE_KEY_LENGTH = 16
+# The confidence bands an unreviewed source may be read in; `low` is not one of them.
+TestBand = Literal["high", "medium"]
 
 
 class Settings(BaseSettings):
@@ -49,9 +51,11 @@ class Settings(BaseSettings):
     # 0 only in tests.
     journal_scan_delay_seconds: float = 2.0
 
-    # Search (task 14). The beta also searches records no reviewer has approved yet (they carry
-    # the "analyzed" status in the results); set to false before the service opens to the public.
-    kb_search_include_unreviewed: bool = False
+    # Test sources (decision K1, 2026-11-22): the confidence bands in which a record no reviewer
+    # has approved yet is searched and read, comma separated ("high,medium" in the closed test);
+    # such a record carries the "analyzed" status and its band. Empty: approved sources only,
+    # which is what a public service runs with. `low` is refused.
+    kb_test_source_bands: Annotated[tuple[TestBand, ...], NoDecode] = ()
     # Embeddings of the search index and of the query. Without a key the indexing command stops
     # and /kb/search falls back to full-text search only.
     openai_api_key: SecretStr | None = None
@@ -69,6 +73,18 @@ class Settings(BaseSettings):
     chat_fixtures_dir: Path | None = None
     # Pause between the stream events of the fixture backend, so that a UI shows its live steps.
     chat_fixture_step_delay_seconds: float = 0.0
+
+    @field_validator("kb_test_source_bands", mode="before")
+    @classmethod
+    def _band_list(cls, value: Any) -> Any:
+        bands = value.split(",") if isinstance(value, str) else value
+        cleaned = dict.fromkeys(band.strip().lower() for band in bands)
+        if not cleaned.keys() <= {"high", "medium"}:
+            raise ValueError(
+                'KB_TEST_SOURCE_BANDS takes "high" and "medium" only, comma separated: '
+                "a low band source is never read before its review"
+            )
+        return tuple(cleaned)
 
     @field_validator("agent_service_key", "kb_service_key")
     @classmethod

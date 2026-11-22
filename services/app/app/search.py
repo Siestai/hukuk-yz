@@ -5,7 +5,8 @@ query's embedding, HNSW) are merged by reciprocal rank fusion, weighted lightly 
 and source rank, and grouped into records: a record scores as its best chunk. What is searched:
 
 - `rejected` sources never; records no reviewer has approved (chunks of an `extraction`) only
-  while `KB_SEARCH_INCLUDE_UNREVIEWED` is on, and then labelled `analyzed`;
+  in the confidence bands of `KB_TEST_SOURCE_BANDS` (decision K1; never `low`), and then
+  labelled `analyzed` with their `band`;
 - `as_of`: a statute version in force on that day (`valid_from <= as_of < valid_to`; a `gap` has
   no chunk, so a day in a gap finds no version) and decisions dated on or before it (a decision
   without a date is not dated "before" anything and is left out);
@@ -18,20 +19,21 @@ returned: the record's own text is shown instead.
 import logging
 import re
 import uuid
+from collections.abc import Sequence
 from datetime import date
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import ColumnElement, and_, func, literal_column, or_, select, text
+from sqlalchemy import ColumnElement, and_, exists, func, literal_column, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import Db, kb_reader
 from app.chunk_index import APPROVED_PARENTS, EXTRACTION, INDEXED_STATUSES, review_status
 from app.embeddings import Embedder, get_embedder
 from app.models.chunk import Chunk
-from app.models.common import ChunkKind, License, Source, SourceCategory
+from app.models.common import ChunkKind, Extraction, License, Source, SourceCategory
 from app.models.decision import Decision
-from app.settings import Settings, get_settings
+from app.settings import Settings, TestBand, get_settings
 from hukuk_ingest.index.rrf import Scored, authority_weight, group_by_record, rrf
 from hukuk_models import KbCategory, KbCourtLevel, KbSearchMatch, KbSearchResponse, KbSearchResult
 
@@ -48,6 +50,8 @@ _MAX_TOKENS = 16
 # Turkish case folding for the two letters Python's `lower()` gets wrong ('İ' becomes 'i' plus
 # U+0307, which `\w` drops; 'I' becomes 'i', not 'ı'); the database's locale does not fold them.
 _TURKISH_LOWER = str.maketrans({"İ": "i", "I": "ı"})
+# The confidence band the loader gave an extraction (what the review queue shows).
+_BAND = Extraction.confidence["band"].as_string()
 
 
 def _tsquery(q: str) -> str:
@@ -59,19 +63,21 @@ def _tsquery(q: str) -> str:
 
 def _filters(
     *,
-    include_unreviewed: bool,
+    unreviewed_bands: Sequence[TestBand],
     categories: list[str] | None,
     as_of: date | None,
     court_level: str | None,
     date_from: date | None,
     date_to: date | None,
 ) -> list[ColumnElement[bool]]:
-    parents = [*APPROVED_PARENTS, EXTRACTION] if include_unreviewed else list(APPROVED_PARENTS)
+    readable: ColumnElement[bool] = Chunk.parent_kind.in_(APPROVED_PARENTS)
+    if unreviewed_bands:
+        in_band = exists().where(
+            Extraction.id == Chunk.parent_id, _BAND.in_(list(unreviewed_bands))
+        )
+        readable = or_(readable, and_(Chunk.parent_kind == EXTRACTION, in_band))
     is_decision = Chunk.category == SourceCategory.decision
-    conditions: list[ColumnElement[bool]] = [
-        Source.status.in_(INDEXED_STATUSES),
-        Chunk.parent_kind.in_(parents),
-    ]
+    conditions: list[ColumnElement[bool]] = [Source.status.in_(INDEXED_STATUSES), readable]
     if categories:
         conditions.append(Chunk.category.in_([SourceCategory(c) for c in categories]))
     if court_level:
@@ -149,7 +155,7 @@ async def search(
     embedder: Embedder | None,
     *,
     q: str,
-    include_unreviewed: bool,
+    unreviewed_bands: Sequence[TestBand],
     categories: list[str] | None = None,
     as_of: date | None = None,
     court_level: str | None = None,
@@ -158,7 +164,7 @@ async def search(
     limit: int = 10,
 ) -> KbSearchResponse:
     conditions = _filters(
-        include_unreviewed=include_unreviewed,
+        unreviewed_bands=unreviewed_bands,
         categories=categories,
         as_of=as_of,
         court_level=court_level,
@@ -179,16 +185,19 @@ async def search(
 
     found = (
         await db.execute(
-            select(Chunk, Source.source_rank, Decision.verification)
+            select(Chunk, Source.source_rank, Decision.verification, _BAND)
             .join(Source, Source.id == Chunk.source_id)
             .outerjoin(
                 Decision, and_(Chunk.parent_kind == "decision", Decision.id == Chunk.parent_id)
             )
+            .outerjoin(
+                Extraction, and_(Chunk.parent_kind == EXTRACTION, Extraction.id == Chunk.parent_id)
+            )
             .where(Chunk.id.in_(list(fused)))
         )
     ).all()
-    chunks = {str(c.id): c for c, _, _ in found}
-    extras = {str(c.id): (rank, verification) for c, rank, verification in found}
+    chunks = {str(c.id): c for c, _, _, _ in found}
+    extras = {str(c.id): (rank, verification, band) for c, rank, verification, band in found}
     scored = [
         Scored(
             key,
@@ -211,7 +220,7 @@ async def search(
         ]
         if not shown:
             bodyless.append(record)
-        verification = extras[chunk_ids[0]][1]
+        _, verification, band = extras[chunk_ids[0]]
         results.append(
             KbSearchResult(
                 source_id=best.source_id,
@@ -221,6 +230,7 @@ async def search(
                 title=best.title,
                 ref=best.ref,
                 review_status=review_status(best.parent_kind),
+                band=band,
                 verification=verification.value if verification else None,
                 valid_from=best.valid_from,
                 valid_to=best.valid_to,
@@ -283,7 +293,7 @@ async def kb_search(
         db,
         embedder,
         q=q,
-        include_unreviewed=settings.kb_search_include_unreviewed,
+        unreviewed_bands=settings.kb_test_source_bands,
         categories=list(category) if category else None,
         as_of=as_of,
         court_level=court_level,
