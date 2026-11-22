@@ -101,6 +101,20 @@ def test_the_intake_prompt_tells_every_template_apart_and_lists_the_branches() -
     assert "kidem" not in by_id["ise_iade"]["secenekler"]
 
 
+def test_the_general_template_is_offered_last_and_only_as_the_fallback() -> None:
+    from agent.prompts import INTAKE_INSTRUCTIONS, intake_prompt
+    from agent.topics import GENERAL, load_topics
+
+    listing = json.loads(
+        intake_prompt("Soru", load_topics(), None).split("Konular:\n", 1)[1].split("\n\nSoru:")[0]
+    )
+
+    # Round 2: listed second, with a scope naming the whole field, it took SB-008 and SB-032.
+    assert [t["topic"] for t in listing][-1] == GENERAL
+    assert listing[-1]["kapsam"].startswith("Listedeki öteki konuların hiçbirinin kapsamına")
+    assert "kapsamı soruya en yakın konuyu seç" in INTAKE_INSTRUCTIONS
+
+
 def test_the_instructions_themselves_use_no_progressive_form() -> None:
     import re
 

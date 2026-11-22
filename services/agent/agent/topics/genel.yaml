@@ -1,7 +1,11 @@
 # Genel şablon: şablonu olmayan konular için (docs/tasks/17-agent-v1.md).
 id: genel
 title: Genel
-description: İş hukuku, sosyal güvenlik, sendika ve toplu iş sözleşmesi ve iş sağlığı ve güvenliği konularında, başka bir şablona uymayan sorular.
+# Görev 19 B6 tur 2: kapsam önce alanın tamamını sayınca (iş hukuku, sosyal güvenlik, ...) giriş
+# adımı SB-008 ve SB-032'yi bu şablona düşürdü; kapsam artık yalnız yedek olduğunu söyler.
+description: >-
+  Listedeki öteki konuların hiçbirinin kapsamına girmeyen iş hukuku, sosyal güvenlik, sendika ve
+  toplu iş sözleşmesi ve iş sağlığı ve güvenliği soruları.
 facts:
   - key: olay_tarihi
     label: Olay tarihi

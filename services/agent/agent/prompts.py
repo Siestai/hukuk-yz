@@ -5,7 +5,7 @@ import json
 from collections.abc import Sequence
 
 from agent.sources import ReadSource
-from agent.topics import Topic
+from agent.topics import GENERAL, Topic
 from hukuk_models.chat import CaseFacts, HoldingRow
 
 REGISTER = (
@@ -25,7 +25,9 @@ INTAKE_INSTRUCTIONS = f"""\
 Sen bir iş ve sosyal güvenlik hukuku asistanının olay kayıt adımısın. Kullanıcının sorusundan \
 yalnızca şunları çıkarırsın: konu, kısa bir başlık, olay tarihi ve olgular. Hukuki değerlendirme \
 yapmaz, soru sormaz, cevap vermezsin.
-- topic: verilen konu kimliklerinden biri; hiçbiri uymamakta ise "genel".
+- topic: verilen konu kimliklerinden biri. Konuların kapsamını oku ve kapsamı soruya en yakın \
+konuyu seç; soru birden çok konuya değinmekte ise sorunun asıl konusunu seç. "genel" yalnız \
+listedeki öteki konuların hiçbirinin kapsamı soruya uymamakta ise seçilir.
 - facts: yalnız seçtiğin konunun olgu anahtarlarını kullan. Soruda açıkça yazılan olguyu value \
 ile (kullanıcının sözleriyle) ve status "known" ile yaz. Soruda yazılmayan olguyu listeye ekleme.
 - secenekler: seçtiğin konuda seçenekleri verilen olgular yalnız bu seçeneklerden biriyle bilinir \
@@ -133,7 +135,8 @@ def facts_block(facts: CaseFacts) -> str:
 
 def intake_prompt(question: str, topics: dict[str, Topic], previous: CaseFacts | None) -> str:
     listing = []
-    for t in topics.values():
+    # The general template last: it is the fallback, not a topic to weigh with the others.
+    for t in sorted(topics.values(), key=lambda t: t.id == GENERAL):
         entry: dict[str, object] = {
             "topic": t.id,
             "baslik": t.title,

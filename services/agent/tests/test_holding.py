@@ -61,6 +61,28 @@ def test_a_row_on_a_source_that_was_not_read_drops() -> None:
     assert verify(row("statute:4857:m19", M18_4))[:2] == ([], {"unread_source": 1})
 
 
+def test_a_row_naming_its_read_source_by_kunye_stands_on_that_source() -> None:
+    rows, dropped, _ = verify(row("4857 m.18", M18_4, sub="4"))
+
+    assert dropped == {}
+    assert rows[0].citation.source_id == "statute:4857:m18"
+    assert rows[0].citation.ref == "4857 m.18/4"
+
+
+def test_a_typographic_apostrophe_written_plain_is_the_same_quote() -> None:
+    text = "Kurumca re\u2019sen düzenlenen belge"
+    read = READ[0].model_copy(
+        update={"passages": [READ[0].passages[0].model_copy(update={"text": text})]}
+    )
+    draft = HoldingDraft.model_validate(
+        {"rows": [row("statute:4857:m18", "Kurumca re'sen düzenlenen")]}
+    )
+    rows, dropped, _ = verify_rows(draft, [read], DAY)
+
+    assert dropped == {}
+    assert rows[0].condition_quote == rows[0].citation.quote == "Kurumca re\u2019sen düzenlenen"
+
+
 def test_a_row_on_a_text_not_in_force_on_the_date_drops() -> None:
     assert verify(row("statute:old", "Bu hüküm artık yürürlükte değildir"))[:2] == (
         [],
@@ -319,8 +341,11 @@ def test_the_correction_names_every_row_a_model_can_mend_and_no_other() -> None:
     feedback = holding_feedback(draft, READ, DAY, facts)
 
     assert feedback[0].startswith("depends_on_facts içinde olgu listesinde olmayan anahtar: isci_")
-    assert len(feedback) == 3
+    assert len(feedback) == 4
     assert feedback[1].startswith("2. satır (statute:4857:m18, «uydurma bir alıntı yok»)")
     assert "birebir geçmemektedir" in feedback[1] and "(çalışıyor)" in feedback[1]
     assert feedback[2].startswith("3. satır") and "başka bir fıkradadır" in feedback[2]
+    # A source_id that names no source read is mended by copying one; a text not in force is not.
+    assert feedback[3].startswith("6. satır (statute:4857:m19,")
+    assert "okunan kaynak listesinde yoktur" in feedback[3]
     assert holding_feedback(HoldingDraft.model_validate({"rows": [good]}), READ, DAY, facts) == []

@@ -304,6 +304,26 @@ def test_a_case_falls_into_its_template_with_the_recorded_intake(case_id: str) -
     assert get_topic(out.topic).id == CASES[case_id]["expected"]["topic"]
 
 
+# The words of the question a template's scope must name, for the cases whose recorded intake fell
+# into the general template (round 2): what the classifier is given, not what it answered.
+SCOPE_WORDS = {
+    "SB-008": ["askerlik", "işten ayrılma"],
+    "SB-032": ["giydirilmiş ücret", "yemek", "yol", "yemek kartı"],
+}
+
+
+@pytest.mark.parametrize("case_id", sorted(SCOPE_WORDS))
+def test_the_intake_is_given_a_scope_that_names_the_subject_of_the_case(case_id: str) -> None:
+    from agent.prompts import intake_prompt
+
+    case = CASES[case_id]
+    prompt = intake_prompt(case["question"], load_topics(), None)
+    listing = json.loads(prompt.split("Konular:\n", 1)[1].split("\n\nSoru:", 1)[0])
+    scope = next(t["kapsam"] for t in listing if t["topic"] == case["expected"]["topic"])
+
+    assert [w for w in SCOPE_WORDS[case_id] if w not in scope.lower()] == []
+
+
 def test_parse_date_reads_iso_and_turkish_dates() -> None:
     assert parse_date("2026-10-03") == parse_date("03.10.2026")
     assert parse_date("dün") is None

@@ -13,6 +13,7 @@ from agent.sources import (
     checked_sub,
     citation,
     locate,
+    named_source,
     quote_paragraph,
     valid_on,
 )
@@ -79,13 +80,13 @@ def _formal_value(row: RowDraft) -> str | None:
 
 def _problems(
     row: RowDraft,
-    sources: dict[str, ReadSource],
+    source: ReadSource | None,
     applied_on: date,
     keys: set[str] | None,
 ) -> list[str]:
-    """Why the row drops, as fixed codes in the order checked; empty: it stays. `keys`: the facts
-    of the template. A row on a source not read or not in force has no other code."""
-    source = sources.get(row.source_id)
+    """Why the row drops, as fixed codes in the order checked; empty: it stays. `source`: the
+    source read the row names (`named_source`); `keys`: the facts of the template. A row on a
+    source not read or not in force has no other code."""
     if source is None:
         return [UNREAD_SOURCE]
     if not valid_on(source, applied_on):
@@ -106,6 +107,8 @@ def _problems(
 
 
 _ROW_FEEDBACK = {
+    UNREAD_SOURCE: "source_id okunan kaynak listesinde yoktur; kaynak listesindeki "
+    "[source_id: ...] değerlerinden birini aynen yaz",
     SHORT_QUOTE: "condition_quote en az üç kelime olmalıdır",
     QUOTE_NOT_FOUND: "condition_quote kaynak metinde birebir geçmemektedir; "
     "kaynaktan aynen kopyala",
@@ -120,9 +123,9 @@ def holding_feedback(
     draft: HoldingDraft, read: list[ReadSource], applied_on: date, facts: CaseFacts
 ) -> list[str]:
     """What the holding model is told in its one correction, for every row it can mend: an
-    invented key, a quote that is not in the text read (or too short, or in another paragraph),
-    an "-iyor" form. Empty: no row needs it. A row on a source not read or not in force is no
-    model error that a correction mends; it drops."""
+    invented key, a source_id that names no source read, a quote that is not in the text read
+    (or too short, or in another paragraph), an "-iyor" form. Empty: no row needs it. A row on a
+    text not in force is no model error that a correction mends; it drops."""
     sources = {s.source_id: s for s in read}
     feedback = []
     if invented := invented_keys(draft, facts):
@@ -131,7 +134,7 @@ def holding_feedback(
         forms = ", ".join(progressive_forms([row.condition, _formal_value(row) or ""]))
         if found := [
             _ROW_FEEDBACK[p].format(forms=forms)
-            for p in _problems(row, sources, applied_on, None)
+            for p in _problems(row, named_source(sources, row.source_id), applied_on, None)
             if p in _ROW_FEEDBACK
         ]:
             feedback.append(
@@ -157,10 +160,11 @@ def verify_rows(
     values = {f.key: f for f in facts.facts} if facts is not None else {}
     keys = set(values) if facts is not None else None
     for row in draft.rows:
-        if problems := _problems(row, sources, applied_on, keys):
+        source = named_source(sources, row.source_id)
+        problems = _problems(row, source, applied_on, keys)
+        if source is None or problems:
             dropped[problems[0]] += 1
             continue
-        source = sources[row.source_id]
         quote = row.condition_quote.strip()
         fact_value = _formal_value(row)
         unresolved = fact_value != (row.fact_value or None) or any(
@@ -168,11 +172,12 @@ def verify_rows(
         )
         result = "unknown" if unresolved and row.result in ("met", "not_met") else row.result
         subs_dropped += bool(row.sub) and checked_sub(source, row.sub, quote) is None
+        cited = citation(source, sub=row.sub, quote=quote)
         rows.append(
             HoldingRow(
                 condition=row.condition,
-                condition_quote=quote,
-                citation=citation(source, sub=row.sub, quote=quote),
+                condition_quote=cited.quote or quote,
+                citation=cited,
                 fact_value=fact_value,
                 result=result,
             )

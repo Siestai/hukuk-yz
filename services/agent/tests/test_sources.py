@@ -13,6 +13,7 @@ from agent.sources import (
     covers,
     locate,
     merge,
+    named_source,
     shown,
     split_ref,
     summarize,
@@ -77,6 +78,40 @@ def test_a_quote_without_offsets_in_the_source_is_found_without_them() -> None:
     read.passages[0].char_start = None
 
     assert locate(read, "en az altı aylık") == (None, None)
+
+
+# 2020/8 m.2.1.1 as the knowledge base holds it: typographic apostrophes and quotation marks.
+GENELGE = (
+    "Kurumca re\u2019sen düzenlenir; \u201cek belge\u201d için asgari ücretin 2/3\u2019ü "
+    "\u2013 uygulanır."
+)
+
+
+def test_typographic_marks_match_their_plain_forms_and_the_citation_quotes_the_source() -> None:
+    read = source(GENELGE)
+    plain = "Kurumca re'sen düzenlenir; \"ek belge\" için asgari ücretin 2/3'ü - uygulanır."
+
+    assert locate(read, plain) == (0, len(GENELGE))
+    cited = citation(read, quote="için asgari ücretin 2/3'ü")
+    assert cited.quote == "için asgari ücretin 2/3\u2019ü"
+    # Only the glyph of a mark is free: the words stay verbatim, letter case included.
+    assert locate(read, "Kurumca resen düzenlenir") is None
+    assert locate(read, "kurumca re'sen düzenlenir") is None
+    assert locate(read, "Kurumca re sen düzenlenir") is None
+
+
+def test_a_model_may_name_a_read_source_by_its_kunye_when_only_one_has_it() -> None:
+    m18 = source(M18_1)
+    other = m18.model_copy(update={"source_id": "statute:4857:m18:eski"})
+    sources = {m18.source_id: m18}
+
+    assert named_source(sources, "statute:4857:m18") is m18
+    assert named_source(sources, "4857 m.18") is m18
+    assert named_source(sources, " 4857 M.18/1 ") is m18
+    assert named_source(sources, "4857 m.19") is None
+    assert named_source(sources, "statute:4857") is None
+    # Two sources read under the same künye: the künye names neither.
+    assert named_source({**sources, other.source_id: other}, "4857 m.18") is None
 
 
 def test_valid_on_respects_the_bounds_that_are_recorded() -> None:
