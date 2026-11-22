@@ -1,4 +1,5 @@
-"""The knowledge base as the agent sees it: `GET /kb/search` of `app` (docs/tasks/14-kb-search.md).
+"""The knowledge base as the agent sees it: `GET /kb/search` of `app` (docs/tasks/14-kb-search.md)
+and the whole-text reads of a statute article and of a genelge section.
 
 The client is a protocol, so the graph is tested with a fake one. A hit is one record with the
 matching passages (`matches`); a passage of an `internal_only` chunk comes without text and cannot
@@ -7,13 +8,13 @@ be read.
 
 from collections.abc import Sequence
 from datetime import date
-from typing import Protocol
+from typing import NamedTuple, Protocol
 from urllib.parse import quote
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
-from agent.kunye import statute_article
+from agent.kunye import admin_act_section, statute_article
 from hukuk_models import Band
 from hukuk_models.chat import CitationCategory, ReviewStatus, Verification
 
@@ -51,6 +52,13 @@ class KbHit(BaseModel):
     complete: bool = False
 
 
+class Unreadable(NamedTuple):
+    """Why a genelge section was not read: `not_found`, or the status the knowledge base gave
+    (`gap`: no text on file for the date; `not_in_force`)."""
+
+    reason: str
+
+
 class KbSearchResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -68,6 +76,8 @@ class KbClient(Protocol):
     ) -> list[KbHit]: ...
 
     async def read_article(self, ref: str, as_of: date) -> list[KbHit]: ...
+
+    async def read_section(self, ref: str, as_of: date) -> KbHit | Unreadable: ...
 
 
 class HttpKbClient:
@@ -161,6 +171,48 @@ class HttpKbClient:
             ]
         except (httpx.HTTPError, ValueError, KeyError) as exc:
             raise KbUnavailable("article read failed") from exc
+
+    async def read_section(self, ref: str, as_of: date) -> KbHit | Unreadable:
+        found = admin_act_section(ref)
+        if found is None or found.section is None:
+            return Unreadable("not_found")
+        try:
+            # The route names the genelge with a dash for the slash: "2020-8".
+            response = await self._http.get(
+                f"/admin-acts/{found.act.replace('/', '-')}/sections/{quote(found.section)}",
+                params={"as_of": as_of.isoformat()},
+            )
+            if response.status_code == 404:
+                return Unreadable("not_found")
+            response.raise_for_status()
+            data = response.json()
+            if data["status"] in ("gap", "not_in_force"):
+                return Unreadable(data["status"])
+            version = data.get("version")
+            if data["status"] != "found" or not version or not version.get("text"):
+                return Unreadable("not_found")
+            source_id = str(data["extraction_id"])
+            return KbHit(
+                source_id=source_id,
+                category="admin_act",
+                title=data["citation"],
+                ref=data["citation"],
+                review_status=data["review_status"],
+                band=data.get("band"),
+                valid_from=version.get("valid_from"),
+                valid_to=version.get("valid_to"),
+                complete=True,
+                matches=[
+                    KbMatch(
+                        chunk_id=source_id,
+                        text=version["text"],
+                        char_start=0,
+                        char_end=len(version["text"]),
+                    )
+                ],
+            )
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            raise KbUnavailable("section read failed") from exc
 
     async def aclose(self) -> None:
         await self._http.aclose()

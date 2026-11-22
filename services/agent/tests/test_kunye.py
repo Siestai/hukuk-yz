@@ -17,6 +17,8 @@ def test_a_statute_kunye_names_the_statute_and_the_article() -> None:
 def test_an_admin_act_kunye_names_the_act_and_its_section_if_any() -> None:
     assert admin_act_section("2020/8") == AdminActSection("2020/8", None)
     assert admin_act_section("2020/8 m.2.6.2.5") == AdminActSection("2020/8", "2.6.2.5")
+    assert admin_act_section("2018/38 m.K2-B3-2.1.1") == AdminActSection("2018/38", "K2-B3-2.1.1")
+    assert admin_act_section("2018/38 Giriş") == AdminActSection("2018/38", "Giriş")
     assert admin_act_section("İPC Genelgesi") is None
     assert admin_act_section("2020/8 bölüm iki") is None
 

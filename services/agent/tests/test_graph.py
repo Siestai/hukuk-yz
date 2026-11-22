@@ -43,6 +43,15 @@ from hukuk_models.chat import (
 )
 
 TODAY = date(2026, 10, 28)
+CIRCULAR_SECTION = hit(
+    "extraction:2020-8:2.6.2.5",
+    "2020/8 m.2.6.2.5",
+    "2020/8 m.2.6.2.5",
+    "Peşin ödeme halinde uygulanacak indirim",
+    category="admin_act",
+    review_status="analyzed",
+    band="high",
+)
 
 
 def make_graph(script: Script, kb: FakeKb | None = None) -> Graph:
@@ -361,15 +370,19 @@ async def test_a_topic_with_all_facts_known_does_not_stop() -> None:
             )
         ],
     )
-    circular = hit(
-        "admin:2020-8", "2020/8", "SGK Genelgesi 2020/8", "Genelge metni", category="admin_act"
-    )
-    graph = make_graph(script, FakeKb([*labour_law_hits(), circular]))
+    kb = FakeKb([*labour_law_hits(), CIRCULAR_SECTION])
+    graph = make_graph(script, kb)
 
     events = await turn(graph, ask(unique_thread()))
 
     assert not any(isinstance(e, ClarificationEvent) for e in events)
-    assert only(events, AnswerEvent).answer.status == "definite"
+    answer = only(events, AnswerEvent).answer
+    assert answer.status == "definite"
+    # The künye "2020/8" names no section: the sections the search finds are read whole.
+    assert kb.sections_read == ["2020/8 m.2.6.2.5"]
+    listed = {i.ref: (i.review_status, i.band) for i in answer.read_sources.items}
+    assert listed["2020/8 m.2.6.2.5"] == ("analyzed", "high")
+    assert answer.read_sources.admin_acts == 1
     assert [e.node for e in events if isinstance(e, StepEvent)] == [
         "intake",
         "plan",
@@ -484,7 +497,10 @@ async def test_an_expired_required_source_is_unread_even_if_kb_returns_it(monkey
         return [expired]
 
     monkeypatch.setattr(kb, "search", stale_search)
-    assert await _read_ref(kb, SourceRef(ref="4857 m.18", category="statute"), TODAY) is None
+    assert await _read_ref(kb, SourceRef(ref="4857 m.18", category="statute"), TODAY) == (
+        [],
+        "not_found",
+    )
 
 
 @pytest.mark.parametrize("location", ["draft", "title"])
@@ -942,6 +958,8 @@ async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_
                 SourceRef(ref="4857 m.18", category="statute"),
                 SourceRef(ref="İş Kanunu'nun on sekizinci maddesi", category="statute"),
                 SourceRef(ref="2020/8 m.2.6.2.5", category="admin_act"),
+                SourceRef(ref="2020/8 m.3.1", category="admin_act"),
+                SourceRef(ref="2018/38", category="admin_act"),
                 SourceRef(ref="9. HD E.2016/28920 K.2017/17860", category="decision"),
             ],
             queries=[],
@@ -949,7 +967,7 @@ async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_
 
     monkeypatch.setattr(nodes, "make_plan", plan_with_odd_refs)
     caplog.set_level(logging.INFO)
-    kb = FakeKb()
+    kb = FakeKb([*labour_law_hits(), CIRCULAR_SECTION], {"2020/8 m.2.6.2.5": "gap"})
     graph = make_graph(Script(), kb)
     thread = unique_thread()
     await turn(graph, ask(thread))
@@ -958,10 +976,13 @@ async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_
     answer = only(await turn(graph, RunRequest(thread_id=thread, skip=True)), AnswerEvent).answer
 
     retrieve = _trace_outputs(caplog)["node retrieve"]
-    assert retrieve["read"] == ["4857 m.18"]
+    assert "2020/8 m.2.6.2.5" not in retrieve["read"]
+    assert "4857 m.18" in retrieve["read"]
     assert retrieve["missing_source"] == [
         {"ref": "İş Kanunu'nun on sekizinci maddesi", "reason": "unmapped"},
-        {"ref": "2020/8 m.2.6.2.5", "reason": "not_found"},
+        {"ref": "2020/8 m.2.6.2.5", "reason": "gap"},
+        {"ref": "2020/8 m.3.1", "reason": "not_found"},
+        {"ref": "2018/38", "reason": "not_found"},
         {"ref": "9. HD E.2016/28920 K.2017/17860", "reason": "not_found"},
     ]
     # A künye that names no record is not searched as free text.

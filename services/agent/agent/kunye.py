@@ -11,7 +11,8 @@ from typing import NamedTuple
 from agent.topics import SourceRef
 
 _STATUTE = re.compile(r"(\d+) m\.(\S.*)")
-_ADMIN_ACT = re.compile(r"(\d{4}/\d+)(?: m\.(\d+(?:\.\d+)*))?")
+# The section is a numbered heading ("m.2.6.2.5", "m.K2-B3-2.1.1") or the opening ("Giriş").
+_ADMIN_ACT = re.compile(r"(\d{4}/\d+)(?: (?:m\.)?(\S+))?")
 _DECISION = re.compile(r"\S.* E\.\s?\d{4}/\d+ K\.\s?\d{4}/\d+")
 
 
@@ -22,7 +23,7 @@ class StatuteArticle(NamedTuple):
 
 class AdminActSection(NamedTuple):
     act: str
-    # None: the künye names the whole act ("2020/8").
+    # None: the künye names the whole act ("2020/8"), which is read section by section.
     section: str | None
 
 

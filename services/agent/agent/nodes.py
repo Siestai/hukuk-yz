@@ -2,7 +2,7 @@
 pure module (facts, plan, holding, gate) or a model, asks the knowledge base, and writes the
 result back. The legal rules live in those modules, not here."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol, TypedDict
@@ -22,8 +22,8 @@ from agent.gate import (
     progressive_in,
 )
 from agent.holding import verify_rows
-from agent.kb import KbClient
-from agent.kunye import mapped
+from agent.kb import KbClient, Unreadable
+from agent.kunye import admin_act_section, mapped
 from agent.llm import Llm
 from agent.llm_schemas import HoldingDraft, IntakeOutput, draft_output_type
 from agent.plan import Plan, make_plan
@@ -104,20 +104,45 @@ def _dumps(items: list[BaseModel]) -> list[dict[str, Any]]:
     return [i.model_dump(mode="json") for i in items]
 
 
-async def _read_ref(kb: KbClient, ref: SourceRef, as_of: date) -> ReadSource | None:
-    """Reads the source `ref` names, in the version in force on `as_of`, with the other
-    paragraphs of the article the search returns with it; None when the künye names no record
-    or the knowledge base does not have it."""
+async def _read_sections(
+    kb: KbClient, ref: str, as_of: date, queries: Sequence[str]
+) -> tuple[list[ReadSource], str | None]:
+    """The genelge sections `ref` names, each read whole. A künye of the whole act ("2020/8")
+    names the sections of it that the search finds for `queries`."""
+    found = admin_act_section(ref)
+    wanted = [] if found is None or found.section is None else [ref]
+    if found is not None and found.section is None:
+        for query in queries:
+            hits = await kb.search(query, categories=["admin_act"], as_of=as_of, limit=SEARCH_LIMIT)
+            wanted += [h.ref for h in hits if covers(h.ref, found.act) and h.ref not in wanted]
+    sources = []
+    reason = "not_found"
+    for section in wanted:
+        read = await kb.read_section(section, as_of)
+        if isinstance(read, Unreadable):
+            reason = read.reason
+        elif (source := as_read_source(read)) is not None and valid_on(source, as_of):
+            sources.append(source)
+    return sources, None if sources else reason
+
+
+async def _read_ref(
+    kb: KbClient, ref: SourceRef, as_of: date, queries: Sequence[str] = ()
+) -> tuple[list[ReadSource], str | None]:
+    """Reads the source `ref` names, in the version in force on `as_of`: the whole article or
+    genelge section, or the passages of a decision the search returns. With nothing read, the
+    second value says why: `unmapped` (the künye names no record), `not_found`, or the reason the
+    knowledge base gave."""
     if not mapped(ref):
-        return None
+        return [], "unmapped"
+    if ref.category == "admin_act":
+        return await _read_sections(kb, ref.ref, as_of, queries)
     # The künye of the article, so that the hit holds its other paragraphs too.
     if ref.category == "statute":
         hits = await kb.read_article(split_ref(ref.ref)[0], as_of)
     else:
-        hits = await kb.search(
-            split_ref(ref.ref)[0], categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT
-        )
-    return next(
+        hits = await kb.search(ref.ref, categories=[ref.category], as_of=as_of, limit=SEARCH_LIMIT)
+    source = next(
         (
             s
             for h in hits
@@ -127,6 +152,7 @@ async def _read_ref(kb: KbClient, ref: SourceRef, as_of: date) -> ReadSource | N
         ),
         None,
     )
+    return ([source], None) if source is not None else ([], "not_found")
 
 
 async def _question_sources(
@@ -141,8 +167,9 @@ async def _question_sources(
     }
     found = {}
     for ref, basis in wanted.items():
-        if source := await _read_ref(kb, basis, as_of):
-            found[ref] = citation(source, sub=split_ref(ref)[1].removeprefix("/") or None)
+        sources, _ = await _read_ref(kb, basis, as_of, topic.queries)
+        if sources:
+            found[ref] = citation(sources[0], sub=split_ref(ref)[1].removeprefix("/") or None)
     return found
 
 
@@ -238,13 +265,11 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             unread = []
             missing = []
             for ref in made.must_read:
-                source = await _read_ref(deps.kb, ref, made.as_of)
-                if source is None:
+                sources, reason = await _read_ref(deps.kb, ref, made.as_of, made.queries)
+                if reason is not None:
                     unread.append(ref.ref)
-                    reason = "not_found" if mapped(ref) else "unmapped"
                     missing.append({"ref": ref.ref, "reason": reason})
-                else:
-                    read = merge(read, [source])
+                read = merge(read, sources)
             for query in made.queries:
                 hits = await deps.kb.search(query, as_of=made.as_of, limit=SEARCH_LIMIT)
                 read = merge(read, [s for h in hits if (s := as_read_source(h)) is not None])
