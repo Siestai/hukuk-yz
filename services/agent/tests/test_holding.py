@@ -346,6 +346,7 @@ def test_the_correction_names_every_row_a_model_can_mend_and_no_other() -> None:
     assert len(feedback) == 4
     assert feedback[1].startswith("2. satır (statute:4857:m18, «uydurma bir alıntı yok»)")
     assert "birebir geçmemektedir" in feedback[1] and "(çalışıyor)" in feedback[1]
+    assert '"[...]" ile parça birleştirme' in feedback[1]
     assert feedback[2].startswith("3. satır") and "başka bir fıkradadır" in feedback[2]
     # A source_id that names no source read is mended by copying one; a text not in force is not.
     assert feedback[3].startswith("6. satır (statute:4857:m19,")

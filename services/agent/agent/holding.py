@@ -156,7 +156,7 @@ _ROW_FEEDBACK = {
     "[source_id: ...] değerlerinden birini aynen yaz",
     SHORT_QUOTE: "condition_quote en az üç kelime olmalıdır",
     QUOTE_NOT_FOUND: "condition_quote kaynak metinde birebir geçmemektedir; "
-    "kaynaktan aynen kopyala",
+    'kaynaktan tek ve kesintisiz bir parça olarak aynen kopyala, "[...]" ile parça birleştirme',
     OTHER_PARAGRAPH: "condition_quote atıf yapılan fıkrada (sub) değil, başka bir fıkradadır; "
     "sub değerini alıntının bulunduğu fıkra yap",
     PROGRESSIVE: "condition veya fact_value -iyor kipindedir ({forms}); -mektedir / -maktadır "

@@ -2,6 +2,10 @@ id: SB-039
 # Daraltma: özgün soru beş alt soru içeriyordu (ek protokol, ödenmeme, SGK bildirimi, Yüksek
 # Hakem Kurulu kararı). Eval yalnız ilk iki alt soruyu ölçer: yararlanmanın başlangıcı ve
 # Aralık 2025 ödemeleri. Şablon: tis_sendikal.
+# Görev 19 r4: soru üyelik durumunu açıkça söylemektedir (dayanışma aidatı ödemeye başlayan işçi);
+# dal olgusu verilir (SB-008 ile aynı neden: intake serbest metin yazdı, dal açılmadı).
+facts:
+  sendika_uyeligi: dayanisma_aidati
 question: "01.01.2025-31.12.2026 geçerlilik tarihli TİS 01.10.2025'te imzalandı. 10.12.2025'te sendikaya dayanışma aidatı ödemeye başlayan işçi TİS'ten nasıl ve hangi tarihten itibaren yararlanır? Aralık 2025'teki 13 günlük ilave tediye ve 20 günlük ikramiyeden yararlanır mı?"
 expected:
   topic: tis_sendikal

@@ -47,7 +47,9 @@ hüküm için bir satır yazarsın: hükmün koşulu, olgunun bu koşul için de
 - Kullanıcının sorusuyla ilgili hükümleri seç; arama sonucu ilgisizse satır üretme.
 - source_id yalnız verilen kaynak listesinden olmalı; sub, hükmün fıkrasıdır (örneğin "1").
 - condition_quote, kaynak metinde BİREBİR geçen en az üç kelimelik bir parça olmalı; kaynaktan \
-kopyala, değiştirme, kısaltma, özetleme. Birebir geçmeyen satır silinir.
+kopyala, değiştirme, kısaltma, özetleme. Tek ve kesintisiz bir parça olmalı: \
+"[...]" veya "…" ile ayrı parçaları birleştirme; iki parça gerekmekte ise iki satır yaz. \
+Birebir geçmeyen satır silinir.
 - result: met (koşul sağlanmaktadır), not_met, not_applicable veya unknown (olgu \
 bilinmemekte ise).
 - depends_on_facts: bu satırın sonucunu değiştirebilecek bütün olgu anahtarlarını yaz; \

@@ -12,7 +12,9 @@ expected:
   topic: hakli_fesih_devamsizlik
   status: conditional
   headline_contains:
-    - devamsızlık
+    # Görev 19 r4: Türkçe ünsüz yumuşaması (devamsızlık -> devamsızlığın); r4 başlığı "devamsızlığın"
+    # yazdı ve eşleşmedi. Kök aynı, beklenti gevşemedi.
+    - devamsızlık|devamsızlığ
   must_cite:
     - 4857 m.25
     - 4857 m.26
