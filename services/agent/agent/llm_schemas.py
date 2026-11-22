@@ -70,6 +70,9 @@ class MissingDraft(LlmModel):
 class DraftOutput(LlmModel):
     status: AnswerStatus
     headline: str
+    # The `row` numbers of the holding map rows whose result the headline states; the gate
+    # refuses a headline that names none of them.
+    headline_rows: list[int]
     points: Annotated[list[PointDraft], Field(min_length=1)]
     missing_info: list[MissingDraft] = []
     reasoning_summary: str

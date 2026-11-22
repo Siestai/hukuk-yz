@@ -4,6 +4,7 @@ quote."""
 from datetime import date
 from typing import Any
 
+import pytest
 from agent_fakes import M18_1, M18_4, hit, row
 
 from agent.holding import verify_rows
@@ -77,15 +78,32 @@ def test_the_good_rows_stay_when_others_drop() -> None:
     assert rows[0].result == "unknown"
 
 
-def test_a_paragraph_the_text_does_not_have_is_left_out_of_the_citation() -> None:
-    rows, dropped = verify(row("statute:4857:m18", M18_4, sub="99"))
+@pytest.mark.parametrize(
+    ("sub", "ref"), [("4", "4857 m.18/4"), ("4-a", "4857 m.18"), (None, "4857 m.18")]
+)
+def test_a_quote_from_the_cited_paragraph_or_with_no_paragraph_claimed_stays(
+    sub: str | None, ref: str
+) -> None:
+    rows, dropped = verify(row("statute:4857:m18", M18_4, sub=sub))
 
     assert dropped == 0
-    assert rows[0].citation.ref == "4857 m.18"
+    assert rows[0].citation.ref == ref
 
 
-def test_a_quote_in_a_different_paragraph_is_cited_at_article_level() -> None:
-    rows, dropped = verify(row("statute:4857:m18", M18_4, sub="1"))
+@pytest.mark.parametrize("sub", ["1", "99", "1-a"])
+def test_a_quote_from_another_paragraph_than_the_cited_one_drops(sub: str) -> None:
+    # The words are in the article, but in its paragraph (4): they do not support paragraph `sub`.
+    assert verify(row("statute:4857:m18", M18_4, sub=sub)) == ([], 1)
+
+
+def test_a_cited_paragraph_is_kept_at_article_level_when_the_text_read_has_no_markers() -> None:
+    plain = READ[0].model_copy(
+        update={"passages": [p.model_copy(update={"text": p.text[4:]}) for p in READ[0].passages]}
+    )
+    draft = HoldingDraft.model_validate({"rows": [row("statute:4857:m18", M18_4, sub="1")]})
+
+    rows, dropped = verify_rows(draft, [plain], DAY)
+
     assert dropped == 0
     assert rows[0].citation.ref == "4857 m.18"
 
@@ -94,6 +112,28 @@ def test_informal_holding_text_is_dropped_before_it_can_reach_the_fallback() -> 
     candidate = row("statute:4857:m18", M18_4)
     for field in ("condition", "fact_value"):
         assert verify({**candidate, field: "İşçi çalışıyordu"}) == ([], 1)
+    assert verify({**candidate, "condition": "Kıdem bilinmiyor"}) == ([], 1)
+    assert verify({**candidate, "fact_value": "Bilinmiyor; işçi çalışıyor"}) == ([], 1)
+
+
+@pytest.mark.parametrize("result", ["met", "not_met", "unknown", "not_applicable"])
+@pytest.mark.parametrize(
+    ("value", "formal"),
+    [
+        ("bilinmiyor", "bilinmemektedir"),
+        ("Bilinmiyor", "Bilinmemektedir"),
+        ("Kıdem: 5 ay; işçi sayısı: bilinmiyor", "Kıdem: 5 ay; işçi sayısı: bilinmemektedir"),
+    ],
+)
+def test_an_unknown_fact_value_keeps_the_row_as_a_conditional_branch(
+    value: str, formal: str, result: str
+) -> None:
+    rows, dropped = verify({**row("statute:4857:m18", M18_4, result), "fact_value": value})
+
+    assert dropped == 0
+    assert rows[0].fact_value == formal
+    assert rows[0].result == ("unknown" if result in ("met", "not_met") else result)
+    assert rows[0].condition_quote == M18_4
 
 
 def test_the_expiry_day_is_not_a_valid_holding_source_date() -> None:
@@ -126,7 +166,6 @@ def test_declared_dependencies_preserve_unknown_without_erasing_known_results() 
         for dependencies, expected in (
             (["kidem"], result),
             (["kidem", "onceki_donem"], "unknown" if result in ("met", "not_met") else result),
-            (["missing_key"], "unknown" if result in ("met", "not_met") else result),
         ):
             candidate = {**row("statute:4857:m18", M18_1, result), "depends_on_facts": dependencies}
             verified, dropped = verify_rows(
@@ -135,6 +174,29 @@ def test_declared_dependencies_preserve_unknown_without_erasing_known_results() 
             assert dropped == 0
             assert verified[0].result == expected
             assert verified[0].condition_quote == M18_1
+
+
+def test_a_dependency_key_the_template_does_not_have_is_found_and_its_row_drops() -> None:
+    from agent.facts import build_facts
+    from agent.holding import invented_keys
+    from agent.llm_schemas import IntakeOutput
+    from agent.topics import get_topic
+
+    facts = build_facts(
+        get_topic("ise_iade"),
+        IntakeOutput.model_validate({"topic": "ise_iade", "title": "Kıdem", "facts": []}),
+        None,
+        question="",
+        today=DAY,
+    )
+    good = {**row("statute:4857:m18", M18_1, "unknown"), "depends_on_facts": ["bildirim_tarihi"]}
+    bad = {**good, "depends_on_facts": ["kidem", "fesih_bildirim_tarihi", "kisaltma", "x"]}
+    draft = HoldingDraft.model_validate({"rows": [good, bad]})
+
+    assert invented_keys(draft, facts) == ["fesih_bildirim_tarihi", "x"]
+    assert invented_keys(HoldingDraft.model_validate({"rows": [good]}), facts) == []
+    rows, dropped = verify_rows(draft, READ, DAY, facts=facts)
+    assert dropped == 1 and len(rows) == 1
 
 
 # Sanitized typed outputs and the literal shown passage from the finished recorded run.
@@ -162,7 +224,13 @@ def test_recorded_unknown_rows_require_formal_generated_values_without_losing_da
     assert source is not None
     original = HoldingDraft.model_validate(recording["holding"])
     assert len(original.rows) == 3
-    assert verify_rows(original, [source], DAY) == ([], 3)
+    # The recorded "bilinmiyor" is the unknown value of the fact, not a register error.
+    recorded, dropped = verify_rows(original, [source], DAY)
+    assert dropped == 0
+    assert [r.fact_value for r in recorded] == [
+        (r.fact_value or "").replace("bilinmiyor", "bilinmemektedir") for r in original.rows
+    ]
+    assert [r.result for r in recorded] == ["unknown"] * 3
     for value in ("bilinmemektedir", "belirsiz"):
         formal = original.model_copy(deep=True)
         for candidate in formal.rows:
@@ -182,8 +250,7 @@ def test_recorded_unknown_rows_require_formal_generated_values_without_losing_da
             # The excerpt has no paragraph marker: the recorded sub="1" is not verified.
             assert verified.citation.ref == "4857 m.18"
         assert progressive_in(DraftOutput.model_validate(draft()), rows) == []
-        for field in ("condition", "fact_value"):
-            invalid = formal.model_copy(deep=True)
-            for candidate in invalid.rows:
-                setattr(candidate, field, "Olgu bilinmiyor")
-            assert verify_rows(invalid, [source], DAY) == ([], 3)
+        invalid = formal.model_copy(deep=True)
+        for candidate in invalid.rows:
+            candidate.condition = "Olgu bilinmiyor"
+        assert verify_rows(invalid, [source], DAY) == ([], 3)

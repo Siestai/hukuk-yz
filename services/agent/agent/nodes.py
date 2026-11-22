@@ -18,11 +18,13 @@ from agent.gate import (
     GateDrops,
     check_draft,
     cited_by_status,
+    draft_texts,
     holding_issue,
     not_answered,
     progressive_in,
+    progressive_sentences,
 )
-from agent.holding import verify_rows
+from agent.holding import invented_keys, key_feedback, verify_rows
 from agent.kb import KbClient, Unreadable
 from agent.kunye import admin_act_section, mapped
 from agent.llm import Llm
@@ -50,7 +52,9 @@ from hukuk_models.chat import (
     StepEvent,
 )
 
-# The draft is made once more when it fails the gate (docs/tasks/17-agent-v1.md).
+# The draft is made once more when it fails the gate (docs/tasks/17-agent-v1.md); the last one
+# loses its "-iyor" sentences instead (task 19). A holding map whose rows depend on keys the
+# template does not have is made once more too; then those rows drop.
 DRAFT_ATTEMPTS = 2
 # Hits of a free search that are read.
 SEARCH_LIMIT = 5
@@ -319,15 +323,25 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             _step("holding_map")
             rows: list[HoldingRow] = []
             dropped = 0
+            invented: list[str] = []
             if read:
-                draft = await deps.llm.run(
-                    "fast",
-                    HoldingDraft,
-                    prompts.HOLDING_INSTRUCTIONS,
-                    prompts.holding_prompt(topic, facts, read, question=state["question"]),
-                )
+
+                async def made(feedback: list[str]) -> HoldingDraft:
+                    return await deps.llm.run(
+                        "fast",
+                        HoldingDraft,
+                        prompts.HOLDING_INSTRUCTIONS,
+                        prompts.holding_prompt(
+                            topic, facts, read, question=state["question"], feedback=feedback
+                        ),
+                    )
+
+                draft = await made([])
+                # Corrected once; the rows that still depend on such a key drop below.
+                if invented := invented_keys(draft, facts):
+                    draft = await made([key_feedback(invented, facts)])
                 rows, dropped = verify_rows(draft, read, applied_on, facts=facts)
-            rec.output = {"rows": len(rows), "dropped": dropped}
+            rec.output = {"rows": len(rows), "dropped": dropped, "key_corrected": bool(invented)}
             return {"rows": _dumps(list(rows)), "gate": {"rows_dropped": dropped}}
 
     async def draft(state: State) -> dict[str, Any]:
@@ -371,7 +385,10 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                         draft_output_type(topic, facts, original=output),
                         prompts.REWRITE_INSTRUCTIONS,
                         prompts.rewrite_prompt(
-                            output.model_dump_json(), forms, question=state["question"]
+                            output.model_dump_json(),
+                            forms,
+                            progressive_sentences(draft_texts(output)),
+                            question=state["question"],
                         ),
                     )
                 result = check_draft(
@@ -383,9 +400,12 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     applied_on=made.as_of,
                     date_assumed=made.as_of_assumed,
                     unread=state["unread"],
+                    final=attempt == DRAFT_ATTEMPTS,
                 )
                 drops.citations += result.drops.citations
                 drops.points += result.drops.points
+                drops.sentences += result.drops.sentences
+                drops.branches += result.drops.branches
                 issues = result.issues
                 issue_counts = result.issue_counts
                 if result.answer is not None:
@@ -407,6 +427,8 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                 "citations_dropped": drops.citations,
                 "points_dropped": drops.points,
                 "rows_dropped": drops.rows,
+                "sentences_dropped": drops.sentences,
+                "branches_dropped": drops.branches,
                 "cited_approved": cited.approved,
                 "cited_unreviewed": cited.unreviewed,
                 "attempts": attempts,

@@ -225,6 +225,7 @@ def draft(
     return {
         "status": status,
         "headline": headline,
+        "headline_rows": [1],
         "points": points
         if points is not None
         else [{"text": "Altı aylık kıdem şartı aranmaktadır.", "citations": cited}],
@@ -263,6 +264,8 @@ class Script:
     holding: dict[str, Any] = field(
         default_factory=lambda: {"rows": [row("statute:4857:m18", M18_1, sub="1")]}
     )
+    # The holding map made again after the gate asked for a correction; None: `holding` again.
+    holding_retry: dict[str, Any] | None = None
     drafts: list[dict[str, Any]] = field(default_factory=lambda: [draft()])
     rewrite: dict[str, Any] | None = None
     calls: list[tuple[str, str]] = field(default_factory=list)
@@ -288,7 +291,8 @@ def scripted(script: Script) -> FunctionModel:
         if "topic" in properties:
             kind, out = "intake", script.intake
         elif "rows" in properties:
-            kind, out = "holding", script.holding
+            retry = script.holding_retry if script.of("holding") else None
+            kind, out = "holding", retry or script.holding
         elif "Yasak biçimler" in prompt:
             kind, out = "rewrite", script.rewrite or script.drafts[-1]
         else:

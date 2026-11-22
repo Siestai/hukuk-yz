@@ -2,12 +2,14 @@
 
 The draft model names sources and words; this module turns the draft into an `Answer` or says
 why it cannot: a citation to a source that was not read, or not in force on the date of the law
-applied, is dropped (md. 25); a point left with no citation is dropped; a "-iyor" form, a
-`definite` answer with an unknown critical fact, or a `conditional` one that does not say what it
-depends on is refused.
+applied, is dropped (md. 25); a point left with no citation is dropped; a "-iyor" form, a headline
+that rests on no verified holding row, a `definite` answer with an unknown critical fact, or a
+`conditional` one that does not say what it depends on is refused. The last draft, made after the
+correction, loses only its sentences in the "-iyor" form, unless the answer loses its meaning.
 """
 
-from collections.abc import Sequence
+import re
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -31,6 +33,11 @@ from hukuk_models.chat import (
 from hukuk_models.formal_turkish import progressive_forms
 
 NOT_ANSWERED = "Doğrulanmış kaynakla cevap verilemedi."
+# Decision K1: an answer whose every citation is to a source no reviewer has approved says so.
+ONLY_UNREVIEWED = (
+    "Cevabın dayandığı kaynakların tamamı onaysızdır (test); uzman incelemesinden geçmemiştir."
+)
+_SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
 
 
 class GateDrops(BaseModel):
@@ -39,6 +46,9 @@ class GateDrops(BaseModel):
     citations: int = 0
     points: int = 0
     rows: int = 0
+    # Of the last draft: its sentences in the "-iyor" form, and the branches left with no words.
+    sentences: int = 0
+    branches: int = 0
 
 
 class GateCited(BaseModel):
@@ -101,23 +111,72 @@ def draft_texts(draft: DraftOutput) -> list[str]:
     return texts
 
 
+def _context_texts(rows: Sequence[HoldingRow], facts: CaseFacts | None) -> list[str]:
+    """The words the models wrote outside the draft: into the rows and the title of the facts
+    (a row's quote is the source's own words and is not scanned)."""
+    texts = [t for r in rows for t in (r.condition, r.fact_value) if t]
+    if facts is not None:
+        texts.append(facts.title)
+    return texts
+
+
 def progressive_in(
     draft: DraftOutput, rows: Sequence[HoldingRow] = (), facts: CaseFacts | None = None
 ) -> list[str]:
     """The "-iyor" forms in the draft and in the words the models wrote into the rows and the
-    title of the facts (a row's quote is the source's own words and is not scanned)."""
-    texts = draft_texts(draft)
-    texts += [t for r in rows for t in (r.condition, r.fact_value) if t]
-    if facts is not None:
-        texts.append(facts.title)
-    return progressive_forms(texts)
+    title of the facts."""
+    return progressive_forms(draft_texts(draft) + _context_texts(rows, facts))
+
+
+def _sentences(text: str) -> list[str]:
+    return [" ".join(s.split()) for s in _SENTENCE_END.split(text) if s.strip()]
+
+
+def progressive_sentences(texts: Iterable[str]) -> list[str]:
+    """The sentences of `texts` with an "-iyor" form, each once: what a correction rewrites."""
+    found = [s for t in texts for s in _sentences(t) if progressive_forms([s])]
+    return list(dict.fromkeys(found))
+
+
+def _formal(text: str, drops: GateDrops) -> str:
+    """`text` without its sentences in the "-iyor" form; the others are kept as written."""
+    sentences = _sentences(text)
+    kept = [s for s in sentences if not progressive_forms([s])]
+    drops.sentences += len(sentences) - len(kept)
+    return text if len(kept) == len(sentences) else " ".join(kept)
+
+
+def _register_feedback(forms: Sequence[str], sentences: Sequence[str]) -> str:
+    return (
+        f"-iyor kipi kullanılmıştır: {', '.join(forms)}. Şu cümleleri anlamlarını koruyarak "
+        "-mektedir / -maktadır kipi veya geniş zamanla yeniden yaz: "
+        + "; ".join(f"«{s}»" for s in sentences)
+    )
+
+
+def _headline_supported(
+    numbers: Sequence[int],
+    rows: Sequence[HoldingRow],
+    sources: dict[str, ReadSource],
+    applied_on: date,
+) -> bool:
+    """The headline names at least one row; every row it names is one of the holding map and
+    stands on a source that was read and is in force on the date of the law applied."""
+    if not numbers or any(not 1 <= n <= len(rows) for n in numbers):
+        return False
+    named = {rows[n - 1].citation.source_id for n in numbers}
+    return all(i in sources and valid_on(sources[i], applied_on) for i in named)
 
 
 # This gate checks quote presence and provenance, not whether the claim follows from it.
 # In particular, a genuine but irrelevant quote can still pass. Support and threshold
 # fidelity are model instructions, with real-model/legal review still required.
 def _cite(
-    picks: list[CitationPick], sources: dict[str, ReadSource], applied_on: date, drops: GateDrops
+    picks: list[CitationPick],
+    sources: dict[str, ReadSource],
+    applied_on: date,
+    drops: GateDrops,
+    formal: Callable[[str], str],
 ) -> list[CitationRef]:
     cited = []
     for pick in picks:
@@ -133,7 +192,7 @@ def _cite(
                     source,
                     sub=pick.sub,
                     quote=quote or None,
-                    used_for=pick.used_for,
+                    used_for=formal(pick.used_for) or None if pick.used_for else None,
                 )
             )
     return cited
@@ -174,7 +233,12 @@ def check_draft(
     applied_on: date,
     date_assumed: bool,
     unread: Sequence[str] = (),
+    final: bool = False,
 ) -> GateResult:
+    """The answer of `draft`, or why there is none. `final`: the draft is the last one, made after
+    the gate asked for a correction; its sentences in the "-iyor" form drop instead of the whole
+    draft, and the answer is refused if that leaves no headline, no gerekçe, no point or not a
+    branch for every unknown critical fact."""
     sources = {s.source_id: s for s in read}
     drops = GateDrops()
     issues = []
@@ -184,11 +248,70 @@ def check_draft(
         issues.append(feedback)
         issue_counts[code] = count
 
+    def formal(text: str) -> str:
+        return _formal(text, drops) if final else text
+
     if issue := holding_issue(rows):
         reject(*issue)
 
-    if forms := progressive_in(draft, rows, facts):
-        reject("progressive_form", f"-iyor kipi kullanılmıştır: {', '.join(forms)}", len(forms))
+    context = _context_texts(rows, facts)
+    scanned = context if final else draft_texts(draft) + context
+    if forms := progressive_forms(scanned):
+        reject(
+            "progressive_form",
+            _register_feedback(forms, progressive_sentences(scanned)),
+            len(forms),
+        )
+    headline, reasoning = formal(draft.headline), formal(draft.reasoning_summary)
+    if final and not (headline and reasoning):
+        written = {draft.headline: headline, draft.reasoning_summary: reasoning}
+        lost = [t for t, kept in written.items() if not kept]
+        reject(
+            "progressive_form",
+            "başlık veya gerekçe yalnız -iyor kipindeki cümlelerden oluşmaktadır; "
+            "bu cümleler düşünce cevap anlamını yitirmektedir",
+            len(progressive_forms(lost)),
+        )
+    if rows and not _headline_supported(draft.headline_rows, rows, sources, applied_on):
+        reject(
+            "unsupported_headline",
+            "headline_rows, başlığın sonucunu dayandırdığı hüküm haritası satırlarının row "
+            "numaralarını içermelidir; her numara verilen bir satıra karşılık gelmelidir. "
+            "Hiçbir doğrulanan satıra dayanmayan başlık yazma.",
+        )
+
+    points = []
+    for p in draft.points:
+        text = formal(p.text)
+        cited = _cite(p.citations, sources, applied_on, drops, formal) if text else []
+        if cited:
+            points.append(AnswerPoint(text=text, citations=cited))
+        else:
+            drops.points += 1
+    if not points:
+        reject("no_verified_points", "atıfı doğrulanan nokta kalmamıştır")
+    missing_info = []
+    for m in draft.missing_info:
+        condition, outcome = formal(m.condition), formal(m.result)
+        if final and not (condition and outcome):
+            drops.branches += 1
+            continue
+        cited = _cite(m.citations, sources, applied_on, drops, formal)
+        if m.citations and len(cited) != len(m.citations):
+            reject(
+                "unsupported_branch",
+                "koşullu dalın dayanak alıntısı doğrulanamamıştır; hukuki sonuç uydurma, "
+                "okunan destek yoksa kaynak yetersizliğini belirt",
+            )
+        missing_info.append(
+            MissingInfo(
+                fact_key=m.fact_key,
+                condition=condition,
+                result=outcome,
+                citations=cited,
+            )
+        )
+
     if draft.status == "definite":
         if missing := critical_unknown(topic, facts):
             reject(
@@ -208,12 +331,12 @@ def check_draft(
                 "hüküm haritasında sonucu bilinmeyen satır varken kesin cevap verilemez",
             )
     else:
-        if not draft.missing_info:
+        if not missing_info:
             reject(
                 "missing_conditions",
                 "koşullu cevap neye bağlı olduğunu (missing_info) söylemelidir",
             )
-        represented = {m.fact_key for m in draft.missing_info}
+        represented = {m.fact_key for m in missing_info}
         uncovered = [key for key in critical_unknown(topic, facts) if key not in represented]
         if uncovered:
             reject(
@@ -223,33 +346,6 @@ def check_draft(
                 "veya atıf uydurma; netleştirme iste veya kaynak yetersizliğini belirt.",
                 len(uncovered),
             )
-
-    points = []
-    for p in draft.points:
-        cited = _cite(p.citations, sources, applied_on, drops)
-        if cited:
-            points.append(AnswerPoint(text=p.text, citations=cited))
-        else:
-            drops.points += 1
-    if not points:
-        reject("no_verified_points", "atıfı doğrulanan nokta kalmamıştır")
-    missing_info = []
-    for m in draft.missing_info:
-        cited = _cite(m.citations, sources, applied_on, drops)
-        if m.citations and len(cited) != len(m.citations):
-            reject(
-                "unsupported_branch",
-                "koşullu dalın dayanak alıntısı doğrulanamamıştır; hukuki sonuç uydurma, "
-                "okunan destek yoksa kaynak yetersizliğini belirt",
-            )
-        missing_info.append(
-            MissingInfo(
-                fact_key=m.fact_key,
-                condition=m.condition,
-                result=m.result,
-                citations=cited,
-            )
-        )
     if issues:
         return GateResult(None, issues, drops, issue_counts)
 
@@ -257,12 +353,12 @@ def check_draft(
         answer = Answer(
             status=draft.status,
             status_note=_status_note(draft.status, date_assumed, unread),
-            headline=draft.headline,
+            headline=headline,
             fact_chips=_chips(topic, facts),
             points=points,
             short_point_count=min(3, len(points)),
             missing_info=missing_info,
-            holding_map=HoldingMap(rows=rows, reasoning_summary=draft.reasoning_summary),
+            holding_map=HoldingMap(rows=rows, reasoning_summary=reasoning),
             calculations=[Calculation(title=c.title, needs=c.needs) for c in topic.calculations],
             read_sources=summarize(read),
             applied_law_date=applied_on,
@@ -275,6 +371,9 @@ def check_draft(
             drops,
             {"answer_schema": exc.error_count()},
         )
+    counts = cited_by_status(answer)
+    if counts.unreviewed and not counts.approved:
+        answer.status_note += f" {ONLY_UNREVIEWED}"
     return GateResult(answer, [], drops)
 
 

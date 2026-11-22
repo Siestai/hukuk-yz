@@ -24,6 +24,8 @@ from hukuk_models.chat import (
 # "4857 m.18/1" -> ("4857 m.18", "/1"); a künye without a statute article is its own base.
 _STATUTE_REF = re.compile(r"^(?P<base>\d+ m\.\d+(?:\s?[A-Za-z])?)(?P<sub>/.+)?$")
 _WORD = re.compile(r"\S+")
+# The number of a paragraph, at the start of its line: "(1) Otuz veya daha fazla işçi ...".
+_PARAGRAPH = re.compile(r"(?m)^[ \t]*\(([1-9]\d*)\)")
 
 
 class Passage(BaseModel):
@@ -127,10 +129,9 @@ def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | No
     """Where `quote` stands in the text read of `source`, matching it word for word (the white
     space may differ). None: it is not there. The offsets are into the source's full text and
     are None when the passage had no offset."""
-    words = _WORD.findall(quote)
-    if not words:
+    pattern = _quote_pattern(quote)
+    if pattern is None:
         return None
-    pattern = re.compile(r"(?<!\w)" + r"\s+".join(re.escape(w) for w in words) + r"(?!\w)")
     for passage in source.passages:
         found = pattern.search(passage.text)
         if found is None:
@@ -141,10 +142,33 @@ def locate(source: ReadSource, quote: str) -> tuple[int | None, int | None] | No
     return None
 
 
+def _quote_pattern(quote: str) -> re.Pattern[str] | None:
+    words = _WORD.findall(quote)
+    if not words:
+        return None
+    return re.compile(r"(?<!\w)" + r"\s+".join(re.escape(w) for w in words) + r"(?!\w)")
+
+
+def quote_paragraph(source: ReadSource, quote: str) -> str | None:
+    """The number of the paragraph of the text read that `quote` stands in. None: the quote is
+    not there, or the passage it is in has no paragraph marker before it (a passage cut out of
+    the middle of a paragraph does not say which one it is)."""
+    pattern = _quote_pattern(quote)
+    if pattern is None:
+        return None
+    for passage in source.passages:
+        found = pattern.search(passage.text)
+        if found is None:
+            continue
+        before = [m[1] for m in _PARAGRAPH.finditer(passage.text) if m.start() <= found.start()]
+        return before[-1] if before else None
+    return None
+
+
 def _paragraphs(source: ReadSource, sub: str) -> list[Passage]:
     passages = []
     for passage in source.passages:
-        markers = list(re.finditer(r"(?m)^[ \t]*\(([1-9]\d*)\)", passage.text))
+        markers = list(_PARAGRAPH.finditer(passage.text))
         for index, marker in enumerate(markers):
             if marker[1] != sub:
                 continue

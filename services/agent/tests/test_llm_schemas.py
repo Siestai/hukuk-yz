@@ -16,6 +16,7 @@ def payload(*keys: str | None) -> dict[str, Any]:
     return {
         "status": "conditional",
         "headline": "Koşulludur.",
+        "headline_rows": [1],
         "points": [{"text": "Belirlenmelidir.", "citations": [{"source_id": "s", "quote": "q"}]}],
         "missing_info": [
             {"fact_key": k, "condition": "Bilinmezse", "result": "Belirsizdir."} for k in keys

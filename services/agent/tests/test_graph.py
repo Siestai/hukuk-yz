@@ -247,10 +247,11 @@ async def test_a_progressive_form_is_corrected_once(
     from agent import prompts
 
     bad = draft()
+    sentence = "Kayıt çalışıyorsa." if field == "headline" else "Kayıt karşılayabiliyorsa."
     if field == "headline":
-        bad[field] = "Kayıt çalışıyorsa."
+        bad[field] = sentence
     else:
-        bad["missing_info"][0][field] = "Kayıt karşılayabiliyorsa."
+        bad["missing_info"][0][field] = sentence
     original_run = Llm.run
     rewrite_instructions: list[str] = []
     draft_types: list[type] = []
@@ -269,8 +270,9 @@ async def test_a_progressive_form_is_corrected_once(
             assert "-iyorsa/-ıyorsa/-uyorsa/-üyorsa" in instructions
             assert "missing_info.condition/result" in instructions
             assert DraftOutput.model_validate_json(
-                prompt.split("\n\n", 2)[2]
+                prompt.rsplit("\n\n", 1)[1]
             ) == DraftOutput.model_validate(bad)
+            assert f"Hatalı cümleler (her birini resmi kiple yeniden yaz):\n- {sentence}" in prompt
         return await original_run(self, tier, output_type, instructions, prompt)
 
     monkeypatch.setattr(Llm, "run", checked_run)
@@ -283,11 +285,15 @@ async def test_a_progressive_form_is_corrected_once(
 
     answer = only(await turn(graph, answer_all(thread)), AnswerEvent).answer
 
+    # After the second failure only the informal sentence drops: a headline made of it leaves no
+    # answer; a branch made of it (no critical fact is unknown here) leaves the answer without it.
     assert answer.headline == (
-        "İşe iade davası açılamamaktadır."
-        if compliant
-        else "Doğrulanmış kaynakla cevap verilemedi."
+        "Doğrulanmış kaynakla cevap verilemedi."
+        if not compliant and field == "headline"
+        else "İşe iade davası açılamamaktadır."
     )
+    if not compliant and field != "headline":
+        assert sentence not in [t for m in answer.missing_info for t in (m.condition, m.result)]
     attempts = 1 if compliant else 2
     assert len(script.of("draft")) == attempts
     assert all(t is draft_types[0] for t in draft_types)
@@ -559,7 +565,7 @@ async def test_holding_rejection_logs_counts_and_keeps_private_text_out(
     assert sentinel not in "\n".join(JsonFormatter().format(r) for r in caplog.records)
     records = [r for r in caplog.records if r.name == "agent.trace"]
     outputs = {r.getMessage(): r.fields["output"] for r in records}  # type: ignore[attr-defined]
-    assert outputs["node holding_map"] == {"rows": 1, "dropped": 1}
+    assert outputs["node holding_map"] == {"rows": 1, "dropped": 1, "key_corrected": False}
     assert outputs["node draft"]["issue_counts"] == {}
     assert outputs["node draft"]["rows_dropped"] == 1
     assert outputs["node draft"]["fallback"] is False
@@ -701,15 +707,15 @@ async def test_holding_node_uses_declared_dependencies_after_skip() -> None:
     assert answer.headline != "Doğrulanmış kaynakla cevap verilemedi."
 
 
-@pytest.mark.parametrize(("formal", "complete"), [(False, False), (True, False), (True, True)])
+@pytest.mark.parametrize("complete", [False, True])
 @pytest.mark.parametrize("private_retries_zero", [False, True])
 async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_gate(
-    formal: bool,
     complete: bool,
     private_retries_zero: bool,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Transport/schema/register regression only; synthetic draft is not legal acceptance."""
+    """Transport/schema/register regression only; synthetic draft is not legal acceptance. The
+    recorded rows say "bilinmiyor": each stays as an unknown row, written formally."""
     import socket
 
     import httpx2 as httpx
@@ -727,14 +733,9 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
     monkeypatch.setattr(socket, "getaddrinfo", no_socket)
     if private_retries_zero:
         monkeypatch.setattr("agent.llm.RETRIES", 0)
-    expected_calls = 2 if not formal else (4 if complete else 3 if private_retries_zero else 5)
+    expected_calls = 4 if complete else 3 if private_retries_zero else 5
     recording = recorded_holding()
     holding = recording["holding"]
-    if formal:
-        for candidate in holding["rows"]:
-            candidate["fact_value"] = candidate["fact_value"].replace(
-                "bilinmiyor", "bilinmemektedir"
-            )
     # The incomplete draft is deliberately definite despite unresolved facts.
     # The complete draft exercises conversion and rewrite, without legal acceptance.
     bad_draft = (
@@ -825,9 +826,9 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
             events = await turn(graph, RunRequest(thread_id=thread, skip=True))
         state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
     assert len(requests) == expected_calls
-    assert state["gate"]["rows_dropped"] == (0 if formal else 3)
+    assert state["gate"]["rows_dropped"] == 0
     assert state["question"] == ask(thread).text
-    if formal and complete:
+    if complete:
         answer = only(events, AnswerEvent).answer
         assert not any(isinstance(e, ErrorEvent) for e in events)
         assert {m.fact_key for m in answer.missing_info} >= {
@@ -841,7 +842,7 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
         assert answer.status == "conditional"
         assert answer.headline == "Belirsizlik bulunmaktadır."
         assert not state["gate"]["fallback"]
-    elif formal:
+    else:
         # Missing coverage exhausts the existing two typed retries. The real graph
         # reports its existing honest provider/validation error, never an answer.
         assert only(events, ErrorEvent).code == ErrorCode.internal_error
@@ -855,13 +856,8 @@ async def test_recorded_unknown_holding_http_replay_reaches_only_the_expected_ga
         prompt = requests[2]["messages"][-1]["content"]
         for candidate in holding["rows"]:
             assert candidate["condition_quote"] in prompt
-            assert candidate["fact_value"] in prompt
-    else:
-        assert state["rows"] == []
-        assert state["gate"]["fallback"]
-        assert state["gate"]["attempts"] == 0
-        assert only(events, ErrorEvent).code == ErrorCode.answer_not_verified
-        assert not any(isinstance(e, AnswerEvent) for e in events)
+            formal = candidate["fact_value"].replace("bilinmiyor", "bilinmemektedir")
+            assert json.dumps(formal, ensure_ascii=False) in prompt
 
 
 @pytest.mark.parametrize("change", ["fact_key", "citation", "structure"])
@@ -1018,3 +1014,80 @@ async def test_a_must_read_that_cannot_be_mapped_or_read_is_a_missing_source_in_
     assert all("on sekizinci" not in c["q"] for c in kb.calls[asked:])
     assert "İş Kanunu'nun on sekizinci maddesi" in answer.status_note
     assert "2020/8 m.2.6.2.5" in answer.status_note
+
+
+def _dependent(key: str) -> dict:  # type: ignore[type-arg]
+    return {
+        "rows": [{**row("statute:4857:m18", M18_1, "unknown", sub="1"), "depends_on_facts": [key]}]
+    }
+
+
+@pytest.mark.parametrize("corrected", [True, False])
+async def test_a_dependency_key_outside_the_template_is_corrected_once_then_its_row_drops(
+    corrected: bool,
+) -> None:
+    invented = "fesih_bildirim_tarihi"
+    script = Script(
+        holding=_dependent(invented),
+        holding_retry=_dependent("bildirim_tarihi" if corrected else invented),
+    )
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    events = await turn(graph, answer_all(thread))
+
+    first, second = script.of("holding")
+    assert invented not in first.split("Kaynaklar:")[0]
+    assert f"depends_on_facts içinde olgu listesinde olmayan anahtar: {invented}" in second
+    state = (await graph.aget_state({"configurable": {"thread_id": thread}})).values
+    if corrected:
+        assert len(only(events, AnswerEvent).answer.holding_map.rows) == 1
+        assert state["gate"]["rows_dropped"] == 0
+    else:
+        assert only(events, ErrorEvent).code == ErrorCode.answer_not_verified
+        assert state["gate"]["rows_dropped"] == 1
+
+
+async def test_a_holding_map_with_template_keys_only_is_made_once() -> None:
+    script = Script(holding=_dependent("bildirim_tarihi"))
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    only(await turn(graph, answer_all(thread)), AnswerEvent)
+
+    assert len(script.of("holding")) == 1
+
+
+async def test_a_second_register_failure_drops_only_the_informal_sentences() -> None:
+    bad = draft()
+    bad["points"][0]["text"] = "Altı aylık kıdem şartı aranmaktadır. Bu şart aranıyor."
+    script = Script(drafts=[bad], rewrite=bad)
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    answer = only(await turn(graph, answer_all(thread)), AnswerEvent).answer
+
+    assert [p.text for p in answer.points] == ["Altı aylık kıdem şartı aranmaktadır."]
+    assert answer.headline == "İşe iade davası açılamamaktadır."
+    rewrite = script.of("rewrite")[0]
+    assert "Hatalı cümleler" in rewrite and "- Bu şart aranıyor." in rewrite
+    assert "Altı aylık kıdem şartı aranmaktadır.\n" not in rewrite.split("{", 1)[0]
+    assert "«Bu şart aranıyor.»" in script.of("draft")[1]
+    gate = (await graph.aget_state({"configurable": {"thread_id": thread}})).values["gate"]
+    assert gate["attempts"] == 2 and not gate["fallback"]
+    assert (gate["sentences_dropped"], gate["branches_dropped"]) == (1, 0)
+
+
+async def test_the_draft_sees_the_row_numbers_its_headline_names() -> None:
+    script = Script()
+    graph = make_graph(script)
+    thread = unique_thread()
+    await turn(graph, ask(thread))
+
+    only(await turn(graph, answer_all(thread)), AnswerEvent)
+
+    holding = script.of("draft")[0].split("Hüküm haritası:\n", 1)[1].split("\n\n", 1)[0]
+    assert [r["row"] for r in json.loads(holding)] == [1]
