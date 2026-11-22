@@ -1,6 +1,7 @@
 # Görev 19: Esaslı ve kaynaklı cevap + 20 vakalık eval
 
-Durum: onaylı (Orhan, 2026-11-22). Sahip: Claude Code (orkestratör + subagent'lar). Onay ve merge: Orhan.
+Durum: kapandı (Orhan, 2026-11-22; sonuç ve açık kalanlar `eval/results/2026-11-22-ozet.md`).
+Önceki durum: onaylı (Orhan, 2026-11-22). Sahip: Claude Code (orkestratör + subagent'lar). Onay ve merge: Orhan.
 Ön koşul: Paket A (handoff A1-A5) main'de, yerel KB dolu.
 Handoff: `docs/handoff/2026-11-22-chat-fix/` (`00-README.md` K1, K2; `B-cases-new10.md`; bütçe tavanı 5 USD, tüm turlar).
 Bağlam: `docs/tasks/17-agent-v1.md` (graf, kapı, eval koşucusu), `18-chat-wiring.md` (2026-11-09 kapsam daraltması),
