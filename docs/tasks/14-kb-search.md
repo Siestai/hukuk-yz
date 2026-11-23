@@ -12,7 +12,7 @@ Bugün canlıda `chunk` tablosu boş, arama API'si yok. Onaylı karar 90, analiz
 
 ## Karar: kapalı betada onaysız kaynak (Orhan, 2026-10-27)
 
-Beta süresince `analyzed` durumdaki kaynaklar da indekslenir ve aranabilir. Her sonuç `review_status` (`approved` / `analyzed`) taşır; ajan ve UI onaysızı "onaylanmadı" etiketiyle gösterir. `rejected` hiçbir zaman indekslenmez. Açık yayından önce bu davranış bir ayarla kapatılır (2026-11-22, K1: ayar `KB_TEST_SOURCE_BANDS` oldu, varsayılan boş; testte `high,medium`, `low` bant hiç dönmez; eski `KB_SEARCH_INCLUDE_UNREVIEWED` kalktı).
+Beta süresince `analyzed` durumdaki kaynaklar da indekslenir ve aranabilir. Her sonuç `review_status` (`approved` / `analyzed`) taşır; ajan ve UI onaysızı "onaysız (test)" etiketiyle gösterir (#106). `rejected` hiçbir zaman indekslenmez. Açık yayından önce bu davranış bir ayarla kapatılır (2026-11-22, K1: ayar `KB_TEST_SOURCE_BANDS` oldu, varsayılan boş; testte `high,medium`, `low` bant hiç dönmez; eski `KB_SEARCH_INCLUDE_UNREVIEWED` kalktı).
 
 ## Kapsam
 
