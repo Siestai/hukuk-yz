@@ -27,6 +27,9 @@ class IntakeFact(LlmModel):
     key: str
     # What the user said, in their words; None when the question does not say.
     value: str | None = None
+    # For a fact with options: the value of the option the question plainly fits, else None. The
+    # user's words alone never pick an option (they would leave the fact unknown and re-asked).
+    option: str | None = None
     # `assumed_never` only when the user says the fact does not apply; never from silence.
     status: FactStatus
 
