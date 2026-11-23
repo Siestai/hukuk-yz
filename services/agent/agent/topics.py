@@ -57,8 +57,8 @@ class Question(TopicModel):
     @model_validator(mode="after")
     def _options_match_kind(self) -> Self:
         # A date may carry options: the answers that name no date ("Tutanak tutulmadı").
-        if (self.kind == "choice") != bool(self.options) and not (
-            self.kind == "date" and self.options
+        if (self.kind == "choice" and not self.options) or (
+            self.kind not in ("choice", "date") and self.options
         ):
             raise ValueError("a choice has options, a date may, other inputs have none")
         return self
