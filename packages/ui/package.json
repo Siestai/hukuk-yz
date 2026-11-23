@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
-    "./fonts": "./src/fonts/fonts.ts"
+    "./fonts": "./src/fonts/fonts.ts",
+    "./fonts/glarus": "./src/fonts/glarus.ts"
   },
   "scripts": {
     "lint": "eslint --config ../../services/dashboard-web/eslint.config.mjs .",
