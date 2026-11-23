@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glarus · Liman</title>
+<!--
+TASARIM PLANI — Yön D "Liman" (A'nın güveni + B'nin sıcaklığı)
+1. Palet: lacivert mürekkep #14233F (metin, yapı, kenar çubuğu), kâğıt #F6F1E6 / yüzey #FCFAF4 / çukur #EDE6D4, çizgi #DDD3BC,
+   turkuaz #0E7C73 (ana etkileşim; beyaz üstünde 5:1+, koyu "dudak" #0A5A53, yumuşak #DDEFEA), sıcak aksan mat altın #B38A2E / metin #6F5113 / yumuşak #F3E7C6
+   (yalnız alıntı vurgusu, "koşullu" rozeti, onaysız etiketi; ekranın %5'inden az). Büyük sarı alan yok.
+2. Yazı: Newsreader (wordmark, soru, cevap başlığı, madde metni, dayanak sayfası) + Figtree (arayüz; yuvarlak ama hassas). Ölçek: 13/15/17/18/20/24/36.
+3. Yerleşim: masaüstünde lacivert konuşma listesi | kâğıt üstünde tek okuma sütunu (44rem) | sağa yaslı Dayanak sütunu. Telefonda kâğıt üst bar + çekmece + alt sayfa.
+4. Yüzey dili: kartlar tek ince çizgili (16px), içinde kutu yok; bölümler ince çizgiyle ayrılır. Yuvarlaklık (10px) yalnız etkileşimli öğelerde.
+5. Dokunsal: butonlar, seçenekler, atıf çipleri 2px "dudak" gölgeli; basınca 2px çöker. Soru kartı "Soru 2 / 5" + ince ilerleme çubuğu, büyük seçenekler,
+   cevaplanan soru tek satıra (tik + etiket + değer) çöker.
+6. Radius: 10 (kontrol) ve 16 (kart). Boşluk: 4/8/12/16/24/32/48. Tüm değerler :root'ta, bileşende sabit renk yok.
+7. UNUTULMAZ OLAN: dayanak sayfası. Alıntı, madde metninin içinde altın fosforla işaretli, serif okuma metni olarak sağ sütunda durur; cevap solda, kaynak yanında.
+8. Wordmark: "Glarus" Newsreader + altında küçük "by siestai"; işaret: lacivert yuvarlak kare içinde serif G ve turkuaz nokta (cümle sonu noktası = netlik).
+9. Boş durum işareti: ince halka + turkuaz nokta + altın ufuk çizgisi (liman girişi); karakter yok. Çalışırken halka döner.
+10. Veri: flows.js içeriği dosyaya gömülü, olduğu gibi. Dayanak metni yalnız veride olan alıntıdır.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* color */
+  --navy:#14233F; --navy-2:#1F3358; --navy-3:#0D1829;
+  --paper:#F6F1E6; --surface:#FCFAF4; --sunk:#EDE6D4;
+  --line:#DDD3BC; --line-2:#C2B697;
+  --ink:#14233F; --ink-2:#44506A; --ink-inv:#F6F1E6; --ink-inv-2:#AAB4C8;
+  --teal:#0E7C73; --teal-lip:#0A5A53; --teal-soft:#DDEFEA; --teal-edge:#9CCDC5; --teal-ink:#0A5A53; --teal-bright:#35B5A8; --on-teal:#FFFFFF;
+  --gold:#B38A2E; --gold-soft:#F3E7C6; --gold-ink:#6F5113; --mark:rgba(179,138,46,.34);
+  --danger:#8E3B2F; --danger-soft:#F6E1DC;
+  --scrim:rgba(20,35,63,.5); --shadow-c:rgba(20,35,63,.16);
+  --focus:#0E7C73; --focus-dark:#E6C46F;
+  /* type */
+  --font-serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --font-ui:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --fs-xs:.8125rem; --fs-sm:.9375rem; --fs-md:1.0625rem; --fs-read:1.125rem; --fs-lg:1.25rem; --fs-xl:1.5rem; --fs-2xl:2.25rem;
+  --fs-head:1.25rem;
+  /* radius: controls / cards */
+  --r-ctl:10px; --r-card:16px;
+  /* space */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+  /* tactile + shadow */
+  --lip:2px; --sh-pop:0 -12px 40px -8px var(--shadow-c);
+  --tap:48px; --hair:1px;
+  --sidebar-w:272px; --viewer-w:440px; --read-w:44rem;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--font-ui);font-size:var(--fs-md);line-height:1.6;color:var(--ink);background:var(--paper);-webkit-text-size-adjust:100%;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:var(--r-ctl)}
+.dark :focus-visible{outline-color:var(--focus-dark)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+h1,h2,h3{font-family:var(--font-serif);margin:0;line-height:1.25;font-weight:500}
+
+/* ---------- tactile button ---------- */
+.btn{--bg:var(--surface);--lipc:var(--line-2);--fg:var(--ink);--bd:var(--line-2);
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+  min-height:var(--tap);padding:var(--s2) var(--s5);border:var(--hair) solid var(--bd);border-radius:var(--r-ctl);
+  background:var(--bg);color:var(--fg);font-weight:600;font-size:var(--fs-md);line-height:1.25;
+  box-shadow:0 var(--lip) 0 var(--lipc);transform:translateY(0);transition:transform .08s,box-shadow .08s,background .15s;text-align:center}
+.btn:hover{background:color-mix(in srgb,var(--bg) 94%,var(--ink))}
+.btn:active:not(:disabled){transform:translateY(var(--lip));box-shadow:0 0 0 var(--lipc)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.teal{--bg:var(--teal);--lipc:var(--teal-lip);--bd:var(--teal-lip);--fg:var(--on-teal)}
+.btn.teal:hover{background:var(--teal-lip)}
+.btn.navy{--bg:var(--navy-2);--lipc:var(--navy-3);--bd:var(--navy-3);--fg:var(--ink-inv)}
+.btn.sm{min-height:44px;padding:var(--s2) var(--s4);font-size:var(--fs-sm)}
+.btn[aria-pressed=true]{--bg:var(--teal-soft);--lipc:var(--teal-edge);--bd:var(--teal);color:var(--teal-ink)}
+.linkbtn{background:none;border:0;padding:var(--s3) var(--s2);min-height:44px;color:var(--ink-2);font-weight:500;text-decoration:underline;text-underline-offset:3px;border-radius:var(--r-ctl)}
+.linkbtn:hover{color:var(--ink)}
+
+/* ---------- app shell ---------- */
+.app{height:100dvh;display:grid;grid-template-columns:1fr;position:relative;background:var(--paper)}
+.sidebar{position:fixed;inset:0 auto 0 0;width:min(88vw,320px);z-index:40;background:var(--navy);color:var(--ink-inv);display:flex;flex-direction:column;padding:var(--s4);padding-top:max(var(--s4),env(safe-area-inset-top));transform:translateX(-102%);transition:transform .25s ease;overflow-y:auto;visibility:hidden}
+.sidebar.open{transform:none;visibility:visible}
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:35;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.show{opacity:1;pointer-events:auto}
+.brand{display:flex;align-items:center;gap:var(--s3)}
+.brand .mark{flex:none}
+.brand .mark .bg{fill:var(--navy)} .brand .mark .g{fill:var(--ink-inv)} .brand .mark .dot{fill:var(--teal-bright)}
+.dark .brand .mark .bg{fill:var(--ink-inv)} .dark .brand .mark .g{fill:var(--navy)}
+.brand .word{display:flex;flex-direction:column;line-height:1}
+.brand .name{font-family:var(--font-serif);font-weight:600;font-size:1.625rem;letter-spacing:-.015em;color:var(--ink)}
+.brand .by{font-size:var(--fs-xs);font-weight:500;color:var(--ink-2);margin-top:2px;letter-spacing:.02em}
+.dark .brand .name{color:var(--ink-inv)} .dark .brand .by{color:var(--ink-inv-2)}
+.sidebar .newbtn{margin:var(--s5) 0 var(--s4);width:100%}
+.sidebar h2{font-family:var(--font-ui);font-size:var(--fs-xs);color:var(--ink-inv-2);font-weight:600;margin:var(--s3) var(--s2) var(--s2);letter-spacing:.02em}
+.convlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s1);flex:1}
+.conv{width:100%;text-align:left;min-height:var(--tap);padding:var(--s3) var(--s3);border-radius:var(--r-ctl);border:var(--hair) solid transparent;background:transparent;color:var(--ink-inv);font-weight:600;font-size:var(--fs-sm);line-height:1.35;display:block}
+.conv small{display:block;font-weight:400;color:var(--ink-inv-2);font-size:var(--fs-xs)}
+.conv[aria-current=true]{background:var(--navy-2);border-color:var(--navy-2)}
+.conv:hover{background:var(--navy-2)}
+.convempty{color:var(--ink-inv-2);font-size:var(--fs-sm);padding:var(--s3) var(--s2)}
+.logout{margin-top:var(--s4);background:none;border:var(--hair) solid var(--navy-2);color:var(--ink-inv);border-radius:var(--r-ctl);min-height:var(--tap);font-weight:600;width:100%}
+.logout:hover{background:var(--navy-2)}
+
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;height:100dvh;background:var(--paper)}
+.topbar{display:flex;align-items:center;gap:var(--s3);padding:var(--s2) var(--s4);padding-top:max(var(--s2),env(safe-area-inset-top));flex:none;border-bottom:var(--hair) solid var(--line)}
+.topbar .brand{flex:1;min-width:0}
+.topbar .brand .name{font-size:1.5rem}
+.iconbtn{width:var(--tap);height:var(--tap);padding:0;display:grid;place-items:center;flex:none;min-height:var(--tap)}
+.iconbtn .bars{width:20px;height:14px;border-top:2px solid currentColor;border-bottom:2px solid currentColor;position:relative;border-radius:2px}
+.iconbtn .bars::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:currentColor;border-radius:2px}
+.sheetwrap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.thread{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;padding:var(--s5) var(--s4) var(--s6);-webkit-overflow-scrolling:touch}
+.col{max-width:var(--read-w);margin:0 auto;display:flex;flex-direction:column;gap:var(--s4)}
+
+/* empty */
+.empty{text-align:center;padding:var(--s5) 0 var(--s2);display:flex;flex-direction:column;align-items:center;gap:var(--s4)}
+.empty h1{font-size:var(--fs-xl);font-weight:500;letter-spacing:-.01em}
+.empty p{margin:0;color:var(--ink-2);font-size:var(--fs-sm);max-width:36ch}
+.chips{display:flex;flex-direction:column;gap:var(--s3);width:100%;max-width:560px;margin-top:var(--s2)}
+.sugg{width:100%;text-align:left;justify-content:flex-start;padding:var(--s3) var(--s4);min-height:var(--tap);font-weight:400;font-size:var(--fs-sm);line-height:1.5;display:block}
+.sugg b{display:block;font-size:var(--fs-xs);color:var(--teal-ink);font-weight:700;margin-bottom:2px;letter-spacing:.01em}
+.sugg span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hmark{width:56px;height:56px;overflow:visible}
+.hmark .ring{fill:none;stroke:var(--navy);stroke-width:1.5}
+.hmark .dot{fill:var(--teal)}
+.chead .hmark{width:32px;height:32px}
+.hmark .hor{stroke:var(--gold);stroke-width:1.5;stroke-linecap:round}
+.hmark .orbit{transform-origin:28px 28px}
+.hmark .dotg{animation:breathe 4s ease-in-out infinite;transform-origin:28px 12px}
+.hmark.busy .orbit{animation:spin 2.4s linear infinite}
+.hmark.busy .dotg{animation:none}
+@keyframes breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* bubbles */
+.msg{display:flex;animation:rise .35s ease both}
+.msg.user{justify-content:flex-end}
+.bubble{max-width:88%;background:var(--navy);color:var(--ink-inv);padding:var(--s3) var(--s4);border-radius:var(--r-card);overflow-wrap:anywhere;font-size:var(--fs-md)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* cards */
+.card{background:var(--surface);border:var(--hair) solid var(--line);border-radius:var(--r-card);padding:var(--s4);animation:rise .4s ease both;min-width:0}
+.card>h2,.card>.chead{margin-bottom:var(--s3)}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);flex-wrap:wrap}
+.chead h2{font-size:var(--fs-lg)}
+.tag{display:inline-block;color:var(--teal-ink);background:var(--teal-soft);font-weight:600;font-size:var(--fs-xs);padding:2px var(--s3);border-radius:var(--r-ctl)}
+
+/* progress steps */
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s2)}
+.steps li{display:flex;align-items:center;gap:var(--s3);color:var(--ink-2);min-height:32px;font-size:var(--fs-sm)}
+.dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--line-2);flex:none;display:grid;place-items:center;transition:background .2s,border-color .2s}
+.steps li.done{color:var(--ink)}
+.steps li.done .dot{background:var(--teal);border-color:var(--teal)}
+.steps li.done .dot::after{content:"";width:5px;height:9px;border:solid var(--on-teal);border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.steps li.now{color:var(--ink)}
+.steps li.now .dot{border-color:var(--teal);animation:pulse 1.2s ease-in-out infinite}
+.steps li.now span{background:linear-gradient(90deg,var(--ink-2) 0%,var(--ink) 40%,var(--ink-2) 80%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shim 1.6s linear infinite}
+@keyframes shim{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes pulse{50%{transform:scale(1.15)}}
+
+/* facts */
+.facts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.fact{display:grid;grid-template-columns:1fr auto;gap:var(--s1) var(--s3);align-items:center;padding:var(--s3) 0;border-top:var(--hair) solid var(--line)}
+.fact:first-child{border-top:0;padding-top:0}
+.fact .k{font-size:var(--fs-xs);font-weight:600;color:var(--ink-2);grid-column:1/2}
+.fact .v{grid-column:1/2;font-family:var(--font-serif);font-size:var(--fs-read);line-height:1.4;overflow-wrap:anywhere}
+.fact .v.unk{color:var(--ink-2);font-style:italic}
+.fact .v.pop{animation:pop .5s ease}
+.fact .btn{grid-column:2/3;grid-row:1/3}
+.fact input{width:100%;min-height:var(--tap);border:var(--hair) solid var(--line-2);border-radius:var(--r-ctl);padding:0 var(--s3);font-size:1rem;background:var(--paper)}
+.fact .editrow{grid-column:1/3;display:flex;gap:var(--s2);flex-wrap:wrap}
+.fact .editrow input{flex:1;min-width:140px}
+@keyframes pop{0%{background:var(--gold-soft)}100%{background:transparent}}
+
+/* question card */
+.qcard{background:var(--surface);border:var(--hair) solid var(--line);border-radius:var(--r-card);padding:var(--s5) var(--s4);animation:rise .4s ease both;display:flex;flex-direction:column;gap:var(--s4)}
+.qhead{display:flex;align-items:center;justify-content:space-between;gap:var(--s4)}
+.qhead b{font-weight:600;font-size:var(--fs-sm);white-space:nowrap;color:var(--teal-ink)}
+.pbar{flex:1;max-width:160px;height:6px;border-radius:var(--r-ctl);background:var(--sunk);overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--teal);border-radius:var(--r-ctl);transition:width .4s ease}
+.qlabel{font-size:var(--fs-xs);font-weight:600;color:var(--ink-2);margin-bottom:var(--s1)}
+.qtext{font-family:var(--font-serif);font-size:var(--fs-xl);font-weight:500;line-height:1.28;letter-spacing:-.005em}
+.why{border-top:var(--hair) solid var(--line);font-size:var(--fs-sm);color:var(--ink-2);line-height:1.6}
+.why summary{min-height:var(--tap);display:flex;align-items:center;gap:var(--s2);cursor:pointer;list-style:none;font-weight:600;color:var(--ink)}
+.why summary::-webkit-details-marker{display:none}
+.why summary::after{content:"";margin-left:var(--s1);width:8px;height:8px;border:solid var(--ink-2);border-width:0 2px 2px 0;transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
+.why[open] summary::after{transform:rotate(-135deg);margin-top:3px}
+.why p{margin:0}
+.basis{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s3)}
+.opts{display:flex;flex-direction:column;gap:var(--s3)}
+.opt{width:100%;text-align:left;justify-content:flex-start;font-weight:500;padding:var(--s3) var(--s4);min-height:56px;font-size:var(--fs-md)}
+.opt .letter{flex:none;width:28px;height:28px;border-radius:var(--r-ctl);background:var(--paper);border:var(--hair) solid var(--line-2);display:grid;place-items:center;font-size:var(--fs-xs);font-weight:700;color:var(--ink-2)}
+.opt.chosen{--bg:var(--teal-soft);--lipc:var(--teal-edge);--bd:var(--teal);animation:pop .45s ease}
+.opt.chosen .letter{background:var(--teal);color:var(--on-teal);border-color:var(--teal)}
+.opt.idk{--bg:transparent;--lipc:transparent;border-style:dashed;color:var(--ink-2);box-shadow:none}
+.opt.idk:active:not(:disabled){transform:none}
+.qcard.done{pointer-events:none}
+.qsum{display:flex;align-items:baseline;gap:var(--s3);min-height:var(--tap);padding:var(--s3) var(--s2);border-bottom:var(--hair) solid var(--line);animation:rise .3s ease both;min-width:0;align-items:center}
+.qsum .k{font-size:var(--fs-sm);color:var(--ink-2);flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46%}
+.qsum .v{font-family:var(--font-serif);font-size:var(--fs-read);flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.qsum svg{width:20px;height:20px;flex:none;align-self:center}
+.datebox{display:flex;flex-direction:column;gap:var(--s2)}
+.datebox input,.textbox textarea{width:100%;min-height:var(--tap);border:var(--hair) solid var(--line-2);border-radius:var(--r-ctl);padding:var(--s3) var(--s4);font-size:1rem;background:var(--paper);box-shadow:inset 0 2px 0 var(--sunk)}
+.datebox input:focus,.textbox textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+.textbox textarea{min-height:96px;resize:vertical}
+.hint{font-size:var(--fs-xs);color:var(--ink-2)}
+.skip{align-self:flex-start;margin:calc(var(--s2) * -1) 0 0}
+
+/* answer: a typeset document */
+.answer{background:var(--surface);border:var(--hair) solid var(--line);border-radius:var(--r-card);padding:var(--s5) var(--s4);animation:rise .5s ease both;display:flex;flex-direction:column;gap:var(--s4);min-width:0}
+.badge{align-self:flex-start;display:inline-flex;align-items:center;gap:var(--s2);font-weight:700;padding:var(--s1) var(--s3);min-height:32px;border-radius:var(--r-ctl);font-size:var(--fs-sm);line-height:1}
+.badge.clear{background:var(--teal-soft);color:var(--teal-ink)}
+.badge.cond{background:var(--gold-soft);color:var(--gold-ink)}
+.badge svg{width:18px;height:18px;flex:none}
+.note{font-size:var(--fs-xs);color:var(--ink-2);margin:calc(var(--s2) * -1) 0 0;line-height:1.55}
+.headline{font-family:var(--font-serif);font-weight:500;font-size:var(--fs-head);line-height:1.42;margin:0;overflow-wrap:anywhere;letter-spacing:-.005em;text-wrap:pretty}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s1);padding:var(--s1);background:var(--sunk);border-radius:var(--r-card)}
+.modes button{border:var(--hair) solid transparent;background:transparent;min-height:44px;border-radius:var(--r-ctl);font-weight:600;font-size:var(--fs-sm);color:var(--ink-2);padding:0 var(--s1)}
+.modes button[aria-checked=true]{background:var(--surface);color:var(--ink);border-color:var(--line-2);box-shadow:0 var(--lip) 0 var(--line-2)}
+.points{list-style:none;margin:0;padding:0;counter-reset:p}
+.points>li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:var(--s3);counter-increment:p;animation:rise .35s ease both;padding:var(--s4) 0;border-top:var(--hair) solid var(--line)}
+.points>li::before{content:counter(p);font-family:var(--font-serif);font-size:var(--fs-lg);line-height:1.5;color:var(--teal-ink);font-weight:500}
+.points p{margin:0 0 var(--s3);overflow-wrap:anywhere;font-family:var(--font-serif);font-size:var(--fs-read);line-height:1.62}
+.cites{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.cite{display:inline-flex;align-items:center;gap:var(--s2);min-height:44px;max-width:100%;padding:0 var(--s3);border-radius:var(--r-ctl);border:var(--hair) solid var(--teal-edge);background:var(--teal-soft);color:var(--teal-ink);font-weight:600;font-size:var(--fs-sm);box-shadow:0 var(--lip) 0 var(--teal-edge);margin-bottom:var(--lip);text-align:left;transition:transform .08s,box-shadow .08s}
+.cite:active{transform:translateY(var(--lip));box-shadow:0 0 0 var(--teal-edge)}
+.cite small{font-weight:600;font-size:.75rem;background:var(--gold-soft);color:var(--gold-ink);padding:0 var(--s2);border-radius:var(--s1)}
+.cite.on{background:var(--teal);border-color:var(--teal-lip);color:var(--on-teal);box-shadow:0 var(--lip) 0 var(--teal-lip)}
+.cite.on small{background:var(--gold-soft)}
+.quote{margin:var(--s3) 0 0;padding:var(--s3) 0 0;border-top:var(--hair) dashed var(--line-2);font-family:var(--font-serif);font-size:var(--fs-md);font-style:italic;color:var(--ink-2);line-height:1.6}
+.quote b{display:block;font-family:var(--font-ui);font-style:normal;color:var(--ink);font-size:var(--fs-xs);font-weight:600;margin-bottom:2px}
+.more{font-size:var(--fs-sm);color:var(--ink-2);margin:0}
+.sect{border-top:var(--hair) solid var(--line);padding-top:var(--s4)}
+.sect h3{font-size:var(--fs-lg);margin-bottom:var(--s2)}
+.cond-row{padding:var(--s3) 0;border-top:var(--hair) solid var(--line);display:flex;flex-direction:column;gap:var(--s2)}
+.cond-row:first-of-type{border-top:0}
+.cond-row .if,.cond-row .then{margin:0;overflow-wrap:anywhere;font-family:var(--font-serif);font-size:var(--fs-read);line-height:1.55}
+.cond-row b{display:block;font-family:var(--font-ui);font-size:var(--fs-xs);font-weight:700;color:var(--teal-ink)}
+details.reads{border-top:var(--hair) solid var(--line)}
+details.reads summary{min-height:var(--tap);display:flex;align-items:center;font-weight:600;cursor:pointer;list-style:none;gap:var(--s2);font-size:var(--fs-sm)}
+details.reads summary::-webkit-details-marker{display:none}
+details.reads summary::after{content:"";margin-left:auto;width:8px;height:8px;border:solid var(--ink-2);border-width:0 2px 2px 0;transform:rotate(45deg);transition:transform .2s}
+details.reads[open] summary::after{transform:rotate(-135deg)}
+details.reads ul{margin:0;padding:0 0 var(--s2);list-style:none;display:flex;flex-wrap:wrap;gap:var(--s2)}
+details.reads li{background:var(--paper);border:var(--hair) solid var(--line);border-radius:var(--r-ctl);padding:2px var(--s3);font-size:var(--fs-sm)}
+.fb{display:flex;flex-wrap:wrap;gap:var(--s2);border-top:var(--hair) solid var(--line);padding-top:var(--s4)}
+.fb .btn{flex:1 1 auto;min-width:0;padding-left:var(--s3);padding-right:var(--s3)}
+.reportbox{display:flex;flex-direction:column;gap:var(--s2)}
+.reportbox textarea{width:100%;min-height:80px;border:var(--hair) solid var(--line-2);border-radius:var(--r-ctl);padding:var(--s3);font-size:1rem;background:var(--paper)}
+
+/* composer */
+.composer{flex:none;padding:var(--s3) var(--s4) max(var(--s5),env(safe-area-inset-bottom));background:var(--paper);border-top:var(--hair) solid var(--line)}
+.composer[hidden]{display:none}
+.cbox{max-width:var(--read-w);margin:0 auto;display:flex;gap:var(--s2);align-items:flex-end;background:var(--surface);border:var(--hair) solid var(--line-2);border-radius:var(--r-card);padding:var(--s2) var(--s2) var(--s2) var(--s4)}
+.cbox:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+.cbox textarea{flex:1;min-width:0;border:0;background:transparent;resize:none;font-size:1rem;line-height:1.5;padding:10px 0;max-height:180px;min-height:44px;outline:none}
+.cbox textarea::placeholder{color:var(--ink-2);opacity:.85}
+.cbox .btn{flex:none}
+
+/* viewer */
+.viewer{position:fixed;z-index:50;left:0;right:0;bottom:0;max-height:88dvh;background:var(--surface);border-radius:var(--r-card) var(--r-card) 0 0;box-shadow:var(--sh-pop);transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;visibility:hidden}
+.viewer.open{transform:none;visibility:visible}
+.vhead{display:flex;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s3);border-bottom:var(--hair) solid var(--line)}
+.vhead h2{font-size:var(--fs-xl);flex:1;min-width:0;line-height:1.2}
+.vhead small{display:block;font-family:var(--font-ui);font-size:var(--fs-xs);color:var(--ink-2);font-weight:600;margin-bottom:2px}
+.vbody{overflow-y:auto;padding:var(--s4) var(--s4) max(var(--s6),env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:var(--s4)}
+.vstat{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.pill{display:inline-block;font-weight:600;font-size:var(--fs-xs);padding:2px var(--s3);border-radius:var(--r-ctl);background:var(--sunk);color:var(--ink-2)}
+.pill.warn{background:var(--gold-soft);color:var(--gold-ink)}
+.article{font-family:var(--font-serif);font-size:var(--fs-lg);line-height:1.7;padding:var(--s4) 0 0;border-top:var(--hair) solid var(--line)}
+.article .ctx{color:var(--ink-2);font-style:italic;font-size:var(--fs-md)}
+.article mark{background:var(--mark);color:var(--ink);padding:.05em .15em;margin:0 -.15em;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-bottom:2px solid var(--gold)}
+.vbody .hint{font-size:var(--fs-xs)}
+.vscrim{z-index:45}
+.grab{display:none}
+
+.toast{position:fixed;left:50%;bottom:max(var(--s5),env(safe-area-inset-bottom));transform:translate(-50%,30px);background:var(--navy);color:var(--ink-inv);padding:var(--s3) var(--s5);border-radius:var(--r-ctl);font-weight:500;font-size:var(--fs-sm);opacity:0;pointer-events:none;transition:all .25s;z-index:80;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.mocktag{position:fixed;left:var(--s2);bottom:var(--s1);z-index:90;background:var(--navy);color:var(--ink-inv);font-weight:600;font-size:.6875rem;line-height:1.5;padding:0 var(--s2);border-radius:var(--r-ctl);pointer-events:none;opacity:.85}
+
+/* ---------- breakpoints ---------- */
+@media (min-width:640px){
+  .viewer{left:50%;right:auto;width:min(640px,100%);margin-left:-320px}
+  .thread{padding:var(--s6) var(--s6) var(--s7)}
+  .composer{padding-left:var(--s6);padding-right:var(--s6)}
+  .empty h1{font-size:var(--fs-2xl)}
+  .bubble{max-width:75%}
+  :root{--fs-head:1.5rem}
+  .answer{padding:var(--s6) var(--s6)}
+  .qcard{padding:var(--s5)}
+  .card{padding:var(--s5)}
+  .vhead,.vbody{padding-left:var(--s5);padding-right:var(--s5)}
+}
+@media (min-width:1100px){
+  .app{grid-template-columns:var(--sidebar-w) minmax(0,1fr) 0;transition:grid-template-columns .3s ease}
+  .app.viewing{grid-template-columns:var(--sidebar-w) minmax(0,1fr) var(--viewer-w)}
+  .sidebar{position:static;transform:none;width:auto;height:100dvh;padding-bottom:var(--s7);visibility:visible}
+  .sidebar .brand{padding:var(--s2) var(--s1)}
+  .scrim{display:none}
+  .topbar{display:none}
+  .viewer{position:static;grid-column:3;width:auto;margin:0;max-height:none;height:100dvh;border-radius:0;transform:none;visibility:visible;box-shadow:none;border-left:var(--hair) solid var(--line);overflow:hidden;opacity:0;pointer-events:none;min-width:0}
+  .app.viewing .viewer{opacity:1;pointer-events:auto}
+  .vhead{padding-top:var(--s5)}
+  .vbody{padding-bottom:var(--s6)}
+  .mocktag{left:var(--s4);bottom:var(--s3);background:var(--navy-2)}
+}
+@media (max-width:640px){
+  .grab{display:block;width:36px;height:4px;border-radius:var(--r-ctl);background:var(--line-2);margin:var(--s2) auto 0}
+}
+@media (max-width:380px){
+  :root{--fs-xl:1.375rem;--fs-lg:1.125rem}
+  .btn{padding-left:var(--s4);padding-right:var(--s4)}
+  .modes button{font-size:var(--fs-xs)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar dark" id="sidebar" aria-label="Konuşma listesi">
+    <div class="brand" data-brand></div>
+    <button class="btn teal newbtn" id="newBtn" type="button">Yeni soru</button>
+    <h2 id="convH">Konuşmalar</h2>
+    <ul class="convlist" id="convList" aria-labelledby="convH"></ul>
+    <button class="logout" type="button" id="logout">Çıkış yap</button>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="brand" data-brand></div>
+      <button class="btn iconbtn" id="menuBtn" type="button" aria-label="Konuşmalar" aria-expanded="false"><span class="bars"></span></button>
+    </header>
+    <div class="sheetwrap">
+      <div class="thread" id="thread" tabindex="-1"></div>
+      <form class="composer" id="composer" autocomplete="off">
+        <div class="cbox">
+          <label class="sr" for="q">Sorunuzu yazın</label>
+          <textarea id="q" rows="1" placeholder="Sorunuzu yazın"></textarea>
+          <button class="btn teal" type="submit">Gönder</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <aside class="viewer" id="viewer" aria-label="Dayanak" role="complementary">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="vhead">
+      <h2><small>Dayanak</small><span id="vTitle"></span></h2>
+      <button class="btn sm xbtn" id="vClose" type="button" aria-label="Dayanağı kapat">Kapat</button>
+    </div>
+    <div class="vbody" id="vBody"></div>
+  </aside>
+  <div class="scrim vscrim" id="vScrim"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="mocktag">Mockup · Liman</div>
+
+<script>
+// Real flows from the eval set (r4, 2026-11-22) + live topic questions. Generated, do not edit.
+window.GLARUS_FLOWS = [
+ {
+  "id": "SB-027",
+  "topic": "Haklı nedenle fesih ve devamsızlık",
+  "question": "Ben ik uzmanıyım çalışan 5 gün üstüste mazaretsiz işe gelmedi üstüme insan kaynakları uzmanı olarak ne yapmam lazım?",
+  "known": [
+   {
+    "label": "Feshin dayandığı sebep",
+    "value": "İşverenin işçinin devamsızlığı nedeniyle feshi"
+   },
+   {
+    "label": "Devamsızlık günleri",
+    "value": "Ardı ardına iki veya daha fazla iş günü"
+   },
+   {
+    "label": "Mazeret veya izin",
+    "value": "Hayır"
+   }
+  ],
+  "questions": [
+   {
+    "key": "isciye_ulasma",
+    "label": "İşçiye ulaşılması",
+    "text": "İşçiye ulaşılıp işe gelmeme sebebi soruldu mu?",
+    "why": "4857 m.25/II-g, devamsızlığın işverenden izin alınmaksızın veya haklı bir sebebe dayanmaksızın gerçekleşmesini aramaktadır. 4857 m.19, davranış nedeniyle fesihte savunma alınmasını öngörmekte ve m.25/II'ye uygun fesih hakkını saklı tutmaktadır.",
+    "kind": "choice",
+    "options": [
+     "İşçiye ulaşılamadı",
+     "Ulaşıldı; işçi bir sebep bildirmedi",
+     "Ulaşıldı; işçi bir sebep bildirdi",
+     "Henüz ulaşılmaya çalışılmadı",
+     "Devamsızlık söz konusu değil"
+    ],
+    "basis": [
+     "4857 m.25",
+     "4857 m.19"
+    ]
+   },
+   {
+    "key": "olay_tarihi",
+    "label": "Fesih sebebinin öğrenildiği tarih",
+    "text": "Fesih sebebi olan olay hangi tarihte gerçekleşti veya öğrenildi?",
+    "why": "Ahlak ve iyi niyet kurallarına uymayan hallere dayanan fesih yetkisi, diğer tarafın bu davranışı öğrendiği günden başlayarak altı iş günü geçtikten ve her hâlde fiilin gerçekleşmesinden itibaren bir yıl sonra kullanılamamaktadır (4857 m.26).",
+    "kind": "date",
+    "options": [],
+    "basis": [
+     "4857 m.26"
+    ]
+   },
+   {
+    "key": "tutanak_tarihi",
+    "label": "Devamsızlık tutanağı",
+    "text": "Devamsızlık tutanağı hangi tarihte tutuldu?",
+    "why": "Kanunda öngörülen bildirimler ilgiliye yazılı olarak ve imza karşılığında yapılmakta, imzadan kaçınılırsa durum tutanakla tespit edilmektedir (4857 m.109). Devamsızlığın işçinin izinsiz ve haklı sebebe dayanmaksızın gerçekleştiği (4857 m.25/II-g) tutanakla belgelenmektedir.",
+    "kind": "date",
+    "options": [
+     "Tutanak tutulmadı"
+    ],
+    "basis": [
+     "4857 m.109",
+     "4857 m.25"
+    ]
+   },
+   {
+    "key": "savunma_talebi_tarihi",
+    "label": "Yazılı savunma talebi veya ihtar",
+    "text": "İşçiye yazılı savunma talebi veya işe davet ihtarı hangi tarihte gönderildi?",
+    "why": "4857 m.19, davranış nedeniyle fesihte işçinin savunmasının alınmasını öngörmekte ve m.25/II'ye uygun fesih hakkını saklı tutmaktadır. Kanunda öngörülen bildirimler ilgiliye yazılı olarak ve imza karşılığında yapılmakta, imzadan kaçınılırsa durum tutanakla tespit edilmektedir (4857 m.109).",
+    "kind": "date",
+    "options": [
+     "Gönderilmedi"
+    ],
+    "basis": [
+     "4857 m.19",
+     "4857 m.109"
+    ]
+   },
+   {
+    "key": "fesih_bildirimi_tarihi",
+    "label": "Yazılı fesih bildirimi",
+    "text": "Yazılı fesih bildirimi hangi tarihte yapıldı?",
+    "why": "İşveren fesih bildirimini yazılı yapmak ve fesih sebebini açık ve kesin belirtmek zorundadır (4857 m.19). Bildirim ilgiliye yazılı olarak ve imza karşılığında yapılmakta, imzadan kaçınılırsa durum tutanakla tespit edilmektedir (4857 m.109). Fesih yetkisinin süresi içinde kullanılıp kullanılmadığı bildirim tarihine göre belirlenmektedir (4857 m.26).",
+    "kind": "date",
+    "options": [
+     "Henüz yapılmadı"
+    ],
+    "basis": [
+     "4857 m.19",
+     "4857 m.109",
+     "4857 m.26"
+    ]
+   }
+  ],
+  "answer": {
+   "status": "conditional",
+   "status_note": "Eksik bilgiler nedeniyle koşullu cevaptır. Olay tarihi bilinmediğinden bugünün tarihindeki metin esas alınmıştır. Okunamayan kaynaklar bulunmaktadır: 4857 m.25.",
+   "headline": "Devamsızlığın işveren tarafından öğrenildiği tarih, işçiye ulaşılıp ulaşılamadığı, mazeret bulunup bulunmadığı ve savunma alınıp alınmadığı bilinmediğinden, fesih yoluna gidilecek ise yazılı ve sebebi açık bildirim, davranışa dayalı fesihte savunma alınması ve altı iş günlük sürenin takibi gerekmektedir; beş günlük devamsızlığın tek başına haklı fesih için yeterli olup olmadığı okunan kaynaklarla belirlenememektedir.",
+   "points": [
+    {
+     "text": "Fesih yoluna gidilecek ise bildirim yazılı yapılmalı ve fesih sebebi açık ve kesin biçimde belirtilmelidir; fesih sonucunu doğuracak bildirimler her hâlde yazılı yapılır, işçi imzalamazsa durum o yerde tutanakla tespit edilir.",
+     "citations": [
+      {
+       "ref": "4857 m.19",
+       "label": "4857 m.19",
+       "category": "statute",
+       "quote": "İşveren fesih bildirimini yazılı olarak yapmak ve fesih sebebini açık ve kesin bir şekilde belirtmek zorundadır.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      },
+      {
+       "ref": "4857 m.109",
+       "label": "4857 m.109",
+       "category": "statute",
+       "quote": "İş sözleşmesinin feshi sonucunu doğuracak bildirimler her hâlde yazılı yapılır. Yazılı bildirim yapılan kişi bunu imzalamazsa, durum o yerde tutanakla tespit edilir.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2025-07-24"
+      }
+     ]
+    },
+    {
+     "text": "Fesih işçinin davranışı ile ilgili nedene dayanacak ise işçinin hakkındaki iddialara karşı savunması alınmalıdır; işverenin 25 inci maddenin (II) numaralı bendi şartlarına uygun fesih hakkı saklıdır. Devamsızlığın izinsiz ve haklı sebepsiz olduğunun belirlenmesi bu değerlendirmenin ön koşuludur.",
+     "citations": [
+      {
+       "ref": "4857 m.19",
+       "label": "4857 m.19",
+       "category": "statute",
+       "quote": "Hakkındaki iddialara karşı savunmasını almadan bir işçinin belirsiz süreli iş sözleşmesi, o işçinin davranışı veya verimi ile ilgili nedenlerle feshedilemez. Ancak, işverenin 25 inci maddenin (II) numaralı bendi şartlarına uygun fesih hakkı saklıdır.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "text": "Ahlak ve iyiniyet kurallarına uymayan hallere dayanan fesih yetkisi, olayın öğrenildiği günden başlayarak altı iş günü geçtikten ve her halde fiilin gerçekleşmesinden itibaren bir yıl sonra kullanılamaz; bu nedenle öğrenme tarihi kayda geçirilmeli ve süre iş günü üzerinden takip edilmelidir.",
+     "citations": [
+      {
+       "ref": "4857 m.26",
+       "label": "4857 m.26",
+       "category": "statute",
+       "quote": "altı iş günü geçtikten ve her halde fiilin gerçekleşmesinden itibaren bir yıl sonra kullanılamaz",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "text": "Hizmet akdi sona erdiğinde işverence işten ayrılışın en geç on gün içinde Kuruma bildirilmesi gerekmektedir.",
+     "citations": [
+      {
+       "ref": "5510 m.9",
+       "label": "5510 m.9",
+       "category": "statute",
+       "quote": "en geç on gün içinde Kuruma bildirilir",
+       "band": "medium",
+       "unreviewed": true,
+       "valid_from": "2008-10-01"
+      }
+     ]
+    },
+    {
+     "text": "İş sözleşmesinin sona ermesinde işçinin ücreti ile sözleşme ve Kanundan doğan para ile ölçülmesi mümkün menfaatlerinin tam olarak ödenmesi zorunludur.",
+     "citations": [
+      {
+       "ref": "4857 m.32",
+       "label": "İŞ KANUNU m.32 · Ücret ve ücretin ödenmesi",
+       "category": "statute",
+       "quote": "İş sözleşmelerinin sona ermesinde, işçinin ücreti ile sözleşme ve Kanundan doğan para ile ölçülmesi mümkün menfaatlerinin tam olarak ödenmesi zorunludur.",
+       "band": "medium",
+       "unreviewed": true,
+       "valid_from": "2008-05-08"
+      }
+     ]
+    }
+   ],
+   "short_point_count": 3,
+   "missing_info": [
+    {
+     "fact_key": "olay_tarihi",
+     "condition": "İşverenin devamsızlığı öğrendiği günden başlayarak altı iş günü geçmemiş ise ya da geçmiş ise",
+     "result": "Süre geçmemiş ise fesih yetkisi kullanılabilir; geçmiş ise bu yetki kullanılamaz. Süren devamsızlıkta sürenin başlangıç günü bu kaynaklarla kesin olarak belirlenememektedir.",
+     "citations": [
+      {
+       "ref": "4857 m.26",
+       "label": "4857 m.26",
+       "category": "statute",
+       "quote": "altı iş günü geçtikten ve her halde fiilin gerçekleşmesinden itibaren bir yıl sonra kullanılamaz",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "fact_key": "isciye_ulasma",
+     "condition": "İşçiye ulaşılabilmekte ise ya da ulaşılamamakta ise",
+     "result": "Ulaşılabilmekte ise bildirim yazılı ve imza karşılığında yapılır, imzalamazsa tutanak tutulur; ulaşılamamakta ise bildirim kayıtlı elektronik posta veya Tebligat Kanunu çerçevesinde yapılır.",
+     "citations": [
+      {
+       "ref": "4857 m.109",
+       "label": "4857 m.109",
+       "category": "statute",
+       "quote": "Bu Kanunda öngörülen bildirimlerin ilgiliye yazılı olarak ve imza karşılığında veya işçinin yazılı kabulü şartıyla elektronik iletilerin, gönderimi ve teslimatı da dâhil olmak üzere kullanımına ilişkin olarak hukuki delil sağlayan, elektronik postanın nitelikli şekli olan kayıtlı elektronik posta (KEP) hesabı üzerinden gönderilmek suretiyle yapılması gerekir.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2025-07-24"
+      },
+      {
+       "ref": "4857 m.109",
+       "label": "4857 m.109",
+       "category": "statute",
+       "quote": "Yazılı bildirim yapılan kişi bunu imzalamazsa, durum o yerde tutanakla tespit edilir.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2025-07-24"
+      }
+     ]
+    }
+   ]
+  },
+  "sources_read": [
+   "4857 m.109",
+   "4857 m.19",
+   "4857 m.26",
+   "4857 m.32",
+   "5510 m.9"
+  ]
+ },
+ {
+  "id": "SB-013",
+  "topic": "Çalışma koşullarında değişiklik",
+  "question": "ben sana en iyisi yatmadan bir soru daha sorayım. Çalışma saatlerini yarım saat öne almak ya da yarım saat ileri almak için çalışanın izni gereklimi?",
+  "known": [
+   {
+    "label": "Çalışma süresi ve dinlenme",
+    "value": "Yalnız başlama ve bitiş saati kayıyor"
+   }
+  ],
+  "questions": [
+   {
+    "key": "calisma_saati_kaynagi",
+    "label": "Mevcut çalışma saatlerinin kaynağı",
+    "text": "Mevcut başlama ve bitiş saatleri nerede belirlenmiştir?",
+    "why": "4857 m.22/1, iş sözleşmesiyle, personel yönetmeliği ve benzeri kaynaklarla ya da işyeri uygulamasıyla oluşan çalışma koşullarını kapsamaktadır. Günlük çalışmanın başlama ve bitiş saatleri işyerlerinde işçilere duyurulmaktadır (4857 m.67/1).",
+    "kind": "choice",
+    "options": [
+     "İş sözleşmesinde",
+     "Personel yönetmeliği veya benzeri bir işyeri belgesinde",
+     "Toplu iş sözleşmesinde",
+     "Yazılı değil, süregelen uygulamayla"
+    ],
+    "basis": [
+     "4857 m.22/1",
+     "4857 m.67/1"
+    ]
+   },
+   {
+    "key": "kaymanin_kapsami",
+    "label": "Saat değişikliğinin kapsamı",
+    "text": "Saat değişikliği kalıcı mı, geçici mi; bütün işçilere mi, bir kısmına mı uygulanmaktadır?",
+    "why": "Yazılı bildirim ve kabul şartı esaslı değişiklik için aranmaktadır (4857 m.22/1); işin niteliğine göre başlama ve bitiş saatleri işçiler için farklı şekilde düzenlenebilmektedir (4857 m.67/2).",
+    "kind": "choice",
+    "options": [
+     "Kalıcı, bütün işçilere",
+     "Kalıcı, bir kısım işçiye",
+     "Geçici bir süre için"
+    ],
+    "basis": [
+     "4857 m.22/1",
+     "4857 m.67/2"
+    ]
+   },
+   {
+    "key": "somut_etki",
+    "label": "Değişikliğin işçiye etkisi",
+    "text": "Değişiklik işçinin ulaşımını, servisini, ücretini veya günlük düzenini nasıl etkilemektedir?",
+    "why": "4857 m.22/1, yazılı bildirim ve altı işgünü içinde yazılı kabul şartını çalışma koşullarındaki esaslı değişiklik için aramaktadır; değişikliğin esaslı olup olmadığının değerlendirilmesi için işçi üzerindeki etkisi bilinmelidir.",
+    "kind": "text",
+    "options": [],
+    "basis": [
+     "4857 m.22/1"
+    ]
+   }
+  ],
+  "answer": {
+   "status": "conditional",
+   "status_note": "Eksik bilgiler nedeniyle koşullu cevaptır. Olay tarihi bilinmediğinden bugünün tarihindeki metin esas alınmıştır. Okunamayan kaynaklar bulunmaktadır: 4857 m.63. Cevabın dayandığı kaynakların tamamı onaysızdır (test); uzman incelemesinden geçmemiştir.",
+   "headline": "Çalışma saatlerinin yarım saat öne veya ileri alınması esaslı bir çalışma koşulu değişikliği sayılırsa, işveren değişikliği yazılı bildirmeli ve işçinin altı işgünü içinde yazılı kabulü bulunmalıdır; aksi hâlde değişiklik işçiyi bağlamaz. Değişikliğin esaslı olup olmadığı ve yazılı bildirim ile kabul olgularının varlığı bilinmediğinden kesin sonuç belirlenememektedir.",
+   "points": [
+    {
+     "text": "Çalışma koşullarında esaslı bir değişiklik, işverence ancak durumun işçiye yazılı olarak bildirilmesi suretiyle yapılabilmektedir.",
+     "citations": [
+      {
+       "ref": "4857 m.22",
+       "label": "4857 m.22",
+       "category": "statute",
+       "quote": "çalışma koşullarında esaslı bir değişikliği ancak durumu işçiye yazılı olarak bildirmek suretiyle yapabilir.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "text": "Bu şekle uygun yapılmayan ve işçi tarafından altı işgünü içinde yazılı olarak kabul edilmeyen değişiklikler işçiyi bağlamamaktadır; yazılı bildirim ile yazılı kabul birlikte aranmaktadır.",
+     "citations": [
+      {
+       "ref": "4857 m.22",
+       "label": "4857 m.22",
+       "category": "statute",
+       "quote": "Bu şekle uygun olarak yapılmayan ve işçi tarafından altı işgünü içinde yazılı olarak kabul edilmeyen değişiklikler işçiyi bağlamaz",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "text": "Taraflar aralarında anlaşarak çalışma koşullarını her zaman değiştirebilmektedir; bu nedenle çalışan ile işveren arasında saat değişikliğine ilişkin açık bir anlaşma bulunmakta ise değişiklik bu yoldan yapılabilir.",
+     "citations": [
+      {
+       "ref": "4857 m.22",
+       "label": "4857 m.22",
+       "category": "statute",
+       "quote": "Taraflar aralarında anlaşarak çalışma koşullarını her zaman değiştirebilir",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "text": "Çalışma koşullarında değişiklik geçmişe etkili olarak yürürlüğe konulamamaktadır.",
+     "citations": [
+      {
+       "ref": "4857 m.22",
+       "label": "4857 m.22",
+       "category": "statute",
+       "quote": "Çalışma koşullarında değişiklik geçmişe etkili olarak yürürlüğe konulamaz.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "text": "Günlük çalışmanın başlama ve bitiş saatleri ile dinlenme saatlerinin işyerlerinde işçilere duyurulması gerekmektedir.",
+     "citations": [
+      {
+       "ref": "4857 m.67",
+       "label": "4857 m.67",
+       "category": "statute",
+       "quote": "Günlük çalışmanın başlama ve bitiş saatleri ile dinlenme saatleri işyerlerinde işçilere duyurulur.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    }
+   ],
+   "short_point_count": 3,
+   "missing_info": [
+    {
+     "fact_key": "calisma_saati_kaynagi",
+     "condition": "Mevcut çalışma saatleri iş sözleşmesinden, sözleşmenin eki niteliğindeki personel yönetmeliği ve benzeri kaynaklardan ya da işyeri uygulamasından doğmakta ise",
+     "result": "Bu saatlerde esaslı bir değişiklik m.22 kapsamındaki yazılı bildirim ve yazılı kabul usulüne tabidir; kaynak bilinmediğinden bu kapsamın varlığı belirlenememektedir.",
+     "citations": [
+      {
+       "ref": "4857 m.22",
+       "label": "4857 m.22",
+       "category": "statute",
+       "quote": "iş sözleşmesiyle veya iş sözleşmesinin eki niteliğindeki personel yönetmeliği ve benzeri kaynaklar ya da işyeri uygulamasıyla oluşan çalışma koşullarında esaslı bir değişikliği ancak durumu işçiye yazılı olarak bildirmek suretiyle yapabilir.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "fact_key": "kaymanin_kapsami",
+     "condition": "Saat değişikliği tüm işçileri mi, yalnız belirli işçileri mi kapsamaktadır; işin niteliği farklı başlama ve bitiş saatlerini gerektirmekte ise",
+     "result": "İşin niteliğine göre başlama ve bitiş saatleri işçiler için farklı şekilde düzenlenebilir; kapsam bilinmediğinden bu kaynaklarla kesin sonuç belirlenememektedir.",
+     "citations": [
+      {
+       "ref": "4857 m.67",
+       "label": "4857 m.67",
+       "category": "statute",
+       "quote": "İşin niteliğine göre işin başlama ve bitiş saatleri işçiler için farklı şekilde düzenlenebilir.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    },
+    {
+     "fact_key": "somut_etki",
+     "condition": "Yarım saatlik kayma işçinin yaşamı ve çalışma düzeni bakımından esaslı bir değişiklik oluşturmakta ise; oluşturmamakta ise",
+     "result": "Esaslı ise yazılı bildirim ve altı işgünü içinde yazılı kabul aranmaktadır; kaynaklarda saat kaymasının esaslı sayılması için bir süre eşiği öngörülmemiştir ve esaslılık somut etkiye göre değerlendirilmelidir, bu nedenle etki bilinmeden kesin sonuç belirlenememektedir.",
+     "citations": [
+      {
+       "ref": "4857 m.22",
+       "label": "4857 m.22",
+       "category": "statute",
+       "quote": "çalışma koşullarında esaslı bir değişikliği ancak durumu işçiye yazılı olarak bildirmek suretiyle yapabilir.",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2003-06-10"
+      }
+     ]
+    }
+   ]
+  },
+  "sources_read": [
+   "4857 m.22",
+   "4857 m.67"
+  ]
+ },
+ {
+  "id": "SB-002",
+  "topic": "Ölüm ve yaşlılık sigortası (aylık, toptan ödeme, kıdem yazısı)",
+  "question": "4/c sigortalısının ölümü sonrası hak sahiplerinin ölüm toptan ödemesi alabilmesi için gelir tespiti şartı var mıdır",
+  "known": [
+   {
+    "label": "Sigortalılık hali",
+    "value": "4/1-(c) kamu görevlisi"
+   },
+   {
+    "label": "İstenen hak",
+    "value": "Ölüm toptan ödemesi"
+   }
+  ],
+  "questions": [
+   {
+    "key": "ilk_sigortalilik_tarihi",
+    "label": "İlk sigortalılık tarihi",
+    "text": "Sigortalı herhangi bir sosyal güvenlik kanununa göre ilk kez hangi tarihte sigortalı oldu? (Son işyerine giriş tarihi değil, ilk tescil tarihi.)",
+    "why": "Sigortalılık süresinin başlangıcı, sigortalının 506, 5434, 1479 sayılı kanunlar gibi mülga ya da yürürlükteki kanunlara veya 5510'a göre ilk defa kapsama girdiği tarihtir (5510 m.38/1). Yaşlılık aylığı şartları 8/9/1999 öncesi, 8/9/1999 ile 30/4/2008 arası ve 30/4/2008 sonrası sigortalı olanlar için ayrı belirlenmektedir (2018/38 m.K2-B3-2.1). 4/1-(c) sigortalısının hak sahipleri ölüm toptan ödemesine ancak sigortalı bu Kanuna göre ilk defa 4/1-(c) kapsamına girmişse hak kazanır (5510 m.36/1).",
+    "kind": "date",
+    "options": [],
+    "basis": [
+     "5510 m.38/1",
+     "2018/38 m.K2-B3-2.1",
+     "5510 m.36/1"
+    ]
+   }
+  ],
+  "answer": {
+   "status": "conditional",
+   "status_note": "Eksik bilgiler nedeniyle koşullu cevaptır. Olay tarihi bilinmediğinden bugünün tarihindeki metin esas alınmıştır. Cevabın dayandığı kaynakların tamamı onaysızdır (test); uzman incelemesinden geçmemiştir.",
+   "headline": "Ölüm toptan ödemesinde hak sahiplerinin ölüm aylığı bağlanmasında aranan şartları taşıması gerekmekte olup gelir tespiti şartı ana ve babaya ilişkin olmakla birlikte, sigortalının bu Kanuna göre ilk defa 4/1-(c) kapsamına girip girmediği bilinmediğinden 5510 m.36 kapsamında olup olmadığı belirlenememektedir.",
+   "points": [
+    {
+     "text": "5510 m.36 uyarınca bu Kanuna göre ilk defa 4/1-(c) kapsamında sigortalı olanlardan ölenlerin hak sahiplerine, ölüm aylığı bağlanamaması durumunda, 34 üncü madde hükümleri dikkate alınarak toptan ödeme yapılmaktadır.",
+     "citations": [
+      {
+       "ref": "5510 m.36",
+       "label": "5510 m.36",
+       "category": "statute",
+       "quote": "bu Kanuna göre ilk defa aynı maddenin birinci fıkrasının (c) bendi kapsamında sigortalı olanlardan ölen sigortalıların hak sahiplerine ölüm aylığı bağlanamaması durumunda, ölüm tarihi esas alınmak kaydıyla 31 inci maddenin birinci fıkrasına göre hesaplanan tutar, 34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2008-05-08"
+      }
+     ]
+    },
+    {
+     "text": "Ölüm toptan ödemesi yapılabilmesi için eş, çocuk, ana ve babaya ölüm aylığı bağlanmasında aranan şartların mutlaka yerine getirilmiş olması gerekmekte olup bu şartları taşımayan hak sahibine toptan ödeme yapılmayacaktır.",
+     "citations": [
+      {
+       "ref": "2018/38 m.K4-B6-1.2",
+       "label": "2018/38 m.K4-B6-1.2",
+       "category": "admin_act",
+       "quote": "Ölüm toptan ödemesi yapılabilmesi için, eş, çocuk, ana ve babaya ölüm aylığı bağlanmasında aranan şartların mutlaka yerine getirilmiş olması gerekmekte olup, bu şartları taşımayan hiçbir hak sahibine toptan ödeme yapılmayacaktır",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2018-11-06"
+      }
+     ]
+    },
+    {
+     "text": "Gelirin asgari ücretin net tutarından az olması şartı, 5510 m.34/1-(d) uyarınca ana ve babaya ilişkindir; eş ve çocuklar için sayılan şartlar arasında yer almamaktadır.",
+     "citations": [
+      {
+       "ref": "5510 m.34",
+       "label": "5510 m.34",
+       "category": "statute",
+       "quote": "her türlü kazanç ve irattan elde etmiş olduğu gelirinin asgari ücretin net tutarından daha az olması ve diğer çocuklarından hak kazanılan gelir ve aylıklar hariç olmak üzere gelir ve/veya aylık bağlanmamış olması şartıyla ana ve babaya toplam %25'i oranında",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2018-03-27"
+      }
+     ]
+    },
+    {
+     "text": "Ana ve babanın ölüm gelir/aylığına ilişkin şartlarında, Kurumun denetim ve kontrol ile yetkilendirilen memurlarınca gelir tespiti yaptırılması öngörülmektedir; toptan ödemede ana ve baba bakımından da ölüm aylığı şartları aranmaktadır.",
+     "citations": [
+      {
+       "ref": "2018/38 m.K2-B4-2.2.3",
+       "label": "2018/38 m.K2-B4-2.2.3",
+       "category": "admin_act",
+       "quote": "mutlaka Kurumun denetim ve kontrol ile yetkilendirilen memurları tarafından gelir tespiti yaptırılacaktır",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2018-11-06"
+      },
+      {
+       "ref": "2018/38 m.K4-B6-1.2",
+       "label": "2018/38 m.K4-B6-1.2",
+       "category": "admin_act",
+       "quote": "Ölüm toptan ödemesi yapılabilmesi için, eş, çocuk, ana ve babaya ölüm aylığı bağlanmasında aranan şartların mutlaka yerine getirilmiş olması gerekmekte olup, bu şartları taşımayan hiçbir hak sahibine toptan ödeme yapılmayacaktır",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2018-11-06"
+      }
+     ]
+    },
+    {
+     "text": "Sigortalılık süresinin başlangıcı, sigortalının ilk defa kapsama girdiği tarih olarak kabul edilmektedir; bu tarih bilinmediğinden sigortalının m.36 kapsamında olup olmadığı belirlenememektedir.",
+     "citations": [
+      {
+       "ref": "5510 m.38",
+       "label": "5510 m.38",
+       "category": "statute",
+       "quote": "ilk defa kapsama girdiği tarih olarak kabul edilir",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2008-05-08"
+      }
+     ]
+    }
+   ],
+   "short_point_count": 3,
+   "missing_info": [
+    {
+     "fact_key": "ilk_sigortalilik_tarihi",
+     "condition": "Sigortalı bu Kanuna göre ilk defa 4/1-(c) kapsamında sigortalı olmuş ise",
+     "result": "5510 m.36 kapsamında, ölüm aylığı bağlanamaması hâlinde hak sahiplerine toptan ödeme yapılır; daha önce sigortalı olmuş ise bu kaynaklarla sonuç belirlenememektedir.",
+     "citations": [
+      {
+       "ref": "5510 m.36",
+       "label": "5510 m.36",
+       "category": "statute",
+       "quote": "bu Kanuna göre ilk defa aynı maddenin birinci fıkrasının (c) bendi kapsamında sigortalı olanlardan ölen sigortalıların hak sahiplerine ölüm aylığı bağlanamaması durumunda, ölüm tarihi esas alınmak kaydıyla 31 inci maddenin birinci fıkrasına göre hesaplanan tutar, 34 üncü madde hükümleri dikkate alınarak hak sahiplerine toptan ödeme şeklinde verilir",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2008-05-08"
+      },
+      {
+       "ref": "5510 m.38",
+       "label": "5510 m.38",
+       "category": "statute",
+       "quote": "ilk defa kapsama girdiği tarih olarak kabul edilir",
+       "band": "high",
+       "unreviewed": true,
+       "valid_from": "2008-05-08"
+      }
+     ]
+    }
+   ]
+  },
+  "sources_read": [
+   "2018/38 m.K2-B4-2.2.3",
+   "2018/38 m.K4-B6-1.2",
+   "5510 m.34",
+   "5510 m.36",
+   "5510 m.38"
+  ]
+ }
+];
+
+</script>
+<script>
+(function(){
+'use strict';
+var FLOWS = window.GLARUS_FLOWS || [];
+var $ = function(s,r){return (r||document).querySelector(s)};
+function h(tag,attrs){
+  var e=document.createElement(tag);
+  if(attrs){for(var k in attrs){var v=attrs[k]; if(v==null||v===false)continue;
+    if(k==='class')e.className=v; else if(k==='text')e.textContent=v;
+    else if(k.indexOf('on')===0)e.addEventListener(k.slice(2),v); else e.setAttribute(k,v===true?'':v);}}
+  for(var i=2;i<arguments.length;i++){var c=arguments[i]; if(c==null||c===false)continue; if(Array.isArray(c)){c.forEach(function(x){e.appendChild(x)});continue;} e.appendChild(typeof c==='string'?document.createTextNode(c):c);}
+  return e;
+}
+function svg(html,cls){var s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.innerHTML=html;if(cls)s.setAttribute('class',cls);return s;}
+var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var wide = function(){return window.matchMedia('(min-width:1100px)').matches};
+function sleep(ms){return new Promise(function(r){setTimeout(r,reduce?Math.min(ms,80):ms)})}
+function fmtDate(iso){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?m[3]+'.'+m[2]+'.'+m[1]:iso}
+var toastT;
+function toast(t){var el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove('show')},2400)}
+
+/* ---------- brand + harbour mark ---------- */
+function markSvg(){
+  var s=svg('<rect class="bg" x="0" y="0" width="44" height="44" rx="10"/><text class="g" x="21" y="33" text-anchor="middle" font-size="32" font-weight="600" style="font-family:var(--font-serif)">G</text><circle class="dot" cx="35" cy="32" r="3"/>','mark');
+  return s;
+}
+function setupBrand(){
+  document.querySelectorAll('[data-brand]').forEach(function(b){
+    var m=markSvg();m.setAttribute('width','40');m.setAttribute('height','40');m.setAttribute('viewBox','0 0 44 44');m.setAttribute('aria-hidden','true');
+    var w=h('div',{class:'word'},h('span',{class:'name',text:'Glarus'}),h('span',{class:'by',text:'by siestai'}));
+    b.appendChild(m);b.appendChild(w);
+  });
+}
+function compassSvg(){
+  var s=svg('<g class="orbit"><circle class="ring" cx="28" cy="28" r="20"/></g><line class="hor" x1="14" y1="40" x2="42" y2="40"/><g class="dotg"><circle class="dot" cx="28" cy="12" r="4"/></g>','hmark');
+  s.setAttribute('viewBox','0 0 56 56');s.setAttribute('aria-hidden','true');return s;
+}
+function tickSvg(){var s=svg('<circle cx="10" cy="10" r="9" fill="var(--teal)"/><path d="M5.5 10.5l3 3 6-6.5" fill="none" stroke="var(--on-teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>');s.setAttribute('viewBox','0 0 20 20');return s}
+
+/* ---------- state ---------- */
+var convs=[], cur=null, drawerOpen=false;
+var thread=$('#thread'), composer=$('#composer'), qEl=$('#q');
+
+function scrollDown(el){
+  requestAnimationFrame(function(){ if(el&&el.scrollIntoView) el.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}); });
+}
+function scrollEnd(){requestAnimationFrame(function(){thread.scrollTo({top:thread.scrollHeight,behavior:reduce?'auto':'smooth'})})}
+
+/* ---------- drawer ---------- */
+function setDrawer(o){drawerOpen=o;$('#sidebar').classList.toggle('open',o);$('#scrim').classList.toggle('show',o);$('#menuBtn').setAttribute('aria-expanded',o);if(o)$('#newBtn').focus()}
+$('#menuBtn').onclick=function(){setDrawer(!drawerOpen)};
+$('#scrim').onclick=function(){setDrawer(false)};
+$('#logout').onclick=function(){toast('Önizlemede oturum kapatılmaz.')};
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){if($('#viewer').classList.contains('open')||$('#app').classList.contains('viewing'))closeViewer();else if(drawerOpen){setDrawer(false);$('#menuBtn').focus()}}});
+
+/* ---------- conversations ---------- */
+function renderList(){
+  var ul=$('#convList');ul.textContent='';
+  if(!convs.length){ul.appendChild(h('li',{class:'convempty',text:'Henüz konuşma yok.'}));return}
+  convs.slice().reverse().forEach(function(c){
+    var b=h('button',{class:'conv',type:'button','aria-current':c===cur?'true':'false',onclick:function(){show(c);setDrawer(false)}},
+      c.flow.topic,h('small',null,c.status));
+    ul.appendChild(h('li',null,b));
+  });
+}
+function newConv(){
+  closeViewer();
+  cur=null;thread.textContent='';thread.appendChild(emptyView());composer.hidden=false;qEl.placeholder='Sorunuzu yazın';
+  renderList();setDrawer(false);thread.scrollTop=0;
+}
+function show(c){
+  closeViewer();cur=c;thread.textContent='';thread.appendChild(c.col);
+  composer.hidden=!c.finished;qEl.placeholder='Yeni bir soru yazın';
+  renderList();thread.scrollTop=thread.scrollHeight;
+}
+$('#newBtn').onclick=newConv;
+
+function emptyView(){
+  var comp=compassSvg();
+  var chips=h('div',{class:'chips',role:'group','aria-label':'Örnek sorular'});
+  FLOWS.forEach(function(f){
+    chips.appendChild(h('button',{class:'btn sugg',type:'button',onclick:function(){start(f)}},h('b',null,f.topic),h('span',null,f.question)));
+  });
+  return h('div',{class:'col'},h('div',{class:'empty'},comp,h('h1',null,'Ne öğrenmek istiyorsunuz?'),
+    h('p',null,'İş Kanunu ve SGK mevzuatı için sorunuzu yazın ya da bir örnekle başlayın.'),chips));
+}
+
+/* ---------- flow ---------- */
+function matchFlow(t){
+  t=t.toLowerCase();
+  if(/devams|gelmedi|mazeret/.test(t))return FLOWS[0];
+  if(/saat|vardiya|çalışma koşul/.test(t))return FLOWS[1];
+  if(/ölüm|toptan|4\/c|kıdem/.test(t))return FLOWS[2];
+  return null;
+}
+composer.addEventListener('submit',function(e){
+  e.preventDefault();var t=qEl.value.trim();if(!t)return;
+  var f=matchFlow(t);
+  if(!f){toast('Bu önizlemede yalnız 3 örnek akış çalışır.');return}
+  qEl.value='';autoGrow();start(f,t);
+});
+function autoGrow(){qEl.style.height='auto';qEl.style.height=Math.min(qEl.scrollHeight,180)+'px'}
+qEl.addEventListener('input',autoGrow);
+qEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();composer.requestSubmit()}});
+
+function start(flow,text){
+  closeViewer();
+  var col=h('div',{class:'col'});
+  var c={flow:flow,col:col,status:'Sürüyor',finished:false,answers:{},};
+  convs.push(c);cur=c;thread.textContent='';thread.appendChild(col);composer.hidden=true;
+  renderList();setDrawer(false);
+  run(c,text||flow.question);
+}
+function artRef(r){return String(r).replace(/(m\.[^\/\s]+)\/.*$/,'$1')}
+function allCites(f){
+  var out=[];
+  f.answer.points.forEach(function(p){p.citations.forEach(function(x){out.push(x)})});
+  (f.answer.missing_info||[]).forEach(function(p){(p.citations||[]).forEach(function(x){out.push(x)})});
+  return out;
+}
+/* soru dayanağı (ör. "4857 m.22/1") -> madde düzeyi alıntılar; yoksa sorunun gerekçesi */
+function basisCite(f,ref,why){
+  var art=artRef(ref),qs=[],first=null;
+  allCites(f).forEach(function(x){
+    if(artRef(x.ref)===art&&x.quote){if(!first)first=x;if(qs.indexOf(x.quote)<0)qs.push(x.quote)}
+  });
+  var lab=first?first.label:ref;
+  if(first)return {ref:ref,label:lab,quotes:qs,valid_from:first.valid_from,unreviewed:first.unreviewed,category:first.category};
+  return {ref:ref,label:ref,why:why};
+}
+function add(c,el){c.col.appendChild(el);if(cur===c)scrollDown(el);return el}
+
+async function run(c,text){
+  var f=c.flow;
+  add(c,h('div',{class:'msg user'},h('div',{class:'bubble',text:text})));
+  /* progress */
+  var labels=['Konu belirleniyor...','Kaynaklar okunuyor...','Cevap hazırlanıyor...'];
+  var lis=labels.map(function(l){return h('li',null,h('i',{class:'dot'}),h('span',{text:l}))});
+  var comp=compassSvg();comp.classList.add('busy');comp.setAttribute('width','32');comp.setAttribute('height','32');
+  var prog=h('div',{class:'card','aria-live':'polite'},h('div',{class:'chead'},h('h2',{style:'margin:0',text:'Üzerinde çalışıyorum'}),comp),h('ul',{class:'steps',style:'margin-top:12px'},lis));
+  add(c,prog);
+  for(var i=0;i<lis.length;i++){
+    lis[i].className='now';await sleep(950);lis[i].className='done';
+  }
+  await sleep(250);prog.remove();
+  /* facts */
+  var rows={};
+  var ul=h('ul',{class:'facts'});
+  f.known.forEach(function(k){ul.appendChild(factRow(k.label,k.value,null,rows))});
+  f.questions.forEach(function(q){ul.appendChild(factRow(q.label,null,q.key,rows))});
+  c.rows=rows;
+  add(c,h('section',{class:'card','aria-label':'Anladığım olay'},h('div',{class:'chead'},h('h2',{style:'margin:0',text:'Anladığım olay'}),h('span',{class:'tag',text:f.topic})),ul));
+  await sleep(500);
+  ask(c,0);
+}
+function factRow(label,value,key,rows){
+  var li=h('li',{class:'fact'});
+  var v=h('div',{class:'v'+(value?'':' unk'),text:value||'Bilinmiyor'});
+  var k=h('div',{class:'k',text:label});
+  var btn=h('button',{class:'btn sm',type:'button','aria-label':label+' bilgisini düzenle',text:'Düzenle'});
+  li.appendChild(k);li.appendChild(v);li.appendChild(btn);
+  function set(val){
+    v.textContent=val||'Bilinmiyor';v.className='v'+(val?'':' unk')+(val?' pop':'');
+  }
+  btn.onclick=function(){
+    var inp=h('input',{type:'text',value:value||'','aria-label':label,placeholder:'Değeri yazın'});
+    var save=h('button',{class:'btn teal sm',type:'button',text:'Kaydet'});
+    var cancel=h('button',{class:'btn sm',type:'button',text:'Vazgeç'});
+    var row=h('div',{class:'editrow'},inp,save,cancel);
+    k.style.display=v.style.display=btn.style.display='none';li.appendChild(row);inp.focus();
+    function close(){row.remove();k.style.display=v.style.display=btn.style.display='';btn.focus()}
+    save.onclick=function(){value=inp.value.trim()||null;set(value);close()};
+    cancel.onclick=close;
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();save.click()}if(e.key==='Escape'){e.stopPropagation();cancel.click()}});
+  };
+  if(key)rows[key]={set:function(val){value=val;set(val)}};
+  return li;
+}
+
+function summary(label,val){
+  return h('div',{class:'qsum'},tickSvg(),h('span',{class:'k',text:label}),h('span',{class:'v',text:val,title:val}));
+}
+function ask(c,i){
+  var f=c.flow,qs=f.questions;
+  if(i>=qs.length){return finish(c)}
+  var q=qs[i];
+  var dots=h('div',{class:'pbar',role:'img','aria-label':'Soru '+(i+1)+' / '+qs.length},h('i',{style:'width:'+Math.round((i+1)/qs.length*100)+'%'}));
+  var card=h('section',{class:'qcard','aria-label':'Soru '+(i+1)+' / '+qs.length});
+  var body=h('div',{class:'opts'});
+  var bases=h('div',{class:'basis'});
+  q.basis.forEach(function(r){bases.appendChild(citeChip(c,basisCite(f,r,q.why)))});
+  var why=h('details',{class:'why'},h('summary',null,'Neden soruyorum?'),h('p',null,q.why),bases);
+  card.appendChild(h('div',{class:'qhead'},h('b',{text:'Soru '+(i+1)+' / '+qs.length}),dots));
+  card.appendChild(h('div',null,h('div',{class:'qlabel',text:q.label}),h('div',{class:'qtext',text:q.text})));
+  card.appendChild(why);
+  var locked=false;
+  function answer(display,store,btn){
+    if(locked)return;locked=true;
+    if(btn)btn.classList.add('chosen');
+    card.classList.add('done');
+    c.answers[q.key]=display;
+    if(c.rows&&c.rows[q.key])c.rows[q.key].set(display);
+    setTimeout(function(){
+      card.replaceWith(summary(q.label,display));
+      setTimeout(function(){ask(c,i+1)},reduce?0:250);
+    },reduce?0:450);
+  }
+  function idk(){return h('button',{class:'btn opt idk',type:'button',onclick:function(e){answer('Bilmiyorum',null,e.currentTarget)}},'Bilmiyorum')}
+  var letters='ABCDEFGH';
+  if(q.kind==='choice'){
+    q.options.forEach(function(o,j){body.appendChild(h('button',{class:'btn opt',type:'button',onclick:function(e){answer(o,o,e.currentTarget)}},h('span',{class:'letter',text:letters[j]}),o))});
+    body.appendChild(idk());
+  }else if(q.kind==='date'){
+    var inp=h('input',{type:'date',id:'d'+i,'aria-describedby':'dh'+i,max:'2100-12-31'});
+    var go=h('button',{class:'btn teal',type:'button',disabled:true,text:'Devam'});
+    inp.addEventListener('input',function(){go.disabled=!inp.value});
+    go.onclick=function(){if(inp.value)answer(fmtDate(inp.value),inp.value,go)};
+    body.appendChild(h('div',{class:'datebox'},h('label',{class:'sr',for:'d'+i},q.label),inp,h('span',{class:'hint',id:'dh'+i,text:'Biçim: GG.AA.YYYY'})));
+    body.appendChild(go);
+    q.options.forEach(function(o){body.appendChild(h('button',{class:'btn opt',type:'button',onclick:function(e){answer(o,o,e.currentTarget)}},o))});
+    body.appendChild(idk());
+  }else{
+    var ta=h('textarea',{id:'t'+i,placeholder:'Kısaca yazın','aria-label':q.label});
+    var go2=h('button',{class:'btn teal',type:'button',disabled:true,text:'Devam'});
+    ta.addEventListener('input',function(){go2.disabled=!ta.value.trim()});
+    go2.onclick=function(){if(ta.value.trim())answer(ta.value.trim(),ta.value,go2)};
+    body.appendChild(h('div',{class:'textbox'},ta));body.appendChild(go2);body.appendChild(idk());
+  }
+  card.appendChild(body);
+  card.appendChild(h('button',{class:'linkbtn skip',type:'button',onclick:function(){if(locked)return;locked=true;card.replaceWith(summary(q.label,'Atlandı'));finish(c)},text:'Soruları atla, koşullu cevabı göster'}));
+  add(c,card);
+}
+
+/* ---------- answer ---------- */
+async function finish(c){
+  var f=c.flow;
+  var comp=compassSvg();comp.classList.add('busy');comp.setAttribute('width','32');comp.setAttribute('height','32');
+  var li=h('li',{class:'now'},h('i',{class:'dot'}),h('span',{text:'Cevap hazırlanıyor...'}));
+  var p=h('div',{class:'card'},h('div',{class:'chead'},h('h2',{style:'margin:0',text:'Üzerinde çalışıyorum'}),comp),h('ul',{class:'steps',style:'margin-top:12px'},li));
+  add(c,p);await sleep(1100);p.remove();
+  var ans=answerCard(c);c.col.appendChild(ans);
+  if(cur===c)requestAnimationFrame(function(){thread.style.scrollBehavior='auto';thread.scrollTop=ans.offsetTop-12;thread.style.scrollBehavior=''});
+  c.finished=true;c.status=f.answer.status==='conditional'?'Koşullu cevap':'Net cevap';
+  renderList();
+  if(cur===c){composer.hidden=false;qEl.placeholder='Yeni bir soru yazın'}
+}
+function citeChip(c,cit,onOpen){
+  var missing=false;
+  var b=h('button',{class:'cite'+(missing?' nodata':''),type:'button','aria-label':'Dayanak: '+cit.label+(cit.unreviewed?' (onaysız, test)':''),onclick:function(){openViewer(c,cit,b)}},cit.label);
+  if(cit.unreviewed)b.appendChild(h('small',{text:'onaysız (test)'}));
+  return b;
+}
+function answerCard(c){
+  var f=c.flow,a=f.answer,mode='short';
+  var cond=a.status==='conditional';
+  var badge=h('div',{class:'badge '+(cond?'cond':'clear')});
+  if(!cond)badge.appendChild(tickSvg());
+  badge.appendChild(document.createTextNode(cond?'Koşullu cevap':'Net cevap'));
+  var el=h('section',{class:'answer'+(cond?'':' ok'),'aria-label':'Cevap'});
+  el.appendChild(badge);
+  if(a.status_note)el.appendChild(h('p',{class:'note',text:a.status_note}));
+  el.appendChild(h('div',{class:'hl'},h('p',{class:'headline',text:a.headline})));
+  var modes=[['short','Kısa'],['long','Ayrıntılı'],['proof','Gerekçeli']];
+  var sw=h('div',{class:'modes',role:'radiogroup','aria-label':'Gösterim biçimi'});
+  var list=h('ol',{class:'points',style:'margin:0;padding:0;list-style:none'});
+  list.style.cssText='';list.className='points';
+  var moreP=h('p',{class:'more'});
+  function renderPoints(){
+    list.textContent='';
+    var n=mode==='short'?a.short_point_count:a.points.length;
+    a.points.slice(0,n).forEach(function(pt){
+      var cs=h('div',{class:'cites'});pt.citations.forEach(function(ct){cs.appendChild(citeChip(c,ct))});
+      var li=h('li',null,h('div',null,h('p',{text:pt.text}),cs));
+      if(mode==='proof')pt.citations.forEach(function(ct){li.lastChild.appendChild(h('blockquote',{class:'quote'},h('b',null,ct.label),'“'+ct.quote+'”'))});
+      list.appendChild(li);
+    });
+    var rest=a.points.length-n;
+    moreP.textContent=rest>0?'Kısa görünümde '+rest+' madde daha gizli. Tümü için “Ayrıntılı” seçin.':'';
+    moreP.style.display=rest>0?'':'none';
+  }
+  var btns=modes.map(function(m){
+    var b=h('button',{type:'button',role:'radio','aria-checked':String(m[0]===mode),text:m[1],onclick:function(){mode=m[0];btns.forEach(function(x,j){x.setAttribute('aria-checked',modes[j][0]===mode)});renderPoints()}});
+    sw.appendChild(b);return b;
+  });
+  /* arrow keys for radiogroup */
+  sw.addEventListener('keydown',function(e){
+    var idx=modes.findIndex(function(m){return m[0]===mode}),d=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;
+    if(d){e.preventDefault();idx=(idx+d+3)%3;btns[idx].click();btns[idx].focus()}
+  });
+  el.appendChild(sw);el.appendChild(list);el.appendChild(moreP);renderPoints();
+  if(a.missing_info&&a.missing_info.length){
+    var s=h('div',{class:'sect'},h('h3',null,'Tamamlanması gereken bilgiler'));
+    a.missing_info.forEach(function(m){
+      var cs=h('div',{class:'cites'});(m.citations||[]).forEach(function(ct){cs.appendChild(citeChip(c,ct))});
+      s.appendChild(h('div',{class:'cond-row'},h('p',{class:'if'},h('b',null,'Koşul'),m.condition),h('p',{class:'then'},h('b',null,'Sonuç'),m.result),cs));
+    });
+    el.appendChild(s);
+  }
+  var rd=f.sources_read||[];
+  var ul=h('ul');rd.forEach(function(r){ul.appendChild(h('li',{text:r}))});
+  el.appendChild(h('details',{class:'reads'},h('summary',null,'Okunanlar ('+rd.length+')'),ul));
+  /* feedback */
+  var up=h('button',{class:'btn sm',type:'button','aria-pressed':'false',text:'Faydalı'});
+  var down=h('button',{class:'btn sm',type:'button','aria-pressed':'false',text:'Hatalı'});
+  up.onclick=function(){up.setAttribute('aria-pressed','true');down.setAttribute('aria-pressed','false');toast('Teşekkürler.')};
+  down.onclick=function(){down.setAttribute('aria-pressed','true');up.setAttribute('aria-pressed','false');toast('Geri bildiriminiz alındı.')};
+  var rep=h('button',{class:'btn sm',type:'button','aria-expanded':'false',text:'Hata bildir'});
+  var box=null;
+  rep.onclick=function(){
+    if(box){box.remove();box=null;rep.setAttribute('aria-expanded','false');return}
+    var ta=h('textarea',{'aria-label':'Hata açıklaması',placeholder:'Neyin hatalı olduğunu kısaca yazın'});
+    var send=h('button',{class:'btn teal sm',type:'button',text:'Gönder',onclick:function(){box.remove();box=null;rep.setAttribute('aria-expanded','false');toast('Hata bildiriminiz alındı (test).')}});
+    box=h('div',{class:'reportbox'},ta,h('div',null,send));
+    fb.after(box);rep.setAttribute('aria-expanded','true');ta.focus();
+  };
+  var cp=h('button',{class:'btn sm',type:'button',text:'Kopyala'});
+  cp.onclick=function(){
+    var txt=a.headline+'\n\n'+a.points.map(function(p,i){return (i+1)+'. '+p.text+' ['+p.citations.map(function(x){return x.label}).join('; ')+']'}).join('\n');
+    var done=function(){cp.textContent='Kopyalandı';setTimeout(function(){cp.textContent='Kopyala'},1800)};
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,function(){toast('Kopyalanamadı.')});else toast('Kopyalanamadı.');
+  };
+  var fb=h('div',{class:'fb',role:'group','aria-label':'Geri bildirim'},up,down,rep,cp);
+  el.appendChild(fb);
+  return el;
+}
+
+/* ---------- viewer ---------- */
+var lastTrigger=null;
+function openViewer(c,cit,trigger){
+  lastTrigger=trigger;
+  document.querySelectorAll('.cite.on').forEach(function(x){x.classList.remove('on')});
+  if(trigger)trigger.classList.add('on');
+  $('#vTitle').textContent=cit.label;
+  var body=$('#vBody');body.textContent='';
+  var st=h('div',{class:'vstat'});
+  if(cit.unreviewed)st.appendChild(h('span',{class:'pill warn',text:'Onaysız metin (test)'}));
+  if(cit.valid_from)st.appendChild(h('span',{class:'pill',text:'Yürürlük: '+fmtDate(cit.valid_from)+' tarihinden beri'}));
+  if(cit.category==='admin_act')st.appendChild(h('span',{class:'pill',text:'İdari düzenleme'}));
+  if(st.children.length)body.appendChild(st);
+  if(cit.why){
+    body.appendChild(h('div',{class:'article'},h('span',{class:'ctx',text:'Bu dayanak, sorunun gerekçesinde anılmaktadır: '}),cit.why));
+  }else{
+    (cit.quotes||[cit.quote]).forEach(function(qt){
+      body.appendChild(h('div',{class:'article'},h('span',{class:'ctx',text:'(madde metninin devamı) '}),h('mark',{text:qt}),h('span',{class:'ctx',text:' (madde metninin devamı)'})));
+    });
+    body.appendChild(h('p',{class:'hint',text:'İşaretli bölüm cevapta dayanak alınan metindir.'}));
+  }
+  $('#viewer').classList.add('open');$('#app').classList.add('viewing');
+  if(!wide())$('#vScrim').classList.add('show');
+  $('#vScrim').classList.toggle('show',!wide());
+  $('#vClose').focus({preventScroll:true});
+  $('#vBody').scrollTop=0;
+}
+function closeViewer(){
+  var was=$('#viewer').classList.contains('open');
+  $('#viewer').classList.remove('open');$('#app').classList.remove('viewing');$('#vScrim').classList.remove('show');
+  document.querySelectorAll('.cite.on').forEach(function(x){x.classList.remove('on')});
+  if(was&&lastTrigger&&document.body.contains(lastTrigger))lastTrigger.focus({preventScroll:true});
+  lastTrigger=null;
+}
+$('#vClose').onclick=closeViewer;
+$('#vScrim').onclick=closeViewer;
+window.matchMedia('(min-width:1100px)').addEventListener('change',function(){$('#vScrim').classList.remove('show');if(!wide()&&$('#viewer').classList.contains('open'))$('#vScrim').classList.add('show')});
+
+setupBrand();
+newConv();
+})();
+
+</script>
+</body>
+</html>
