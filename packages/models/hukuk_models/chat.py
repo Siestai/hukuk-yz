@@ -56,7 +56,9 @@ def clamp_title(title: str) -> str:
         return title
     head = title[: TITLE_MAX + 1]
     # A cut that falls inside a word drops that word; one long word is cut hard.
-    return (head.rsplit(" ", 1)[0] if " " in head else head[:TITLE_MAX]).rstrip(" ,;:-–.")[:TITLE_MAX]
+    return (head.rsplit(" ", 1)[0] if " " in head else head[:TITLE_MAX]).rstrip(" ,;:-–.")[
+        :TITLE_MAX
+    ]
 
 
 class ChatModel(BaseModel):

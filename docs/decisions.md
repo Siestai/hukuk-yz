@@ -322,3 +322,13 @@
   paylaşılan token adlarını ezer. `packages/ui` yalnız yeni token adlarını ve varsayılanlarını taşır
   (varsayılan "dudak" 0 px, navy = primary); dashboard görünümü değişmez.
 - **Fontlar:** Newsreader + Figtree (OFL), `@hukuk/ui/fonts/glarus` ayrı modül; dashboard yüklemez.
+
+### 2026-11-23 — Sidebar: kısa başlık ve sabitleme (Görev 22, Orhan)
+
+- **Başlık:** agent prompt'u 2-5 kelime, en fazla 40 karakter, isim öbeği ister; deterministik sınır
+  `hukuk_models.chat.clamp_title` (48 karakter, kelime sınırı, üç nokta yok). App başlığı konuşmanın
+  ilk anlaşılan olayından bir kez yazar; sonraki turlar değiştirmez. Migration 0020 mevcut uzun
+  başlıkları aynı kuralla kısaltır (geri alınamaz).
+- **Sabitleme:** `chat_conversation.pinned_at`; kullanıcı başına en fazla 3 (`pin_limit`, 409), yalnız
+  sahip sabitler (admin de başkasının konuşmasını sabitleyemez), PUT/DELETE idempotent. Liste: önce
+  sabitler (ilk sabitlenen üstte), sonra `updated_at` azalan.
