@@ -28,6 +28,7 @@ from hukuk_models.chat import (
     ClarificationQuestion,
     DoneEvent,
     ErrorEvent,
+    FactsEvent,
     MissingSource,
     QuestionInput,
     SourceGap,
@@ -825,3 +826,62 @@ async def test_request_id_is_an_idempotency_key_not_a_turn_id(
     assert len(rows) == 2
     assert {r.request_id for r in rows} == {request_id}
     assert request_id not in {r.id for r in rows}
+
+
+async def test_title_is_written_once_from_the_first_understood_event(
+    stack: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, *_ = stack
+    id = (await client.post("/chat/conversations")).json()["id"]
+    titles = iter(["İşe iade, 5 ay kıdem", "Başka başlık"])
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        facts = CaseFacts(title=next(titles), facts=[])
+        question = ClarificationQuestion(
+            id="q", fact_key="date", text="Tarih?", why="Test", input=QuestionInput(kind="date")
+        )
+        clarification = Clarification(questions=[question], index=1, total=1)
+        return httpx.Response(
+            200,
+            content=_sse(FactsEvent(facts=facts))
+            + _sse(ClarificationEvent(clarification=clarification))
+            + _sse(DoneEvent(trace_id="t")),
+        )
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handle))
+    )
+    for text in ("İlk soru", "Düzeltme"):
+        assert (
+            await client.post(f"/chat/conversations/{id}/messages", json={"text": text})
+        ).status_code == 200
+    assert (await client.get(f"/chat/conversations/{id}")).json()["title"] == "İşe iade, 5 ay kıdem"
+
+
+async def test_pin_limit_ownership_idempotence_and_order(stack: Any) -> None:
+    client, user, other, settings, app = stack
+    ids = [(await client.post("/chat/conversations")).json()["id"] for _ in range(5)]
+    first = await client.put(f"/chat/conversations/{ids[1]}/pin")
+    assert first.status_code == 200 and first.json()["pinned"] is True
+    assert (await client.put(f"/chat/conversations/{ids[1]}/pin")).status_code == 200
+    for id in (ids[3], ids[0]):
+        assert (await client.put(f"/chat/conversations/{id}/pin")).status_code == 200
+    full = await client.put(f"/chat/conversations/{ids[2]}/pin")
+    assert full.status_code == 409 and full.json()["error"]["code"] == "pin_limit"
+    # Already pinned stays 200 at the limit; the pins are unchanged.
+    assert (await client.put(f"/chat/conversations/{ids[0]}/pin")).status_code == 200
+    listed = (await client.get("/chat/conversations")).json()["items"]
+    # Pinned first (earliest pin on top), then the rest by `updated_at` descending.
+    assert [c["id"] for c in listed] == [ids[1], ids[3], ids[0], ids[4], ids[2]]
+    assert [c["pinned"] for c in listed] == [True, True, True, False, False]
+    unpinned = await client.delete(f"/chat/conversations/{ids[3]}/pin")
+    assert unpinned.status_code == 200 and unpinned.json()["pinned"] is False
+    assert (await client.delete(f"/chat/conversations/{ids[3]}/pin")).status_code == 200
+    assert (await client.put(f"/chat/conversations/{ids[2]}/pin")).status_code == 200
+    # Only the owner pins: another user and an admin get 404.
+    app.dependency_overrides[current_user] = lambda: other
+    assert (await client.put(f"/chat/conversations/{ids[4]}/pin")).status_code == 404
+    other.role = UserRole.admin
+    assert (await client.put(f"/chat/conversations/{ids[4]}/pin")).status_code == 404
+    assert (await client.delete(f"/chat/conversations/{ids[1]}/pin")).status_code == 404

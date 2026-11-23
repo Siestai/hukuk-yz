@@ -23,6 +23,7 @@ from app.models.user import AppUser, UserRole
 from app.settings import Settings, get_settings
 from hukuk_models import ErrorCode
 from hukuk_models.chat import (
+    PIN_LIMIT,
     ChatEvent,
     Conversation,
     ConversationDetail,
@@ -77,6 +78,7 @@ def record(row: ChatConversation) -> Conversation:
         id=row.id,
         durable_delivery=True,
         title=row.title,
+        pinned=row.pinned_at is not None,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -105,10 +107,41 @@ async def create_conversation(user: CurrentUser, db: Db, settings: Config) -> Co
 
 @router.get("/conversations")
 async def list_conversations(user: CurrentUser, db: Db) -> ConversationList:
-    query = select(ChatConversation).order_by(ChatConversation.updated_at.desc())
+    query = select(ChatConversation).order_by(
+        ChatConversation.pinned_at.is_(None),
+        ChatConversation.pinned_at,
+        ChatConversation.updated_at.desc(),
+    )
     if user.role != UserRole.admin:
         query = query.where(ChatConversation.user_id == user.id)
     return ConversationList(items=[record(r) for r in (await db.scalars(query)).all()])
+
+
+@router.put("/conversations/{conversation_id}/pin")
+async def pin_conversation(conversation_id: uuid.UUID, user: CurrentUser, db: Db) -> Conversation:
+    row = await owned(db, conversation_id, user, write=True)
+    if row.pinned_at is None:
+        # The user's row serializes concurrent pins, so the limit cannot be passed by a race.
+        await db.execute(select(AppUser.id).where(AppUser.id == user.id).with_for_update())
+        count = await db.scalar(
+            select(func.count())
+            .select_from(ChatConversation)
+            .where(ChatConversation.user_id == user.id, ChatConversation.pinned_at.is_not(None))
+        )
+        if (count or 0) >= PIN_LIMIT:
+            raise ApiError(409, ErrorCode.pin_limit)
+        row.pinned_at = _now()
+        await db.commit()
+    return record(row)
+
+
+@router.delete("/conversations/{conversation_id}/pin")
+async def unpin_conversation(conversation_id: uuid.UUID, user: CurrentUser, db: Db) -> Conversation:
+    row = await owned(db, conversation_id, user, write=True)
+    if row.pinned_at is not None:
+        row.pinned_at = None
+        await db.commit()
+    return record(row)
 
 
 @router.get("/conversations/{conversation_id}")
@@ -217,7 +250,8 @@ async def bridge(
                                     int((time.monotonic() - started) * 1000),
                                     usage=event.usage,
                                 )
-                                if turn.facts:
+                                # The title comes from the first understood event, once.
+                                if turn.facts and not conv.title:
                                     conv.title = turn.facts.title
                                 conv.updated_at = turn.created_at
                                 event = DoneEvent(
