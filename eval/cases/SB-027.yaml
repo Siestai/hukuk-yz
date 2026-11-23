@@ -22,7 +22,9 @@ expected:
   must_ask:
     - devamsizlik_is_gunu
     - isciye_ulasma
-    - yazili_belge
+    - tutanak_tarihi
+    - savunma_talebi_tarihi
+    - fesih_bildirimi_tarihi
   must_not:
     - savunma alınmasına gerek yoktur
     - savunma almanıza gerek yoktur

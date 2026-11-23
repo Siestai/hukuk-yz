@@ -24,7 +24,7 @@ expected:
   must_ask:
     - ucret_odeme_durumu
     - hizmet_suresi
-    - yazili_belge
+    - fesih_bildirimi_tarihi
     - olay_tarihi
   must_not:
     - ihbar tazminatına da hak kazan

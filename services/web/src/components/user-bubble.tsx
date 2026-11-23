@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 
 import type { ClarificationQuestion, Turn } from "@/lib/chat-types";
+import { useDisplayValue } from "@/lib/use-display-value";
 
 /** What the user sent: the question, the answers to the open questions, or the choice to skip them. */
 export function UserBubble({
@@ -12,6 +13,7 @@ export function UserBubble({
     questions: ClarificationQuestion[];
 }) {
     const t = useTranslations("chat.user");
+    const display = useDisplayValue();
     const lines = turn.skipped
         ? [t("skipped")]
         : turn.clarification_answers
@@ -20,7 +22,9 @@ export function UserBubble({
                 const option = question?.input.options.find((o) => o.value === given.value);
                 return t("answer", {
                     question: question?.text ?? "",
-                    answer: given.unknown ? t("unknown") : (option?.label ?? given.value ?? ""),
+                    answer: given.unknown
+                        ? t("unknown")
+                        : (option?.label ?? display(given.value ?? "")),
                 });
             })
           : [turn.text ?? ""];

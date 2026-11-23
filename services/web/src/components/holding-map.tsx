@@ -4,6 +4,7 @@ import { Card, cn, Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 import { useTranslations } from "next-intl";
 
 import type { CitationRef, HoldingRow } from "@/lib/chat-types";
+import { useDisplayValue } from "@/lib/use-display-value";
 import { CitationLink } from "./citation-link";
 
 type Result = HoldingRow["result"];
@@ -17,11 +18,12 @@ const TONE: Record<Result, string> = {
 
 function useRows(rows: HoldingRow[]) {
     const t = useTranslations("chat.holding");
+    const display = useDisplayValue();
     return rows.map((row) => ({
         key: `${row.citation.source_id}/${row.condition}`,
         condition: row.condition,
         citation: row.citation,
-        value: row.fact_value ?? t("unknownValue"),
+        value: row.fact_value ? display(row.fact_value) : t("unknownValue"),
         symbol: t(`symbols.${row.result}`),
         label: t(`results.${row.result}`),
         tone: TONE[row.result],

@@ -22,7 +22,7 @@ const clarification = {
             text: "Fesih tarihi nedir?",
             why: "Süre için.",
             source_refs: [],
-            input: { kind: "date" },
+            input: { kind: "date", options: [] },
         },
         {
             id: "q3",
@@ -30,7 +30,7 @@ const clarification = {
             text: "Kıdem kaç yıl?",
             why: "Kıdem için.",
             source_refs: [],
-            input: { kind: "number" },
+            input: { kind: "number", options: [] },
         },
     ],
 } as unknown as Clarification;
@@ -88,6 +88,77 @@ describe("QuestionCard", () => {
         await userEvent.click(screen.getByRole("button", { name: "Devam" }));
         expect(screen.getByText("Soru 3 / 3", { selector: "p" })).toBeInTheDocument();
         expect(onReply).not.toHaveBeenCalled();
+    });
+});
+
+describe("QuestionCard date question", () => {
+    const dated = {
+        questions: [
+            {
+                id: "q1",
+                fact_key: "tutanak_tarihi",
+                text: "Devamsızlık tutanağı hangi tarihte tutuldu?",
+                why: "Tutanak ispat içindir.",
+                source_refs: [],
+                input: { kind: "date", options: [{ value: "yok", label: "Tutanak tutulmadı" }] },
+            },
+        ],
+    } as unknown as Clarification;
+
+    function setupDated() {
+        const onReply = vi.fn();
+        renderWithIntl(
+            <QuestionCard
+                clarification={dated}
+                busy={false}
+                onReply={onReply}
+                onOpenCitation={vi.fn()}
+            />,
+        );
+        return onReply;
+    }
+
+    it("shows the picker, its format, the no-date answer and Bilmiyorum", () => {
+        setupDated();
+        expect(
+            screen.getByLabelText("Devamsızlık tutanağı hangi tarihte tutuldu?"),
+        ).toHaveAttribute("type", "date");
+        expect(screen.getByText("Biçim: GG.AA.YYYY")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Tutanak tutulmadı" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Bilmiyorum" })).toBeInTheDocument();
+    });
+
+    it("sends the date picked", async () => {
+        const onReply = setupDated();
+        await userEvent.type(
+            screen.getByLabelText("Devamsızlık tutanağı hangi tarihte tutuldu?"),
+            "2026-10-03",
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Devam" }));
+        expect(onReply).toHaveBeenCalledWith({
+            clarification_answers: [{ question_id: "q1", value: "2026-10-03", unknown: false }],
+        });
+    });
+
+    it("sends the no-date option as its value", async () => {
+        const onReply = setupDated();
+        await userEvent.click(screen.getByRole("button", { name: "Tutanak tutulmadı" }));
+        expect(onReply).toHaveBeenCalledWith({
+            clarification_answers: [{ question_id: "q1", value: "yok", unknown: false }],
+        });
+    });
+
+    it("sends Bilmiyorum", async () => {
+        const onReply = setupDated();
+        await userEvent.click(screen.getByRole("button", { name: "Bilmiyorum" }));
+        expect(onReply).toHaveBeenCalledWith({
+            clarification_answers: [{ question_id: "q1", unknown: true }],
+        });
+    });
+
+    it("shows no format hint on a number question", () => {
+        setup();
+        expect(screen.queryByText("Biçim: GG.AA.YYYY")).not.toBeInTheDocument();
     });
 });
 

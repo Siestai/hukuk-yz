@@ -398,3 +398,33 @@ def test_the_fine_template_reads_the_genelge_sections_of_its_branch_not_the_whol
         # No section is named for these acts: the sections the search finds (at most six).
         "2020/8": {"fiil": ["defter_ibraz", "diger"]},
     }
+
+
+def test_a_date_question_may_carry_options_and_no_other_non_choice_may() -> None:
+    fact: dict[str, Any] = {
+        "key": "tarih",
+        "label": "Tarih",
+        "question": {
+            "text": "Hangi tarih?",
+            "why": "Gerekir.",
+            "kind": "date",
+            "options": [{"value": "yok", "label": "Yapılmadı"}],
+        },
+    }
+    assert _topic(fact).facts[0].choices[0].value == "yok"
+    for kind in ("text", "number"):
+        fact["question"] = {**fact["question"], "kind": kind}
+        with pytest.raises(ValidationError, match="a choice has options"):
+            _topic(fact)
+
+
+def test_the_absence_template_asks_each_document_as_a_date_with_a_no_date_answer() -> None:
+    topic = get_topic("hakli_fesih_devamsizlik")
+    keys = ("tutanak_tarihi", "savunma_talebi_tarihi", "fesih_bildirimi_tarihi")
+
+    assert topic.fact("yazili_belge") is None
+    for key in keys:
+        fact = topic.fact(key)
+        assert fact is not None and fact.critical and fact.question is not None
+        assert fact.question.kind == "date"
+        assert [o.value for o in fact.question.options] == ["yok"]

@@ -36,6 +36,8 @@ option alanına o seçeneğin değerini (örneğin "askerlik"), value alanına k
 yaz. option boş kalırsa olgu bilinmeyen sayılır ve kullanıcıya yeniden sorulur; soruda açıkça \
 yazanı yeniden sordurma. Soru hiçbir seçeneğe açıkça uymamakta ise olguyu ekleme; seçenek tahmin \
 etme.
+- Tarih olgusunun seçeneği tarih bildirmeyen cevaptır ("tutanak tutulmadı"); soru açıkça bunu \
+söylemekte ise option alanına yaz, tarihi soruda yazıldığı gibi value alanına yaz, tahmin etme.
 - Bir olgunun uygulanmadığını kullanıcı açıkça söylediyse status "assumed_never"; söylemediyse \
 bunu asla varsayma.
 - event_date: yalnız soruda açıkça yazılı bir olay tarihi varsa (YYYY-MM-DD); bugünün tarihini \

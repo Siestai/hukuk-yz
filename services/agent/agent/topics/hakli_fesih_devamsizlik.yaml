@@ -4,6 +4,8 @@
 # Yalnız bir tarafa ait olgular fesih_sebebi'ne bağlı sorulur (asked_when; fesih_sebebi sorulmaz,
 # giriş adımı seçer). Sebep bilinmiyorsa iki tarafın olguları da sorulur; bu yüzden onlarda
 # "söz konusu değil" seçeneği (assumed_never) bulunmaktadır.
+# Üç belge (tutanak, savunma talebi/ihtar, fesih bildirimi) ayrı birer tarih olgusudur; her birinin
+# tarihsiz cevabı (tutulmadı, gönderilmedi, yapılmadı) seçenek olarak tarih seçicinin yanında durur.
 # Atıf notu: KB'deki 4857 ve 1475 metinlerinde "(1)" biçiminde fıkra numarası yoktur ve harfli
 # bentler (II-g, II-e) künyede taşınamaz (agent/sources.py checked_sub); basis madde düzeyindedir,
 # bent metinde ve "why" içinde adıyla anılır.
@@ -124,26 +126,58 @@ facts:
       kind: text
       basis:
         - {ref: "1475 m.14", category: statute}
-  - key: yazili_belge
-    label: Tutanak ve yazılı bildirim
+  - key: tutanak_tarihi
+    label: Devamsızlık tutanağı
     critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
     question:
-      text: >-
-        Olay ve taraflar arasındaki bildirimler (tutanak, ihtarname, yazılı fesih bildirimi)
-        yazılı olarak belgelendi mi?
+      text: Devamsızlık tutanağı hangi tarihte tutuldu?
       why: >-
         Kanunda öngörülen bildirimler ilgiliye yazılı olarak ve imza karşılığında yapılmakta,
-        imzadan kaçınılırsa durum tutanakla tespit edilmektedir (4857 m.109). İşveren fesih
-        bildirimini yazılı yapmak ve fesih sebebini açık ve kesin belirtmek zorundadır
-        (4857 m.19).
-      kind: choice
+        imzadan kaçınılırsa durum tutanakla tespit edilmektedir (4857 m.109). Devamsızlığın
+        işçinin izinsiz ve haklı sebebe dayanmaksızın gerçekleştiği (4857 m.25/II-g) tutanakla
+        belgelenmektedir.
+      kind: date
       options:
-        - {value: evet, label: Evet}
-        - {value: kismen, label: Kısmen}
-        - {value: hayir, label: Hayır}
+        - {value: yok, label: Tutanak tutulmadı}
       basis:
         - {ref: "4857 m.109", category: statute}
+        - {ref: "4857 m.25", category: statute}
+  - key: savunma_talebi_tarihi
+    label: Yazılı savunma talebi veya ihtar
+    critical: true
+    asked_when: {fesih_sebebi: [devamsizlik, unknown]}
+    question:
+      text: İşçiye yazılı savunma talebi veya işe davet ihtarı hangi tarihte gönderildi?
+      why: >-
+        4857 m.19, davranış nedeniyle fesihte işçinin savunmasının alınmasını öngörmekte ve
+        m.25/II'ye uygun fesih hakkını saklı tutmaktadır. Kanunda öngörülen bildirimler ilgiliye
+        yazılı olarak ve imza karşılığında yapılmakta, imzadan kaçınılırsa durum tutanakla tespit
+        edilmektedir (4857 m.109).
+      kind: date
+      options:
+        - {value: yok, label: Gönderilmedi}
+      basis:
         - {ref: "4857 m.19", category: statute}
+        - {ref: "4857 m.109", category: statute}
+  - key: fesih_bildirimi_tarihi
+    label: Yazılı fesih bildirimi
+    critical: true
+    question:
+      text: Yazılı fesih bildirimi hangi tarihte yapıldı?
+      why: >-
+        İşveren fesih bildirimini yazılı yapmak ve fesih sebebini açık ve kesin belirtmek
+        zorundadır (4857 m.19). Bildirim ilgiliye yazılı olarak ve imza karşılığında yapılmakta,
+        imzadan kaçınılırsa durum tutanakla tespit edilmektedir (4857 m.109). Fesih yetkisinin
+        süresi içinde kullanılıp kullanılmadığı bildirim tarihine göre belirlenmektedir
+        (4857 m.26).
+      kind: date
+      options:
+        - {value: yok, label: Henüz yapılmadı}
+      basis:
+        - {ref: "4857 m.19", category: statute}
+        - {ref: "4857 m.109", category: statute}
+        - {ref: "4857 m.26", category: statute}
 event_date_fact: olay_tarihi
 must_read:
   - {ref: "4857 m.24", category: statute}

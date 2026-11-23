@@ -501,3 +501,78 @@ def test_an_option_on_a_fact_without_options_is_ignored() -> None:
     )
 
     assert next(f for f in facts.facts if f.key == "kidem").value == "5 ay"
+
+
+# A date fact with a no-date answer next to the picker (hakli_fesih_devamsizlik, #105).
+DATED = Topic.model_validate(
+    {
+        "id": "tarihli",
+        "title": "Tarihli",
+        "description": "Tarih ve tarihsiz cevap.",
+        "facts": [
+            {
+                "key": "tutanak_tarihi",
+                "label": "Devamsızlık tutanağı",
+                "critical": True,
+                "question": {
+                    "text": "Tutanak hangi tarihte tutuldu?",
+                    "why": "Gerekir.",
+                    "kind": "date",
+                    "options": [{"value": "yok", "label": "Tutanak tutulmadı"}],
+                },
+            }
+        ],
+    }
+)
+
+
+def _dated(*given: IntakeFact, question: str = "") -> CaseFacts:
+    out = IntakeOutput(topic="tarihli", title="Tarihli", facts=list(given))
+    return build(DATED, out, None, question)
+
+
+def test_a_date_question_carries_its_no_date_option() -> None:
+    clarification = clarification_for(DATED, _dated(), {})
+
+    assert clarification is not None
+    assert [o.value for o in clarification.questions[0].input.options] == ["yok"]
+    assert clarification.questions[0].input.kind == "date"
+
+
+def test_a_date_fact_is_answered_by_a_date_or_by_its_no_date_option() -> None:
+    facts = _dated()
+    clarification = clarification_for(DATED, facts, {})
+    assert clarification is not None
+    day = apply_answers(
+        DATED, clarification, [ClarificationAnswer(question_id="q1", value="2026-10-03")], facts
+    )
+    none = apply_answers(
+        DATED, clarification, [ClarificationAnswer(question_id="q1", value="yok")], facts
+    )
+    other = apply_answers(
+        DATED, clarification, [ClarificationAnswer(question_id="q1", value="belki")], facts
+    )
+
+    assert (day.facts[0].value, day.facts[0].status) == ("03.10.2026", "known")
+    assert (none.facts[0].value, none.facts[0].status) == ("Tutanak tutulmadı", "known")
+    assert other.facts[0].status == "unknown"
+    assert critical_unknown(DATED, none) == []
+
+
+def test_a_stated_date_binds_a_date_fact_and_so_does_a_stated_no_date_option() -> None:
+    stated = _dated(
+        IntakeFact(key="tutanak_tarihi", value="03.10.2026", status="known"),
+        question="Tutanak 03.10.2026 tarihinde tutuldu.",
+    )
+    escaped = _dated(
+        IntakeFact(key="tutanak_tarihi", value="tutanak yok", option="yok", status="known"),
+        question="Tutanak tutulmadı.",
+    )
+    invented = _dated(
+        IntakeFact(key="tutanak_tarihi", value="03.10.2026", status="known"),
+        question="Tutanak tutuldu.",
+    )
+
+    assert stated.facts[0].value == "03.10.2026"
+    assert (escaped.facts[0].value, escaped.facts[0].status) == ("Tutanak tutulmadı", "known")
+    assert invented.facts[0].status == "unknown"
