@@ -95,7 +95,7 @@ function FactValue({
 }) {
     const display = useDisplayValue();
     const unknown = fact.status === "unknown";
-    const className = unknown ? "italic text-ink-2" : "text-ink";
+    const className = unknown ? "italic text-medium" : "text-ink";
     const text = unknown ? unknownText : display(fact.value ?? "");
     if (!onEdit)
         return <span className={`${className} wrap-anywhere font-serif text-lg`}>{text}</span>;

@@ -59,6 +59,16 @@ describe("QuestionCard", () => {
         expect(screen.getByRole("heading", { name: "Fesih tarihi nedir?" })).toHaveFocus();
     });
 
+    it("keeps the reason collapsed until asked, its summary reachable", async () => {
+        setup();
+        const summary = screen.getByText("Neden soruyorum");
+        const details = summary.closest("details");
+        expect(details).not.toHaveAttribute("open");
+        await userEvent.tab();
+        await userEvent.click(summary);
+        expect(details).toHaveAttribute("open");
+    });
+
     it("folds an answered question into one line with its answer", async () => {
         setup();
         expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
@@ -66,6 +76,9 @@ describe("QuestionCard", () => {
         const row = screen.getByRole("listitem");
         expect(row).toHaveTextContent("Kaç işçi çalışıyor?");
         expect(row).toHaveTextContent("30 veya fazla");
+        expect(row).toHaveTextContent("cevaplandı: Kaç işçi çalışıyor?: 30 veya fazla");
+        expect(screen.getByTitle("Kaç işçi çalışıyor?")).toBeInTheDocument();
+        expect(screen.getByTitle("30 veya fazla")).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "Bilmiyorum" }));
         expect(screen.getAllByRole("listitem")[1]).toHaveTextContent("Bilmiyorum");
     });

@@ -101,10 +101,18 @@ export function QuestionCard({
                                     className="stroke-primary-foreground"
                                 />
                             </svg>
-                            <span className="min-w-0 max-w-1/2 truncate text-sm text-ink-2">
+                            <span className="sr-only">{t("answered")}: </span>
+                            <span
+                                title={item.label}
+                                className="min-w-0 max-w-1/2 truncate text-sm text-ink-2"
+                            >
                                 {item.label}
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-right font-serif text-lg text-ink">
+                            <span className="sr-only">: </span>
+                            <span
+                                title={item.text}
+                                className="min-w-0 flex-1 truncate text-right font-serif text-lg text-ink"
+                            >
                                 {item.text}
                             </span>
                         </li>

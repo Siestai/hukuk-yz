@@ -1,8 +1,7 @@
 {
   "brand": {
     "name": "Glarus",
-    "by": "by siestai",
-    "logoLabel": "Glarus logosu"
+    "by": "by siestai"
   },
   "login": {
     "title": "Giriş yap",
@@ -57,6 +56,7 @@
     "question": {
       "progress": "Soru {index} / {total}",
       "why": "Neden soruyorum",
+      "answered": "cevaplandı",
       "unknown": "Bilmiyorum",
       "next": "Devam",
       "dateHint": "Biçim: GG.AA.YYYY",

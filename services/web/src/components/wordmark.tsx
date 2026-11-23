@@ -11,8 +11,7 @@ export function Wordmark({ dark = false, className }: { dark?: boolean; classNam
         <div className={cn("flex min-w-0 items-center gap-3", className)}>
             <svg
                 viewBox="0 0 44 44"
-                role="img"
-                aria-label={t("logoLabel")}
+                aria-hidden="true"
                 className="size-10 shrink-0"
             >
                 <rect

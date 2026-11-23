@@ -92,10 +92,12 @@
     body {
         -webkit-font-smoothing: antialiased;
     }
-    /* On the navy sidebar and drawer the teal focus ring would vanish. */
-    [data-tone="dark"] :focus-visible {
-        outline-color: var(--focus-inv);
-    }
+}
+
+/* On the navy sidebar and drawer the teal focus ring would vanish. Unlayered, so it beats the
+   layered `focus-visible:outline-ring` utility. */
+[data-tone="dark"] :focus-visible {
+    outline-color: var(--focus-inv);
 }
 
 @media (prefers-reduced-motion: reduce) {
