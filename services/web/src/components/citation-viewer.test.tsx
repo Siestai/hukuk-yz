@@ -61,7 +61,7 @@ describe("CitationViewer", () => {
                 asOf="2026-10-01"
             />,
         );
-        expect(screen.getByText("Onaylanmadı")).toBeInTheDocument();
+        expect(screen.getByText("Onaysız metin (test)")).toBeInTheDocument();
         expect(screen.getByText("Teyitsiz")).toBeInTheDocument();
         expect(
             await screen.findByText("Bu dayanağın metni şu an gösterilemiyor."),
