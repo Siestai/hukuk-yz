@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import type { Answer, CaseFacts, ChatMode, CitationRef, SourceGap } from "@/lib/chat-types";
+import { useDisplayValue } from "@/lib/use-display-value";
 import { CitationList } from "./citation-list";
 import { FactsCard } from "./facts-card";
 import { FoldSection } from "./fold-section";
@@ -197,11 +198,12 @@ export function AnswerView({
 export function SourceGapNote({ gap }: { gap: SourceGap }) {
     const t = useTranslations("chat.gap");
     const format = useFormatter();
+    const display = useDisplayValue();
     const sources = gap.missing_sources.map((source) =>
         t("source", { ref: source.ref, reason: t(`reasons.${source.reason}`) }),
     );
     const facts = gap.given_facts.map((fact) =>
-        t("fact", { label: fact.label, value: fact.value ?? "" }),
+        t("fact", { label: fact.label, value: display(fact.value ?? "") }),
     );
     const lines = [
         t("topic", { topic: gap.topic }),

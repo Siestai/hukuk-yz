@@ -27,7 +27,15 @@
    "status": "unknown"
   },
   {
-   "key": "yazili_belge",
+   "key": "tutanak_tarihi",
+   "status": "unknown"
+  },
+  {
+   "key": "savunma_talebi_tarihi",
+   "status": "unknown"
+  },
+  {
+   "key": "fesih_bildirimi_tarihi",
    "status": "unknown"
   }
  ]

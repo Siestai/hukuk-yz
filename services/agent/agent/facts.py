@@ -97,7 +97,9 @@ def build_facts(
             # Silence alone permits inheritance. Never resurrect a date after rejection.
             supplied_date = tf.key in supplied
             day = parse_date(fact.value or "") if fact else None
-            if day is None or day > today or not stated_in(day, question):
+            # An option of a date fact is an answer that names no date ("Tutanak tutulmadı").
+            no_date = fact is not None and _matching_option(tf, fact.value or "") is not None
+            if not no_date and (day is None or day > today or not stated_in(day, question)):
                 fact = None
             if tf.key == topic.event_date_fact and extracted.event_date is not None:
                 if not supplied_date and stated_event is not None:
@@ -227,8 +229,8 @@ def _answered_fact(
     if answer.value is None:
         return unknown
     kind, value = question.input.kind, answer.value.strip()
-    if kind == "choice":
-        option = _matching_option(tf, value)
+    option = _matching_option(tf, value)
+    if kind == "choice" or (kind == "date" and option is not None):
         if option is None:
             return unknown
         status = "assumed_never" if option.assumed_never else "known"

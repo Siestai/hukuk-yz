@@ -90,21 +90,7 @@ export function QuestionCard({
                     </h3>
                 </div>
                 <div className="grid gap-2">
-                    {question.input.kind === "choice" ? (
-                        question.input.options.map((option) => (
-                            <Button
-                                key={option.value}
-                                type="button"
-                                variant="outline"
-                                size="lg"
-                                disabled={busy}
-                                className="h-12 justify-start text-base pointer-coarse:h-12"
-                                onClick={() => choose(option.value)}
-                            >
-                                {option.label}
-                            </Button>
-                        ))
-                    ) : (
+                    {question.input.kind !== "choice" && (
                         <ValueForm
                             key={question.id}
                             kind={question.input.kind}
@@ -113,6 +99,19 @@ export function QuestionCard({
                             onSubmit={choose}
                         />
                     )}
+                    {question.input.options.map((option) => (
+                        <Button
+                            key={option.value}
+                            type="button"
+                            variant="outline"
+                            size="lg"
+                            disabled={busy}
+                            className="h-12 justify-start text-base pointer-coarse:h-12"
+                            onClick={() => choose(option.value)}
+                        >
+                            {option.label}
+                        </Button>
+                    ))}
                     <Button
                         type="button"
                         variant="outline"
@@ -157,24 +156,33 @@ function ValueForm({
 }) {
     const t = useTranslations("chat.question");
     const [value, setValue] = useState("");
+    const hintId = useId();
     function submit(event: FormEvent) {
         event.preventDefault();
         if (value.trim()) onSubmit(value.trim());
     }
     return (
-        <form onSubmit={submit} className="flex gap-2">
-            <Input
-                type={INPUT_TYPE[kind]}
-                inputMode={kind === "number" ? "decimal" : undefined}
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-                aria-label={label}
-                disabled={disabled}
-                className="h-12 pointer-coarse:h-12"
-            />
-            <Button type="submit" size="lg" disabled={disabled || !value.trim()}>
-                {t("next")}
-            </Button>
+        <form onSubmit={submit} className="grid gap-1">
+            <div className="flex gap-2">
+                <Input
+                    type={INPUT_TYPE[kind]}
+                    inputMode={kind === "number" ? "decimal" : undefined}
+                    value={value}
+                    onChange={(event) => setValue(event.target.value)}
+                    aria-label={label}
+                    aria-describedby={kind === "date" ? hintId : undefined}
+                    disabled={disabled}
+                    className="h-12 pointer-coarse:h-12"
+                />
+                <Button type="submit" size="lg" disabled={disabled || !value.trim()}>
+                    {t("next")}
+                </Button>
+            </div>
+            {kind === "date" && (
+                <p id={hintId} className="text-sm text-ink-3">
+                    {t("dateHint")}
+                </p>
+            )}
         </form>
     );
 }

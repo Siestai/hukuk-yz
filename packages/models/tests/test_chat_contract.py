@@ -13,6 +13,7 @@ from hukuk_models.chat import (
     ChatEvent,
     Clarification,
     MessageRequest,
+    QuestionInput,
     Turn,
 )
 
@@ -157,6 +158,18 @@ SOURCE_GAP = {
     "given_facts": [{"key": "kidem", "label": "Kıdem: 2 yıl", "value": "2 yıl", "status": "known"}],
     "next_step": "Bu soru, şu kaynaklar bilgi tabanına eklendiğinde cevaplanabilir: 4857 m.17.",
 }
+
+
+def test_only_a_choice_and_a_date_carry_options() -> None:
+    options = [{"value": "yok", "label": "Tutanak tutulmadı"}]
+    assert QuestionInput(kind="date", options=options).options[0].value == "yok"
+    assert QuestionInput(kind="date").options == []
+    assert QuestionInput(kind="choice", options=options).kind == "choice"
+    with pytest.raises(ValidationError):
+        QuestionInput(kind="choice")
+    for kind in ("number", "text"):
+        with pytest.raises(ValidationError):
+            QuestionInput(kind=kind, options=options)
 
 
 def test_turn_roles() -> None:

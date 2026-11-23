@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
 import type { CaseFacts, Fact } from "@/lib/chat-types";
+import { useDisplayValue } from "@/lib/use-display-value";
 
 /**
  * "Anladığım olay": what the agent understood. Unknown values stand out; on the latest turn a
@@ -20,6 +21,7 @@ export function FactsCard({
 }) {
     const t = useTranslations("chat.facts");
     const [editing, setEditing] = useState<string | null>(null);
+    const display = useDisplayValue();
 
     function submit(event: FormEvent<HTMLFormElement>, fact: Fact) {
         event.preventDefault();
@@ -47,7 +49,7 @@ export function FactsCard({
                                 >
                                     <Input
                                         name="value"
-                                        defaultValue={fact.value ?? ""}
+                                        defaultValue={display(fact.value ?? "")}
                                         aria-label={t("editValue", { label: fact.label })}
                                         autoFocus
                                     />
@@ -90,9 +92,10 @@ function FactValue({
     editLabel: string;
     onEdit?: () => void;
 }) {
+    const display = useDisplayValue();
     const unknown = fact.status === "unknown";
     const className = unknown ? "font-medium text-medium" : "font-medium text-ink";
-    const text = unknown ? unknownText : fact.value;
+    const text = unknown ? unknownText : display(fact.value ?? "");
     if (!onEdit) return <span className={`${className} wrap-anywhere text-sm`}>{text}</span>;
     return (
         <button

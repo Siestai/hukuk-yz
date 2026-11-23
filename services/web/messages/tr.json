@@ -58,6 +58,7 @@
       "why": "Neden soruyorum: {why}",
       "unknown": "Bilmiyorum",
       "next": "Devam",
+      "dateHint": "Biçim: GG.AA.YYYY",
       "skip": "Soruları atla, koşullu cevabı göster"
     },
     "answer": {
