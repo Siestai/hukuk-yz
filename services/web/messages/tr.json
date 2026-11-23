@@ -1,7 +1,8 @@
 {
   "brand": {
-    "name": "Libria",
-    "logoLabel": "Libria logosu"
+    "name": "Glarus",
+    "by": "by siestai",
+    "logoLabel": "Glarus logosu"
   },
   "login": {
     "title": "Giriş yap",
@@ -55,7 +56,7 @@
     },
     "question": {
       "progress": "Soru {index} / {total}",
-      "why": "Neden soruyorum: {why}",
+      "why": "Neden soruyorum",
       "unknown": "Bilmiyorum",
       "next": "Devam",
       "dateHint": "Biçim: GG.AA.YYYY",
