@@ -164,3 +164,54 @@ it.each([
         expect(result?.origin).toBe("kb");
     },
 );
+
+describe("identity of a UUID source", () => {
+    const extractionId = "c5044bdb-ed04-4ccc-9957-a10673fe0648";
+    const load = (data: unknown, sourceId: string) =>
+        loadSourceText(
+            apiReturning(data),
+            { ...citation, source_id: sourceId, ref: "4857 m.42" },
+            "2026-10-01",
+        );
+
+    it("shows an approved article whose version id is the source", async () => {
+        const result = await load(
+            {
+                status: "found",
+                review_status: "approved",
+                version: { id: versionId, text: "Onaylı metin" },
+            },
+            versionId,
+        );
+        expect(result?.origin).toBe("kb");
+    });
+
+    it("shows an analyzed article whose extraction id is the source", async () => {
+        const result = await load(
+            {
+                status: "found",
+                review_status: "analyzed",
+                extraction_id: extractionId,
+                version: { text: "Onaysız metin" },
+            },
+            extractionId,
+        );
+        expect(result).toMatchObject({ text: "Onaysız metin", origin: "kb" });
+    });
+
+    it.each([
+        ["analyzed", "analyzed"],
+        ["approved", "approved"],
+    ])("keeps the quote when a %s article has another extraction id", async (_name, status) => {
+        const result = await load(
+            {
+                status: "found",
+                review_status: status,
+                extraction_id: "d5044bdb-ed04-4ccc-9957-a10673fe0648",
+                version: { text: "Başka kayıt" },
+            },
+            extractionId,
+        );
+        expect(result?.origin).toBe("quote");
+    });
+});

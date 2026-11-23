@@ -78,7 +78,11 @@ export async function loadSourceText(
             })
             .catch(() => ({ data: undefined }));
         const text = data?.status === "found" ? data.version?.text : undefined;
-        if (text && (!UUID.test(citation.source_id) || data?.version?.id === citation.source_id))
+        const ownsSource =
+            !UUID.test(citation.source_id) ||
+            data?.version?.id === citation.source_id ||
+            (data?.review_status === "analyzed" && data.extraction_id === citation.source_id);
+        if (text && ownsSource)
             return { text, highlight: highlightOf(text, citation), origin: "kb" };
     }
     if (!citation.quote) return null;
