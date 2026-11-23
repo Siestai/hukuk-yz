@@ -11,6 +11,7 @@ import type { Failure } from "@/lib/use-chat-session";
 import { AnswerView, SourceGapNote } from "./answer-view";
 import { FactsCard } from "./facts-card";
 import { FeedbackBar } from "./feedback-bar";
+import { HarbourMark } from "./harbour-mark";
 import { QuestionCard } from "./question-card";
 import { UserBubble } from "./user-bubble";
 
@@ -105,7 +106,7 @@ export function Thread({
                                 ) : null}
                                 {turn.error ? (
                                     <>
-                                        <div className="grid gap-2 rounded-md bg-low-soft px-4 py-3 text-sm text-low">
+                                        <div className="grid gap-2 rounded-card bg-low-soft px-4 py-3 text-sm text-low">
                                             <p>
                                                 {errorMessage(
                                                     turn.error.code,
@@ -127,9 +128,12 @@ export function Thread({
             {live ? (
                 <div className="grid gap-4">
                     {live.facts ? <FactsCard facts={live.facts} /> : null}
-                    <p role="status" className="text-sm text-ink-2">
-                        {live.label ? t("step", { label: live.label }) : null}
-                    </p>
+                    <div className="flex items-center gap-3 rounded-card border border-line bg-surface p-4">
+                        <HarbourMark busy className="size-8 shrink-0" />
+                        <p role="status" className="text-sm text-ink">
+                            {live.label ? t("step", { label: live.label }) : null}
+                        </p>
+                    </div>
                 </div>
             ) : null}
             {partial?.facts ? <FactsCard facts={partial.facts} /> : null}
@@ -145,7 +149,7 @@ export function Thread({
             ) : null}
             <div role="alert">
                 {failure ? (
-                    <div className="grid justify-items-start gap-2 rounded-md bg-low-soft px-4 py-3 text-sm text-low">
+                    <div className="grid justify-items-start gap-2 rounded-card bg-low-soft px-4 py-3 text-sm text-low">
                         <p>
                             {failure.code === "upstream_unavailable"
                                 ? t("stream.connectionLost")
@@ -154,7 +158,13 @@ export function Thread({
                         </p>
                         {failure.restart ? <p>{t("stream.restartExplanation")}</p> : null}
                         {failure.retryable !== false ? (
-                            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="min-h-11 font-semibold"
+                                onClick={onRetry}
+                            >
                                 {t(failure.restart ? "stream.restart" : "stream.retry")}
                             </Button>
                         ) : null}

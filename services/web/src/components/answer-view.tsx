@@ -44,72 +44,70 @@ export function AnswerView({
     ].filter(Boolean);
 
     return (
-        <article className="@container overflow-hidden rounded-md border border-border bg-surface">
-            <header
-                className={cn(
-                    "px-4 py-3",
-                    definite ? "bg-high-soft text-high" : "bg-medium-soft text-medium",
-                )}
-            >
-                <p className="flex items-center gap-2 font-semibold">
+        <article className="@container grid min-w-0 animate-rise gap-4 overflow-hidden rounded-card border border-border bg-surface p-4 sm:p-6">
+            <header className="grid gap-2">
+                <p
+                    className={cn(
+                        "inline-flex min-h-8 items-center gap-2 justify-self-start rounded-md px-3 text-sm font-bold",
+                        definite ? "bg-high-soft text-high" : "bg-medium-soft text-medium",
+                    )}
+                >
                     <span aria-hidden="true" className="size-2.5 rounded-sm bg-current" />
                     {t(`status.${answer.status}`)}
                 </p>
-                <p className="text-sm">{answer.status_note}</p>
+                <p className="text-xs leading-relaxed text-ink-2">{answer.status_note}</p>
             </header>
-            <div className="grid gap-4 p-4">
-                <h3 className="font-serif text-xl font-semibold leading-snug text-ink">
-                    {answer.headline}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                    {answer.fact_chips.map((chip) => {
-                        const className = cn(
-                            "inline-flex min-h-8 items-center rounded-md px-2.5 text-sm font-medium",
-                            chip.status === "unknown"
-                                ? "bg-medium-soft text-medium"
-                                : "bg-sunken text-ink-2",
-                        );
-                        return facts && onCorrect ? (
-                            <button
-                                key={chip.fact_key}
-                                type="button"
-                                onClick={() => setEditing(true)}
-                                className={cn(
-                                    className,
-                                    "focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11",
-                                )}
-                            >
-                                {chip.label}
-                            </button>
-                        ) : (
-                            <span key={chip.fact_key} className={className}>
-                                {chip.label}
-                            </span>
-                        );
-                    })}
-                    {facts && onCorrect ? (
+            <h3 className="wrap-anywhere font-serif text-xl leading-snug font-medium tracking-tight text-pretty text-ink sm:text-2xl">
+                {answer.headline}
+            </h3>
+            <div className="flex flex-wrap gap-2">
+                {answer.fact_chips.map((chip) => {
+                    const className = cn(
+                        "inline-flex min-h-8 items-center rounded-md px-3 text-sm font-medium",
+                        chip.status === "unknown"
+                            ? "bg-medium-soft text-medium"
+                            : "bg-sunken text-ink-2",
+                    );
+                    return facts && onCorrect ? (
                         <button
+                            key={chip.fact_key}
                             type="button"
-                            onClick={() => setEditing((open) => !open)}
-                            aria-expanded={editing}
-                            className="min-h-8 rounded-md bg-primary-soft px-2.5 text-sm font-semibold text-primary focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11"
+                            onClick={() => setEditing(true)}
+                            className={cn(
+                                className,
+                                "min-h-11 focus-visible:outline-2 focus-visible:outline-ring",
+                            )}
                         >
-                            {t("edit")}
+                            {chip.label}
                         </button>
-                    ) : null}
-                </div>
-                {editing && facts && onCorrect ? (
-                    <FactsCard
-                        facts={facts}
-                        onCorrect={(message) => {
-                            setEditing(false);
-                            onCorrect(message);
-                        }}
-                    />
+                    ) : (
+                        <span key={chip.fact_key} className={className}>
+                            {chip.label}
+                        </span>
+                    );
+                })}
+                {facts && onCorrect ? (
+                    <button
+                        type="button"
+                        onClick={() => setEditing((open) => !open)}
+                        aria-expanded={editing}
+                        className="lip lip-edge mb-0.5 min-h-11 rounded-md border border-primary-edge bg-primary-soft px-3 text-sm font-semibold text-high focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                        {t("edit")}
+                    </button>
                 ) : null}
             </div>
+            {editing && facts && onCorrect ? (
+                <FactsCard
+                    facts={facts}
+                    onCorrect={(message) => {
+                        setEditing(false);
+                        onCorrect(message);
+                    }}
+                />
+            ) : null}
             {answer.source_gap ? (
-                <div className="border-t border-line p-4">
+                <div className="border-t border-line pt-4">
                     <SourceGapNote gap={answer.source_gap} />
                 </div>
             ) : null}
@@ -117,7 +115,7 @@ export function AnswerView({
                 <FoldSection title={t("missing")} open>
                     <ul className="grid gap-3">
                         {answer.missing_info.map((info, index) => (
-                            <li key={index} className="font-serif text-ink">
+                            <li key={index} className="font-serif text-lg leading-relaxed text-ink">
                                 <p className="wrap-anywhere">
                                     {info.condition}
                                     {": "}
@@ -130,7 +128,7 @@ export function AnswerView({
                 </FoldSection>
             )}
             {mode === "reasoned" ? (
-                <div className="grid gap-3 border-t border-line p-4">
+                <div className="grid gap-3 border-t border-line pt-4">
                     {/* The source-gap answer may have no verified row to show. */}
                     {answer.holding_map.rows.length ? (
                         <HoldingMap
@@ -147,22 +145,27 @@ export function AnswerView({
                     />
                 </div>
             ) : (
-                <ul className="grid gap-4 border-t border-line p-4">
+                <ol className="grid">
                     {points.map((point, index) => (
-                        <li key={index} className="flex gap-3">
+                        <li
+                            key={index}
+                            className="flex animate-rise gap-3 border-t border-line py-4 first:pb-4"
+                        >
                             <span
                                 aria-hidden="true"
-                                className="mt-2.5 size-1.5 shrink-0 rounded-sm bg-ink-3"
-                            />
+                                className="w-7 shrink-0 font-serif text-xl leading-normal text-high"
+                            >
+                                {index + 1}
+                            </span>
                             <div className="min-w-0">
-                                <p className="wrap-anywhere font-serif text-lg leading-relaxed text-ink">
+                                <p className="wrap-anywhere mb-3 font-serif text-lg leading-relaxed text-ink">
                                     {point.text}
                                 </p>
                                 <CitationList citations={point.citations} onOpen={onOpenCitation} />
                             </div>
                         </li>
                     ))}
-                </ul>
+                </ol>
             )}
             {answer.calculations.map((calculation, index) => (
                 <FoldSection
@@ -180,7 +183,7 @@ export function AnswerView({
             <FoldSection title={t("reads")} hint={reads.join(", ")}>
                 <CitationList citations={answer.read_sources.items} onOpen={onOpenCitation} />
             </FoldSection>
-            <footer className="grid gap-0.5 border-t border-line px-4 py-3 text-xs text-ink-3">
+            <footer className="grid gap-0.5 border-t border-line pt-4 text-xs text-ink-2">
                 <p>
                     <span className="font-semibold">{t("appliedLaw")}</span>{" "}
                     {answer.applied_law_text}

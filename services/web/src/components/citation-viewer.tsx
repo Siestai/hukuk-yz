@@ -41,8 +41,8 @@ export function CitationViewer({ citation, asOf }: { citation: CitationRef; asOf
     const { valid_from: from, valid_to: to } = citation;
 
     return (
-        <div className="grid gap-3">
-            <h3 className="wrap-anywhere font-serif text-xl font-semibold text-ink">
+        <div className="grid gap-4">
+            <h3 className="wrap-anywhere font-serif text-2xl leading-tight font-medium text-ink">
                 {citation.label}
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -54,7 +54,7 @@ export function CitationViewer({ citation, asOf }: { citation: CitationRef; asOf
                 </Badge>
             </div>
             {from ? (
-                <p className="text-sm text-ink-2">
+                <p className="text-xs text-ink-2">
                     {to
                         ? t("validity", { from: date(from), to: date(to) })
                         : t("validityOpen", { from: date(from) })}
@@ -70,11 +70,14 @@ export function CitationViewer({ citation, asOf }: { citation: CitationRef; asOf
                 </p>
             ) : (
                 <>
-                    <p className="wrap-anywhere whitespace-pre-line font-serif text-lg leading-relaxed text-ink-2">
+                    <p className="wrap-anywhere whitespace-pre-line border-t border-line pt-4 font-serif text-lg leading-relaxed text-ink">
                         {source.highlight ? (
                             <>
                                 {source.text.slice(0, source.highlight.start)}
-                                <mark ref={mark} className="bg-accent/30 text-ink">
+                                <mark
+                                    ref={mark}
+                                    className="-mx-0.5 box-decoration-clone border-b-2 border-accent bg-mark px-0.5 text-ink"
+                                >
                                     {source.text.slice(
                                         source.highlight.start,
                                         source.highlight.end,
@@ -87,12 +90,12 @@ export function CitationViewer({ citation, asOf }: { citation: CitationRef; asOf
                         )}
                     </p>
                     {source.origin === "quote" ? (
-                        <p className="text-sm text-ink-3">{t("quoteOnly")}</p>
+                        <p className="text-xs text-ink-2">{t("quoteOnly")}</p>
                     ) : null}
                 </>
             )}
             {citation.used_for ? (
-                <p className="rounded-md bg-primary-soft px-3 py-2 text-sm text-primary">
+                <p className="rounded-md bg-primary-soft px-3 py-2 text-sm text-high">
                     {t("usedFor", { text: citation.used_for })}
                 </p>
             ) : null}

@@ -32,28 +32,29 @@ export function FactsCard({
     }
 
     return (
-        <Card className="p-4">
-            <h3 className="text-sm font-semibold text-ink-2">{t("title")}</h3>
-            <dl className="mt-2 grid grid-cols-1 divide-y divide-line-2">
+        <Card className="animate-rise p-4 sm:p-6">
+            <h3 className="font-serif text-xl font-medium text-ink">{t("title")}</h3>
+            <dl className="mt-3 grid grid-cols-1 divide-y divide-line">
                 {facts.facts.map((fact) => (
                     <div
                         key={fact.key}
-                        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2"
+                        className="grid grid-cols-1 gap-1 py-3 first:pt-0 last:pb-0"
                     >
-                        <dt className="text-sm text-ink-2">{fact.label}</dt>
+                        <dt className="text-xs font-semibold text-ink-2">{fact.label}</dt>
                         <dd className="min-w-0">
                             {editing === fact.key ? (
                                 <form
                                     onSubmit={(event) => submit(event, fact)}
-                                    className="flex items-center gap-2"
+                                    className="flex flex-wrap items-center gap-2"
                                 >
                                     <Input
                                         name="value"
                                         defaultValue={display(fact.value ?? "")}
                                         aria-label={t("editValue", { label: fact.label })}
+                                        className="min-w-36 flex-1 bg-bg text-base"
                                         autoFocus
                                     />
-                                    <Button type="submit" size="sm">
+                                    <Button type="submit" size="sm" className="font-semibold">
                                         {t("save")}
                                     </Button>
                                     <Button
@@ -94,15 +95,16 @@ function FactValue({
 }) {
     const display = useDisplayValue();
     const unknown = fact.status === "unknown";
-    const className = unknown ? "font-medium text-medium" : "font-medium text-ink";
+    const className = unknown ? "italic text-ink-2" : "text-ink";
     const text = unknown ? unknownText : display(fact.value ?? "");
-    if (!onEdit) return <span className={`${className} wrap-anywhere text-sm`}>{text}</span>;
+    if (!onEdit)
+        return <span className={`${className} wrap-anywhere font-serif text-lg`}>{text}</span>;
     return (
         <button
             type="button"
             onClick={onEdit}
             aria-label={`${editLabel}: ${text}`}
-            className={`${className} wrap-anywhere min-h-8 text-right text-sm focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11`}
+            className={`${className} wrap-anywhere min-h-11 rounded-md text-left font-serif text-lg underline decoration-line-strong decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring`}
         >
             {text}
         </button>

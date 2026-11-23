@@ -11,6 +11,7 @@ import type {
     ClarificationQuestion,
     Reply,
 } from "@/lib/chat-types";
+import { useDisplayValue } from "@/lib/use-display-value";
 import { CitationList } from "./citation-list";
 
 const INPUT_TYPE = { date: "date", number: "number", text: "text" } as const;
@@ -51,6 +52,7 @@ export function QuestionCard({
     const question = questions[position];
     const heading = useRef<HTMLHeadingElement>(null);
     const progressId = useId();
+    const display = useDisplayValue();
 
     // The next question replaces the last one under the user's finger or cursor: move focus to
     // it so a screen reader reads it. Also on the first question, when the turn arrives.
@@ -69,27 +71,88 @@ export function QuestionCard({
     const choose = (value: string) => answer({ question_id: question.id, value, unknown: false });
     const unknown = () => answer({ question_id: question.id, unknown: true });
 
+    const answered = questions.flatMap((q) => {
+        const value = given[q.id];
+        if (!value) return [];
+        const text = value.unknown
+            ? t("unknown")
+            : (q.input.options.find((o) => o.value === value.value)?.label ??
+              display(value.value ?? ""));
+        return [{ id: q.id, label: q.text, text }];
+    });
+
     return (
         <>
-            <Card className="grid gap-4 p-4">
-                <Progress
-                    value={position + 1}
-                    max={questions.length}
-                    aria-labelledby={progressId}
-                />
-                <div>
-                    <p id={progressId} aria-live="polite" className="text-sm text-ink-2">
+            {answered.length > 0 ? (
+                <ul className="grid">
+                    {answered.map((item) => (
+                        <li
+                            key={item.id}
+                            className="flex min-h-12 min-w-0 animate-rise items-center gap-3 border-b border-line px-2 py-3"
+                        >
+                            <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5 shrink-0">
+                                <circle cx="10" cy="10" r="9" className="fill-primary" />
+                                <path
+                                    d="M5.5 10.5l3 3 6-6.5"
+                                    fill="none"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="stroke-primary-foreground"
+                                />
+                            </svg>
+                            <span className="min-w-0 max-w-1/2 truncate text-sm text-ink-2">
+                                {item.label}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-right font-serif text-lg text-ink">
+                                {item.text}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+            <Card className="grid animate-rise gap-4 p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-4">
+                    <p
+                        id={progressId}
+                        aria-live="polite"
+                        className="text-sm font-semibold whitespace-nowrap text-high"
+                    >
                         {t("progress", { index: position + 1, total: questions.length })}
                     </p>
-                    <h3
-                        ref={heading}
-                        tabIndex={-1}
-                        className="mt-1 font-serif text-lg font-semibold text-ink focus:outline-none"
-                    >
-                        {question.text}
-                    </h3>
+                    <Progress
+                        value={position + 1}
+                        max={questions.length}
+                        aria-labelledby={progressId}
+                        className="h-1.5 max-w-40 flex-1"
+                    />
                 </div>
-                <div className="grid gap-2">
+                <h3
+                    ref={heading}
+                    tabIndex={-1}
+                    className="wrap-anywhere font-serif text-2xl leading-snug font-medium tracking-tight text-ink focus:outline-none"
+                >
+                    {question.text}
+                </h3>
+                <details className="group border-t border-line text-sm text-ink-2">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-md font-semibold text-ink focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+                        {t("why")}
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            className="size-4 transition-transform group-open:rotate-180"
+                        >
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </summary>
+                    <p className="wrap-anywhere">{question.why}</p>
+                    <CitationList citations={question.source_refs} onOpen={onOpenCitation} />
+                </details>
+                <div className="grid gap-3">
                     {question.input.kind !== "choice" && (
                         <ValueForm
                             key={question.id}
@@ -99,33 +162,35 @@ export function QuestionCard({
                             onSubmit={choose}
                         />
                     )}
-                    {question.input.options.map((option) => (
+                    {question.input.options.map((option, index) => (
                         <Button
                             key={option.value}
                             type="button"
                             variant="outline"
                             size="lg"
                             disabled={busy}
-                            className="h-12 justify-start text-base pointer-coarse:h-12"
+                            className="min-h-14 justify-start gap-3 whitespace-normal py-3 text-left text-base font-medium"
                             onClick={() => choose(option.value)}
                         >
+                            <span
+                                aria-hidden="true"
+                                className="grid size-7 shrink-0 place-items-center rounded-md border border-input bg-bg text-xs font-bold text-ink-2"
+                            >
+                                {String.fromCharCode(65 + index)}
+                            </span>
                             {option.label}
                         </Button>
                     ))}
                     <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="lg"
                         disabled={busy}
-                        className="h-12 justify-start text-base text-ink-3 pointer-coarse:h-12"
+                        className="min-h-14 justify-start border border-dashed border-input text-base font-medium text-ink-2"
                         onClick={unknown}
                     >
                         {t("unknown")}
                     </Button>
-                </div>
-                <div className="text-sm text-ink-2">
-                    <p className="wrap-anywhere">{t("why", { why: question.why })}</p>
-                    <CitationList citations={question.source_refs} onOpen={onOpenCitation} />
                 </div>
             </Card>
             <div className="sticky bottom-0 -mx-4 bg-bg px-4 pt-2 pb-safe-3 text-center">
@@ -133,7 +198,7 @@ export function QuestionCard({
                     type="button"
                     variant="ghost"
                     disabled={busy}
-                    className="font-semibold text-primary"
+                    className="min-h-11 font-semibold text-ink-2 underline underline-offset-4"
                     onClick={() => onReply(clarificationReply(questions, given))}
                 >
                     {t("skip")}
@@ -162,7 +227,7 @@ function ValueForm({
         if (value.trim()) onSubmit(value.trim());
     }
     return (
-        <form onSubmit={submit} className="grid gap-1">
+        <form onSubmit={submit} className="grid gap-2">
             <div className="flex gap-2">
                 <Input
                     type={INPUT_TYPE[kind]}
@@ -172,14 +237,19 @@ function ValueForm({
                     aria-label={label}
                     aria-describedby={kind === "date" ? hintId : undefined}
                     disabled={disabled}
-                    className="h-12 pointer-coarse:h-12"
+                    className="h-12 bg-bg text-base pointer-coarse:h-12"
                 />
-                <Button type="submit" size="lg" disabled={disabled || !value.trim()}>
+                <Button
+                    type="submit"
+                    size="lg"
+                    className="h-12 text-base font-semibold pointer-coarse:h-12"
+                    disabled={disabled || !value.trim()}
+                >
                     {t("next")}
                 </Button>
             </div>
             {kind === "date" && (
-                <p id={hintId} className="text-sm text-ink-3">
+                <p id={hintId} className="text-xs text-ink-2">
                     {t("dateHint")}
                 </p>
             )}

@@ -7,7 +7,10 @@ import { useFormatter, useTranslations } from "next-intl";
 
 import type { Conversation } from "@/lib/chat-types";
 
-/** The conversations of the signed-in user, newest first: title and date, and "Yeni soru". */
+/**
+ * The conversations of the signed-in user, newest first: title and date, and "Yeni soru". It sits
+ * on the navy sidebar and drawer, so it paints with the inverse tokens.
+ */
 export function ConversationList({
     conversations,
     activeId,
@@ -26,8 +29,8 @@ export function ConversationList({
         <div className="flex min-h-0 flex-1 flex-col gap-4">
             <Button
                 type="button"
-                variant="outline"
-                className="justify-start font-semibold text-primary"
+                size="lg"
+                className="min-h-12 w-full text-base font-semibold"
                 onClick={() => {
                     onNew();
                     onNavigate();
@@ -37,8 +40,11 @@ export function ConversationList({
                 {t("new")}
             </Button>
             <nav aria-label={t("title")} className="min-h-0 flex-1 overflow-y-auto">
+                <p aria-hidden="true" className="mx-2 mb-2 text-xs font-semibold text-ink-inv-2">
+                    {t("title")}
+                </p>
                 {conversations.length === 0 ? (
-                    <p className="px-3 text-sm text-ink-3">{t("empty")}</p>
+                    <p className="px-2 py-3 text-sm text-ink-inv-2">{t("empty")}</p>
                 ) : (
                     <ul className="grid gap-1">
                         {conversations.map((conversation) => (
@@ -48,16 +54,16 @@ export function ConversationList({
                                     onClick={onNavigate}
                                     aria-current={conversation.id === activeId ? "page" : undefined}
                                     className={cn(
-                                        "grid min-h-11 gap-0.5 rounded-md px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring",
+                                        "grid min-h-12 gap-0.5 rounded-md border px-3 py-3 text-sm font-semibold leading-snug text-ink-inv hover:bg-navy-2 focus-visible:outline-2 focus-visible:outline-ring",
                                         conversation.id === activeId
-                                            ? "bg-primary-soft font-semibold text-primary"
-                                            : "text-ink-2 hover:bg-primary-soft",
+                                            ? "border-navy-2 bg-navy-2"
+                                            : "border-transparent",
                                     )}
                                 >
                                     <span className="wrap-anywhere">
                                         {conversation.title || t("untitled")}
                                     </span>
-                                    <span className="text-xs font-normal text-ink-3">
+                                    <span className="text-xs font-normal text-ink-inv-2">
                                         {format.dateTime(new Date(conversation.updated_at), "date")}
                                     </span>
                                 </Link>
@@ -66,7 +72,11 @@ export function ConversationList({
                     </ul>
                 )}
             </nav>
-            <LogoutButton label={t("logout")} />
+            <LogoutButton
+                label={t("logout")}
+                variant="inverse"
+                className="min-h-12 w-full text-base font-semibold"
+            />
         </div>
     );
 }

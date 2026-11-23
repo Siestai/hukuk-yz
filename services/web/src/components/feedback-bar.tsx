@@ -71,6 +71,7 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="min-h-11 font-semibold"
                     aria-label={t("up")}
                     aria-pressed={sent === "up"}
                     disabled={pending || sent !== null}
@@ -82,6 +83,7 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="min-h-11 font-semibold"
                     aria-label={t("down")}
                     aria-pressed={sent === "down"}
                     disabled={pending || sent !== null}
@@ -93,13 +95,20 @@ export function FeedbackBar({ turnId, answer }: { turnId: string; answer: Answer
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className="min-h-11 font-semibold"
                     disabled={pending || sent !== null}
                     onClick={() => setDialog("report")}
                 >
                     {t("report")}
                 </Button>
                 {answer ? (
-                    <Button type="button" variant="ghost" size="sm" onClick={copy}>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-11 font-semibold"
+                        onClick={copy}
+                    >
                         {copied ? t("copied") : t("copy")}
                     </Button>
                 ) : null}

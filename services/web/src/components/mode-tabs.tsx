@@ -22,7 +22,7 @@ export function ModeTabs({
         <div
             role="group"
             aria-label={t("label")}
-            className={cn("grid grid-cols-3 gap-1 rounded-md bg-sunken p-1", className)}
+            className={cn("grid grid-cols-3 gap-1 rounded-card bg-sunken p-1", className)}
         >
             {MODES.map((value) => (
                 <button
@@ -31,8 +31,10 @@ export function ModeTabs({
                     aria-pressed={mode === value}
                     onClick={() => onChange(value)}
                     className={cn(
-                        "min-h-9 rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:min-h-11",
-                        mode === value ? "bg-surface text-primary shadow-sm" : "text-ink-2",
+                        "min-h-11 rounded-md border px-1 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ring",
+                        mode === value
+                            ? "lip lip-line border-input bg-surface text-ink"
+                            : "border-transparent text-ink-2",
                     )}
                 >
                     {t(value)}

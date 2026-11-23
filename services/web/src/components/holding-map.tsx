@@ -12,7 +12,7 @@ type Result = HoldingRow["result"];
 const TONE: Record<Result, string> = {
     met: "text-high",
     not_met: "text-low",
-    not_applicable: "text-ink-3",
+    not_applicable: "text-ink-2",
     unknown: "text-medium",
 };
 
@@ -46,7 +46,7 @@ export function HoldingMap({
     const items = useRows(rows);
     return (
         <Card className="overflow-hidden">
-            <h3 className="p-4 pb-3 font-semibold text-ink">{t("title")}</h3>
+            <h3 className="p-4 pb-3 font-serif text-lg font-medium text-ink">{t("title")}</h3>
             <div className="hidden @xl:block">
                 <Table className="table-fixed">
                     <TableHeader>
@@ -80,7 +80,7 @@ export function HoldingMap({
                     </TableBody>
                 </Table>
             </div>
-            <ul className="grid grid-cols-1 divide-y divide-line-2 border-t border-line-2 @xl:hidden">
+            <ul className="grid grid-cols-1 divide-y divide-line border-t border-line @xl:hidden">
                 {items.map((item) => (
                     <li key={item.key} className="grid gap-1 p-4">
                         <p className="wrap-anywhere text-ink">{item.condition}</p>

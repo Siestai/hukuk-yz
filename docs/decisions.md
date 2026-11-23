@@ -313,3 +313,12 @@
   yapılır.
 - **Sonraki aday işler:** intake'in serbest metni seçenek değerine bağlaması; 5510 m.102'nin KB'de
   okunur hâle gelmesi. Ayrıntı: `eval/results/2026-11-22-ozet.md` "Kapanış".
+
+### 2026-11-23 — Chat arayüzü "Liman" teması (Görev 21, Orhan)
+
+- **Yön:** chat web (`services/web`) "Liman" tasarımına taşınır; referans `design/glarus-ui/liman.html`.
+  Marka Glarus + "by siestai"; Libria izleri chat arayüzünden kalktı.
+- **Tema kapsamı:** Liman değerleri yalnız `services/web/src/app/globals.css` içinde `:root` üzerinde
+  paylaşılan token adlarını ezer. `packages/ui` yalnız yeni token adlarını ve varsayılanlarını taşır
+  (varsayılan "dudak" 0 px, navy = primary); dashboard görünümü değişmez.
+- **Fontlar:** Newsreader + Figtree (OFL), `@hukuk/ui/fonts/glarus` ayrı modül; dashboard yüklemez.

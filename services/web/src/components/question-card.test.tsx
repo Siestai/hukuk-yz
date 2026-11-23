@@ -52,10 +52,22 @@ describe("QuestionCard", () => {
     it("shows one question at a time with its progress and reason", async () => {
         setup();
         expect(screen.getByText("Soru 1 / 3", { selector: "p" })).toBeInTheDocument();
-        expect(screen.getByText("Neden soruyorum: Otuz işçi sınırı için.")).toBeInTheDocument();
+        expect(screen.getByText("Neden soruyorum")).toBeInTheDocument();
+        expect(screen.getByText("Otuz işçi sınırı için.")).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "30 veya fazla" }));
         expect(screen.getByText("Soru 2 / 3", { selector: "p" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Fesih tarihi nedir?" })).toHaveFocus();
+    });
+
+    it("folds an answered question into one line with its answer", async () => {
+        setup();
+        expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "30 veya fazla" }));
+        const row = screen.getByRole("listitem");
+        expect(row).toHaveTextContent("Kaç işçi çalışıyor?");
+        expect(row).toHaveTextContent("30 veya fazla");
+        await userEvent.click(screen.getByRole("button", { name: "Bilmiyorum" }));
+        expect(screen.getAllByRole("listitem")[1]).toHaveTextContent("Bilmiyorum");
     });
 
     it("sends the answers given and Bilmiyorum for the questions skipped", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog, Logo } from "@hukuk/ui";
+import { cn, Dialog } from "@hukuk/ui";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
@@ -12,7 +12,9 @@ import { CitationViewer } from "./citation-viewer";
 import { Composer } from "./composer";
 import { ConversationList } from "./conversation-list";
 import { ModeTabs } from "./mode-tabs";
+import { HarbourMark } from "./harbour-mark";
 import { hasOpenQuestions, Thread } from "./thread";
+import { Wordmark } from "./wordmark";
 
 /** Today in Türkiye's time zone, as `YYYY-MM-DD` (the Swedish locale formats dates that way). */
 const localDate = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
@@ -30,7 +32,6 @@ export function ChatApp({
 }) {
     const t = useTranslations("chat");
     const list = useTranslations("conversations");
-    const brand = useTranslations("brand");
     const router = useRouter();
     const wide = useWide();
     const session = useChatSession(detail, conversations);
@@ -65,52 +66,54 @@ export function ChatApp({
 
     return (
         <div className="flex h-viewport overflow-hidden bg-bg">
-            <aside className="hidden w-64 shrink-0 flex-col gap-4 border-r border-line bg-surface p-4 lg:flex">
-                <div className="flex items-center gap-3 text-primary">
-                    <Logo label={brand("logoLabel")} className="size-7" />
-                    <p className="text-lg font-semibold leading-none text-ink">{brand("name")}</p>
-                </div>
+            <aside
+                data-tone="dark"
+                className="hidden w-64 shrink-0 flex-col gap-6 bg-navy p-4 pb-8 text-ink-inv lg:flex xl:w-68"
+            >
+                <Wordmark dark className="px-1 pt-2" />
                 {conversationList}
             </aside>
             <section className="flex min-w-0 flex-1 flex-col">
-                <header className="flex flex-col gap-3 border-b border-line bg-surface pt-safe-2 pb-3 px-safe-4 md:px-safe-6 lg:flex-row lg:items-center lg:justify-between lg:pt-safe-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <button
-                            ref={menu}
-                            type="button"
-                            aria-label={list("open")}
-                            aria-haspopup="dialog"
-                            onClick={() => setDrawer(true)}
-                            className="-ml-2 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:size-11 lg:hidden"
+                <header className="flex items-center gap-3 border-b border-line px-safe-4 pt-safe-2 pb-2 lg:hidden">
+                    <Wordmark className="flex-1" />
+                    <button
+                        ref={menu}
+                        type="button"
+                        aria-label={list("open")}
+                        aria-haspopup="dialog"
+                        onClick={() => setDrawer(true)}
+                        className="lip lip-line inline-flex size-12 shrink-0 items-center justify-center rounded-md border border-input bg-surface text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            className="size-5"
                         >
-                            <svg
-                                aria-hidden="true"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                className="size-5"
-                            >
-                                <path d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        <h1 className="wrap-anywhere truncate text-lg font-semibold text-ink">
-                            {title}
-                        </h1>
-                    </div>
-                    {answer ? (
-                        <ModeTabs mode={mode} onChange={setMode} className="lg:w-80" />
-                    ) : null}
+                            <path d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
                 </header>
+                <div className="mx-auto flex w-full max-w-read items-center gap-4 px-safe-4 pt-3 md:px-safe-6 lg:pt-5">
+                    <h1 className="wrap-anywhere sr-only truncate font-serif text-xl font-medium text-ink lg:not-sr-only lg:flex-1">
+                        {title}
+                    </h1>
+                    {answer ? (
+                        <ModeTabs mode={mode} onChange={setMode} className="w-full lg:w-80" />
+                    ) : null}
+                </div>
                 <div className="flex-1 overflow-y-auto overscroll-contain">
-                    <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 p-4 px-safe-4 md:px-safe-6">
+                    <div className="mx-auto grid max-w-read grid-cols-1 gap-4 px-safe-4 pt-6 pb-8 md:px-safe-6 md:pb-12">
                         {turns.length === 0 && !live ? (
-                            <div className="grid gap-2 py-12 text-center">
-                                <h2 className="font-serif text-2xl font-semibold text-ink">
+                            <div className="grid justify-items-center gap-4 pt-6 text-center">
+                                <HarbourMark />
+                                <h2 className="font-serif text-2xl font-medium tracking-tight text-ink md:text-4xl">
                                     {t("empty.title")}
                                 </h2>
-                                <p className="text-ink-2">{t("empty.hint")}</p>
+                                <p className="max-w-prose text-sm text-ink-2">{t("empty.hint")}</p>
                             </div>
                         ) : null}
                         <Thread
@@ -136,13 +139,18 @@ export function ChatApp({
             </section>
             <aside
                 aria-label={t("viewer.panel")}
-                className="hidden w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-5 lg:block xl:w-96"
+                className={cn(
+                    "w-80 shrink-0 overflow-y-auto border-l border-line bg-surface xl:w-110",
+                    opened ? "hidden lg:block" : "hidden xl:block",
+                )}
             >
-                <p className="mb-2 text-sm font-medium text-ink-3">{t("viewer.title")}</p>
+                <p className="px-5 pt-5 text-sm font-semibold text-ink-2">{t("viewer.title")}</p>
                 {opened && wide ? (
-                    <CitationViewer citation={opened.citation} asOf={opened.asOf} />
+                    <div className="p-5 pt-3">
+                        <CitationViewer citation={opened.citation} asOf={opened.asOf} />
+                    </div>
                 ) : (
-                    <p className="text-sm text-ink-3">{t("viewer.empty")}</p>
+                    <p className="px-5 pt-3 text-sm text-ink-2">{t("viewer.empty")}</p>
                 )}
             </aside>
             <Dialog
@@ -152,8 +160,14 @@ export function ChatApp({
                 title={list("title")}
                 closeLabel={list("close")}
                 returnFocusTo={menu}
+                data-tone="dark"
+                className="border-navy-2 bg-navy text-ink-inv"
+                closeClassName="text-ink-inv hover:bg-navy-2"
             >
-                <div className="flex min-h-0 flex-col gap-4">{conversationList}</div>
+                <div className="flex min-h-0 flex-col gap-6">
+                    <Wordmark dark className="px-1" />
+                    {conversationList}
+                </div>
             </Dialog>
             <Dialog
                 variant="sheet"
@@ -161,6 +175,7 @@ export function ChatApp({
                 onClose={() => setOpened(null)}
                 title={t("viewer.title")}
                 closeLabel={t("viewer.close")}
+                className="rounded-t-card"
             >
                 {opened ? <CitationViewer citation={opened.citation} asOf={opened.asOf} /> : null}
             </Dialog>
