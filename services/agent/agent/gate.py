@@ -468,6 +468,11 @@ def not_answered(
             "Eksik bilgiler nedeniyle koşullu cevaptır.",
             "Doğrulanan hükümler bu soruya uygulanabilir bir cevap için yeterli değildir.",
         )
+    missing = (
+        "Bu soru için gereken kaynaklar okunamamıştır."
+        if gap.missing_sources
+        else "Okunan kaynaklar bir cevap için yeterli bulunmamıştır."
+    )
     answer = Answer(
         status="conditional",
         status_note=note,
@@ -475,20 +480,11 @@ def not_answered(
         fact_chips=_chips(topic, facts),
         points=[
             AnswerPoint(
-                text=(
-                    "Bu soru için okunan kaynaklara dayanan ve doğrulanabilen bir cevap "
-                    f"oluşturulamamıştır. {shown_rows}"
-                ),
+                text=f"{missing} {shown_rows}",
                 citations=[],
             )
         ],
         short_point_count=1,
-        missing_info=[
-            MissingInfo(
-                condition="Cevabın doğrulanması",
-                result="Kaynakların elle incelenmesi gerekmektedir.",
-            )
-        ],
         holding_map=HoldingMap(
             rows=rows,
             reasoning_summary="Cevap, kaynak doğrulama kapısından geçemediği için üretilmemiştir.",

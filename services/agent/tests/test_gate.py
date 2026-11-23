@@ -11,7 +11,7 @@ from agent.holding import verify_rows
 from agent.llm_schemas import DraftOutput, HoldingDraft, IntakeOutput
 from agent.sources import ReadSource, as_read_source
 from agent.topics import get_topic
-from hukuk_models.chat import CaseFacts, Fact, HoldingRow, SourceGap
+from hukuk_models.chat import CaseFacts, Fact, HoldingRow, MissingSource, SourceGap
 
 TOPIC = get_topic("ise_iade")
 GAP = SourceGap(topic="İşe iade", missing_sources=[], given_facts=[], next_step="-")
@@ -213,6 +213,19 @@ def test_the_not_answered_answer_shows_the_verified_rows_and_the_source_gap() ->
     empty = not_answered(rows=[], **kwargs)  # type: ignore[arg-type]
     assert empty.holding_map.rows == [] and empty.source_gap == GAP
     assert "Doğrulanan hüküm bulunmamaktadır." in empty.points[0].text
+    # The "not verified" warning is the headline alone; the body says what is missing.
+    assert answer.missing_info == []
+    assert "elle incelenmesi" not in answer.points[0].text
+    assert "oluşturulamamıştır" not in answer.points[0].text
+    assert "yeterli bulunmamıştır" in answer.points[0].text
+    absent = SourceGap(
+        topic="İşe iade",
+        missing_sources=[MissingSource(ref="4857 m.18", reason="not_found")],
+        given_facts=[],
+        next_step="-",
+    )
+    unread = not_answered(rows=[], **{**kwargs, "gap": absent})  # type: ignore[arg-type]
+    assert unread.points[0].text.startswith("Bu soru için gereken kaynaklar okunamamıştır.")
     assert empty.status_note.startswith("Okunan kaynaklarda doğrulanabilen hüküm bulunamamıştır.")
     assert "yeterli değildir" not in empty.status_note
     assert "Eksik bilgiler" not in empty.status_note

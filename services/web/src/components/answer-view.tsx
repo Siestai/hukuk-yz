@@ -112,7 +112,7 @@ export function AnswerView({
                     <SourceGapNote gap={answer.source_gap} />
                 </div>
             ) : null}
-            {definite ? null : (
+            {definite || answer.missing_info.length === 0 ? null : (
                 <FoldSection title={t("missing")} open>
                     <ul className="grid gap-3">
                         {answer.missing_info.map((info, index) => (

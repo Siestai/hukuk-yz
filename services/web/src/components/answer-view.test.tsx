@@ -60,6 +60,18 @@ describe("AnswerView", () => {
         ).toBeInTheDocument();
     });
 
+    it("shows no missing-info section for a source-gap answer without user-completable facts", () => {
+        renderWithIntl(
+            <AnswerView
+                answer={{ ...conditionalAnswer, missing_info: [], source_gap: sourceGap }}
+                mode="short"
+                facts={null}
+                onOpenCitation={vi.fn()}
+            />,
+        );
+        expect(screen.queryByText("Tamamlanması gereken bilgiler")).not.toBeInTheDocument();
+    });
+
     it("draws no holding table for a source-gap answer with no verified row", () => {
         renderWithIntl(
             <AnswerView
