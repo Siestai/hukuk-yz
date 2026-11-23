@@ -22,10 +22,7 @@ def source_gap(topic: Topic, facts: CaseFacts, missing: Sequence[Mapping[str, st
             + "."
         )
     else:
-        next_step = (
-            "Okunan kaynaklar doğrulanabilen bir cevap için yeterli değildir; "
-            "kaynakların elle incelenmesi gerekmektedir."
-        )
+        next_step = "Okunan kaynakların elle incelenmesi gerekmektedir."
     return SourceGap(
         topic=topic.title,
         missing_sources=list(sources.values()),

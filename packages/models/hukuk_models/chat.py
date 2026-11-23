@@ -295,8 +295,11 @@ class Answer(ChatModel):
             raise ValueError("short_point_count must not exceed the number of points")
         if not self.holding_map.rows and self.source_gap is None:
             raise ValueError("an answer rests on a holding map row, unless it says the source gap")
-        if self.status == "conditional" and not self.missing_info:
-            raise ValueError("a conditional answer says what it depends on (missing_info)")
+        if self.status == "conditional" and not self.missing_info and self.source_gap is None:
+            raise ValueError(
+                "a conditional answer says what it depends on (missing_info), "
+                "unless it says the source gap"
+            )
         if self.status == "definite":
             if self.missing_info:
                 raise ValueError("a definite answer has no missing_info")

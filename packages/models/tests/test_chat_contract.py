@@ -71,6 +71,18 @@ def test_conditional_answer_needs_missing_info() -> None:
         Answer.model_validate(raw)
 
 
+def test_conditional_source_gap_answer_needs_no_missing_info() -> None:
+    raw = _fixture_answer()
+    raw["missing_info"] = []
+    raw["source_gap"] = {
+        "topic": "İşe iade",
+        "missing_sources": [],
+        "given_facts": [],
+        "next_step": "-",
+    }
+    assert Answer.model_validate(raw).missing_info == []
+
+
 def test_definite_answer_cannot_rest_on_an_unknown_fact() -> None:
     raw = _fixture_answer("SB-016.answer.json")
     assert raw["status"] == "definite"
