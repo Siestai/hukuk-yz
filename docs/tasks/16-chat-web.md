@@ -21,7 +21,7 @@ Kapalı beta kullanıcısının giriş yapıp ajana soru sorduğu, netleştirme 
 5. **Ekran 2, Cevap (B-2):**
    - Üstte sabit mod seçici (Kısa / Ayrıntılı / Gerekçeli); mod değişimi istek atmaz, aynı `Answer`'ı farklı gösterir.
    - Durum bandı: "Net cevap" / "Koşullu cevap" + not; koşullu ise en üstte ve "Tamamlanması gereken bilgiler" bölümü varsayılan açık (tasarım kararı), ekranda "müşteri" kelimesi yok.
-   - Başlık cümlesi, olgu çipleri (+ "Düzenle"), maddeler: her madde ve altında ayrı satırda kalın dayanak bağlantısı (tasarım kararı); onaylı/teyitli rozetleri ("teyitli", "onaylanmadı").
+   - Başlık cümlesi, olgu çipleri (+ "Düzenle"), maddeler: her madde ve altında ayrı satırda kalın dayanak bağlantısı (tasarım kararı); onaylı/teyitli rozetleri ("teyitli", "onaysız (test)").
    - Kapalı başlıklar (mobilde, tasarım kararı): "Hesap" (v1: neye ihtiyaç var), "Okunanlar" (sayılar + liste). Alt bilgi: uygulanan mevzuat tarihi + "Hukuki görüş değildir."
 6. **Ekran 3, Gerekçeli (B-3):** "Koşullar olaya uyuyor mu?" tablosu (kanundaki koşul + dayanak / olayda / sonuç simgesi ✓ ✗ –), mobilde satırlar kart olur; altında gerekçe özeti + dayanak.
 7. **Dayanak görüntüleyici:** bir atfa dokununca alt sayfa (mobil) / sağ panel (masaüstü, `lg`): kaynağın tam metni `GET` ile (mevcut KB okuma endpoint'leri; yoksa Görev 15'in fixture'ındaki metin), ilgili kısım vurgulu ve oraya kaydırılmış açılır (tasarım kararı). Onay ve teyit durumu görünür.

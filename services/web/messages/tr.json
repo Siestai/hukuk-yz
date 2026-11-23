@@ -98,7 +98,7 @@
       "open": "Dayanağı aç: {label}",
       "verified": "teyitli",
       "unverified": "teyitsiz",
-      "analyzed": "onaylanmadı"
+      "analyzed": "onaysız (test)"
     },
     "viewer": {
       "title": "Dayanak",
@@ -106,7 +106,7 @@
       "empty": "Bir dayanağa dokunun, metni burada açılır.",
       "close": "Dayanağı kapat",
       "approved": "Onaylı metin",
-      "analyzed": "Onaylanmadı",
+      "analyzed": "Onaysız metin (test)",
       "verified": "Teyitli",
       "unverified": "Teyitsiz",
       "validity": "Yürürlük: {from} - {to}",

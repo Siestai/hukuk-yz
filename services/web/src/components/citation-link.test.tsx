@@ -32,6 +32,6 @@ describe("CitationLink", () => {
             />,
         );
         expect(screen.getByText("teyitsiz")).toBeInTheDocument();
-        expect(screen.getByText("onaylanmadı")).toBeInTheDocument();
+        expect(screen.getByText("onaysız (test)")).toBeInTheDocument();
     });
 });
