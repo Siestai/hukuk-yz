@@ -4,7 +4,12 @@ import { createApiClient } from "@hukuk/web-core/api/client";
 import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { createConversation, listConversations } from "./chat-client";
+import {
+    createConversation,
+    listConversations,
+    pinConversation,
+    unpinConversation,
+} from "./chat-client";
 import { applyEvent, emptyLive, toTurn, type LiveTurn } from "./chat-state";
 import { sendMessage } from "./chat-stream";
 import type {
@@ -22,6 +27,12 @@ export type Failure = {
     restart?: boolean;
     retryable?: boolean;
 };
+
+/** Pinned conversations first, in the order they were pinned (the server's order); the rest keep theirs. */
+function withPin(list: Conversation[], id: string, pinned: boolean): Conversation[] {
+    const changed = list.map((c) => (c.id === id ? { ...c, pinned } : c));
+    return [...changed.filter((c) => c.pinned), ...changed.filter((c) => !c.pinned)];
+}
 
 /** The user turn as it is shown before the server has answered. */
 function sentTurn(body: MessageRequest): Turn {
@@ -73,6 +84,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
         initial?.turns.at(-1)?.role === "user" && !initial.turns.at(-1)?.text,
     );
     const restart = Boolean(!durable && failure && clarificationRequest && restartText);
+    const [pinFailure, setPinFailure] = useState<string | null>(null);
     const stream = useRef<AbortController | null>(null);
     const busy = live !== null;
 
@@ -162,9 +174,27 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
 
     useEffect(() => () => stream.current?.abort(), []);
 
+    // Optimistic: the list changes at once and goes back if the server refuses.
+    const setPinned = useCallback(
+        async (id: string, pinned: boolean) => {
+            setPinFailure(null);
+            setConversations((previous) => withPin(previous, id, pinned));
+            try {
+                await (pinned ? pinConversation(api, id) : unpinConversation(api, id));
+                setConversations(await listConversations(api));
+            } catch (error) {
+                setConversations((previous) => withPin(previous, id, !pinned));
+                setPinFailure(error instanceof ApiFailure ? (error.code ?? "generic") : "generic");
+            }
+        },
+        [api],
+    );
+
     return {
         reset,
         conversations,
+        setPinned,
+        pinFailure,
         conversationId,
         turns,
         live,

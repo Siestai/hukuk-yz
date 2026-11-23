@@ -1,6 +1,7 @@
 "use client";
 
 import { cn, Dialog } from "@hukuk/ui";
+import { useErrorMessage } from "@hukuk/web-core/hooks/use-error-message";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
@@ -32,6 +33,7 @@ export function ChatApp({
 }) {
     const t = useTranslations("chat");
     const list = useTranslations("conversations");
+    const errorMessage = useErrorMessage();
     const router = useRouter();
     const wide = useWide();
     const session = useChatSession(detail, conversations);
@@ -60,6 +62,8 @@ export function ChatApp({
             conversations={session.conversations}
             activeId={session.conversationId}
             onNew={startNew}
+            onPin={session.setPinned}
+            notice={session.pinFailure ? errorMessage(session.pinFailure) : null}
             onNavigate={() => setDrawer(false)}
         />
     );

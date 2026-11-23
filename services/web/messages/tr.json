@@ -9,6 +9,9 @@
   },
   "conversations": {
     "title": "Konuşmalar",
+    "pinned": "Sabitlenenler",
+    "pin": "Sabitle: {title}",
+    "unpin": "Sabitlemeyi kaldır: {title}",
     "new": "Yeni soru",
     "untitled": "Yeni soru",
     "empty": "Henüz konuşma yok.",

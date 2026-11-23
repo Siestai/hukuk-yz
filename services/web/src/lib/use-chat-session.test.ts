@@ -2,13 +2,16 @@ import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { listConversations, pinConversation, unpinConversation } from "./chat-client";
 import { sendMessage } from "./chat-stream";
-import type { ChatEvent, ConversationDetail, Reply } from "./chat-types";
+import type { ChatEvent, Conversation, ConversationDetail, Reply } from "./chat-types";
 import { useChatSession } from "./use-chat-session";
 
 vi.mock("./chat-client", () => ({
     createConversation: vi.fn().mockResolvedValue({ id: "c1" }),
     listConversations: vi.fn().mockResolvedValue([]),
+    pinConversation: vi.fn(),
+    unpinConversation: vi.fn(),
 }));
 vi.mock("./chat-stream", () => ({ sendMessage: vi.fn() }));
 
@@ -406,4 +409,49 @@ it("shows a durable error the server kept as a turn in the thread, not as a fail
     expect(result.current.failure).toBeNull();
     await act(async () => result.current.retry());
     expect(sendMessage).toHaveBeenCalledOnce();
+});
+
+function listed(id: string, pinned: boolean): Conversation {
+    return {
+        id,
+        title: id,
+        pinned,
+        durable_delivery: true,
+        created_at: "2026-10-01T12:00:00Z",
+        updated_at: "2026-10-01T12:00:00Z",
+    };
+}
+
+describe("useChatSession pins", () => {
+    it("moves a pinned conversation up at once and takes the server's list after", async () => {
+        const list = [listed("a", false), listed("b", false)];
+        vi.mocked(pinConversation).mockResolvedValue(listed("b", true));
+        vi.mocked(listConversations).mockResolvedValue([listed("b", true), listed("a", false)]);
+        const { result } = renderHook(() => useChatSession(null, list));
+        await act(() => result.current.setPinned("b", true));
+        expect(result.current.conversations.map((c) => [c.id, c.pinned])).toEqual([
+            ["b", true],
+            ["a", false],
+        ]);
+        expect(result.current.pinFailure).toBeNull();
+    });
+
+    it("puts the list back and keeps the code when the server refuses the pin", async () => {
+        const list = [listed("a", true), listed("b", true), listed("c", true), listed("d", false)];
+        vi.mocked(pinConversation).mockRejectedValue(new ApiFailure("pin_limit"));
+        const { result } = renderHook(() => useChatSession(null, list));
+        await act(() => result.current.setPinned("d", true));
+        expect(result.current.conversations).toEqual(list);
+        expect(result.current.pinFailure).toBe("pin_limit");
+    });
+
+    it("unpins with the delete call", async () => {
+        const list = [listed("a", true), listed("b", false)];
+        vi.mocked(unpinConversation).mockResolvedValue(listed("a", false));
+        vi.mocked(listConversations).mockResolvedValue([listed("a", false), listed("b", false)]);
+        const { result } = renderHook(() => useChatSession(null, list));
+        await act(() => result.current.setPinned("a", false));
+        expect(unpinConversation).toHaveBeenCalledWith(expect.anything(), "a");
+        expect(result.current.conversations.every((c) => !c.pinned)).toBe(true);
+    });
 });
