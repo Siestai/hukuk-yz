@@ -150,3 +150,9 @@ def test_the_intake_is_told_to_pick_the_option_not_to_restate_it() -> None:
     assert "option alanına" in INTAKE_INSTRUCTIONS
     assert "yeniden sordurma" in INTAKE_INSTRUCTIONS
     assert "option" in IntakeFact.model_json_schema()["properties"]
+
+
+def test_intake_title_rule_is_short_noun_phrase_without_dates_or_names() -> None:
+    assert "2-5 kelime" in INTAKE_INSTRUCTIONS and "en fazla 40 karakter" in INTAKE_INSTRUCTIONS
+    assert "Tarih, tutar ve kişi adı yazma" in INTAKE_INSTRUCTIONS
+    assert "İşe iade, 5 ay kıdem" in INTAKE_INSTRUCTIONS

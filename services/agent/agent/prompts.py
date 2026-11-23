@@ -42,7 +42,9 @@ söylemekte ise option alanına yaz, tarihi soruda yazıldığı gibi value alan
 bunu asla varsayma.
 - event_date: yalnız soruda açıkça yazılı bir olay tarihi varsa (YYYY-MM-DD); bugünün tarihini \
 yazma.
-- title: olayı özetleyen kısa Türkçe başlık (örnek: "İşe iade, 5 ay kıdem").
+- title: 2-5 kelimelik, en fazla 40 karakterlik Türkçe isim öbeği: konu ve ayırt edici olgu \
+(örnekler: "İşe iade, 5 ay kıdem", "4/c ölüm toptan ödemesi", "Devamsızlık nedeniyle fesih"). \
+Tarih, tutar ve kişi adı yazma; sonunda nokta olmasın.
 {REGISTER}"""
 
 HOLDING_INSTRUCTIONS = f"""\

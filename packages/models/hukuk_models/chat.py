@@ -45,6 +45,20 @@ FeedbackKind = Literal["wrong_source", "wrong_conclusion", "missing", "unclear",
 MissingReason = Literal["unmapped", "not_found", "gap", "not_in_force", "truncated"]
 
 
+TITLE_MAX = 48
+PIN_LIMIT = 3
+
+
+def clamp_title(title: str) -> str:
+    """The title cut at a word boundary to at most `TITLE_MAX` characters (no ellipsis)."""
+    title = " ".join(title.split())
+    if len(title) <= TITLE_MAX:
+        return title
+    head = title[: TITLE_MAX + 1]
+    # A cut that falls inside a word drops that word; one long word is cut hard.
+    return (head.rsplit(" ", 1)[0] if " " in head else head[:TITLE_MAX]).rstrip(" ,;:-–.")[:TITLE_MAX]
+
+
 class ChatModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -462,6 +476,8 @@ class Conversation(ChatModel):
     title: str
     created_at: datetime
     updated_at: datetime
+    # Pinned to the top of the list; at most `PIN_LIMIT` per user.
+    pinned: bool = False
 
 
 class ConversationDetail(Conversation):
