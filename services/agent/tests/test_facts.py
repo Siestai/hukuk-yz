@@ -49,6 +49,14 @@ def test_the_facts_are_the_templates_and_what_the_question_does_not_say_is_unkno
     assert facts.title == "İşe iade"
 
 
+def test_a_long_title_is_cut_at_a_word_boundary_and_an_empty_one_is_the_templates() -> None:
+    long = "Kamu görevlisinin ölüm toptan ödemesi, 01.09.2026 tarihinden sonraki ödeme"
+    out = IntakeOutput(topic="ise_iade", title=long, facts=[])
+    assert build(TOPIC, out, None).title == "Kamu görevlisinin ölüm toptan ödemesi"
+    blank = IntakeOutput(topic="ise_iade", title="  ", facts=[])
+    assert build(TOPIC, blank, None).title == TOPIC.title
+
+
 def test_a_fact_the_model_invents_is_left_out() -> None:
     facts = build(TOPIC, intake(IntakeFact(key="maas", value="50.000", status="known")), None)
 

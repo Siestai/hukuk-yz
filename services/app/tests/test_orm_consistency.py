@@ -287,12 +287,19 @@ def test_chat_tables_columns_and_checks_match_migration() -> None:
     assert (migration.revision, migration.down_revision) == ("0016", "0015")
     source = "".join(
         (VERSIONS / name).read_text()
-        for name in ("0016_chat.py", "0017_chat_delivery.py", "0018_chat_turn_request_id.py")
+        for name in (
+            "0016_chat.py",
+            "0017_chat_delivery.py",
+            "0018_chat_turn_request_id.py",
+            "0020_chat_pin_title.py",
+        )
     )
     delivery_migration = _load_migration(VERSIONS / "0017_chat_delivery.py")
     assert (delivery_migration.revision, delivery_migration.down_revision) == ("0017", "0016")
     request_migration = _load_migration(VERSIONS / "0018_chat_turn_request_id.py")
     assert (request_migration.revision, request_migration.down_revision) == ("0018", "0017")
+    pin_migration = _load_migration(VERSIONS / "0020_chat_pin_title.py")
+    assert (pin_migration.revision, pin_migration.down_revision) == ("0020", "0019")
     for name in ("chat_conversation", "chat_turn", "chat_feedback"):
         table = Base.metadata.tables[name]
         assert f'"{name}"' in source

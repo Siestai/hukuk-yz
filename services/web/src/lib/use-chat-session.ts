@@ -4,7 +4,12 @@ import { createApiClient } from "@hukuk/web-core/api/client";
 import { ApiFailure } from "@hukuk/web-core/api/unwrap";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { createConversation, listConversations } from "./chat-client";
+import {
+    createConversation,
+    listConversations,
+    pinConversation,
+    unpinConversation,
+} from "./chat-client";
 import { applyEvent, emptyLive, toTurn, type LiveTurn } from "./chat-state";
 import { sendMessage } from "./chat-stream";
 import type {
@@ -22,6 +27,15 @@ export type Failure = {
     restart?: boolean;
     retryable?: boolean;
 };
+
+/** At most this many conversations can be pinned (the server's `PIN_LIMIT`). */
+const PIN_LIMIT = 3;
+
+/** Pinned conversations first, in the order they were pinned (the server's order); the rest keep theirs. */
+function withPin(list: Conversation[], id: string, pinned: boolean): Conversation[] {
+    const changed = list.map((c) => (c.id === id ? { ...c, pinned } : c));
+    return [...changed.filter((c) => c.pinned), ...changed.filter((c) => !c.pinned)];
+}
 
 /** The user turn as it is shown before the server has answered. */
 function sentTurn(body: MessageRequest): Turn {
@@ -43,7 +57,14 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
     const api = useMemo(() => createApiClient(), []);
     const [conversationId, setConversationId] = useState<string | null>(initial?.id ?? null);
     const [turns, setTurns] = useState<Turn[]>(initial?.turns ?? []);
-    const [conversations, setConversations] = useState(initialList);
+    const [conversations, setList] = useState(initialList);
+    // What the list is right now, for the snapshot and the pin count of a toggle.
+    const conversationsRef = useRef(initialList);
+    const setConversations = useCallback((next: Conversation[]) => {
+        conversationsRef.current = next;
+        setList(next);
+    }, []);
+    const pinRequests = useRef(new Map<string, number>());
     const [live, setLive] = useState<LiveTurn | null>(null);
     const [failure, setFailure] = useState<Failure | null>(
         initial?.terminal_error
@@ -73,6 +94,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
         initial?.turns.at(-1)?.role === "user" && !initial.turns.at(-1)?.text,
     );
     const restart = Boolean(!durable && failure && clarificationRequest && restartText);
+    const [pinFailure, setPinFailure] = useState<string | null>(null);
     const stream = useRef<AbortController | null>(null);
     const busy = live !== null;
 
@@ -145,7 +167,7 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
                 () => undefined,
             );
         },
-        [api, conversationId, durable],
+        [api, conversationId, durable, setConversations],
     );
 
     const reset = useCallback(() => {
@@ -162,9 +184,45 @@ export function useChatSession(initial: ConversationDetail | null, initialList: 
 
     useEffect(() => () => stream.current?.abort(), []);
 
+    // Optimistic: the list changes at once and goes back to what it was if the server refuses.
+    // Only the newest request of a conversation may touch the list again.
+    const setPinned = useCallback(
+        async (id: string, pinned: boolean) => {
+            if (pinned && conversationsRef.current.filter((c) => c.pinned).length >= PIN_LIMIT) {
+                setPinFailure("pin_limit");
+                return;
+            }
+            const snapshot = conversationsRef.current;
+            const request = (pinRequests.current.get(id) ?? 0) + 1;
+            pinRequests.current.set(id, request);
+            const latest = () => pinRequests.current.get(id) === request;
+            const optimistic = withPin(snapshot, id, pinned);
+            setConversations(optimistic);
+            try {
+                await (pinned ? pinConversation(api, id) : unpinConversation(api, id));
+            } catch (error) {
+                if (!latest()) return;
+                setConversations(snapshot);
+                setPinFailure(error instanceof ApiFailure ? (error.code ?? "generic") : "generic");
+                return;
+            }
+            if (!latest()) return;
+            setPinFailure(null);
+            try {
+                const items = await listConversations(api);
+                if (latest()) setConversations(items);
+            } catch {
+                // The optimistic list stays; the next refresh corrects it.
+            }
+        },
+        [api, setConversations],
+    );
+
     return {
         reset,
         conversations,
+        setPinned,
+        pinFailure,
         conversationId,
         turns,
         live,

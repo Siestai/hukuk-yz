@@ -67,6 +67,8 @@ export function useErrorMessage() {
                 return t("answer_not_verified");
             case "chat_daily_limit":
                 return t("chat_daily_limit");
+            case "pin_limit":
+                return t("pin_limit");
             case "chat_unavailable":
                 return t("chat_unavailable");
             case "chat_no_fixture":

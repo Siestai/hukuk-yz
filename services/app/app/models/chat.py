@@ -16,6 +16,8 @@ class ChatConversation(UuidPkMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"), index=True)
     delivery: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     title: Mapped[str]
+    # Set while the conversation is pinned to the top of its owner's list (task 22).
+    pinned_at: Mapped[datetime | None]
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
 

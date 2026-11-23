@@ -24,3 +24,23 @@ export function postFeedback(api: Api, turnId: string, body: FeedbackIn) {
         }),
     );
 }
+
+const JSON_HEADERS = { "Content-Type": "application/json" };
+
+export function pinConversation(api: Api, id: string) {
+    return unwrap(
+        api.PUT("/chat/conversations/{conversation_id}/pin", {
+            params: { path: { conversation_id: id } },
+            headers: JSON_HEADERS,
+        }),
+    );
+}
+
+export function unpinConversation(api: Api, id: string) {
+    return unwrap(
+        api.DELETE("/chat/conversations/{conversation_id}/pin", {
+            params: { path: { conversation_id: id } },
+            headers: JSON_HEADERS,
+        }),
+    );
+}

@@ -32,6 +32,7 @@ from app.errors import ApiError
 from app.settings import Settings, get_settings
 from hukuk_models import ErrorCode
 from hukuk_models.chat import (
+    PIN_LIMIT,
     Answer,
     AnswerEvent,
     CaseFacts,
@@ -49,6 +50,7 @@ from hukuk_models.chat import (
     MessageRequest,
     StepEvent,
     Turn,
+    clamp_title,
 )
 
 logger = logging.getLogger("app")
@@ -111,6 +113,7 @@ class _Conversation:
     record: Conversation
     turns: list[Turn] = field(default_factory=list)
     scenario: Scenario | None = None
+    pinned_at: datetime | None = None
 
 
 class ChatStore:
@@ -168,8 +171,40 @@ async def create_conversation(user: CurrentUser, store: Store) -> Conversation:
 
 @router.get("/conversations")
 async def list_conversations(user: CurrentUser, store: Store) -> ConversationList:
-    mine = [c.record for c in store.conversations.values() if c.owner == user.id]
-    return ConversationList(items=sorted(mine, key=lambda c: c.updated_at, reverse=True))
+    mine = [c for c in store.conversations.values() if c.owner == user.id]
+    recent = sorted(mine, key=lambda c: c.record.updated_at, reverse=True)
+    pinned = sorted((c for c in recent if c.pinned_at), key=lambda c: c.pinned_at or _now())
+    rest = [c for c in recent if not c.pinned_at]
+    return ConversationList(items=[c.record for c in pinned + rest])
+
+
+def _set_pinned(conv: _Conversation, pinned: bool) -> Conversation:
+    conv.pinned_at = _now() if pinned else None
+    conv.record = conv.record.model_copy(update={"pinned": pinned})
+    return conv.record
+
+
+@router.put("/conversations/{conversation_id}/pin")
+async def pin_conversation(
+    conversation_id: uuid.UUID, user: CurrentUser, store: Store
+) -> Conversation:
+    conv = store.get(conversation_id, user.id)
+    if conv.pinned_at is None:
+        if (
+            sum(1 for c in store.conversations.values() if c.owner == user.id and c.pinned_at)
+            >= PIN_LIMIT
+        ):
+            raise ApiError(409, ErrorCode.pin_limit)
+        _set_pinned(conv, True)
+    return conv.record
+
+
+@router.delete("/conversations/{conversation_id}/pin")
+async def unpin_conversation(
+    conversation_id: uuid.UUID, user: CurrentUser, store: Store
+) -> Conversation:
+    conv = store.get(conversation_id, user.id)
+    return _set_pinned(conv, False) if conv.pinned_at else conv.record
 
 
 @router.get("/conversations/{conversation_id}")
@@ -217,7 +252,8 @@ async def _events(
         yield _sse(StepEvent(node="clarify", label="Eksik bilgiler belirleniyor"))
         await pause()
         yield _sse(ClarificationEvent(clarification=clarification))
-        conv.record = conv.record.model_copy(update={"title": facts.title})
+        if not conv.record.title:
+            conv.record = conv.record.model_copy(update={"title": clamp_title(facts.title)})
     else:
         completed = body.clarification_answers is not None and not any(
             a.unknown for a in body.clarification_answers

@@ -20,6 +20,7 @@ from hukuk_models.chat import (
     Fact,
     QuestionInput,
     QuestionOption,
+    clamp_title,
 )
 
 
@@ -131,7 +132,7 @@ def build_facts(
         )
     )
     return CaseFacts(
-        title=extracted.title.strip() or topic.title,
+        title=clamp_title(extracted.title) or clamp_title(topic.title),
         facts=facts,
         event_date=event_date,
     )

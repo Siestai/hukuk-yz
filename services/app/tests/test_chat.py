@@ -261,3 +261,18 @@ async def test_a_failure_inside_the_stream_is_an_error_event_then_done(
     error, done = events[-2].root, events[-1].root
     assert isinstance(error, ErrorEvent) and error.code == "internal_error"
     assert isinstance(done, DoneEvent) and done.turn_id is None
+
+
+async def test_fixture_backend_pins_at_most_three_and_lists_pinned_first(
+    client: httpx.AsyncClient, user: dict[str, str]
+) -> None:
+    ids = [await new_conversation(client, user) for _ in range(4)]
+    for id in (ids[2], ids[0], ids[1]):
+        assert (await client.put(f"/chat/conversations/{id}/pin", headers=user)).status_code == 200
+    full = await client.put(f"/chat/conversations/{ids[3]}/pin", headers=user)
+    assert full.status_code == 409 and full.json()["error"]["code"] == "pin_limit"
+    listed = (await client.get("/chat/conversations", headers=user)).json()["items"]
+    assert [c["id"] for c in listed] == [ids[2], ids[0], ids[1], ids[3]]
+    assert [c["pinned"] for c in listed] == [True, True, True, False]
+    unpinned = await client.delete(f"/chat/conversations/{ids[2]}/pin", headers=user)
+    assert unpinned.json()["pinned"] is False

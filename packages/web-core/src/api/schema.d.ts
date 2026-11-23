@@ -141,6 +141,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat/conversations/{conversation_id}/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Pin Conversation */
+        put: operations["pin_conversation_chat_conversations__conversation_id__pin_put"];
+        post?: never;
+        /** Unpin Conversation */
+        delete: operations["unpin_conversation_chat_conversations__conversation_id__pin_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chat/feedback": {
         parameters: {
             query?: never;
@@ -1143,6 +1161,16 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Own
+             * @default true
+             */
+            own: boolean;
+            /**
+             * Pinned
+             * @default false
+             */
+            pinned: boolean;
             /** Title */
             title: string;
             /**
@@ -1168,7 +1196,17 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Own
+             * @default true
+             */
+            own: boolean;
             pending_request?: components["schemas"]["MessageRequest"] | null;
+            /**
+             * Pinned
+             * @default false
+             */
+            pinned: boolean;
             terminal_error?: components["schemas"]["ErrorEvent"] | null;
             /** Title */
             title: string;
@@ -1275,7 +1313,7 @@ export interface components {
          *     2026-10-03). The values are the wire format: add, never rename.
          * @enum {string}
          */
-        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_daily_limit" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "answer_not_verified" | "http_error" | "internal_error";
+        ErrorCode: "unauthorized" | "forbidden" | "unsupported_media_type" | "validation_error" | "not_found" | "method_not_allowed" | "extraction_not_found" | "review_conflict" | "decision_conflict" | "bulk_count_changed" | "bulk_band_not_allowed" | "too_many_attempts" | "file_not_found" | "file_not_previewable" | "statute_not_found" | "invalid_file" | "duplicate_file" | "file_too_large" | "unsupported_file_type" | "file_store_unavailable" | "file_version_conflict" | "scan_in_progress" | "file_not_pending" | "file_not_approved" | "file_approved" | "file_has_newer_version" | "file_processed" | "invalid_date" | "chat_daily_limit" | "pin_limit" | "chat_unavailable" | "chat_no_fixture" | "clarification_not_pending" | "answer_not_verified" | "http_error" | "internal_error";
         /** ErrorEvent */
         ErrorEvent: {
             code: components["schemas"]["ErrorCode"];
@@ -3606,6 +3644,212 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pin_conversation_chat_conversations__conversation_id__pin_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    unpin_conversation_chat_conversations__conversation_id__pin_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

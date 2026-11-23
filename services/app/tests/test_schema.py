@@ -224,6 +224,50 @@ def test_the_user_role_migration_downgrades_to_0014_unless_a_user_account_exists
     assert "user" in asyncio.run(run(labels))
 
 
+def test_the_pin_migration_shortens_only_titles_over_48_characters_and_downgrades_to_0019(
+    alembic_config: Config, database_url: str
+) -> None:
+    long = "Kamu görevlisinin ölüm toptan ödemesi, 01.09.2026 tarihinden sonra"
+    exact = "a" * 20 + " " + "b" * 27
+
+    async def run(sql: str) -> list[Any]:
+        engine = make_engine(database_url)
+        try:
+            async with engine.begin() as conn:
+                return [tuple(row) for row in await conn.execute(text(sql))]
+        finally:
+            await engine.dispose()
+
+    command.upgrade(alembic_config, "head")
+    command.downgrade(alembic_config, "0019")
+    cols = (
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'chat_conversation'"
+    )
+    assert ("pinned_at",) not in asyncio.run(run(cols))
+    asyncio.run(
+        run(
+            "INSERT INTO app_user (email, display_name, role, password_hash) "
+            "VALUES ('pin@x.test', 'p', 'user', 'x') RETURNING 1"
+        )
+    )
+    for title in (long, exact, ""):
+        asyncio.run(
+            run(
+                "INSERT INTO chat_conversation (user_id, title, created_at, updated_at) "
+                f"SELECT id, '{title}', now(), now() FROM app_user WHERE email = 'pin@x.test' "
+                "RETURNING 1"
+            )
+        )
+    try:
+        command.upgrade(alembic_config, "head")
+        titles = {r[0] for r in asyncio.run(run("SELECT title FROM chat_conversation"))}
+        assert titles == {"Kamu görevlisinin ölüm toptan ödemesi", exact, ""}
+        assert ("pinned_at",) in asyncio.run(run(cols))
+    finally:
+        asyncio.run(run("DELETE FROM chat_conversation RETURNING 1"))
+        asyncio.run(run("DELETE FROM app_user WHERE email = 'pin@x.test' RETURNING 1"))
+
+
 def test_upgrade_downgrade_upgrade(alembic_config: Config, database_url: str) -> None:
     expected = set(Base.metadata.tables)
 

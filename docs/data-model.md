@@ -333,3 +333,10 @@ PDF adresi, `uploaded_by` NULL, `uploaded_at` indirme zamanı,
 `scan_result.journal = {issue_no, post_id, page_url, pdf_url}`, dosya depoda
 (`storage_key`, metin `text/<sha256>.txt`). "Otomatik taramadan geldi" bilgisi ayrı bir bayrak
 değil, işin türünden türetilir (`origin`: `journal_scan` / `upload` / `archive`).
+
+### Chat sabitleme ve başlık (0020; Görev 22)
+
+`chat_conversation.pinned_at` nullable timestamptz'dir; doluysa konuşma sahibinin listesinde
+sabittir. Kullanıcı başına en fazla 3 sabit konuşma API'de denetlenir (kullanıcı satırı kilidiyle
+serileştirilir). Migration 48 karakterden uzun başlıkları kelime sınırında kısaltır; bu veri adımı
+geri alınamaz, `downgrade()` yalnız sütunu düşürür.
