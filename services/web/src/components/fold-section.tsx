@@ -14,9 +14,9 @@ export function FoldSection({
 }) {
     return (
         <details open={open} className="group border-t border-line">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-                <span className="font-semibold text-ink">{title}</span>
-                <span className="flex items-center gap-1 text-sm text-ink-3">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+                <span className="text-sm font-semibold text-ink">{title}</span>
+                <span className="flex items-center gap-1 text-sm text-ink-2">
                     {hint}
                     <svg
                         aria-hidden="true"
@@ -31,7 +31,7 @@ export function FoldSection({
                     </svg>
                 </span>
             </summary>
-            <div className="px-4 pb-4">{children}</div>
+            <div className="pb-4">{children}</div>
         </details>
     );
 }

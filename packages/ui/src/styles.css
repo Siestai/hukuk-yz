@@ -9,6 +9,7 @@
     --ink-3: #7a8596;
     --line: #dde3ea;
     --line-2: #eef1f5;
+    --line-strong: var(--line);
     --primary: #0b2a5b;
     --primary-soft: #e6ecf5;
     --accent: #c9a227;
@@ -20,7 +21,26 @@
     --low-soft: #f8e4e0;
     --ui-radius: 8px;
     --ui-radius-sm: 6px;
+    --ui-radius-lg: 8px;
     --row: 44px;
+
+    /*
+     * Tokens the chat app's theme (services/web globals.css) gives a value of its own. The
+     * defaults here are plain aliases, so a screen that does not use them looks as before: the
+     * "lip" is 0 px, the dark navy surfaces are the primary color.
+     */
+    --navy: var(--primary);
+    --navy-2: var(--primary);
+    --navy-3: var(--primary);
+    --ink-inv: var(--surface);
+    --ink-inv-2: var(--ink-3);
+    --primary-lip: var(--primary);
+    --primary-edge: var(--primary-soft);
+    --primary-bright: var(--primary);
+    --mark: var(--accent);
+    --scrim: var(--ink);
+    --lip: 0px;
+    --lip-color: var(--line);
 
     /* shadcn semantic variables, mapped onto the tokens above. */
     --background: var(--bg);
@@ -55,8 +75,19 @@
     --color-ink-3: var(--ink-3);
     --color-line: var(--line);
     --color-line-2: var(--line-2);
+    --color-line-strong: var(--line-strong);
     --color-primary: var(--primary);
     --color-primary-soft: var(--primary-soft);
+    --color-primary-lip: var(--primary-lip);
+    --color-primary-edge: var(--primary-edge);
+    --color-primary-bright: var(--primary-bright);
+    --color-navy: var(--navy);
+    --color-navy-2: var(--navy-2);
+    --color-navy-3: var(--navy-3);
+    --color-ink-inv: var(--ink-inv);
+    --color-ink-inv-2: var(--ink-inv-2);
+    --color-mark: var(--mark);
+    --color-scrim: var(--scrim);
     --color-accent: var(--accent);
     --color-high: var(--high);
     --color-high-soft: var(--high-soft);
@@ -84,6 +115,7 @@
 
     --radius-sm: var(--ui-radius-sm);
     --radius-md: var(--ui-radius);
+    --radius-card: var(--ui-radius-lg);
     --spacing-row: var(--row);
 }
 
@@ -156,6 +188,29 @@
 /* Modal width: the screen less a small gap on each side. */
 @utility w-inset {
     width: calc(100% - 2rem);
+}
+/*
+ * The tactile "lip": a solid shadow under a control that sinks when pressed. `lip-*` picks the
+ * color; with the default `--lip` of 0 px it draws nothing.
+ */
+@utility lip {
+    box-shadow: 0 var(--lip) 0 var(--lip-color);
+    &:active:not(:disabled) {
+        transform: translateY(var(--lip));
+        box-shadow: 0 0 0 var(--lip-color);
+    }
+}
+@utility lip-line {
+    --lip-color: var(--line-strong);
+}
+@utility lip-edge {
+    --lip-color: var(--primary-edge);
+}
+@utility lip-primary {
+    --lip-color: var(--primary-lip);
+}
+@utility lip-navy {
+    --lip-color: var(--navy-3);
 }
 /* An InfoTip box never grows past the room the popover has left on the screen. */
 @utility max-w-available {

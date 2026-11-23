@@ -3,3 +3,109 @@
 
 @source "../../../../packages/ui/src";
 @source "../../../../packages/web-core/src";
+
+/*
+ * "Liman" theme of the chat app (docs/tasks/21-glarus-ui.md). The dashboard shares packages/ui but
+ * not this file: the values below replace the shared tokens for this app only. A component never
+ * writes a color; it uses a token utility (`bg-bg`, `text-ink-2`, `bg-navy`, ...).
+ * Reference: design/glarus-ui/liman.html.
+ */
+:root {
+    --bg: #f6f1e6;
+    --surface: #fcfaf4;
+    --surface-2: #f6f1e6;
+    --sunken: #ede6d4;
+    --ink: #14233f;
+    --ink-2: #44506a;
+    --ink-3: #5f6a80;
+    --line: #ddd3bc;
+    --line-2: #e9e1cd;
+    --line-strong: #c2b697;
+    --primary: #0e7c73;
+    --primary-soft: #ddefea;
+    --primary-lip: #0a5a53;
+    --primary-edge: #9ccdc5;
+    --primary-bright: #35b5a8;
+    --primary-foreground: #ffffff;
+    --accent: #b38a2e;
+    --mark: rgb(179 138 46 / 34%);
+    --high: #0a5a53;
+    --high-soft: #ddefea;
+    --medium: #6f5113;
+    --medium-soft: #f3e7c6;
+    --low: #8e3b2f;
+    --low-soft: #f6e1dc;
+    --navy: #14233f;
+    --navy-2: #1f3358;
+    --navy-3: #0d1829;
+    --ink-inv: #f6f1e6;
+    --ink-inv-2: #aab4c8;
+    --scrim: #14233f;
+    --focus-inv: #e6c46f;
+    --ring: var(--primary);
+    --input: var(--line-strong);
+    --secondary-foreground: var(--primary);
+    --ui-radius: 10px;
+    --ui-radius-lg: 16px;
+    --lip: 2px;
+}
+
+@theme {
+    --font-sans:
+        var(--font-figtree-latin), var(--font-figtree-ext), ui-sans-serif, system-ui, sans-serif;
+    --font-serif:
+        var(--font-newsreader-latin), var(--font-newsreader-ext), ui-serif, Georgia, serif;
+}
+
+@theme {
+    --container-read: 44rem;
+    --animate-breathe: breathe 4s ease-in-out infinite;
+    --animate-spin-slow: spin 2.4s linear infinite;
+    --animate-rise: rise 350ms ease both;
+
+    @keyframes breathe {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(3px);
+        }
+    }
+    @keyframes rise {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+}
+
+@utility transform-fill-box {
+    transform-box: fill-box;
+}
+
+@layer base {
+    body {
+        -webkit-font-smoothing: antialiased;
+    }
+}
+
+/* On the navy sidebar and drawer the teal focus ring would vanish. Unlayered, so it beats the
+   layered `focus-visible:outline-ring` utility. */
+[data-tone="dark"] :focus-visible {
+    outline-color: var(--focus-inv);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}

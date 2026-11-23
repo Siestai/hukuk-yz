@@ -11,7 +11,7 @@ export function CitationList({
 }) {
     if (citations.length === 0) return null;
     return (
-        <ul className="mt-1 grid gap-0.5">
+        <ul className="mt-1 flex flex-wrap gap-2">
             {citations.map((citation, index) => (
                 <li key={index}>
                     <CitationLink citation={citation} onOpen={onOpen} />

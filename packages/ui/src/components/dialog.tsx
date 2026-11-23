@@ -29,6 +29,8 @@ type DialogProps = Omit<ComponentProps<"dialog">, "open" | "onClose" | "onCancel
     variant?: "center" | "drawer" | "viewer" | "sheet";
     /** The accessible name of a close button beside the title; without it there is no button. */
     closeLabel?: string;
+    /** Extra classes for the close button, for a dialog on a dark background. */
+    closeClassName?: string;
 };
 
 const variantClass = {
@@ -53,6 +55,7 @@ function Dialog({
     returnFocusTo,
     variant = "center",
     closeLabel,
+    closeClassName,
     children,
     className,
     ...props
@@ -93,7 +96,7 @@ function Dialog({
                 }
             }}
             className={cn(
-                "overflow-y-auto overscroll-contain border-border bg-surface p-4 text-ink backdrop:bg-ink/40 md:p-5",
+                "overflow-y-auto overscroll-contain border-border bg-surface p-4 text-ink backdrop:bg-scrim/40 md:p-5",
                 variantClass[variant],
                 className,
             )}
@@ -108,7 +111,7 @@ function Dialog({
                     )}
                 >
                     <div className="flex items-center justify-between gap-2">
-                        <h2 id={titleId} className="font-semibold text-ink">
+                        <h2 id={titleId} className="font-semibold">
                             {title}
                         </h2>
                         {closeLabel && dismissible ? (
@@ -116,6 +119,7 @@ function Dialog({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
+                                className={closeClassName}
                                 aria-label={closeLabel}
                                 onClick={onClose}
                             >

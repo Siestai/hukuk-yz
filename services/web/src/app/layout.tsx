@@ -1,11 +1,11 @@
-import { fontVariables } from "@hukuk/ui/fonts";
+import { glarusFontVariables } from "@hukuk/ui/fonts/glarus";
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
-import { THEME_COLOR } from "@hukuk/web-core/lib/theme-color";
+import { THEME_COLOR } from "@/lib/theme-color";
 import "./globals.css";
 
 // Next sets width=device-width and initial-scale=1 itself. No maximum-scale: zooming stays possible.
@@ -28,7 +28,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     await connection();
     const locale = await getLocale();
     return (
-        <html lang={locale} className={`${fontVariables} max-lg:scroll-pt-16 max-lg:scroll-pb-56`}>
+        <html
+            lang={locale}
+            className={`${glarusFontVariables} max-lg:scroll-pt-16 max-lg:scroll-pb-56`}
+        >
             <body>
                 <NextIntlClientProvider>{children}</NextIntlClientProvider>
             </body>

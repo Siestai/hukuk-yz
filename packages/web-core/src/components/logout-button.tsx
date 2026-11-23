@@ -2,13 +2,21 @@
 
 import { Button } from "@hukuk/ui";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { createApiClient } from "../api/client";
 import { useErrorMessage } from "../hooks/use-error-message";
 
 /** Ends the session and goes to the login page. The label is the app's own text. */
-export function LogoutButton({ label }: { label: string }) {
+export function LogoutButton({
+    label,
+    variant = "outline",
+    className,
+}: {
+    label: string;
+    variant?: ComponentProps<typeof Button>["variant"];
+    className?: string;
+}) {
     const errorMessage = useErrorMessage();
     const router = useRouter();
     const [pending, setPending] = useState(false);
@@ -37,7 +45,13 @@ export function LogoutButton({ label }: { label: string }) {
 
     return (
         <div className="grid gap-2">
-            <Button variant="outline" size="sm" onClick={logout} disabled={pending}>
+            <Button
+                variant={variant}
+                size="sm"
+                className={className}
+                onClick={logout}
+                disabled={pending}
+            >
                 {label}
             </Button>
             <div role="alert">{error ? <p className="text-xs text-low">{error}</p> : null}</div>
