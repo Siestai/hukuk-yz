@@ -76,11 +76,9 @@ export function ConversationList({
                     </div>
                 )}
             </nav>
-            {notice && (
-                <p role="status" className="px-2 text-sm text-ink-inv">
-                    {notice}
-                </p>
-            )}
+            <p role="status" className="px-2 text-sm text-ink-inv empty:hidden">
+                {notice}
+            </p>
             <LogoutButton
                 label={t("logout")}
                 variant="inverse"
@@ -114,7 +112,6 @@ function Section({
             <ul className="grid gap-1">
                 {items.map((conversation) => {
                     const title = conversation.title || t("untitled");
-                    const label = conversation.pinned ? t("unpin", { title }) : t("pin", { title });
                     return (
                         <li key={conversation.id} className="group relative">
                             <Link
@@ -135,29 +132,31 @@ function Section({
                                     {format.dateTime(new Date(conversation.updated_at), "date")}
                                 </span>
                             </Link>
-                            <button
-                                type="button"
-                                aria-label={label}
-                                aria-pressed={conversation.pinned}
-                                onClick={() => onPin(conversation.id, !conversation.pinned)}
-                                className={cn(
-                                    "absolute top-0 right-0 inline-flex size-11 items-center justify-center rounded-md text-ink-inv-2 hover:text-ink-inv focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:opacity-100 md:opacity-0 md:group-hover:opacity-100",
-                                    conversation.pinned && "text-ink-inv md:opacity-100",
-                                )}
-                            >
-                                <svg
-                                    aria-hidden="true"
-                                    viewBox="0 0 24 24"
-                                    fill={conversation.pinned ? "currentColor" : "none"}
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="size-4"
+                            {conversation.own && (
+                                <button
+                                    type="button"
+                                    aria-label={t("pin", { title })}
+                                    aria-pressed={conversation.pinned}
+                                    onClick={() => onPin(conversation.id, !conversation.pinned)}
+                                    className={cn(
+                                        "absolute top-0 right-0 inline-flex size-11 items-center justify-center rounded-md text-ink-inv-2 hover:text-ink-inv focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:opacity-100 md:opacity-0 md:group-hover:opacity-100",
+                                        conversation.pinned && "text-ink-inv md:opacity-100",
+                                    )}
                                 >
-                                    <path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7z" />
-                                </svg>
-                            </button>
+                                    <svg
+                                        aria-hidden="true"
+                                        viewBox="0 0 24 24"
+                                        fill={conversation.pinned ? "currentColor" : "none"}
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="size-4"
+                                    >
+                                        <path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7z" />
+                                    </svg>
+                                </button>
+                            )}
                         </li>
                     );
                 })}

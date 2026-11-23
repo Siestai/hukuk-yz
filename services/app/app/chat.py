@@ -50,6 +50,7 @@ from hukuk_models.chat import (
     MessageRequest,
     StepEvent,
     Turn,
+    clamp_title,
 )
 
 logger = logging.getLogger("app")
@@ -252,7 +253,7 @@ async def _events(
         await pause()
         yield _sse(ClarificationEvent(clarification=clarification))
         if not conv.record.title:
-            conv.record = conv.record.model_copy(update={"title": facts.title})
+            conv.record = conv.record.model_copy(update={"title": clamp_title(facts.title)})
     else:
         completed = body.clarification_answers is not None and not any(
             a.unknown for a in body.clarification_answers

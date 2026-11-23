@@ -480,6 +480,8 @@ class Conversation(ChatModel):
     updated_at: datetime
     # Pinned to the top of the list; at most `PIN_LIMIT` per user.
     pinned: bool = False
+    # False for another user's conversation (an admin reads those); only own ones can be pinned.
+    own: bool = True
 
 
 class ConversationDetail(Conversation):

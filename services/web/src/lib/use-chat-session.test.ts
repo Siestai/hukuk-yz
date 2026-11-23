@@ -416,6 +416,7 @@ function listed(id: string, pinned: boolean): Conversation {
         id,
         title: id,
         pinned,
+        own: true,
         durable_delivery: true,
         created_at: "2026-10-01T12:00:00Z",
         updated_at: "2026-10-01T12:00:00Z",
@@ -453,5 +454,52 @@ describe("useChatSession pins", () => {
         await act(() => result.current.setPinned("a", false));
         expect(unpinConversation).toHaveBeenCalledWith(expect.anything(), "a");
         expect(result.current.conversations.every((c) => !c.pinned)).toBe(true);
+    });
+
+    it("keeps the optimistic list when only the follow-up list call fails", async () => {
+        const list = [listed("a", false), listed("b", false)];
+        vi.mocked(pinConversation).mockResolvedValue(listed("b", true));
+        vi.mocked(listConversations).mockRejectedValue(new Error("down"));
+        const { result } = renderHook(() => useChatSession(null, list));
+        await act(() => result.current.setPinned("b", true));
+        expect(result.current.conversations.map((c) => [c.id, c.pinned])).toEqual([
+            ["b", true],
+            ["a", false],
+        ]);
+        expect(result.current.pinFailure).toBeNull();
+    });
+
+    it("shows the limit at once, without a call, when three are already pinned", async () => {
+        const list = [listed("a", true), listed("b", true), listed("c", true), listed("d", false)];
+        vi.mocked(pinConversation).mockClear();
+        const { result } = renderHook(() => useChatSession(null, list));
+        await act(() => result.current.setPinned("d", true));
+        expect(pinConversation).not.toHaveBeenCalled();
+        expect(result.current.pinFailure).toBe("pin_limit");
+        expect(result.current.conversations).toEqual(list);
+    });
+
+    it("ignores the answer of a superseded toggle", async () => {
+        const list = [listed("a", false)];
+        let failFirst: (error: unknown) => void = () => undefined;
+        vi.mocked(pinConversation).mockReturnValue(
+            new Promise((_, reject) => {
+                failFirst = reject;
+            }),
+        );
+        vi.mocked(unpinConversation).mockResolvedValue(listed("a", false));
+        vi.mocked(listConversations).mockResolvedValue([listed("a", false)]);
+        const { result } = renderHook(() => useChatSession(null, list));
+        let first: Promise<void> = Promise.resolve();
+        act(() => {
+            first = result.current.setPinned("a", true);
+        });
+        await act(() => result.current.setPinned("a", false));
+        await act(async () => {
+            failFirst(new ApiFailure("generic"));
+            await first;
+        });
+        expect(result.current.conversations.every((c) => !c.pinned)).toBe(true);
+        expect(result.current.pinFailure).toBeNull();
     });
 });

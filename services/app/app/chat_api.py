@@ -11,7 +11,7 @@ from typing import Annotated, Any
 import anyio
 import httpx
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -36,6 +36,7 @@ from hukuk_models.chat import (
     MessageRequest,
     RunUsage,
     Turn,
+    clamp_title,
 )
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -73,12 +74,14 @@ PinnedDb = Annotated[AsyncSession, Depends(pinned_db)]
 Config = Annotated[Settings, Depends(get_settings)]
 
 
-def record(row: ChatConversation) -> Conversation:
+def record(row: ChatConversation, user: AppUser) -> Conversation:
+    own = row.user_id == user.id
     return Conversation(
         id=row.id,
         durable_delivery=True,
         title=row.title,
-        pinned=row.pinned_at is not None,
+        own=own,
+        pinned=own and row.pinned_at is not None,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -102,27 +105,33 @@ async def create_conversation(user: CurrentUser, db: Db, settings: Config) -> Co
     row = ChatConversation(user_id=user.id, title="", created_at=now, updated_at=now)
     db.add(row)
     await db.commit()
-    return record(row)
+    return record(row, user)
 
 
 @router.get("/conversations")
 async def list_conversations(user: CurrentUser, db: Db) -> ConversationList:
+    # Only the requester's own pins float to the top; an admin sees the others' unpinned.
+    mine_pinned = and_(ChatConversation.user_id == user.id, ChatConversation.pinned_at.is_not(None))
     query = select(ChatConversation).order_by(
-        ChatConversation.pinned_at.is_(None),
-        ChatConversation.pinned_at,
+        case((mine_pinned, 0), else_=1),
+        case((mine_pinned, ChatConversation.pinned_at)),
         ChatConversation.updated_at.desc(),
     )
     if user.role != UserRole.admin:
         query = query.where(ChatConversation.user_id == user.id)
-    return ConversationList(items=[record(r) for r in (await db.scalars(query)).all()])
+    return ConversationList(items=[record(r, user) for r in (await db.scalars(query)).all()])
 
 
 @router.put("/conversations/{conversation_id}/pin")
 async def pin_conversation(conversation_id: uuid.UUID, user: CurrentUser, db: Db) -> Conversation:
     row = await owned(db, conversation_id, user, write=True)
+    # The user's row serializes concurrent pins (FOR NO KEY UPDATE, so conversation inserts are
+    # not blocked); the conversation is re-read under the lock, so a pin that just won is seen.
+    await db.execute(
+        select(AppUser.id).where(AppUser.id == user.id).with_for_update(key_share=True)
+    )
+    await db.refresh(row)
     if row.pinned_at is None:
-        # The user's row serializes concurrent pins, so the limit cannot be passed by a race.
-        await db.execute(select(AppUser.id).where(AppUser.id == user.id).with_for_update())
         count = await db.scalar(
             select(func.count())
             .select_from(ChatConversation)
@@ -132,7 +141,7 @@ async def pin_conversation(conversation_id: uuid.UUID, user: CurrentUser, db: Db
             raise ApiError(409, ErrorCode.pin_limit)
         row.pinned_at = _now()
         await db.commit()
-    return record(row)
+    return record(row, user)
 
 
 @router.delete("/conversations/{conversation_id}/pin")
@@ -141,7 +150,7 @@ async def unpin_conversation(conversation_id: uuid.UUID, user: CurrentUser, db: 
     if row.pinned_at is not None:
         row.pinned_at = None
         await db.commit()
-    return record(row)
+    return record(row, user)
 
 
 @router.get("/conversations/{conversation_id}")
@@ -165,7 +174,7 @@ async def get_conversation(
             None,
         )
     return ConversationDetail(
-        **record(row).model_dump(),
+        **record(row, user).model_dump(),
         turns=[Turn.model_validate(t.payload) for t in turns],
         pending_request=delivery["body"] if delivery and not completed else None,
         terminal_error=terminal_error,
@@ -252,7 +261,7 @@ async def bridge(
                                 )
                                 # The title comes from the first understood event, once.
                                 if turn.facts and not conv.title:
-                                    conv.title = turn.facts.title
+                                    conv.title = clamp_title(turn.facts.title)
                                 conv.updated_at = turn.created_at
                                 event = DoneEvent(
                                     turn_id=turn.id, trace_id=event.trace_id, usage=event.usage

@@ -885,3 +885,23 @@ async def test_pin_limit_ownership_idempotence_and_order(stack: Any) -> None:
     other.role = UserRole.admin
     assert (await client.put(f"/chat/conversations/{ids[4]}/pin")).status_code == 404
     assert (await client.delete(f"/chat/conversations/{ids[1]}/pin")).status_code == 404
+
+
+async def test_admin_list_shows_others_pins_unpinned_and_not_own(stack: Any) -> None:
+    client, user, other, settings, app = stack
+    theirs = (await client.post("/chat/conversations")).json()["id"]
+    assert (await client.put(f"/chat/conversations/{theirs}/pin")).status_code == 200
+    app.dependency_overrides[current_user] = lambda: other
+    other.role = UserRole.admin
+    mine = (await client.post("/chat/conversations")).json()["id"]
+    listed = (await client.get("/chat/conversations")).json()["items"]
+    # The admin's own conversation is newer; the other user's pin gives no precedence.
+    assert [c["id"] for c in listed] == [mine, theirs]
+    assert [c["pinned"] for c in listed] == [False, False]
+    assert [c["own"] for c in listed] == [True, False]
+    own_pin = await client.put(f"/chat/conversations/{mine}/pin")
+    assert own_pin.json()["own"] is True and own_pin.json()["pinned"] is True
+    listed = (await client.get("/chat/conversations")).json()["items"]
+    assert [c["id"] for c in listed] == [mine, theirs]
+    app.dependency_overrides[current_user] = lambda: user
+    assert (await client.get("/chat/conversations")).json()["items"][0]["pinned"] is True

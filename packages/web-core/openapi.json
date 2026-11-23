@@ -1358,6 +1358,11 @@
             "title": "Id",
             "type": "string"
           },
+          "own": {
+            "default": true,
+            "title": "Own",
+            "type": "boolean"
+          },
           "pinned": {
             "default": false,
             "title": "Pinned",
@@ -1399,6 +1404,11 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "own": {
+            "default": true,
+            "title": "Own",
+            "type": "boolean"
           },
           "pending_request": {
             "anyOf": [

@@ -14,6 +14,7 @@ function conversation(id: string, title: string, pinned = false): Conversation {
         durable_delivery: false,
         title,
         pinned,
+        own: true,
         created_at: "2026-10-01T12:00:00Z",
         updated_at: "2026-10-01T12:00:00Z",
     };
@@ -75,7 +76,9 @@ describe("ConversationList", () => {
         renderList([conversation("c2", "Fesih", true), conversation("c1", "İşe iade")], { onPin });
         await userEvent.click(screen.getByRole("button", { name: "Sabitle: İşe iade" }));
         expect(onPin).toHaveBeenLastCalledWith("c1", true);
-        await userEvent.click(screen.getByRole("button", { name: "Sabitlemeyi kaldır: Fesih" }));
+        const pinnedButton = screen.getByRole("button", { name: "Sabitle: Fesih" });
+        expect(pinnedButton).toHaveAttribute("aria-pressed", "true");
+        await userEvent.click(pinnedButton);
         expect(onPin).toHaveBeenLastCalledWith("c2", false);
     });
 
@@ -85,6 +88,16 @@ describe("ConversationList", () => {
         const text = screen.getByText(long);
         expect(text).toHaveAttribute("title", long);
         expect(text).toHaveClass("truncate");
+    });
+
+    it("has no pin button on a conversation of another user", () => {
+        renderList([{ ...conversation("c1", "İşe iade"), own: false }]);
+        expect(screen.queryByRole("button", { name: /Sabitle/ })).toBeNull();
+    });
+
+    it("keeps an empty live region in the DOM for the notice", () => {
+        renderList([conversation("c1", "İşe iade")]);
+        expect(screen.getByRole("status")).toBeEmptyDOMElement();
     });
 
     it("shows the notice of a refused pin", () => {

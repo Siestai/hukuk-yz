@@ -1162,6 +1162,11 @@ export interface components {
              */
             id: string;
             /**
+             * Own
+             * @default true
+             */
+            own: boolean;
+            /**
              * Pinned
              * @default false
              */
@@ -1191,6 +1196,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Own
+             * @default true
+             */
+            own: boolean;
             pending_request?: components["schemas"]["MessageRequest"] | null;
             /**
              * Pinned
