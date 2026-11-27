@@ -29,6 +29,20 @@ MIN_QUOTE_WORDS = 3
 # is a conditional branch, not a register error. Code writes it formally; any other "-iyor" form
 # still drops the row.
 _UNKNOWN_VALUE = re.compile(r"\b([Bb])ilinmiyor\b")
+# A fact value states the fact of the case; a verdict on the rule or on a comparison ("fark
+# bulunmamaktadır", "uygulanmamaktadır") is the model's legal conclusion and can contradict the
+# row's result and the headline. The set is small and explicit: a difference said absent, and a
+# rule said not applied, each in a listed suffix only. A fact sentence ("bilinmemektedir", dates,
+# counts) matches none, and "ücret farkı bulunmamaktadır" is not caught either.
+_VERDICT_VALUE = re.compile(
+    r"\bfark\s+(?:bulunmamaktadır|bulunmamıştır|bulunmaz|yoktur|oluşmamaktadır|oluşmamıştır"
+    r"|oluşmaz)\b|\buygulanma(?:maktadır|z|yacaktır)\b",
+    re.IGNORECASE,
+)
+# Quoted text is a party's or a document's words, not the model's verdict, so it is masked before
+# the check; the trade-off is that a verdict wrapped in quotes passes. An apostrophe inside a word
+# ("Ocak'ta") opens no quote.
+_QUOTED = re.compile(r"\"[^\"]*\"|“[^”]*”|(?<!\w)'[^']*'(?!\w)")
 # The paragraph a sub names: "4" of "4", "4-a" or "4 a"; a sub with no number names none.
 _SUB_PARAGRAPH = re.compile(r"^([1-9]\d*)(?!\d)")
 
@@ -40,6 +54,7 @@ SHORT_QUOTE = "short_quote"
 QUOTE_NOT_FOUND = "quote_not_found"
 OTHER_PARAGRAPH = "other_paragraph"
 PROGRESSIVE = "progressive"
+CONCLUSION = "conclusion"
 UNKNOWN_KEY = "unknown_key"
 
 
@@ -146,6 +161,8 @@ def _problems(
         problems.append(OTHER_PARAGRAPH)
     if progressive_forms([row.condition, _formal_value(row) or ""]):
         problems.append(PROGRESSIVE)
+    if _VERDICT_VALUE.search(_QUOTED.sub(" ", row.fact_value or "")):
+        problems.append(CONCLUSION)
     if keys is not None and any(k not in keys for k in row.depends_on_facts):
         problems.append(UNKNOWN_KEY)
     return problems
@@ -162,6 +179,9 @@ _ROW_FEEDBACK = {
     "sub değerini alıntının bulunduğu fıkra yap",
     PROGRESSIVE: "condition veya fact_value -iyor kipindedir ({forms}); -mektedir / -maktadır "
     "kipi veya geniş zamanla yaz",
+    CONCLUSION: "fact_value hukuki sonuç veya karşılaştırma yargısı taşımaktadır "
+    '("fark bulunmamaktadır", "uygulanmamaktadır" gibi); yalnız olgunun kendisini yaz '
+    "(bilinen değer, tarih, sayı veya bilinmemektedir), sonucu result alanına bırak",
 }
 
 
@@ -170,8 +190,9 @@ def holding_feedback(
 ) -> list[str]:
     """What the holding model is told in its one correction, for every row it can mend: an
     invented key, a source_id that names no source read, a quote that is not in the text read
-    (or too short, or in another paragraph), an "-iyor" form. Empty: no row needs it. A row on a
-    text not in force is no model error that a correction mends; it drops."""
+    (or too short, or in another paragraph), an "-iyor" form, a verdict in the fact value. Empty: no
+    row needs it. A row on a text not in force is no model error that a correction mends; it
+    drops."""
     sources = {s.source_id: s for s in read}
     feedback = []
     if invented := invented_keys(draft, facts):
