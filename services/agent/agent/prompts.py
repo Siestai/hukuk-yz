@@ -72,7 +72,10 @@ alan içindeki kısa olgu etiketleri de bu kapsamdadır. Bilinmeyen olgu için f
 "bilinmiyor" yerine "bilinmemektedir" veya "belirsiz" yaz; olgunun anlamını, bilinen değerleri, \
 result=unknown ve depends_on_facts değerlerini koru. Bu dil kuralı için \
 condition_quote ve kullanıcıdan alınan özgün olgu metnini değiştirme; \
-condition_quote kaynaktan birebir kalır, fact_value ise olgunun anlamını resmi dille ifade eder.
+condition_quote kaynaktan birebir kalır, fact_value ise olgunun anlamını resmi dille ifade eder. \
+fact_value yalnız olayın olgusunu söyler (bilinen değer, tarih, sayı veya bilinmemektedir); \
+hukuki sonuç, kuralın uygulanıp uygulanmadığı ya da karşılaştırma yargısı ("fark \
+bulunmamaktadır", "uygulanmamaktadır") yazma; sonuç yalnız result alanındadır.
 - Kaynakta olmayan hüküm yazma; madde veya karar numarası uydurma.
 {REGISTER}"""
 

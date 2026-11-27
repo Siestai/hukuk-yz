@@ -392,3 +392,57 @@ def test_the_trace_record_of_a_dropped_row_has_no_quote_the_source_does_not_hold
     assert "PRIVATE_SENTINEL" not in repr([lost, unread])
     # Dropped for another reason, the quote is statute text: it stays.
     assert other["reason"] == "other_paragraph" and other["quote"] == M18_4.strip()[:300]
+
+
+SB_042_VALUE = (
+    "2008 Ocak'ta işe giren işçi (ilk sigortalılık tarihi 15.01.2008) ile 2008 Aralık'ta işe "
+    "giren işçi arasında kıdem tazminatı ve yaşlılık hak şartları bakımından fark "
+    "bulunmamaktadır; ancak yaşlılık aylığı bağlama için gerekli prim ödeme gün sayısı koşulu "
+    "2008 yılı içindeki ilk sigortalılık tarihine göre belirlenebilmektedir."
+)
+
+
+def test_a_fact_value_that_states_a_conclusion_is_corrected_and_else_drops() -> None:
+    from agent.holding import holding_feedback
+    from hukuk_models.chat import CaseFacts, Fact
+
+    facts = CaseFacts(title="Kıdem", facts=[Fact(key="kidem", label="Kıdem", status="unknown")])
+    candidate = {**row("statute:4857:m18", M18_4, "met"), "fact_value": SB_042_VALUE}
+
+    rows, dropped, _, _ = verify(candidate)
+    assert (rows, dropped) == ([], {"conclusion": 1})
+    feedback = holding_feedback(
+        HoldingDraft.model_validate({"rows": [candidate]}), READ, DAY, facts
+    )
+    assert len(feedback) == 1 and "hukuki sonuç" in feedback[0]
+    assert verify({**candidate, "fact_value": "Kural uygulanmamaktadır"})[1] == {"conclusion": 1}
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "bilinmemektedir",
+        "Kıdem: 5 ay; işçi sayısı: bilinmemektedir",
+        "İşe giriş tarihi 15.01.2008; ilk sigortalılık tarihi 15.01.2008",
+        "İşçiye ulaşılamamıştır",
+        "Çalışma süresi 3 yıl 2 aydır",
+        "Tutanak düzenlenmemiştir",
+        'İşçi "kural uygulanmaz" dedi',
+        "İşçi “kural uygulanmaz” dedi",
+        "İşçi 'kural uygulanmaz' dedi",
+        'Dilekçede "fark bulunmamaktadır" yazılıdır',
+        "Ücret farkı bulunmamaktadır",
+        "Fark yoksa ödeme yapılmaz",
+    ],
+)
+def test_a_plain_fact_value_is_no_conclusion(value: str) -> None:
+    rows, dropped, _, _ = verify({**row("statute:4857:m18", M18_4), "fact_value": value})
+
+    assert dropped == {} and len(rows) == 1
+
+
+@pytest.mark.parametrize("value", ["Fark yoktur", "Fark oluşmamaktadır"])
+def test_a_listed_verdict_form_is_a_conclusion(value: str) -> None:
+    rows, dropped, _, _ = verify({**row("statute:4857:m18", M18_4), "fact_value": value})
+
+    assert (rows, dropped) == ([], {"conclusion": 1})
