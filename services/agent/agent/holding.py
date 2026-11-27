@@ -32,11 +32,17 @@ _UNKNOWN_VALUE = re.compile(r"\b([Bb])ilinmiyor\b")
 # A fact value states the fact of the case; a verdict on the rule or on a comparison ("fark
 # bulunmamaktadır", "uygulanmamaktadır") is the model's legal conclusion and can contradict the
 # row's result and the headline. The set is small and explicit: a difference said absent, and a
-# rule said not applied. A fact sentence ("bilinmemektedir", dates, counts) matches none.
+# rule said not applied, each in a listed suffix only. A fact sentence ("bilinmemektedir", dates,
+# counts) matches none, and "ücret farkı bulunmamaktadır" is not caught either.
 _VERDICT_VALUE = re.compile(
-    r"\bfark\s+(?:bulunma\w*|yok\w*|oluşma\w*)|\buygulanma(?:maktadır|z|yacaktır)\b",
+    r"\bfark\s+(?:bulunmamaktadır|bulunmamıştır|bulunmaz|yoktur|oluşmamaktadır|oluşmamıştır"
+    r"|oluşmaz)\b|\buygulanma(?:maktadır|z|yacaktır)\b",
     re.IGNORECASE,
 )
+# Quoted text is a party's or a document's words, not the model's verdict, so it is masked before
+# the check; the trade-off is that a verdict wrapped in quotes passes. An apostrophe inside a word
+# ("Ocak'ta") opens no quote.
+_QUOTED = re.compile(r"\"[^\"]*\"|“[^”]*”|(?<!\w)'[^']*'(?!\w)")
 # The paragraph a sub names: "4" of "4", "4-a" or "4 a"; a sub with no number names none.
 _SUB_PARAGRAPH = re.compile(r"^([1-9]\d*)(?!\d)")
 
@@ -155,7 +161,7 @@ def _problems(
         problems.append(OTHER_PARAGRAPH)
     if progressive_forms([row.condition, _formal_value(row) or ""]):
         problems.append(PROGRESSIVE)
-    if _VERDICT_VALUE.search(row.fact_value or ""):
+    if _VERDICT_VALUE.search(_QUOTED.sub(" ", row.fact_value or "")):
         problems.append(CONCLUSION)
     if keys is not None and any(k not in keys for k in row.depends_on_facts):
         problems.append(UNKNOWN_KEY)
