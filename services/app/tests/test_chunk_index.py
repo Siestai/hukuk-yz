@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.chunk_index import (
@@ -169,7 +169,7 @@ async def test_a_statute_article_is_indexed_per_version_and_a_gap_has_no_chunk(
     async with kb_factory() as session:
         await sync_statute_article(session, "4857", "18")
         await session.commit()
-    stored = await chunks(kb_factory)
+    stored = await chunks(kb_factory, ref="4857 m.18")
     assert [
         (c.text, str(c.valid_from), str(c.valid_to) if c.valid_to else None) for c in stored
     ] == [
@@ -208,24 +208,23 @@ async def test_rejecting_an_article_removes_its_chunks(
     async with kb_factory() as session:
         await sync_statute_article(session, "4857", "5")
         await session.commit()
-        assert await session.scalar(select(func.count()).select_from(Chunk)) == 1
+        assert len(await chunks(kb_factory, ref="4857 m.5")) == 1
         await reject_statute_article(session, statutes_loaded["5"], reviewer.id, "wrong")
         await session.commit()
-    assert await chunks(kb_factory) == []
+    assert await chunks(kb_factory, ref="4857 m.5") == []
 
 
 async def test_a_genelge_section_is_indexed_from_its_extraction(kb_factory: Factory) -> None:
-    await load_acts(kb_factory)
+    await load_acts(kb_factory)  # the loader indexes the sections it writes
     async with kb_factory() as session:
-        for section in ("1", "1.1", "1.2"):
-            await sync_admin_act_section(session, "2020/8", section)
-        await session.commit()
         again = await sync_admin_act_section(session, "2020/8", "1")
 
     stored = await chunks(kb_factory)
     assert [(c.ref, str(c.valid_from), c.valid_to) for c in stored] == [
         ("2020/8 m.1", "2020-04-01", None),
         ("2020/8 m.1.2", "2021-09-17", None),  # from its amendment note on; 1.1 is repealed
+        ("2020/8 m.1.4", "2020-04-01", None),
+        ("2020/8 m.2", "2020-04-01", None),
     ]
     first = stored[0]
     assert first.text == f"1- GENEL AÇIKLAMALAR\nİdari para cezaları açıklanmıştır.\n{LINE}"
@@ -244,9 +243,7 @@ async def test_a_rejected_genelge_section_has_no_chunk(
 ) -> None:
     await load_acts(kb_factory)
     async with kb_factory() as session:
-        await sync_admin_act_section(session, "2020/8", "2")
-        await session.commit()
-        assert await session.scalar(select(func.count()).select_from(Chunk)) == 1
+        assert len(await chunks(kb_factory, ref="2020/8 m.2")) == 1
         extraction_id = (
             await session.execute(
                 select(Extraction.id).where(Extraction.fields["section_no"].as_string() == "2")
@@ -259,7 +256,7 @@ async def test_a_rejected_genelge_section_has_no_chunk(
         )
         await sync_admin_act_section(session, "2020/8", "2")
         await session.commit()
-    assert await chunks(kb_factory) == []
+    assert await chunks(kb_factory, ref="2020/8 m.2") == []
 
 
 async def test_embedding_runs_in_batches_and_a_second_run_embeds_nothing(

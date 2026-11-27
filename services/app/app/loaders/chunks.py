@@ -8,8 +8,9 @@ Per record (a decision source, a statute article, a genelge section) the chunks 
 (OpenAI, `OPENAI_API_KEY` required unless `--dry-run`). A second run finds nothing to write and
 nothing to embed. `--dry-run` writes nothing and calls nothing: it counts the chunks and estimates
 the tokens and the cost. `--limit N` stops after N records (and embeds only their chunks). The
-review paths refresh a record's chunks themselves; this command is for the first build and for a
-change of model or of the chunking rules.
+review paths and the statute and genelge loaders refresh a record's chunks themselves (text only);
+this command is for the first build, for the embedding of what they leave pending, for the
+decisions (their loader does not index) and for a change of model or of the chunking rules.
 
 Exit code 0 when done, 1 when some record or batch failed, 2 when the key is missing.
 """

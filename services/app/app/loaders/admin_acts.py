@@ -12,10 +12,11 @@ sections have no screen for yet, so every section stays unreviewed.
 Idempotency: a section is loaded once per (parser version, section number, sha256 of the file,
 content hash); the content hash is the sha256 of the canonical JSON of its `fields`
 (`app.loaders.statutes.content_hash`). A rerun adds nothing; a new parser version, a new file or
-a changed section adds an extraction and leaves the old ones alone. A record without sections
-(the scan left the file as `needs_ocr`, or the file names another genelge) is reported as an
-error and loads nothing. As in the statute loader it is a read-then-insert: concurrent runs are
-not supported.
+a changed section adds an extraction and leaves the old ones alone; the search chunks of every
+section written are rebuilt in the same transaction (`chunk_index.sync_admin_act_section`). A
+record without sections (the scan left the file as `needs_ocr`, or the file names another genelge)
+is reported as an error and loads nothing. As in the statute loader it is a read-then-insert:
+concurrent runs are not supported.
 """
 
 import argparse
@@ -34,6 +35,7 @@ from sqlalchemy import insert, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.chunk_index import sync_admin_act_section
 from app.db import make_engine, make_session_factory
 from app.loaders.decisions import error_name, finish_job, is_row_error
 from app.loaders.report import BANDS
@@ -193,8 +195,9 @@ async def _write_act(
     job_id: uuid.UUID,
     counts: Counts,
 ) -> None:
-    """The file, the source (unless the genelge has one) and the pending extractions of one
-    genelge, in the caller's transaction. `counts` is a scratch copy that the caller merges after
+    """The file, the source (unless the genelge has one), the pending extractions and the search
+    chunks of their sections (text only: the embedding stays pending) of one genelge, in the
+    caller's transaction. `counts` is a scratch copy that the caller merges after
     the commit."""
     sha = act.file["sha256"]
     file_id = (
@@ -245,6 +248,8 @@ async def _write_act(
             for s in pending
         ],
     )
+    for s in pending:  # the index follows the newest extraction
+        await sync_admin_act_section(session, act.ref, s.section_no)
 
 
 async def load(

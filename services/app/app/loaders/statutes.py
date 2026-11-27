@@ -14,7 +14,9 @@ of its statute's snapshots, content hash). The content hash is the sha256 of the
 the article's `fields` and is stored in them as `content_hash`. A rerun adds nothing; a new parser
 version, a new snapshot or a changed timeline (a registry update with the same parser version) adds
 an extraction and leaves the old ones and the published rows alone: the new one goes to review and
-supersedes the live rows only when it is published. As in the decision loader it
+supersedes the live rows only when it is published. The search chunks of every article written are
+rebuilt in the same transaction (`chunk_index.sync_statute_article`; vectors of unchanged text are
+kept, embedding is `app.loaders.chunks`' job). As in the decision loader it
 is a read-then-insert: concurrent runs are not supported.
 """
 
@@ -35,6 +37,7 @@ from sqlalchemy import insert, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.chunk_index import sync_statute_article
 from app.db import make_engine, make_session_factory
 from app.kb import (
     publish_statute_batch,
@@ -199,8 +202,9 @@ async def _write_statute(
     job_id: uuid.UUID,
     counts: StatuteCounts,
 ) -> None:
-    """The files, the source (unless the statute has one) and the pending extractions of one
-    statute, in the caller's transaction. `counts` is a scratch copy that the caller merges after
+    """The files, the source (unless the statute has one), the pending extractions and the search
+    chunks of their articles (text only: the embedding stays pending) of one statute, in the
+    caller's transaction. `counts` is a scratch copy that the caller merges after
     the commit."""
     file_ids: list[uuid.UUID] = []
     for snap in st.snapshots:
@@ -259,6 +263,8 @@ async def _write_statute(
             for a in pending
         ],
     )
+    for a in pending:  # the index follows the newest extraction
+        await sync_statute_article(session, st.number, a.article_no)
 
 
 async def load(
