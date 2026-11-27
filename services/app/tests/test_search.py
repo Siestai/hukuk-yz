@@ -446,12 +446,11 @@ async def test_the_old_chunk_of_a_reloaded_genelge_section_is_not_served(
     before = await search(client, headers, q="bildirge on gün içinde", category="admin_act")
     assert "2020/8 m.1.2" in {r["ref"] for r in before}
 
-    # a reload with a changed section adds a newer extraction; the index still holds the old chunk
+    # a reload with a changed section adds a newer extraction; the loader points the index at it
     await load_acts(kb_factory, act_record(TEXT.replace("on gün", "on beş gün")))
 
     after = await search(client, headers, q="bildirge on gün içinde", category="admin_act")
-    assert "2020/8 m.1.2" not in {r["ref"] for r in after}
-    await _index_sections(kb_factory, fake_embedder)
+    assert all("on gün" not in m["text"] for r in after for m in r["matches"])
     again = await search(client, headers, q="bildirge on beş gün içinde", category="admin_act")
     (hit,) = [r for r in again if r["ref"] == "2020/8 m.1.2"]
     assert "on beş gün" in hit["matches"][0]["text"]

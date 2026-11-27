@@ -5,8 +5,8 @@ A record's chunks are a function of its state, so one call rebuilds them all (`s
 `sync_statute_article`, `sync_admin_act_section`): an approved record is indexed from its typed
 row, one waiting for review from its newest extraction, a rejected or reopened-and-rejected one
 not at all. A genelge section has no approval path yet, so it is always indexed from its
-extraction. The review paths
-(`app.kb`) call these inside their transaction; they write text and full-text search only. The
+extraction. The review paths (`app.kb`) and the statute and genelge loaders call these inside
+their transaction; they write text and full-text search only. The
 embedding (a network call) is `embed_pending`, run by `python -m app.loaders.chunks`; a chunk
 whose embedding input and model are unchanged keeps its vector across a rebuild.
 """

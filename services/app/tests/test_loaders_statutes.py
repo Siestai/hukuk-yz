@@ -14,8 +14,10 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.chunk_index import EXTRACTION
 from app.loaders import statutes
 from app.loaders.statutes_report import StatuteCounts
+from app.models.chunk import EMBEDDING_DIM, Chunk
 from app.models.common import (
     STATUTE_PARSER_NAME,
     Extraction,
@@ -30,6 +32,7 @@ from app.models.common import (
 )
 from app.models.statute import Statute, StatuteArticle, StatuteArticleVersion
 from app.models.user import AppUser
+from app.search import search
 
 STATUTES_FIXTURE = Path(__file__).parent / "fixtures" / "statutes_fixture.jsonl"
 Factory = async_sessionmaker[AsyncSession]
@@ -326,3 +329,61 @@ async def test_the_cli_refuses_an_unknown_reviewer_before_loading(
     with pytest.raises(SystemExit, match="no user with id"):
         await asyncio.to_thread(statutes.main, argv)
     assert await _count(kb_factory, Source) == 0
+
+
+async def _chunks_of(factory: Factory, article_no: str) -> list[Chunk]:
+    async with factory() as session:
+        return list(
+            (
+                await session.scalars(
+                    select(Chunk)
+                    .where(Chunk.ref == f"4857 m.{article_no}")
+                    .order_by(Chunk.valid_from)
+                )
+            ).all()
+        )
+
+
+async def _found_texts(factory: Factory) -> set[str]:
+    async with factory() as session:
+        response = await search(
+            session, None, q="Madde metin", unreviewed_bands=("high", "medium"), limit=50
+        )
+    return {m.text for r in response.results for m in r.matches}
+
+
+async def test_a_reload_points_the_index_at_the_newest_extraction_and_keeps_vectors(
+    kb_factory: Factory, extraction_ids: ExtractionIds
+) -> None:
+    await _load(kb_factory, _record())
+    old = await _found_texts(kb_factory)
+    assert {"Madde 18 eski metin.", "Madde 18 yeni metin.", "Madde 5 metni."} <= old
+    async with kb_factory() as session:
+        for chunk in (await session.scalars(select(Chunk))).all():
+            chunk.embedding, chunk.embedding_model = [0.5] * EMBEDDING_DIM, "m"
+        await session.commit()
+
+    record = _record()
+    record["articles"][0]["versions"][0]["text"] = "Madde 18 değişmiş metin."
+    await _load(kb_factory, record)
+
+    new = await _found_texts(kb_factory)
+    assert "Madde 18 değişmiş metin." in new and "Madde 18 eski metin." not in new
+    assert {"Madde 18 yeni metin.", "Madde 5 metni."} <= new
+    newest = await extraction_ids("1")
+    a18 = await _chunks_of(kb_factory, "18")
+    assert {c.parent_kind for c in a18} == {EXTRACTION}
+    assert {c.parent_id for c in a18} == {newest["18"]}
+    by_text = {c.text: c for c in a18}
+    assert by_text["Madde 18 değişmiş metin."].embedding is None
+    assert by_text["Madde 18 yeni metin."].embedding is not None  # same text: the vector stays
+    assert all(c.embedding is not None for c in await _chunks_of(kb_factory, "5"))
+
+
+async def test_a_second_identical_load_leaves_the_chunks_alone(kb_factory: Factory) -> None:
+    await _load(kb_factory, _record())
+    async with kb_factory() as session:
+        before = sorted((await session.execute(select(Chunk.id, Chunk.text))).all())
+    await _load(kb_factory, _record())
+    async with kb_factory() as session:
+        assert sorted((await session.execute(select(Chunk.id, Chunk.text))).all()) == before

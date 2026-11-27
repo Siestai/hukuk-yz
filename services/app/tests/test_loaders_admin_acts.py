@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.loaders import admin_acts
 from app.models.admin_act import AdminAct, AdminActVersion
+from app.models.chunk import EMBEDDING_DIM, Chunk
 from app.models.common import (
     ADMIN_ACT_PARSER_NAME,
     Extraction,
@@ -239,6 +240,40 @@ async def test_a_changed_section_and_a_new_file_add_extractions_to_the_same_sour
     assert (new_file.new, new_file.sources_new, new_file.files_new) == (5, 0, 1)
     assert await _count(kb_factory, Source) == 1
     assert await _count(kb_factory, Extraction) == 11
+
+
+async def test_a_reload_points_the_index_at_the_newest_extraction_and_keeps_vectors(
+    kb_factory: Factory,
+) -> None:
+    await load_acts(kb_factory)
+    async with kb_factory() as session:
+        chunks = (await session.scalars(select(Chunk))).all()
+        assert chunks and {c.parent_kind for c in chunks} == {"extraction"}
+        for chunk in chunks:
+            chunk.embedding, chunk.embedding_model = [0.5] * EMBEDDING_DIM, "m"
+        before = {c.id for c in chunks}
+        await session.commit()
+    await load_acts(kb_factory)  # identical: nothing is touched
+    async with kb_factory() as session:
+        assert {c.id for c in (await session.scalars(select(Chunk))).all()} == before
+
+    await load_acts(kb_factory, act_record(TEXT.replace("on gün", "on beş gün")))
+
+    async with kb_factory() as session:
+        newest = (
+            await session.scalars(
+                select(Extraction)
+                .where(Extraction.fields["section_no"].as_string() == "1.2")
+                .order_by(Extraction.extracted_at.desc())
+            )
+        ).first()
+        assert newest is not None
+        stored = (await session.scalars(select(Chunk))).all()
+        changed = [c for c in stored if "on beş gün" in c.text]
+        assert [c.parent_id for c in changed] == [newest.id]
+        assert changed[0].embedding is None
+        assert not any("on gün" in c.text for c in stored)
+        assert all(c.embedding is not None for c in stored if c not in changed)
 
 
 async def test_main_loads_reports_and_fails_on_a_genelge_without_sections(
