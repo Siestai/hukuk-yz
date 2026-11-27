@@ -113,3 +113,32 @@ def test_diff_snapshots_classifies_each_article() -> None:
     new = _snap(**{"1": "Aynı  metin.", "2": "Yeni ve farklı bir metin yazıldı.", "4": "Eklenir."})
     kinds = {d.article_no: d.kind for d in diff_snapshots(old, new)}
     assert kinds == {"1": UNCHANGED, "2": CHANGED, "4": ADDED, "3": REMOVED}
+
+
+def test_compare_warns_when_an_unknown_line_end_number_is_dropped() -> None:
+    # no snapshot knows 2 as a footnote: the text is equal only if it is dropped, so it is flagged
+    assert compare("Süre dolar. (2)\nEk süre.", "Süre dolar.\nEk süre.") == (
+        UNCHANGED,
+        ["uncertain_diff"],
+    )
+    # a known number is dropped silently
+    assert compare("Süre dolar. (2)\nEk süre.", "Süre dolar.\nEk süre.", frozenset({2})) == (
+        UNCHANGED,
+        [],
+    )
+
+
+def test_compare_keeps_different_unknown_line_end_numbers_as_a_change() -> None:
+    kind, warnings = compare("Süre dolar. (2)\nEk süre.", "Süre dolar. (3)\nEk süre.")
+    assert kind == CHANGED and warnings == ["uncertain_diff"]
+
+
+def test_compare_borrowed_markers_keep_a_real_number_change() -> None:
+    # 30 is in no snapshot's marker set, so removing it from the new text is a change
+    kind, _ = compare("Süre 30 gün (2) olur.", "Süre gün olur.", frozenset(), frozenset({2}))
+    assert kind == CHANGED
+
+
+def test_compare_keeps_a_changed_percentage() -> None:
+    assert compare("Faiz % 70'i ödenir.", "Faiz % 7'si ödenir.")[0] == CHANGED
+    assert compare("Faiz % 70 ödenir.", "Faiz % 7 ödenir.")[0] == CHANGED
