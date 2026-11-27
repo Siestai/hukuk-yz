@@ -1,11 +1,12 @@
 """Article-level diff between two snapshots of the same statute (task 11a).
 
 Texts are compared after normalisation: whitespace, line breaks, quote and dash variants and
-footnote markers do not count as changes. Only numbers the splitter knows as footnote numbers of
-the article are removed as markers; every other digit stays, so a changed cross reference
-(`(4)` -> `(5)`) is a change. When the remaining difference is only punctuation,
-case or diacritics the article is `unchanged` with the `uncertain_diff` warning; a change of a
-couple of words is `changed` with the same warning."""
+footnote markers (also those printed on a line of their own or detached from their sentence) do
+not count as changes. Apart from a `(n)` that closes a line after punctuation, only numbers the
+splitter knows as footnote numbers of the article are removed as markers; every other digit
+stays, so a changed cross reference (`(4)` -> `(5)`) is a change. When the remaining difference is
+only punctuation, case or diacritics the article is `unchanged` with the `uncertain_diff` warning;
+a change of a couple of words is `changed` with the same warning."""
 
 import re
 import unicodedata
@@ -26,12 +27,22 @@ _GLUED_MARKER_RE = re.compile(
     r"(?<=[^\W\d_)”’.,;:…\-/])\d{1,6}(?=\s|$)|(?<=[)”’.,;:…])\d{1,6}(?=\s|$)"
 )
 _BRACKET_MARKER_RE = re.compile(r"(?<=[^\s(])[ \t]*\((\d{1,3})\)(?=\s|$|\()")
+# A marker printed on a line of its own (`öncesinden,` / `(1)` / `8) ...`).
+_OWN_LINE_MARKER_RE = re.compile(r"(?m)^[ \t]*\((\d{1,3})\)[ \t]*$")
+# A marker detached from its sentence, before a sub-item label: `... kullanması. 8 e) ...`.
+_DETACHED_MARKER_RE = re.compile(r"(?<=[.;:])[ \t]+(\d{1,3})(?=[ \t]+[a-zçğıöşü]\))")
+# Whatever its number, a `(n)` that closes a line right after sentence punctuation is a marker
+# (a paragraph number opens a line).
+_LINE_END_MARKER_RE = re.compile(r"(?m)(?<=[.;:,])[ \t]*\(\d{1,3}\)[ \t]*$")
 _FOLD = str.maketrans("ıîâûöüşçğ", "iiauousc" + "g")
 
 
 def _strip_markers(text: str, markers: frozenset[int]) -> str:
+    text = _LINE_END_MARKER_RE.sub("", text)
     if not markers:
         return text
+    text = _OWN_LINE_MARKER_RE.sub(lambda m: "" if int(m[1]) in markers else m[0], text)
+    text = _DETACHED_MARKER_RE.sub(lambda m: "" if int(m[1]) in markers else m[0], text)
     text = _BRACKET_MARKER_RE.sub(lambda m: "" if int(m[1]) in markers else m[0], text)
     return _GLUED_MARKER_RE.sub(lambda m: "" if decompose(m[0], set(markers)) else m[0], text)
 
@@ -42,6 +53,7 @@ def normalize(text: str, markers: frozenset[int] = frozenset()) -> str:
     text = _strip_markers(text, markers)
     text = re.sub(r"(?<=[a-zçğıöşü])-\s+(?=[a-zçğıöşü])", "-", text)
     text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"%\s+(?=\d)", "%", text)
     text = re.sub(r"\s+([,.;:)])", r"\1", text)
     text = re.sub(r"\(\s+", "(", text)
     text = re.sub(r":(?=\S)", ": ", text)
@@ -91,6 +103,12 @@ def compare(
     a, b = normalize(old, old_markers), normalize(new, new_markers)
     if a == b:
         return UNCHANGED, []
+    if old_markers != new_markers:
+        # A snapshot whose footnotes were not read leaves its markers in the text: the numbers
+        # of the other snapshot identify them.
+        both = old_markers | new_markers
+        if normalize(old, both) == normalize(new, both):
+            return UNCHANGED, ["uncertain_diff"]
     if skeleton(a) == skeleton(b):
         return UNCHANGED, ["uncertain_diff"]
     wa, wb = a.split(), b.split()

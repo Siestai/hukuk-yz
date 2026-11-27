@@ -74,6 +74,38 @@ def test_compare_strips_only_known_footnote_markers() -> None:
     assert compare("işçi (1) bent", "işçi (2) bent", frozenset({1}), frozenset())[0] == CHANGED
 
 
+@pytest.mark.parametrize(
+    ("old", "new", "old_markers", "new_markers"),
+    [
+        # a marker on a line of its own, or in another place of the line, is still a marker
+        ("Süre dolar,\n(1)\n8) Ek süre.", "Süre dolar, (1)\n8) Ek süre.", {1}, {1}),
+        ("Süre dolar. 8 e) Ek süre.", "Süre dolar. e) Ek süre.", {8}, set()),
+        # footnotes the older snapshot did not read: its markers follow the other snapshot's
+        ("Süre dolar. (2)(3) Ek süre.", "Süre dolar. Ek süre.", set(), {2, 3}),
+        # a `(n)` closing a line after punctuation is a marker whatever its number
+        ("Süre dolar. (2)\nEk süre.", "Süre dolar.\nEk süre.", set(), set()),
+    ],
+)
+def test_compare_reads_marker_layouts_as_unchanged(
+    old: str, new: str, old_markers: set[int], new_markers: set[int]
+) -> None:
+    kind, _ = compare(old, new, frozenset(old_markers), frozenset(new_markers))
+    assert kind == UNCHANGED
+
+
+def test_compare_ignores_the_space_after_a_percent_sign() -> None:
+    assert compare("Faiz % 70'i ödenir.", "Faiz %70'i ödenir.") == (UNCHANGED, [])
+
+
+def test_compare_keeps_paragraph_numbers_and_unknown_numbers_as_text() -> None:
+    # a paragraph number opens its line; a number no snapshot knows as a footnote is text
+    assert compare("Süre dolar.\n(2) Ek süre.", "Süre dolar.\n(3) Ek süre.")[0] == CHANGED
+    assert (
+        compare("Süre dolar. (2) Ek", "Süre dolar. Ek", frozenset(), frozenset({3}))[0] == CHANGED
+    )
+    assert compare("Süre 8 e) dolar.", "Süre e) dolar.", frozenset(), frozenset({3}))[0] == CHANGED
+
+
 def test_diff_snapshots_classifies_each_article() -> None:
     old = _snap(
         **{"1": "Aynı metin.", "2": "Eski metin burada duruyor ve değişecek.", "3": "Kalkar."}
