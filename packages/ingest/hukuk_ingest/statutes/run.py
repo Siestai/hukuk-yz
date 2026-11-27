@@ -21,7 +21,7 @@ from hukuk_ingest.statutes.timeline import SnapshotInput, build_article, find_ov
 STATUTE_DIR = "Mevzuat/Kanunlar/"
 # Written into every statute record; the loader (task 11b) keys its idempotency on it.
 # Bump it when a change here alters the timelines.
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 _DATE_RE = re.compile(r"(?<!\d)(\d{1,2})\.(\d{1,2})\.((?:19|20)\d{2})(?!\d)")
 
 

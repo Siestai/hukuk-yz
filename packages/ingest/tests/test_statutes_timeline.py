@@ -308,6 +308,26 @@ def test_cosmetic_difference_is_one_version_with_uncertain_diff() -> None:
     assert len(arts["1"]["versions"]) == 1 and arts["1"]["confidence"] == "medium"
 
 
+def test_footnote_marker_layout_difference_is_not_an_unexplained_change() -> None:
+    arts = build(
+        (S1, {"1": "Süre otuz gündür. (2)\nEk süre verilir."}),
+        (S2, {"1": "Süre otuz gündür.\nEk süre verilir."}),
+    )
+    assert len(arts["1"]["versions"]) == 1 and arts["1"]["gaps"] == []
+    # the number is no snapshot's footnote, so dropping it is flagged
+    assert arts["1"]["confidence"] == "medium"
+
+
+def test_borrowed_footnote_markers_do_not_raise_confidence_to_high() -> None:
+    note = "\n––––––––––\n(2) Bu ibare Anayasa Mahkemesinin kararıyla iptal edilmiştir.\n"
+    arts = build(
+        (S1, {"1": "Süre dolar. (2)\nEk süre verilir."}),
+        (S2, {"1": "Süre dolar.(2)\nEk süre verilir." + note}),
+    )
+    assert len(arts["1"]["versions"]) == 1 and arts["1"]["gaps"] == []
+    assert arts["1"]["confidence"] == "medium"
+
+
 def test_undated_snapshot_takes_the_latest_note_date() -> None:
     new = "(Değişik: 1/5/2019-7002/1 md.) Yepyeni ve farklı metin yazıldı."
     files = [
