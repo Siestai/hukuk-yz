@@ -231,6 +231,26 @@ describe("QuestionCard date bound", () => {
         expect(onReply).not.toHaveBeenCalled();
     });
 
+    it("accepts the bound day itself", async () => {
+        const onReply = setupBounded("2026-10-28");
+        const input = screen.getByLabelText("Tutanak hangi tarihte tutuldu?");
+        await userEvent.type(input, "2026-10-28");
+        expect(input).not.toHaveAttribute("aria-invalid");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Devam" })).toBeEnabled();
+        await userEvent.click(screen.getByRole("button", { name: "Devam" }));
+        expect(onReply).toHaveBeenCalled();
+    });
+
+    it("marks the day after the bound invalid", async () => {
+        setupBounded("2026-10-28");
+        const input = screen.getByLabelText("Tutanak hangi tarihte tutuldu?");
+        await userEvent.type(input, "2026-10-29");
+        expect(input).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByRole("alert")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Devam" })).toBeDisabled();
+    });
+
     it("sets no bound when the fact may lie ahead", async () => {
         setupBounded(null);
         const input = screen.getByLabelText("Tutanak hangi tarihte tutuldu?");

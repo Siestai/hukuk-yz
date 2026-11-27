@@ -1,7 +1,7 @@
 """The facts and the clarification, from the template: who is asked what, and how an answer fills
 the fact."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -12,6 +12,7 @@ from agent.facts import (
     critical_unknown,
     event_date_of,
     stated_in,
+    today_tr,
 )
 from agent.llm_schemas import IntakeFact, IntakeOutput
 from agent.topics import Topic, get_topic
@@ -668,3 +669,11 @@ def test_allow_future_is_for_a_date_fact_only() -> None:
 def test_the_askerlik_sevk_date_of_kidem_ihbar_may_be_in_the_future() -> None:
     fact = get_topic("kidem_ihbar").fact("sevk_tarihi")
     assert fact is not None and fact.allow_future
+
+
+def test_today_is_the_turkish_calendar_day_not_the_servers() -> None:
+    # 22:30 UTC on the 27th is already 01:30 on the 28th in Türkiye (UTC+3).
+    assert today_tr(datetime(2026, 11, 27, 22, 30, tzinfo=UTC)) == date(2026, 11, 28)
+    assert today_tr(datetime(2026, 11, 27, 20, 59, tzinfo=UTC)) == date(2026, 11, 27)
+    assert today_tr(datetime(2026, 11, 27, 21, 0, tzinfo=UTC)) == date(2026, 11, 28)
+    assert today_tr() == today_tr(datetime.now(UTC))

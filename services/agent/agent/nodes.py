@@ -19,6 +19,7 @@ from agent.facts import (
     clarification_for,
     critical_unknown,
     follow_up,
+    today_tr,
 )
 from agent.gate import (
     SCHEMA_FAILED,
@@ -115,7 +116,7 @@ class Node(Protocol):
 class Deps:
     llm: Llm
     kb: KbClient
-    today: Callable[[], date] = date.today
+    today: Callable[[], date] = today_tr
     # Keep the raw quotes of the dropped rows in the state (`dropped_text`): the eval only, whose
     # questions are public; never in the trace or the log.
     keep_dropped_text: bool = False

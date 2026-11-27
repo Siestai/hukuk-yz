@@ -235,7 +235,10 @@ function ValueForm({
     const [value, setValue] = useState("");
     const hintId = useId();
     const errorId = useId();
+    // An input type=date always yields YYYY-MM-DD (or ""), so comparing the ISO strings is safe.
     const tooLate = kind === "date" && max !== undefined && value > max;
+    const maxLabel =
+        max !== undefined ? new Date(`${max}T00:00`).toLocaleDateString("tr-TR") : undefined;
     function submit(event: FormEvent) {
         event.preventDefault();
         if (value.trim() && !tooLate) onSubmit(value.trim());
@@ -264,19 +267,15 @@ function ValueForm({
                     {t("next")}
                 </Button>
             </div>
-            {tooLate && max !== undefined ? (
+            {tooLate && maxLabel !== undefined ? (
                 <p id={errorId} role="alert" className="text-sm text-low">
-                    {t("dateTooLate", {
-                        max: new Date(`${max}T00:00`).toLocaleDateString("tr-TR"),
-                    })}
+                    {t("dateTooLate", { max: maxLabel })}
                 </p>
             ) : (
                 kind === "date" && (
                     <p id={hintId} className="text-xs text-ink-2">
-                        {max !== undefined
-                            ? t("dateHintPast", {
-                                  max: new Date(`${max}T00:00`).toLocaleDateString("tr-TR"),
-                              })
+                        {maxLabel !== undefined
+                            ? t("dateHintPast", { max: maxLabel })
                             : t("dateHint")}
                     </p>
                 )

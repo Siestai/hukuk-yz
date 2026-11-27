@@ -112,6 +112,19 @@ async def test_sb001_stops_at_the_clarification_and_goes_on_after_the_answers() 
     assert {c.fact_key for c in answer.fact_chips} == {"kidem", *ANSWERS_KEYS}
 
 
+async def test_the_date_question_is_bounded_by_the_days_deps_gives() -> None:
+    day = date(2026, 11, 28)
+    model = scripted(Script())
+    deps = Deps(llm=Llm(Models(model, model)), kb=FakeKb(), today=lambda: day)
+    graph = build_graph(deps, InMemorySaver())
+
+    first = await turn(graph, ask(unique_thread()))
+
+    questions = only(first, ClarificationEvent).clarification.questions
+    bounds = {q.fact_key: q.input.max_date for q in questions if q.input.kind == "date"}
+    assert bounds == {"bildirim_tarihi": day}
+
+
 ANSWERS_KEYS = {
     "isci_sayisi",
     "sozlesme_turu",

@@ -7,7 +7,8 @@ its question completes.
 
 import re
 from collections.abc import Mapping, Sequence
-from datetime import date
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 from agent.llm_schemas import IntakeOutput
 from agent.topics import UNKNOWN, Option, Topic, TopicFact, parse_date
@@ -66,6 +67,9 @@ def stated_in(day: date, question: str) -> bool:
         rf"(?<!\d){day_no}\s+{_MONTHS[day.month - 1]}\s+{year}(?!\d)",
     )
     return any(re.search(p, text) for p in patterns)
+
+
+ISTANBUL = ZoneInfo("Europe/Istanbul")
 
 
 def _stated_event_date(extracted: IntakeOutput, question: str, today: date) -> date | None:
@@ -178,6 +182,13 @@ def critical_unknown(topic: Topic, facts: CaseFacts) -> list[str]:
     ]
 
 
+def today_tr(now: datetime | None = None) -> date:
+    """The calendar day in Türkiye (Europe/Istanbul), not the server's: between 00:00 and 03:00
+    local time a UTC server is still on the day before. Behaviour change: the event-date check
+    and the date input's bound now follow the Turkish day."""
+    return (now or datetime.now(UTC)).astimezone(ISTANBUL).date()
+
+
 def clarification_for(
     topic: Topic,
     facts: CaseFacts,
@@ -188,7 +199,7 @@ def clarification_for(
     """One question per unknown critical fact, from the template; None when nothing is missing.
     `sources` maps the künye of a basis to the citation the knowledge base resolved; a basis it
     could not resolve is left out, never made up."""
-    return _questions(topic, critical_unknown(topic, facts), sources, today or date.today())
+    return _questions(topic, critical_unknown(topic, facts), sources, today or today_tr())
 
 
 def follow_up(
@@ -203,7 +214,7 @@ def follow_up(
     unknown and not asked before. None when the answers opened no branch."""
     before = {q.fact_key for q in asked.questions}
     keys = [k for k in critical_unknown(topic, facts) if k not in before]
-    return _questions(topic, keys, sources, today or date.today())
+    return _questions(topic, keys, sources, today or today_tr())
 
 
 def _questions(
@@ -271,7 +282,7 @@ def apply_answers(
         question = by_id.get(answer.question_id)
         tf = topic.fact(question.fact_key) if question else None
         if question is not None and tf is not None:
-            updated[tf.key] = _answered_fact(tf, question, answer, today or date.today())
+            updated[tf.key] = _answered_fact(tf, question, answer, today or today_tr())
     merged = [updated[f.key] for f in facts.facts]
     return facts.model_copy(
         update={
