@@ -2100,6 +2100,8 @@ export interface components {
              * @enum {string}
              */
             kind: "choice" | "date" | "number" | "text";
+            /** Max Date */
+            max_date?: string | null;
             /**
              * Options
              * @default []

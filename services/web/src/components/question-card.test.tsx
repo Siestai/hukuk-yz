@@ -192,3 +192,51 @@ describe("clarificationReply", () => {
         expect(clarificationReply(clarification.questions, {})).toEqual({ skip: true });
     });
 });
+
+describe("QuestionCard date bound", () => {
+    function setupBounded(maxDate: string | null) {
+        const onReply = vi.fn();
+        renderWithIntl(
+            <QuestionCard
+                clarification={
+                    {
+                        questions: [
+                            {
+                                id: "q1",
+                                fact_key: "tutanak_tarihi",
+                                text: "Tutanak hangi tarihte tutuldu?",
+                                why: "Tutanak ispat içindir.",
+                                source_refs: [],
+                                input: { kind: "date", options: [], max_date: maxDate },
+                            },
+                        ],
+                    } as unknown as Clarification
+                }
+                busy={false}
+                onReply={onReply}
+                onOpenCitation={vi.fn()}
+            />,
+        );
+        return onReply;
+    }
+
+    it("bounds the picker and refuses a later date with the reason", async () => {
+        const onReply = setupBounded("2026-10-28");
+        const input = screen.getByLabelText("Tutanak hangi tarihte tutuldu?");
+        expect(input).toHaveAttribute("max", "2026-10-28");
+        expect(screen.getByText(/En geç 28\.10\.2026 tarihi girilebilir/)).toBeInTheDocument();
+        await userEvent.type(input, "2027-01-15");
+        expect(screen.getByRole("alert")).toHaveTextContent("28.10.2026 tarihinden sonra olamaz");
+        expect(screen.getByRole("button", { name: "Devam" })).toBeDisabled();
+        expect(onReply).not.toHaveBeenCalled();
+    });
+
+    it("sets no bound when the fact may lie ahead", async () => {
+        setupBounded(null);
+        const input = screen.getByLabelText("Tutanak hangi tarihte tutuldu?");
+        expect(input).not.toHaveAttribute("max");
+        await userEvent.type(input, "2027-01-15");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Devam" })).toBeEnabled();
+    });
+});

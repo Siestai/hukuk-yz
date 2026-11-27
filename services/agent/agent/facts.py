@@ -100,7 +100,9 @@ def build_facts(
             day = parse_date(fact.value or "") if fact else None
             # An option of a date fact is an answer that names no date ("Tutanak tutulmadı").
             no_date = fact is not None and _matching_option(tf, fact.value or "") is not None
-            if not no_date and (day is None or day > today or not stated_in(day, question)):
+            if not no_date and (
+                day is None or (day > today and not tf.allow_future) or not stated_in(day, question)
+            ):
                 fact = None
             if tf.key == topic.event_date_fact and extracted.event_date is not None:
                 if not supplied_date and stated_event is not None:
@@ -177,26 +179,35 @@ def critical_unknown(topic: Topic, facts: CaseFacts) -> list[str]:
 
 
 def clarification_for(
-    topic: Topic, facts: CaseFacts, sources: dict[str, CitationRef]
+    topic: Topic,
+    facts: CaseFacts,
+    sources: dict[str, CitationRef],
+    *,
+    today: date | None = None,
 ) -> Clarification | None:
     """One question per unknown critical fact, from the template; None when nothing is missing.
     `sources` maps the künye of a basis to the citation the knowledge base resolved; a basis it
     could not resolve is left out, never made up."""
-    return _questions(topic, critical_unknown(topic, facts), sources)
+    return _questions(topic, critical_unknown(topic, facts), sources, today or date.today())
 
 
 def follow_up(
-    topic: Topic, asked: Clarification, facts: CaseFacts, sources: dict[str, CitationRef]
+    topic: Topic,
+    asked: Clarification,
+    facts: CaseFacts,
+    sources: dict[str, CitationRef],
+    *,
+    today: date | None = None,
 ) -> Clarification | None:
     """The questions of the critical facts the answers to `asked` brought into the branch: still
     unknown and not asked before. None when the answers opened no branch."""
     before = {q.fact_key for q in asked.questions}
     keys = [k for k in critical_unknown(topic, facts) if k not in before]
-    return _questions(topic, keys, sources)
+    return _questions(topic, keys, sources, today or date.today())
 
 
 def _questions(
-    topic: Topic, keys: list[str], sources: dict[str, CitationRef]
+    topic: Topic, keys: list[str], sources: dict[str, CitationRef], today: date
 ) -> Clarification | None:
     questions: list[ClarificationQuestion] = []
     for key in keys:
@@ -213,6 +224,7 @@ def _questions(
                 input=QuestionInput(
                     kind=q.kind,
                     options=[QuestionOption(value=o.value, label=o.label) for o in q.options],
+                    max_date=today if q.kind == "date" and not tf.allow_future else None,
                 ),
             )
         )
@@ -238,7 +250,7 @@ def _answered_fact(
         return Fact(key=tf.key, label=tf.label, value=option.label, status=status)
     if kind == "date":
         day = parse_date(value)
-        if day is None or day > today:
+        if day is None or (day > today and not tf.allow_future):
             return unknown
         return Fact(key=tf.key, label=tf.label, value=day.strftime("%d.%m.%Y"), status="known")
     return Fact(key=tf.key, label=tf.label, value=value, status="known") if value else unknown

@@ -4099,6 +4099,18 @@
             "title": "Kind",
             "type": "string"
           },
+          "max_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Date"
+          },
           "options": {
             "default": [],
             "items": {

@@ -99,6 +99,7 @@ facts:
   - key: sevk_tarihi
     label: Askerlik sevk tarihi
     critical: true
+    allow_future: true
     asked_when: {fesih_nedeni: [askerlik]}
     question:
       text: İşçinin askerlik sevk tarihi nedir?
