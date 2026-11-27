@@ -62,6 +62,8 @@
       "unknown": "Bilmiyorum",
       "next": "Devam",
       "dateHint": "Biçim: GG.AA.YYYY",
+      "dateHintPast": "Biçim: GG.AA.YYYY. En geç {max} tarihi girilebilir.",
+      "dateTooLate": "Bu olgunun tarihi {max} tarihinden sonra olamaz; ileri bir tarih kabul edilmemektedir.",
       "skip": "Soruları atla, koşullu cevabı göster"
     },
     "answer": {

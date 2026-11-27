@@ -165,6 +165,7 @@ export function QuestionCard({
                         <ValueForm
                             key={question.id}
                             kind={question.input.kind}
+                            max={question.input.max_date ?? undefined}
                             label={question.text}
                             disabled={busy}
                             onSubmit={choose}
@@ -218,11 +219,14 @@ export function QuestionCard({
 
 function ValueForm({
     kind,
+    max,
     label,
     disabled,
     onSubmit,
 }: {
     kind: keyof typeof INPUT_TYPE;
+    /** The latest date accepted (ISO), for a date whose fact cannot lie ahead. */
+    max?: string;
     label: string;
     disabled: boolean;
     onSubmit: (value: string) => void;
@@ -230,9 +234,14 @@ function ValueForm({
     const t = useTranslations("chat.question");
     const [value, setValue] = useState("");
     const hintId = useId();
+    const errorId = useId();
+    // An input type=date always yields YYYY-MM-DD (or ""), so comparing the ISO strings is safe.
+    const tooLate = kind === "date" && max !== undefined && value > max;
+    const maxLabel =
+        max !== undefined ? new Date(`${max}T00:00`).toLocaleDateString("tr-TR") : undefined;
     function submit(event: FormEvent) {
         event.preventDefault();
-        if (value.trim()) onSubmit(value.trim());
+        if (value.trim() && !tooLate) onSubmit(value.trim());
     }
     return (
         <form onSubmit={submit} className="grid gap-2">
@@ -241,9 +250,11 @@ function ValueForm({
                     type={INPUT_TYPE[kind]}
                     inputMode={kind === "number" ? "decimal" : undefined}
                     value={value}
+                    max={kind === "date" ? max : undefined}
                     onChange={(event) => setValue(event.target.value)}
                     aria-label={label}
-                    aria-describedby={kind === "date" ? hintId : undefined}
+                    aria-describedby={kind === "date" ? (tooLate ? errorId : hintId) : undefined}
+                    aria-invalid={tooLate || undefined}
                     disabled={disabled}
                     className="h-12 bg-bg text-base pointer-coarse:h-12"
                 />
@@ -251,15 +262,23 @@ function ValueForm({
                     type="submit"
                     size="lg"
                     className="h-12 text-base font-semibold pointer-coarse:h-12"
-                    disabled={disabled || !value.trim()}
+                    disabled={disabled || !value.trim() || tooLate}
                 >
                     {t("next")}
                 </Button>
             </div>
-            {kind === "date" && (
-                <p id={hintId} className="text-xs text-ink-2">
-                    {t("dateHint")}
+            {tooLate && maxLabel !== undefined ? (
+                <p id={errorId} role="alert" className="text-sm text-low">
+                    {t("dateTooLate", { max: maxLabel })}
                 </p>
+            ) : (
+                kind === "date" && (
+                    <p id={hintId} className="text-xs text-ink-2">
+                        {maxLabel !== undefined
+                            ? t("dateHintPast", { max: maxLabel })
+                            : t("dateHint")}
+                    </p>
+                )
             )}
         </form>
     );

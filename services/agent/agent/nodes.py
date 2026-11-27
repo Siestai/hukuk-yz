@@ -19,6 +19,7 @@ from agent.facts import (
     clarification_for,
     critical_unknown,
     follow_up,
+    today_tr,
 )
 from agent.gate import (
     SCHEMA_FAILED,
@@ -115,7 +116,7 @@ class Node(Protocol):
 class Deps:
     llm: Llm
     kb: KbClient
-    today: Callable[[], date] = date.today
+    today: Callable[[], date] = today_tr
     # Keep the raw quotes of the dropped rows in the state (`dropped_text`): the eval only, whose
     # questions are public; never in the trace or the log.
     keep_dropped_text: bool = False
@@ -258,7 +259,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             sources = await _question_sources(
                 deps.kb, topic, critical_unknown(topic, facts), facts.event_date or deps.today()
             )
-            clarification = clarification_for(topic, facts, sources)
+            clarification = clarification_for(topic, facts, sources, today=deps.today())
             _facts_event(facts)
             if clarification:
                 # Here, not in `clarify`: that node runs again when the user answers.
@@ -307,7 +308,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
             # answers to the follow-up open no further round.
             more = None
             if not state.get("followed_up"):
-                more = follow_up(topic, clarification, facts, {})
+                more = follow_up(topic, clarification, facts, {}, today=deps.today())
             if more is not None:
                 sources = await _question_sources(
                     deps.kb,
@@ -315,7 +316,7 @@ def make_nodes(deps: Deps) -> dict[str, Node]:
                     [q.fact_key for q in more.questions],
                     facts.event_date or deps.today(),
                 )
-                more = follow_up(topic, clarification, facts, sources)
+                more = follow_up(topic, clarification, facts, sources, today=deps.today())
                 _step("clarify")
             rec.output = {
                 "answered": len(answers),

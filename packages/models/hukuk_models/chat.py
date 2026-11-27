@@ -143,6 +143,8 @@ class QuestionInput(ChatModel):
     options: list[QuestionOption] = []
     # "Bilmiyorum" exists on every question (md. 22).
     allow_unknown: Literal[True] = True
+    # The latest date the question accepts (a date question whose fact cannot lie ahead: today).
+    max_date: date | None = None
 
     @model_validator(mode="after")
     def _options_match_kind(self) -> Self:

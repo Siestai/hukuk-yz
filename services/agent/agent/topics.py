@@ -87,6 +87,9 @@ class TopicFact(TopicModel):
     # The fact is critical only in a branch: when every fact named here is in one of the listed
     # states, an option value or UNKNOWN. Pure code decides it; the model asks nothing else.
     asked_when: dict[str, list[str]] = {}
+    # A date fact that by nature is often still ahead (an askerlik sevk date): a date after today
+    # is a known date, not an unknown one. Off, the question carries today as its upper bound.
+    allow_future: bool = False
 
     @model_validator(mode="after")
     def _critical_is_asked(self) -> Self:
@@ -98,6 +101,8 @@ class TopicFact(TopicModel):
             )
         if self.asked_when and not self.critical:
             raise ValueError(f"{self.key}: asked_when is for a critical fact only")
+        if self.allow_future and (self.question is None or self.question.kind != "date"):
+            raise ValueError(f"{self.key}: allow_future is for a date fact only")
         return self
 
     @property

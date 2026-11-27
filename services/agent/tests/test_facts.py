@@ -1,7 +1,7 @@
 """The facts and the clarification, from the template: who is asked what, and how an answer fills
 the fact."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -12,6 +12,7 @@ from agent.facts import (
     critical_unknown,
     event_date_of,
     stated_in,
+    today_tr,
 )
 from agent.llm_schemas import IntakeFact, IntakeOutput
 from agent.topics import Topic, get_topic
@@ -584,3 +585,95 @@ def test_a_stated_date_binds_a_date_fact_and_so_does_a_stated_no_date_option() -
     assert stated.facts[0].value == "03.10.2026"
     assert (escaped.facts[0].value, escaped.facts[0].status) == ("Tutanak tutulmadı", "known")
     assert invented.facts[0].status == "unknown"
+
+
+def _dated_topic(allow_future: bool) -> Topic:
+    return Topic.model_validate(
+        {
+            "id": "sevkli",
+            "title": "Sevkli",
+            "description": "İleri tarih olabilen olgu.",
+            "facts": [
+                {
+                    "key": "sevk_tarihi",
+                    "label": "Sevk tarihi",
+                    "critical": True,
+                    "allow_future": allow_future,
+                    "question": {"text": "Sevk tarihi?", "why": "Gerekir.", "kind": "date"},
+                }
+            ],
+        }
+    )
+
+
+FUTURE = date(2027, 1, 15)
+
+
+@pytest.mark.parametrize(("allow_future", "kept"), [(True, True), (False, False)])
+def test_a_future_clarification_date_is_kept_only_for_a_fact_that_allows_it(
+    allow_future: bool, kept: bool
+) -> None:
+    topic = _dated_topic(allow_future)
+    facts = build(topic, IntakeOutput(topic="sevkli", title="Sevkli", facts=[]), None)
+    clarification = clarification_for(topic, facts, {}, today=TODAY)
+    assert clarification is not None
+    done = apply_answers(
+        topic,
+        clarification,
+        [ClarificationAnswer(question_id="q1", value=FUTURE.isoformat())],
+        facts,
+        today=TODAY,
+    )
+    assert (statuses(done)["sevk_tarihi"], done.facts[0].value) == (
+        ("known", "15.01.2027") if kept else ("unknown", None)
+    )
+
+
+@pytest.mark.parametrize(("allow_future", "kept"), [(True, True), (False, False)])
+def test_a_future_date_named_in_the_question_is_kept_only_for_a_fact_that_allows_it(
+    allow_future: bool, kept: bool
+) -> None:
+    out = IntakeOutput(
+        topic="sevkli",
+        title="Sevkli",
+        facts=[IntakeFact(key="sevk_tarihi", value="15.01.2027", status="known")],
+    )
+    facts = build(_dated_topic(allow_future), out, None, "Sevk tarihi 15.01.2027.")
+    assert statuses(facts)["sevk_tarihi"] == ("known" if kept else "unknown")
+
+
+def test_the_date_input_carries_today_as_its_bound_unless_the_fact_allows_the_future() -> None:
+    def max_date(allow_future: bool) -> date | None:
+        topic = _dated_topic(allow_future)
+        facts = build(topic, IntakeOutput(topic="sevkli", title="Sevkli", facts=[]), None)
+        clarification = clarification_for(topic, facts, {}, today=TODAY)
+        assert clarification is not None
+        return clarification.questions[0].input.max_date
+
+    assert max_date(False) == TODAY
+    assert max_date(True) is None
+
+
+def test_allow_future_is_for_a_date_fact_only() -> None:
+    with pytest.raises(ValueError, match="allow_future"):
+        Topic.model_validate(
+            {
+                "id": "x",
+                "title": "X",
+                "description": "X",
+                "facts": [{"key": "k", "label": "K", "allow_future": True}],
+            }
+        )
+
+
+def test_the_askerlik_sevk_date_of_kidem_ihbar_may_be_in_the_future() -> None:
+    fact = get_topic("kidem_ihbar").fact("sevk_tarihi")
+    assert fact is not None and fact.allow_future
+
+
+def test_today_is_the_turkish_calendar_day_not_the_servers() -> None:
+    # 22:30 UTC on the 27th is already 01:30 on the 28th in Türkiye (UTC+3).
+    assert today_tr(datetime(2026, 11, 27, 22, 30, tzinfo=UTC)) == date(2026, 11, 28)
+    assert today_tr(datetime(2026, 11, 27, 20, 59, tzinfo=UTC)) == date(2026, 11, 27)
+    assert today_tr(datetime(2026, 11, 27, 21, 0, tzinfo=UTC)) == date(2026, 11, 28)
+    assert today_tr() == today_tr(datetime.now(UTC))
