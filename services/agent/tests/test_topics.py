@@ -219,6 +219,12 @@ STATED: dict[str, dict[str, str]] = {
         "tis_yururluk": "01.01.2025-31.12.2026, imza 01.10.2025",
     },
     "SB-042": {"talep_turu": "kidem_yazisi"},
+    "IB-001": {
+        "sigortalilik_hali": "4c",
+        "ilk_sigortalilik_tarihi": "01.02.2008",
+        "talep_turu": "yaslilik_ayligi",
+    },
+    "IB-002": {"ceza_turu": "bildirge"},
 }
 # Asked beyond the case's must_ask, and why it is not out of place.
 ALSO_ASKED: dict[str, set[str]] = {
@@ -228,6 +234,11 @@ ALSO_ASKED: dict[str, set[str]] = {
     "SB-014": {"fiil", "kendiliginden"},
     # The act the fine is for decides which sub-clause facts follow; the question does not say.
     "SB-016": {"fiil"},
+    # Known bug, not a justified question (#125, follow-up #127): İbrahim says the question is
+    # answerable without questions. The `fiil` options of idari_para_cezasi.yaml lack the workplace
+    # declaration (5510 m.102/1-b), only `diger`, so the template cannot place this question and
+    # asks both. Tripwire: the test fails when the template is fixed; remove this entry then.
+    "IB-002": {"fiil", "kendiliginden"},
     # The six workdays of m.26 run from the day the employer learnt of the absence.
     "SB-027": {"olay_tarihi"},
 }
