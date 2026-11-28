@@ -234,8 +234,10 @@ ALSO_ASKED: dict[str, set[str]] = {
     "SB-014": {"fiil", "kendiliginden"},
     # The act the fine is for decides which sub-clause facts follow; the question does not say.
     "SB-016": {"fiil"},
-    # Known gap (#125): İbrahim says the question is answerable from the law text and the genelge
-    # without questions; the template still asks both. Remove this entry when the template stops.
+    # Known bug, not a justified question (#125, follow-up #127): İbrahim says the question is
+    # answerable without questions. The `fiil` options of idari_para_cezasi.yaml lack the workplace
+    # declaration (5510 m.102/1-b), only `diger`, so the template cannot place this question and
+    # asks both. Tripwire: the test fails when the template is fixed; remove this entry then.
     "IB-002": {"fiil", "kendiliginden"},
     # The six workdays of m.26 run from the day the employer learnt of the absence.
     "SB-027": {"olay_tarihi"},
