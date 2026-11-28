@@ -1,0 +1,38 @@
+id: IB-002
+# Kaynak: İbrahim test hesabı 28.11.2026, #125 (soru olduğu gibi).
+# Beklentiler İbrahim'in geri bildirimine ve KB'deki kaynak metnine dayanır; hukuki beklenti İbrahim
+# onayına tabidir.
+# İbrahim'in geri bildirimi: "Soru çok açık. Sorduğun sorulara gerek yok. Direkt kanun metninden ve
+# genelgeden cevaplanabilir." Soru kuralın kendisini sorar, olaya ait olgu istemez: must_ask boş.
+question: "5510 102. Maddesine göre işyeri Bildirgesi cezası nedir ve dayanak madde nedir"
+expected:
+  topic: idari_para_cezasi
+  status: definite
+  headline_contains:
+    - asgari ücret
+  must_cite:
+    # 5510 m.102 birinci fıkra (b) bendi: 11. maddedeki bildirgeyi şekle ve usule uygun vermeyen,
+    # elektronik göndermeyen veya süresinde vermeyene kamu idareleri ve bilanço esasına göre defter
+    # tutanlar için asgari ücretin üç katı, diğer defter tutanlar için iki katı, defter tutmakla
+    # yükümlü olmayanlar için bir aylık asgari ücret idari para cezası. m.102 KB'de low bantta (#121).
+    # Künye madde düzeyindedir (SB-014 notu: KB metninde fıkra numarası yok).
+    - 5510 m.102
+    # 2020/8 genelge 2.5 "İşyeri Bildirgesi": m.11'i ve m.102/1-(b) metnini aktarır, ceza yasal verilme
+    # süresinin son gününde geçerli asgari ücret üzerinden uygulanır.
+    - 2020/8 m.2.5
+    # 5510 m.11: işveren işyeri bildirgesini en geç sigortalı çalıştırmaya başladığı tarihte Kuruma
+    # vermekle yükümlüdür (cezanın dayanağı olan yükümlülük).
+    - 5510 m.11
+  must_ask: []
+  must_not: []
+  traps:
+    - Ceza işyeri bildirgesi için m.102/1-(b)'dedir; sigortalı işe giriş bildirgesi (m.102/1-(a)) ile karıştırılmaz.
+    - Tutar işverenin defter durumuna göre üç kademelidir (kamu idareleri ve bilanço esaslılar 3, diğer defter tutanlar 2, defter tutmayanlar 1 asgari ücret); sabit bir TL tutarı verilmez.
+    - Asgari ücret, bildirgenin yasal verilme süresinin son gününde geçerli olandır (2020/8 m.2.5).
+    - Dayanak madde sorulmaktadır: m.102 cezayı, m.11 yükümlülüğü verir; ikisi birlikte gösterilir.
+  missing_in_kb:
+    # 5510 m.102 KB'de var ama low bant, okunmuyor (#121, K1). SB-014 ile aynı durum.
+    - 5510 m.102
+# İbrahim'e sorulacak: indirim ve yasal süresinden sonra verme halleri (2020/8 m.3.1, m.3.2) bu cevaba
+# dahil mi, yoksa yalnız ceza kademesi ve dayanak madde mi beklenir?
+tags: [sgk, idari-para-cezasi, isyeri-bildirgesi, ibrahim]

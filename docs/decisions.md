@@ -332,3 +332,10 @@
 - **Sabitleme:** `chat_conversation.pinned_at`; kullanıcı başına en fazla 3 (`pin_limit`, 409), yalnız
   sahip sabitler (admin de başkasının konuşmasını sabitleyemez), PUT/DELETE idempotent. Liste: önce
   sabitler (ilk sabitlenen üstte), sonra `updated_at` azalan.
+
+### 2026-11-28 — İbrahim test hesabı döngüsü (Görev 23, Orhan)
+
+- **Döngü:** İbrahim'in test hesabı gerçek kullanıcı testidir. Soru → Themis hesabın geçmişini inceler → eksikler issue → uygulama + review + canlıya alma → aynı sorularla canlıda yeniden test → sonuç WP grubuna.
+- **Eval kaynağı:** hesaptaki sorular eval vakası olur (`eval/cases/IB-*.yaml`, soru olduğu gibi; beklenti İbrahim'in geri bildirimine ve kaynak metnine dayanır, hukuki sonuç İbrahim onayına tabidir).
+- **Her iterasyon bir issue'dur** (#125 ilk iterasyon); yeniden test canlıda aynı olgularla yapılır.
+- **İterasyon 1:** SGK genelgesi 2018/38, 2020/8 ve 1475 m.14 mevcut yükleyicilerle `analyzed` olarak yüklenir. Soru yakalama ve olgu kaybı ayrı issue; 6356 / 7036 Orhan kararı bekliyor. Ayrıntı: `docs/tasks/23-ibrahim-iteration-1.md`.

@@ -1,0 +1,58 @@
+id: IB-001
+# Kaynak: İbrahim test hesabı 28.11.2026, #125 (soru yazım hatalarıyla birlikte olduğu gibi).
+# Beklentiler İbrahim'in geri bildirimine ve KB'deki kaynak metnine dayanır; hukuki beklenti İbrahim
+# onayına tabidir.
+# İbrahim'in geri bildirimi (3 kez wrong_conclusion): talep yaşlılık aylığı hak kazanma koşullarıdır;
+# ölüm aylığı / toptan ödeme değildir; "Kuruma başvuru ya da sevkten bahsetmek yanlış".
+question: "1.2.2008 tarihinde ssk lı olarak işr başladım. Sonrasında 23.07.2013 tarihinde 4c li olarak işe başladım ve hala 4c devam ediyorum. 4a günüm 250. Emeklilik şartlarım nedir"
+# Soru zaten verir: ilk sigortalılık tarihi (01.02.2008; ilk işe giriş SSK'lı), sigortalılık hali (şimdi 4/1-c),
+# 4/1-a gün sayısı (250), talep (yaşlılık aylığı). Bunlar sorulmamalıdır; ilk canlı testte aynı olgu 3 kez
+# soruldu. Scorer "sorulmamalı"yı ölçmez (must_ask yalnız sorulması gerekeni sayar); bu yüzden must_ask
+# boştur ve olgular facts'te verilir, soru sorulursa koşucu bu değerlerle cevaplar.
+facts:
+  sigortalilik_hali: 4c
+  ilk_sigortalilik_tarihi: "01.02.2008"
+  talep_turu: yaslilik_ayligi
+expected:
+  topic: olum_yaslilik_aylik
+  status: conditional
+  headline_contains:
+    - yaşlılık aylığı
+  must_cite:
+    # 5510 m.28 ("Yaşlılık sigortasından sağlanan haklar ve yararlanma şartları"): yaş ve prim gün
+    # sayısı şartları; ikinci fıkra yalnız "ilk defa bu Kanuna göre sigortalı sayılanlara" uygulanır,
+    # soruda ilk sigortalılık 1.2.2008 olduğundan cevap bunu ayırmalıdır.
+    - 5510 m.28
+    # 5510 m.38 ("sigortalılık süresi"): başlangıç, sigortalının SSK (506) dahil mülga kanunlara göre
+    # ilk defa kapsama girdiği tarihtir; 1.2.2008 bu tarihtir.
+    - 5510 m.38
+    # 2018/38 K2-B3-2.1.2.1 (4/1-(a), 8/9/1999 hariç - 30/4/2008 dahil arası ilk sigortalılar: kadın 58,
+    # erkek 60 yaş ve 7000 gün, ya da 25 yıl sigortalılık ve 4500 gün). 1.2.2008 bu aralıktadır.
+    - 2018/38 m.K2-B3-2.1.2.1
+    # 2018/38 K1-1.1.5: birden fazla sigortalılık haline tabi çalışmada diğer statüdeki hizmetlerin
+    # dikkate alınması ve sigortalılık süresinin başlangıcı.
+    - 2018/38 m.K1-1.1.5
+  must_ask: []
+  must_not:
+    - ölüm toptan ödemesi
+    - toptan ödeme için hak sahip
+    - emekliye sevk
+  traps:
+    - Konu yaşlılık aylığı hak kazanma koşullarıdır (5510 m.28); ölüm aylığı, ölüm toptan ödemesi ve hak sahipleri konusu değildir.
+    - Hak kazanma Kuruma başvuruya ya da kurumca emekliye sevke bağlı bir koşul olarak sunulmaz (İbrahim'in geri bildirimi). Yaşlılık aylığı için yazılı istek aylığın başlangıcını belirler, hak kazanma koşulu değildir (belirsizse bu cümle hiç kurulmaz).
+    - İşe başlama tarihi (23.07.2013) olay tarihi değildir; sigortalılık süresi ilk sigortalılık tarihinden (1.2.2008, 5510 m.38) başlar.
+    - 1.2.2008 ilk sigortalılığı 30/4/2008 (dahil) öncesidir; 2018/38 K2-B3-2.1.3 (30/4/2008 sonrasında ilk defa sigortalı olanlar, 7200 / 9000 gün) bu kişiye uygulanmaz.
+  missing_in_kb:
+    # 5510 m.53 (hizmet birleştirme) KB'de low bantta, okunamaz; must_cite'a alınmadı.
+    - 5510 m.53
+    # 5510 Geçici m.4 (2008/Ekim öncesi 4/1-(c) için geçiş) low bantta (SB-002 notu).
+    - 5510 m.Geçici 4
+# İbrahim'e sorulacak:
+# 1) İlk sigortalılık 4/1-(a) (SSK, 1.2.2008), şimdiki statü 4/1-(c) (23.07.2013). Aylığa hak kazanma
+#    koşulları hangi statüye göre aranır (2018/38 K1-1.1.5 hizmet birleştirme ve statü belirleme)?
+#    Genelgedeki cümle "2008/Ekim sonrası ilk defa 4/1-(b)" için yazılmış; 4/1-(c) için aynı sonuç
+#    mu çıkar? Bu yüzden statü sonucu traps'a konmadı.
+# 2) 8/9/1999-30/4/2008 aralığında 4/1-(a) için aranan 7000 gün (veya 25 yıl ve 4500 gün) şartı
+#    burada 4/1-(c)'de sonlanan kişiye aynen uygulanır mı?
+# 3) Hizmet birleştirme (5510 m.53) KB'de okunamıyor (low bant); doğru hüküm madde olarak hangisidir?
+tags: [sgk, yaslilik-aylik, hizmet-birlestirme, 4c, ibrahim]

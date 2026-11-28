@@ -30,7 +30,7 @@ def _fixture_answer(name: str) -> dict[str, Any]:
 
 def test_cases_are_well_formed() -> None:
     paths = sorted(CASES.glob("*.yaml"))
-    assert len(paths) == 20
+    assert len(paths) == 22
     for path in paths:
         case = score_module.load_case(path)
         assert case["id"] == path.stem
